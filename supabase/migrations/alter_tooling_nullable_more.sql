@@ -1,0 +1,5 @@
+ALTER TABLE tooling_info
+  ALTER COLUMN production_unit DROP NOT NULL,
+  ALTER COLUMN category DROP NOT NULL,
+  ALTER COLUMN project_name DROP NOT NULL,
+  ALTER COLUMN recorder DROP NOT NULL;

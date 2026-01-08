@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>价格API测试</title>
+</head>
+<body>
+    <h1>价格API测试</h1>
+    <button onclick="testGetPrices()">获取价格</button>
+    <button onclick="testUpdatePrice()">更新价格</button>
+    <button onclick="testCreatePrice()">创建价格</button>
+    <div id="result"></div>
+
+    <script>
+        const materialId = '28f6aee1-e411-41f6-9891-656577926a3e';
+        const priceId = '7b522f9a-a4b3-46c6-a399-1614694d6c40';
+
+        async function testGetPrices() {
+            try {
+                const response = await fetch(`/api/materials/${materialId}/prices`);
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<h3>获取价格成功:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<h3>获取价格失败:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+
+        async function testUpdatePrice() {
+            try {
+                const response = await fetch(`/api/materials/${materialId}/prices/${priceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        unit_price: 30,
+                        effective_start_date: '2025-11-24',
+                        effective_end_date: null
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<h3>更新价格成功:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<h3>更新价格失败:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+
+        async function testCreatePrice() {
+            try {
+                const response = await fetch(`/api/materials/${materialId}/prices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        unit_price: 35,
+                        effective_start_date: '2025-11-26',
+                        effective_end_date: null
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<h3>创建价格成功:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<h3>创建价格失败:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>

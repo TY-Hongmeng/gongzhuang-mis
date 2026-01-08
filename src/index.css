@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 专业表格样式 */
+.ant-table {
+  font-size: 14px;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #f2f4f7 !important;
+  color: #2c3e50 !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  border-top: 1px solid #d9d9d9 !important;
+  border-bottom: 1px solid #d9d9d9 !important;
+  border-right: 1px solid #d9d9d9 !important;
+  border-left: 1px solid #d9d9d9 !important;
+  padding: 12px 8px !important;
+  font-size: 13px !important;
+}
+
+.ant-table-tbody > tr > td {
+  padding: 10px 8px !important;
+  border-bottom: 1px solid #e8e8e8 !important;
+  border-right: 1px solid #e8e8e8 !important;
+  border-left: 1px solid #e8e8e8 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: #f8f9fa !important;
+}
+
+.editable-row.editing > td {
+  background-color: #e6f7ff !important;
+  border-color: #1890ff !important;
+}
+
+.ant-table-tbody > tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.ant-table-tbody > tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+/* 下拉菜单一致性：去除焦点高亮与文本选择 */
+table select {
+  user-select: none !important;
+}
+table select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 输入框样式优化 */
+.ant-input, .ant-select-selector, .ant-picker {
+  border-radius: 4px !important;
+  border: 1px solid #d9d9d9 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-input:focus, .ant-select-focused .ant-select-selector, .ant-picker:hover {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* 按钮样式优化 */
+.ant-btn {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* 卡片样式 */
+.ant-card {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #f0f0f0 !important;
+}
+
+.ant-card-head {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
+  border-bottom: 2px solid #e8e8e8 !important;
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.ant-card-head-title {
+  color: #2c3e50 !important;
+  font-weight: 600 !important;
+}
+
+/* 分页样式 */
+.ant-pagination {
+  margin-top: 20px !important;
+  text-align: center !important;
+}
+
+.ant-pagination-item {
+  border-radius: 6px !important;
+}
+
+.ant-pagination-item-active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-color: transparent !important;
+}
+
+.ant-pagination-item-active a {
+  color: white !important;
+}
+
+/* 单层输入框边框：移除内层输入框边框，仅保留外层一层 */
+.ant-input,
+.ant-input:focus,
+.ant-input-outlined,
+.ant-input-affix-wrapper .ant-input,
+.ant-input-password .ant-input {
+  border: none !important;
+  box-shadow: none !important;
+}
+.ant-input-affix-wrapper,
+.ant-input-password .ant-input-affix-wrapper {
+  border: 1px solid #d9d9d9 !important;
+  box-shadow: none !important;
+}
+.ant-input-affix-wrapper-focused {
+  box-shadow: none !important;
+}
