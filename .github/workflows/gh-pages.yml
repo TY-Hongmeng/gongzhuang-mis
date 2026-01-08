@@ -26,7 +26,7 @@ jobs:
       - name: Build (relative base for GitHub Pages)
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-        run: npm run build -- --base=./
+        run: npx vite build -- --base=./
 
       - name: SPA fallback (copy index.html to 404.html)
         run: cp -f dist/index.html dist/404.html
