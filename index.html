@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Trae Project</title>
+    <script>
+      (function(){
+        try {
+          var isGhPages = /github\.io\/[^\/]+\/?$/.test(location.href) || /github\.io\/.+/.test(location.href)
+          if (!location.hash) {
+            location.hash = '/login'
+          }
+        } catch(e) {}
+      })();
+    </script>
     <script type="module">
       // 仅在开发环境执行一次性遮罩清理与 SW 注销（无自动重载/重连）
       if (import.meta.env?.DEV) {
