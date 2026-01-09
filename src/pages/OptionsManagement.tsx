@@ -236,6 +236,11 @@ export default function OptionsManagement() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 2000)
+    return () => clearTimeout(t)
+  }, [])
+
   // 防御性：只要任一主数据返回，就结束 loading，避免界面卡住
   useEffect(() => {
     if (loading) {
