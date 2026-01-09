@@ -11,6 +11,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   try {
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
+      if (isGhPages) return res
       const u = new URL(abs, window.location.origin)
       const fallback = `http://localhost:3003${u.pathname}${u.search}`
       return await fetch(fallback, init)
