@@ -202,6 +202,48 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, data })
     }
+    
+    // Batch delete tooling
+    if (method === 'POST' && path === '/api/tooling/batch-delete') {
+      const body = init?.body ? await new Response(init.body).json() : {}
+      const { ids } = body
+      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+      
+      const { error } = await supabase
+        .from('tooling')
+        .delete()
+        .in('id', ids)
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true })
+    }
+    
+    // Batch delete parts
+    if (method === 'POST' && path === '/api/tooling/parts/batch-delete') {
+      const body = init?.body ? await new Response(init.body).json() : {}
+      const { ids } = body
+      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+      
+      const { error } = await supabase
+        .from('parts')
+        .delete()
+        .in('id', ids)
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true })
+    }
+    
+    // Batch delete child items
+    if (method === 'POST' && path === '/api/tooling/child-items/batch-delete') {
+      const body = init?.body ? await new Response(init.body).json() : {}
+      const { ids } = body
+      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+      
+      const { error } = await supabase
+        .from('child_items')
+        .delete()
+        .in('id', ids)
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true })
+    }
 
     // Tooling batch info
     if (method === 'GET' && path.startsWith('/api/tooling/batch')) {
