@@ -83,18 +83,21 @@ export const useAuthStore = create<AuthState>()(
         };
 
         try {
-          let response = await fetchWithTimeout('/api/auth/login');
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              set({ user: data.user, isAuthenticated: true, isLoading: false });
-              return { success: true, message: '登录成功' };
-            } else {
-              set({ isLoading: false });
-              return { success: false, message: data.error || '登录失败' };
+          const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
+          if (!isGhPages) {
+            const response = await fetchWithTimeout('/api/auth/login');
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                set({ user: data.user, isAuthenticated: true, isLoading: false });
+                return { success: true, message: '登录成功' };
+              } else {
+                set({ isLoading: false });
+                return { success: false, message: data.error || '登录失败' };
+              }
             }
           }
-          // 前端直接使用 Supabase 作为兜底（无预检，无跨域）
+          
           if (supabase) {
             const { data: userRow, error } = await supabase
               .from('users')
