@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (phone: string, password: string) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'text/plain' };
         const body = JSON.stringify({ phone, password });
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {
@@ -105,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (data: RegisterData) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'text/plain' };
         const body = JSON.stringify(data);
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {
@@ -139,7 +139,7 @@ export const useAuthStore = create<AuthState>()(
 
       resetPassword: async (idCard: string, newPassword: string) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'text/plain' };
         const body = JSON.stringify({ idCard, newPassword });
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {

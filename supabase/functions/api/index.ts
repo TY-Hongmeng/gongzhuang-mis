@@ -16,7 +16,14 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 async function json(req: Request) {
-  try { return await req.json() } catch { return {} }
+  try {
+    const ct = req.headers.get('content-type') || ''
+    if (ct.includes('application/json')) {
+      return await req.json()
+    }
+    const txt = await req.text()
+    try { return JSON.parse(txt) } catch { return {} }
+  } catch { return {} }
 }
 
 serve(async (req) => {
