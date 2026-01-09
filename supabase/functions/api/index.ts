@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, accept, origin",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Max-Age": "86400",
+  "Access-Control-Allow-Credentials": "true",
+  "Vary": "Origin"
 }
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
@@ -18,7 +20,12 @@ async function json(req: Request) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    const reqHeaders = req.headers.get('access-control-request-headers') || corsHeaders["Access-Control-Allow-Headers"]
+    const reqMethod = req.headers.get('access-control-request-method') || 'POST'
+    const headers = { ...corsHeaders, "Access-Control-Allow-Headers": reqHeaders, "Access-Control-Allow-Methods": `${reqMethod}, OPTIONS` }
+    return new Response('ok', { status: 200, headers })
+  }
   const url = new URL(req.url)
   const path = url.pathname.replace(/^\/api\//, "/")
 
