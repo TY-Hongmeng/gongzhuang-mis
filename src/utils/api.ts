@@ -73,6 +73,19 @@ export function installApiInterceptor() {
         let urlStr = u
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
+        // handle devices and fixed_inventory_options via supabase-js to avoid REST 400
+        if (supabase) {
+          if (/\/rest\/v1\/devices\?/.test(urlStr)) {
+            const { data, error } = await supabase.from('devices').select('*').order('name')
+            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            return jsonResponse(data || [])
+          }
+          if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
+            const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('name')
+            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            return jsonResponse(data || [])
+          }
+        }
         return await originalFetch(urlStr as any, patchedInit)
       }
       return await originalFetch(input as any, init)
