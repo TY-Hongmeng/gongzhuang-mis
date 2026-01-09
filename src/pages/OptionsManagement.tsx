@@ -200,22 +200,24 @@ export default function OptionsManagement() {
       const devicesData = await devicesRes.json();
       const fixedOptionsData = await fixedOptionsRes.json();
 
-      setProductionUnits(unitsData.data || []);
-      setToolingCategories(categoriesData.data || []);
-      setPartTypes(partTypesData.data || []);
-      setMaterialSources(materialSourcesData.data || []);
-      setDevices(devicesData.items || []);
-      setFixedOptions(fixedOptionsData.items || []);
+      const getArr = (obj: any) => Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []));
+
+      setProductionUnits(getArr(unitsData));
+      setToolingCategories(getArr(categoriesData));
+      setPartTypes(getArr(partTypesData));
+      setMaterialSources(getArr(materialSourcesData));
+      setDevices(getArr(devicesData));
+      setFixedOptions(getArr(fixedOptionsData));
 
       // 加载材料库
       const matsRes = await fetch('/api/materials?order=created_at.desc');
       if (!matsRes.ok) throw new Error('获取材料失败');
       const matsJson = await matsRes.json();
-      setMaterials(matsJson.data || []);
+      setMaterials(getArr(matsJson));
 
       // 加载每个材料的价格历史
       const pricesMap: Record<string, any[]> = {};
-      for (const material of matsJson.data || []) {
+      for (const material of (getArr(matsJson) || [])) {
         try {
           const pricesRes = await fetch(`/api/materials/${material.id}/prices`);
           if (pricesRes.ok) {
