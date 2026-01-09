@@ -172,6 +172,32 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       return jsonResponse({ success: true, items: data || [] })
     }
 
+    // Tooling parts by toolingId
+    const partsMatch = path.match(/^\/api\/tooling\/([^\/]+)\/parts$/)
+    if (method === 'GET' && partsMatch) {
+      const toolingId = partsMatch[1]
+      const { data, error } = await supabase
+        .from('parts_info')
+        .select('*')
+        .eq('tooling_id', toolingId)
+        .order('created_at', { ascending: true })
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, items: data || [] })
+    }
+
+    // Child items by toolingId
+    const childMatch = path.match(/^\/api\/tooling\/([^\/]+)\/child-items$/)
+    if (method === 'GET' && childMatch) {
+      const toolingId = childMatch[1]
+      const { data, error } = await supabase
+        .from('child_items')
+        .select('*')
+        .eq('tooling_id', toolingId)
+        .order('created_at', { ascending: true })
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, items: data || [] })
+    }
+
     // Work hours
     if (method === 'GET' && path === '/api/tooling/work-hours') {
       const qs = getQuery(url)
