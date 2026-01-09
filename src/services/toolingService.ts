@@ -1,6 +1,7 @@
 // 工装信息API服务
 
 import { message } from 'antd'
+import { supabase } from '../lib/supabase'
 
 export interface RowItem {
   id: string
@@ -50,14 +51,28 @@ export interface ChildItem {
 // 获取工装列表
 export const fetchToolingList = async (page: number = 1, pageSize: number = 50) => {
   try {
-    const response = await fetch(`/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`, {
-      cache: 'no-store'
-    })
-    
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('tooling')
+        .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
+        .order('created_at', { ascending: true })
+        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+      if (error) throw error
+      const items = (data || []).map((x: any) => ({
+        id: x.id,
+        inventory_number: x.inventory_number || '',
+        production_unit: x.production_unit || '',
+        category: x.category || '',
+        received_date: x.received_date || '',
+        demand_date: x.demand_date || '',
+        completed_date: x.completed_date || '',
+        project_name: x.project_name || ''
+      }))
+      return { success: true, items }
+    }
+    const response = await fetch(`/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`, { cache: 'no-store' })
     if (!response.ok) throw new Error(String(response.status))
-    
     const result = await response.json().catch(() => ({ items: [] }))
-    // 兼容 data 和 items 两种格式
     const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
     const items = rawItems.map((x: any) => ({
       id: x.id,
@@ -69,7 +84,6 @@ export const fetchToolingList = async (page: number = 1, pageSize: number = 50) 
       completed_date: x.completed_date || '',
       project_name: x.project_name || ''
     }))
-    
     return { success: true, items }
   } catch (error) {
     console.error('获取工装列表失败:', error)
@@ -294,19 +308,14 @@ export const batchDeleteToolingChildItems = async (ids: string[]) => {
 // 生成下料单
 export const generateCuttingOrders = async (orders: any[]) => {
   try {
-    const response = await fetch('/api/cutting-orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders })
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`服务器错误: ${response.status} - ${errorText}`)
+    if (supabase) {
+      const { error } = await supabase.from('cutting_orders').insert(orders)
+      if (error) throw error
+      return { success: true }
     }
-    
-    const result = await response.json()
-    return result
+    const response = await fetch('/api/cutting-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
+    if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
+    const result = await response.json(); return result
   } catch (error) {
     console.error('生成下料单失败:', error)
     throw error
@@ -316,19 +325,14 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    const response = await fetch('/api/purchase-orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders })
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`服务器错误: ${response.status} - ${errorText}`)
+    if (supabase) {
+      const { error } = await supabase.from('purchase_orders').insert(orders)
+      if (error) throw error
+      return { success: true }
     }
-    
-    const result = await response.json()
-    return result
+    const response = await fetch('/api/purchase-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
+    if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
+    const result = await response.json(); return result
   } catch (error) {
     console.error('生成采购单失败:', error)
     throw error
@@ -338,6 +342,21 @@ export const generatePurchaseOrders = async (orders: any[]) => {
 // 获取基础数据
 export const fetchMetaData = async () => {
   try {
+    if (supabase) {
+      const [units, cats, materialsRaw, partTypesRaw, sources] = await Promise.all([
+        supabase.from('production_units').select('*').order('name'),
+        supabase.from('tooling_categories').select('*').order('name'),
+        supabase.from('materials').select('*').order('name'),
+        supabase.from('part_types').select('*').order('name'),
+        supabase.from('material_sources').select('*').order('name')
+      ])
+      const productionUnits = units.data || []
+      const toolingCategories = cats.data || []
+      const materials = (materialsRaw.data || []).map((x: any) => ({ id: x.id, name: x.name, density: x.density })).filter((x: any) => x.name)
+      const partTypes = (partTypesRaw.data || []).map((x: any) => ({ id: x.id, name: x.name, volume_formula: x.volume_formula, input_format: x.input_format })).filter((x: any) => x.name)
+      const materialSources = (sources.data || []).map((x: any) => ({ id: x.id, name: x.name })).filter((x: any) => x.name)
+      return { success: true, data: { productionUnits, toolingCategories, materials, partTypes, materialSources } }
+    }
     const [unitsRes, catsRes, materialsRes, partTypesRes, materialSourcesRes] = await Promise.all([
       fetch('/api/options/production-units').then(r => r.json()),
       fetch('/api/options/tooling-categories').then(r => r.json()),
@@ -345,26 +364,13 @@ export const fetchMetaData = async () => {
       fetch('/api/part-types', { cache: 'no-store' }).then(r => r.json()),
       fetch('/api/options/material-sources', { cache: 'no-store' }).then(r => r.json())
     ])
-    
-    // 兼容 data 和 items 两种格式
     const getItems = (res: any) => Array.isArray(res?.items) ? res.items : (Array.isArray(res?.data) ? res.data : [])
-    
     const productionUnits = getItems(unitsRes)
     const toolingCategories = getItems(catsRes)
     const materials = getItems(materialsRes).map((x: any) => ({id: x.id, name: x.name, density: x.density})).filter((x: any) => x.name)
     const partTypes = getItems(partTypesRes).map((x: any) => ({id: x.id, name: x.name, volume_formula: x.volume_formula, input_format: x.input_format})).filter((x: any) => x.name)
     const materialSources = getItems(materialSourcesRes).map((x: any) => ({id: x.id, name: x.name})).filter((x: any) => x.name)
-    
-    return {
-      success: true,
-      data: {
-        productionUnits,
-        toolingCategories,
-        materials,
-        partTypes,
-        materialSources
-      }
-    }
+    return { success: true, data: { productionUnits, toolingCategories, materials, partTypes, materialSources } }
   } catch (error) {
     console.error('获取基础数据失败:', error)
     return {
