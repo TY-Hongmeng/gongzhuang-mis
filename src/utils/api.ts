@@ -19,6 +19,12 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     return url
   })()
+
+  // Prefer client-side handling first on GitHub Pages to avoid 404 noise
+  if (isGhPages && url.startsWith('/')) {
+    const handled = await handleClientSideApi(abs, init)
+    if (handled) return handled
+  }
   try {
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
@@ -55,6 +61,15 @@ export function installApiInterceptor() {
         const m = u.match(/github\.io\/.+?(\/api\/.*)$/)
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
+      }
+      // Inject anon key for Supabase REST (avoid 400 No API key)
+      if (/\.supabase\.co\/rest\/v1\//.test(u)) {
+        const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
+        const headers = new Headers(init?.headers || {})
+        if (!headers.has('apikey')) headers.set('apikey', anon)
+        if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${anon}`)
+        const patchedInit: RequestInit = { ...(init || {}), headers }
+        return await originalFetch(input as any, patchedInit)
       }
       return await originalFetch(input as any, init)
     } catch (e) {
