@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   let apiPort = 3003; // 默认端口
   
   return {
+    base: './',
     plugins: [
       react({
         babel: {
