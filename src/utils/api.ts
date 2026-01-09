@@ -6,12 +6,9 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     if (!b) return ''
     let out = b.replace(/\/$/, '')
     if (/functions\.supabase\.co$/.test(out)) {
-      out += '/functions/v1/api'
-    } else if (/functions\.supabase\.co\/functions\/v1$/.test(out)) {
-      out += '/api'
-    } else if (!/\/api$/.test(out) && /functions\.supabase\.co\/.*/.test(out)) {
-      // if already has path but not /api, append /api
-      out += '/api'
+      out += '/functions/v1'
+    } else if (/functions\.supabase\.co\/functions\/v1(\/)?$/.test(out)) {
+      out = out.replace(/\/$/, '')
     }
     return out
   }
