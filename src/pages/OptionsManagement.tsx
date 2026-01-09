@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Popconfirm, Modal, Button, Typography, Space } from 'antd';
 import { DatabaseOutlined, ReloadOutlined, LeftOutlined } from '@ant-design/icons';
 import { PartType } from '../types/tooling';
+import { fetchWithFallback } from '../utils/api'
 
 interface ProductionUnit {
   id: number;
@@ -180,25 +181,17 @@ export default function OptionsManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [unitsRes, categoriesRes, partTypesRes, materialSourcesRes, devicesRes, fixedOptionsRes] = await Promise.all([
-        fetch('/api/options/production-units'),
-        fetch('/api/options/tooling-categories'),
-        fetch('/api/part-types'),
-        fetch('/api/options/material-sources'),
-        fetch('/api/tooling/devices'),
-        fetch('/api/tooling/fixed-inventory-options')
-      ]);
-
-      if (!unitsRes.ok || !categoriesRes.ok || !partTypesRes.ok || !materialSourcesRes.ok || !devicesRes.ok || !fixedOptionsRes.ok) {
-        throw new Error('获取数据失败');
+      const toJSON = async (p: Promise<Response>) => {
+        const r = await p; return r.ok ? r.json() : []
       }
-
-      const unitsData = await unitsRes.json();
-      const categoriesData = await categoriesRes.json();
-      const partTypesData = await partTypesRes.json();
-      const materialSourcesData = await materialSourcesRes.json();
-      const devicesData = await devicesRes.json();
-      const fixedOptionsData = await fixedOptionsRes.json();
+      const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
+        toJSON(fetchWithFallback('/api/options/production-units')),
+        toJSON(fetchWithFallback('/api/options/tooling-categories')),
+        toJSON(fetchWithFallback('/api/part-types')),
+        toJSON(fetchWithFallback('/api/options/material-sources')),
+        toJSON(fetchWithFallback('/api/tooling/devices')),
+        toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'))
+      ]);
 
       const getArr = (obj: any) => Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []));
 
@@ -209,20 +202,17 @@ export default function OptionsManagement() {
       setDevices(getArr(devicesData));
       setFixedOptions(getArr(fixedOptionsData));
 
-      // 加载材料库
-      const matsRes = await fetch('/api/materials?order=created_at.desc');
-      if (!matsRes.ok) throw new Error('获取材料失败');
-      const matsJson = await matsRes.json();
+      const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'));
       setMaterials(getArr(matsJson));
 
       // 加载每个材料的价格历史
       const pricesMap: Record<string, any[]> = {};
       for (const material of (getArr(matsJson) || [])) {
         try {
-          const pricesRes = await fetch(`/api/materials/${material.id}/prices`);
+          const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`);
           if (pricesRes.ok) {
             const pricesJson = await pricesRes.json();
-            pricesMap[material.id] = pricesJson.data || [];
+            pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []));
           }
         } catch (err) {
           console.error(`获取材料 ${material.id} 的价格失败:`, err);
