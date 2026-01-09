@@ -164,6 +164,44 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }))
       return jsonResponse({ success: true, items })
     }
+    
+    // Create tooling
+    if (method === 'POST' && path === '/api/tooling') {
+      const body = init?.body ? await new Response(init.body).json() : {}
+      const { data, error } = await supabase
+        .from('tooling')
+        .insert({
+          inventory_number: body.inventory_number || '',
+          production_unit: body.production_unit || '',
+          category: body.category || '',
+          received_date: body.received_date || null,
+          demand_date: body.demand_date || null,
+          completed_date: body.completed_date || null,
+          project_name: body.project_name || '',
+          production_date: body.production_date || null,
+          recorder: body.recorder || '',
+          sets_count: body.sets_count || 1
+        })
+        .select('*')
+        .single()
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, data })
+    }
+    
+    // Update tooling
+    if (method === 'PUT' && path.match(/^\/api\/tooling\/[^\/]+$/)) {
+      const toolingId = path.split('/').pop()
+      if (!toolingId) return jsonResponse({ success: false, error: 'Invalid tooling ID' }, 400)
+      const body = init?.body ? await new Response(init.body).json() : {}
+      const { data, error } = await supabase
+        .from('tooling')
+        .update(body)
+        .eq('id', toolingId)
+        .select('*')
+        .single()
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, data })
+    }
 
     // Tooling batch info
     if (method === 'GET' && path.startsWith('/api/tooling/batch')) {
