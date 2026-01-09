@@ -115,27 +115,27 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
   try {
     // Options & meta
-    if (method === 'GET' && path === '/api/options/production-units') {
+    if (method === 'GET' && path.startsWith('/api/options/production-units')) {
       const { data, error } = await supabase.from('production_units').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, items: data || [] })
     }
-    if (method === 'GET' && path === '/api/options/tooling-categories') {
+    if (method === 'GET' && path.startsWith('/api/options/tooling-categories')) {
       const { data, error } = await supabase.from('tooling_categories').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, items: data || [] })
     }
-    if (method === 'GET' && path === '/api/options/material-sources') {
+    if (method === 'GET' && path.startsWith('/api/options/material-sources')) {
       const { data, error } = await supabase.from('material_sources').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, items: data || [] })
     }
-    if (method === 'GET' && path === '/api/materials') {
+    if (method === 'GET' && path.startsWith('/api/materials')) {
       const { data, error } = await supabase.from('materials').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, items: data || [] })
     }
-    if (method === 'GET' && path === '/api/part-types') {
+    if (method === 'GET' && path.startsWith('/api/part-types')) {
       const { data, error } = await supabase.from('part_types').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
       return jsonResponse({ success: true, items: data || [] })
