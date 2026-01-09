@@ -23,7 +23,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     const reqHeaders = req.headers.get('access-control-request-headers') || corsHeaders["Access-Control-Allow-Headers"]
     const reqMethod = req.headers.get('access-control-request-method') || 'POST'
-    const headers = { ...corsHeaders, "Access-Control-Allow-Headers": reqHeaders, "Access-Control-Allow-Methods": `${reqMethod}, OPTIONS` }
+    const origin = req.headers.get('origin') || '*'
+    const headers = { 
+      ...corsHeaders, 
+      "Access-Control-Allow-Headers": reqHeaders, 
+      "Access-Control-Allow-Methods": `${reqMethod}, OPTIONS`,
+      "Access-Control-Allow-Origin": origin
+    }
     return new Response('ok', { status: 200, headers })
   }
   const url = new URL(req.url)
