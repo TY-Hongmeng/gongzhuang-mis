@@ -118,27 +118,27 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     if (method === 'GET' && path.startsWith('/api/options/production-units')) {
       const { data, error } = await supabase.from('production_units').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
+      return jsonResponse({ data: data || [] })
     }
     if (method === 'GET' && path.startsWith('/api/options/tooling-categories')) {
       const { data, error } = await supabase.from('tooling_categories').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
+      return jsonResponse({ data: data || [] })
     }
     if (method === 'GET' && path.startsWith('/api/options/material-sources')) {
       const { data, error } = await supabase.from('material_sources').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
+      return jsonResponse({ data: data || [] })
     }
     if (method === 'GET' && path.startsWith('/api/materials')) {
       const { data, error } = await supabase.from('materials').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
+      return jsonResponse({ data: data || [] })
     }
     if (method === 'GET' && path.startsWith('/api/part-types')) {
       const { data, error } = await supabase.from('part_types').select('*').order('name')
       if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
+      return jsonResponse({ data: data || [] })
     }
 
     // Tooling list
