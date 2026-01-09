@@ -248,6 +248,32 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       return jsonResponse({ success: true, items: data || [] })
     }
 
+    // Workshops & teams (organization data)
+    if (method === 'GET' && path === '/api/tooling/org/workshops') {
+      const { data, error } = await supabase.from('workshops').select('*').order('name')
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, items: data || [] })
+    }
+    if (method === 'GET' && path === '/api/tooling/org/teams') {
+      const { data, error } = await supabase.from('teams').select('*').order('name')
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, items: data || [] })
+    }
+
+    // Parts inventory list
+    if (method === 'GET' && path === '/api/tooling/parts/inventory-list') {
+      const qs = getQuery(url)
+      const page = Number(qs.get('page') || 1)
+      const pageSize = Number(qs.get('pageSize') || 500)
+      const { data, error } = await supabase
+        .from('parts_info')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      return jsonResponse({ success: true, items: data || [] })
+    }
+
   } catch (e: any) {
     return jsonResponse({ success: false, error: e?.message || 'Client-side API error' }, 500)
   }
