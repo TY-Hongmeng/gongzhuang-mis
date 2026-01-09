@@ -36,3 +36,25 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     return await fetch(fallback, init)
   }
 }
+
+export function installApiInterceptor() {
+  if (typeof window === 'undefined') return
+  const originalFetch = window.fetch.bind(window)
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      const u = typeof input === 'string' ? input : String((input as any)?.url || '')
+      if (u.startsWith('/api')) {
+        return await fetchWithFallback(u, init)
+      }
+      // Also intercept absolute calls to GitHub Pages domain
+      if (/github\.io\/.+\/api\//.test(u)) {
+        const m = u.match(/github\.io\/.+?(\/api\/.*)$/)
+        const path = m ? m[1] : ''
+        if (path) return await fetchWithFallback(path, init)
+      }
+      return await originalFetch(input as any, init)
+    } catch (e) {
+      return await originalFetch(input as any, init)
+    }
+  }
+}
