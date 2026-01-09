@@ -182,7 +182,12 @@ export default function OptionsManagement() {
     setError(null);
     try {
       const toJSON = async (p: Promise<Response>) => {
-        const r = await p; return r.ok ? r.json() : []
+        const r = await p;
+        try {
+          return await r.json();
+        } catch {
+          return [];
+        }
       }
       const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
         toJSON(fetchWithFallback('/api/options/production-units')),
