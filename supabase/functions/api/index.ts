@@ -40,7 +40,11 @@ serve(async (req) => {
     return new Response('ok', { status: 200, headers })
   }
   const url = new URL(req.url)
-  const path = url.pathname.replace(/^\/api\//, "/")
+  const pathname = url.pathname
+  const path = pathname
+    .replace(/^\/functions\/v1\/api/, '')
+    .replace(/^\/api/, '')
+    .replace(/^\/?/, '/')
 
   if (path === "/auth/login" && req.method === "POST") {
     const body = await json(req)
