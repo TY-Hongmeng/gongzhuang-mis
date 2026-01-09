@@ -69,7 +69,11 @@ export function installApiInterceptor() {
         if (!headers.has('apikey')) headers.set('apikey', anon)
         if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${anon}`)
         const patchedInit: RequestInit = { ...(init || {}), headers }
-        return await originalFetch(input as any, patchedInit)
+        // rewrite resource names if needed
+        let urlStr = u
+        urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
+        urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
+        return await originalFetch(urlStr as any, patchedInit)
       }
       return await originalFetch(input as any, init)
     } catch (e) {
@@ -130,7 +134,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       const page = Number(qs.get('page') || 1)
       const pageSize = Number(qs.get('pageSize') || 50)
       const { data, error } = await supabase
-        .from('tooling')
+        .from('tooling_info')
         .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
         .order('created_at', { ascending: true })
         .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)

@@ -53,7 +53,7 @@ export const fetchToolingList = async (page: number = 1, pageSize: number = 50) 
   try {
     if (supabase) {
       const { data, error } = await supabase
-        .from('tooling')
+        .from('tooling_info')
         .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
         .order('created_at', { ascending: true })
         .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
