@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { fetchWithFallback } from '../utils/api'
 
 interface Company {
   id: string;
@@ -73,7 +74,7 @@ export const useAuthStore = create<AuthState>()(
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
-            const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
+            const res = await fetchWithFallback(url, { method: 'POST', headers, body, signal: controller.signal });
             return res;
           } finally {
             clearTimeout(timer);
@@ -82,10 +83,6 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           let response = await fetchWithTimeout('/api/auth/login');
-          // 当代理异常（如 5xx）时，回退直连后端端口
-          if (!response.ok && response.status >= 500) {
-            response = await fetchWithTimeout('http://localhost:3003/api/auth/login');
-          }
 
           const data = await response.json();
 
@@ -101,25 +98,8 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, message: data.error || '登录失败' };
           }
         } catch (error) {
-          // 网络失败重试一次直连
-          try {
-            const response = await fetchWithTimeout('http://localhost:3003/api/auth/login');
-            const data = await response.json();
-            if (data.success) {
-              set({ 
-                user: data.user, 
-                isAuthenticated: true, 
-                isLoading: false 
-              });
-              return { success: true, message: '登录成功' };
-            } else {
-              set({ isLoading: false });
-              return { success: false, message: data.error || '登录失败' };
-            }
-          } catch (err2) {
-            set({ isLoading: false });
-            return { success: false, message: '网络错误，请重试' };
-          }
+          set({ isLoading: false });
+          return { success: false, message: '网络错误，请重试' };
         }
       },
 
@@ -141,9 +121,6 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           let response = await fetchWithTimeout('/api/auth/register');
-          if (!response.ok && response.status >= 500) {
-            response = await fetchWithTimeout('http://localhost:3003/api/auth/register');
-          }
 
           const result = await response.json();
 
@@ -155,19 +132,8 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, message: result.error || '注册失败' };
           }
         } catch (error) {
-          try {
-            const response = await fetchWithTimeout('http://localhost:3003/api/auth/register');
-            const result = await response.json();
-            set({ isLoading: false });
-            if (result.success) {
-              return { success: true, message: result.message || '注册成功' };
-            } else {
-              return { success: false, message: result.error || '注册失败' };
-            }
-          } catch (err2) {
-            set({ isLoading: false });
-            return { success: false, message: '网络错误，请重试' };
-          }
+          set({ isLoading: false });
+          return { success: false, message: '网络错误，请重试' };
         }
       },
 
@@ -189,9 +155,6 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           let response = await fetchWithTimeout('/api/auth/reset-password');
-          if (!response.ok && response.status >= 500) {
-            response = await fetchWithTimeout('http://localhost:3003/api/auth/reset-password');
-          }
 
           const result = await response.json();
 
@@ -203,19 +166,8 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, message: result.error || '密码重置失败' };
           }
         } catch (error) {
-          try {
-            const response = await fetchWithTimeout('http://localhost:3003/api/auth/reset-password');
-            const result = await response.json();
-            set({ isLoading: false });
-            if (result.success) {
-              return { success: true, message: result.message || '密码重置成功' };
-            } else {
-              return { success: false, message: result.error || '密码重置失败' };
-            }
-          } catch (err2) {
-            set({ isLoading: false });
-            return { success: false, message: '网络错误，请重试' };
-          }
+          set({ isLoading: false });
+          return { success: false, message: '网络错误，请重试' };
         }
       },
 
@@ -235,10 +187,7 @@ export const useAuthStore = create<AuthState>()(
         const { user } = get();
         if (!user?.id) return;
         try {
-          let res = await fetch(`/api/auth/me?userId=${user.id}`);
-          if (!res.ok && res.status >= 500) {
-            res = await fetch(`http://localhost:3003/api/auth/me?userId=${user.id}`);
-          }
+          let res = await fetchWithFallback(`/api/auth/me?userId=${user.id}`);
           const data = await res.json();
           if (data?.success && data?.user) {
             set({ user: data.user });
