@@ -200,10 +200,13 @@ export default function OptionsManagement() {
 
       const getArr = (obj: any) => Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []));
 
-      setProductionUnits(getArr(unitsData));
-      setToolingCategories(getArr(categoriesData));
+      const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
+      const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
+      const normSources = getArr(materialSourcesData).map((x: any) => ({ id: Number(x.id ?? x.source_id ?? Date.now()), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
+      setProductionUnits(normUnits);
+      setToolingCategories(normCats);
       setPartTypes(getArr(partTypesData));
-      setMaterialSources(getArr(materialSourcesData));
+      setMaterialSources(normSources);
       setDevices(getArr(devicesData));
       setFixedOptions(getArr(fixedOptionsData));
 
