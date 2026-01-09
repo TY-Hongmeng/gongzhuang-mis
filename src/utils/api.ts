@@ -17,12 +17,10 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     return res
   } catch {
-    try {
-      const u = new URL(abs, window.location.origin)
-      const fallback = `http://localhost:3003${u.pathname}${u.search}`
-      return await fetch(fallback, init)
-    } catch (e) {
-      throw e
-    }
+    // 在 GitHub Pages 环境不再回退到 localhost，直接抛错
+    if (isGhPages) throw new Error('Network error')
+    const u = new URL(abs, window.location.origin)
+    const fallback = `http://localhost:3003${u.pathname}${u.search}`
+    return await fetch(fallback, init)
   }
 }
