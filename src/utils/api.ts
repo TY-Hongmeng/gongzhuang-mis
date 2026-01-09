@@ -165,6 +165,21 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       return jsonResponse({ success: true, items })
     }
 
+    // Tooling batch info
+    if (method === 'GET' && path.startsWith('/api/tooling/batch')) {
+      const qs = getQuery(url)
+      const ids = qs.getAll('ids')
+      if (ids.length === 0) return jsonResponse({ success: true, items: [] })
+      const { data, error } = await supabase
+        .from('tooling_info')
+        .select('id,recorder')
+        .in('id', ids)
+      if (error) return jsonResponse({ success: false, error: error.message }, 500)
+      // 兼容字段名
+      const items = (data || []).map((x: any) => ({ id: x.id, recorder: x.recorder }))
+      return jsonResponse({ success: true, items })
+    }
+
     // Tooling users basic
     if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
       const { data, error } = await supabase.from('users').select('id,real_name,phone').order('real_name')
