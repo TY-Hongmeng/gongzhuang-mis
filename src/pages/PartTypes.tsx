@@ -34,8 +34,9 @@ const PartTypes: React.FC = () => {
   const fetchPartTypes = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/part-types?order=created_at.desc');
-      if (!res.ok) throw new Error('获取料型列表失败');
+      // 使用fetchWithFallback确保在GitHub Pages环境下能正确处理请求
+      const { fetchWithFallback } = await import('../utils/api');
+      const res = await fetchWithFallback('/api/part-types?order=created_at.desc');
       const json = await res.json();
       setPartTypes(json.data || []);
     } catch (error) {
@@ -49,19 +50,20 @@ const PartTypes: React.FC = () => {
   // 保存料型
   const savePartType = async (values: PartTypeFormData) => {
     try {
+      const { fetchWithFallback } = await import('../utils/api');
       const isEditing = !!editingPartType;
       const url = isEditing ? `/api/part-types/${editingPartType!.id}` : '/api/part-types';
       const method = isEditing ? 'PUT' : 'POST';
       
-      const res = await fetch(url, {
+      const res = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
       
+      const json = await res.json();
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: '保存失败' }));
-        throw new Error(errorData.error || '保存失败');
+        throw new Error(json.error || '保存失败');
       }
       
       message.success(isEditing ? '料型更新成功' : '料型创建成功');
@@ -78,13 +80,14 @@ const PartTypes: React.FC = () => {
   // 删除料型
   const deletePartType = async (id: string) => {
     try {
-      const res = await fetch(`/api/part-types/${id}`, {
+      const { fetchWithFallback } = await import('../utils/api');
+      const res = await fetchWithFallback(`/api/part-types/${id}`, {
         method: 'DELETE',
       });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: '删除失败' }));
-        throw new Error(errorData.error || '删除失败');
+        const json = await res.json().catch(() => ({ error: '删除失败' }));
+        throw new Error(json.error || '删除失败');
       }
       
       message.success('料型删除成功');

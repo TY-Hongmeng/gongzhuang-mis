@@ -36,8 +36,8 @@ const Materials: React.FC = () => {
   const fetchMaterials = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/materials?order=created_at.desc');
-      if (!res.ok) throw new Error('获取材料列表失败');
+      const { fetchWithFallback } = await import('../utils/api');
+      const res = await fetchWithFallback('/api/materials?order=created_at.desc');
       const json = await res.json();
       setMaterials(json.data || []);
     } catch (error) {
@@ -51,23 +51,30 @@ const Materials: React.FC = () => {
   // 保存材料
   const saveMaterial = async (values: MaterialFormData) => {
     try {
+      const { fetchWithFallback } = await import('../utils/api');
       if (editingMaterial) {
         // 更新材料
-        const res = await fetch(`/api/materials/${editingMaterial.id}`, {
+        const res = await fetchWithFallback(`/api/materials/${editingMaterial.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(values)
         });
-        if (!res.ok) throw new Error('材料更新失败');
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({ error: '材料更新失败' }));
+          throw new Error(json.error || '材料更新失败');
+        }
         message.success('材料更新成功');
       } else {
         // 新增材料
-        const res = await fetch('/api/materials', {
+        const res = await fetchWithFallback('/api/materials', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(values)
         });
-        if (!res.ok) throw new Error('材料添加失败');
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({ error: '材料添加失败' }));
+          throw new Error(json.error || '材料添加失败');
+        }
         message.success('材料添加成功');
       }
 
@@ -88,8 +95,12 @@ const Materials: React.FC = () => {
   // 删除材料
   const deleteMaterial = async (id: string) => {
     try {
-      const res = await fetch(`/api/materials/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('材料删除失败');
+      const { fetchWithFallback } = await import('../utils/api');
+      const res = await fetchWithFallback(`/api/materials/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: '材料删除失败' }));
+        throw new Error(json.error || '材料删除失败');
+      }
       message.success('材料删除成功');
       fetchMaterials();
     } catch (error: any) {
