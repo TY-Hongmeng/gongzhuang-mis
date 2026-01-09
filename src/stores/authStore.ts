@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { fetchWithFallback } from '../utils/api'
+import { supabase } from '../lib/supabase'
 
 interface Company {
   id: string;
@@ -83,20 +84,43 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           let response = await fetchWithTimeout('/api/auth/login');
-
-          const data = await response.json();
-
-          if (data.success) {
-            set({ 
-              user: data.user, 
-              isAuthenticated: true, 
-              isLoading: false 
-            });
-            return { success: true, message: '登录成功' };
-          } else {
-            set({ isLoading: false });
-            return { success: false, message: data.error || '登录失败' };
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              set({ user: data.user, isAuthenticated: true, isLoading: false });
+              return { success: true, message: '登录成功' };
+            } else {
+              set({ isLoading: false });
+              return { success: false, message: data.error || '登录失败' };
+            }
           }
+          // 前端直接使用 Supabase 作为兜底（无预检，无跨域）
+          if (supabase) {
+            const { data: userRow, error } = await supabase
+              .from('users')
+              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+              .eq('phone', phone)
+              .single()
+            if (error || !userRow) {
+              set({ isLoading: false });
+              return { success: false, message: '用户不存在' };
+            }
+            const { default: bcrypt } = await import('bcryptjs')
+            const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
+            if (!ok) {
+              set({ isLoading: false });
+              return { success: false, message: '密码错误' };
+            }
+            if (String((userRow as any).status) !== 'active') {
+              set({ isLoading: false });
+              return { success: false, message: '账户未激活或已被禁用' };
+            }
+            const { password_hash, ...safeUser } = (userRow as any)
+            set({ user: safeUser, isAuthenticated: true, isLoading: false });
+            return { success: true, message: '登录成功' };
+          }
+          set({ isLoading: false });
+          return { success: false, message: '登录失败' };
         } catch (error) {
           set({ isLoading: false });
           return { success: false, message: '网络错误，请重试' };
