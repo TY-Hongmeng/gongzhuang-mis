@@ -157,7 +157,7 @@ export const useToolingData = () => {
   // 保存工装数据
   const saveToolingData = useCallback(async (id: string, data: any) => {
     try {
-      const response = await fetch(`/api/tooling/${id}`, {
+      const response = await fetchWithFallback(`/api/tooling/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -175,7 +175,7 @@ export const useToolingData = () => {
   // 保存零件数据
   const savePartData = useCallback(async (partId: string, data: any) => {
     try {
-      const response = await fetch(`/api/tooling/parts/${partId}`, {
+      const response = await fetchWithFallback(`/api/tooling/parts/${partId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -205,7 +205,7 @@ export const useToolingData = () => {
   // 创建新工装
   const createTooling = useCallback(async (data: any) => {
     try {
-      const response = await fetch('/api/tooling', {
+      const response = await fetchWithFallback('/api/tooling', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -237,7 +237,7 @@ export const useToolingData = () => {
   // 创建新零件
   const createPart = useCallback(async (toolingId: string, data: any) => {
     try {
-      const response = await fetch(`/api/tooling/${toolingId}/parts`, {
+      const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -265,7 +265,7 @@ export const useToolingData = () => {
   // 创建新标准件
   const createChildItem = useCallback(async (toolingId: string, data: any) => {
     try {
-      const response = await fetch(`/api/tooling/${toolingId}/child-items`, {
+      const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -297,7 +297,7 @@ export const useToolingData = () => {
       
       if (toolingIds.length > 0) {
         promises.push(
-          fetch('/api/tooling/batch-delete', {
+          fetchWithFallback('/api/tooling/batch-delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: toolingIds })
@@ -307,7 +307,7 @@ export const useToolingData = () => {
       
       if (partIds.length > 0) {
         promises.push(
-          fetch('/api/tooling/parts/batch-delete', {
+          fetchWithFallback('/api/tooling/parts/batch-delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: partIds })
@@ -317,7 +317,7 @@ export const useToolingData = () => {
       
       if (childItemIds.length > 0) {
         promises.push(
-          fetch('/api/tooling/child-items/batch-delete', {
+          fetchWithFallback('/api/tooling/child-items/batch-delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: childItemIds })
