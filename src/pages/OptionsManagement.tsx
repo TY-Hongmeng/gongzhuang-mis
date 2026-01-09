@@ -236,6 +236,14 @@ export default function OptionsManagement() {
     fetchData();
   }, []);
 
+  // 防御性：只要任一主数据返回，就结束 loading，避免界面卡住
+  useEffect(() => {
+    if (loading) {
+      const hasAny = productionUnits.length || toolingCategories.length || materials.length || partTypes.length || materialSources.length || devices.length || fixedOptions.length
+      if (hasAny) setLoading(false)
+    }
+  }, [loading, productionUnits, toolingCategories, materials, partTypes, materialSources, devices, fixedOptions])
+
   // 基础操作函数
   const handleCreateUnit = () => setEditingUnit({ id: null, name: '', description: '', is_active: true });
   const handleCreateCategory = () => setEditingCategory({ id: null, name: '', description: '', is_active: true });
