@@ -205,20 +205,25 @@ export default function OptionsManagement() {
       const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'));
       setMaterials(getArr(matsJson));
 
-      // 加载每个材料的价格历史
-      const pricesMap: Record<string, any[]> = {};
-      for (const material of (getArr(matsJson) || [])) {
-        try {
-          const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`);
-          if (pricesRes.ok) {
-            const pricesJson = await pricesRes.json();
-            pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []));
-          }
-        } catch (err) {
-          console.error(`获取材料 ${material.id} 的价格失败:`, err);
-        }
-      }
-      setMaterialPrices(pricesMap);
+      // 异步加载每个材料的价格历史（不阻塞页面 loading）
+      const materialsArr = getArr(matsJson) || []
+      ;(async () => {
+        const pricesMap: Record<string, any[]> = {};
+        await Promise.allSettled(
+          materialsArr.map(async (material: any) => {
+            try {
+              const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`)
+              if (pricesRes.ok) {
+                const pricesJson = await pricesRes.json()
+                pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
+              }
+            } catch (err) {
+              console.error(`获取材料 ${material.id} 的价格失败:`, err)
+            }
+          })
+        )
+        setMaterialPrices(pricesMap)
+      })()
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取数据失败');
       console.error('获取数据失败:', err);
