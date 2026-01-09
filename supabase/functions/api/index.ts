@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { createClient } from "npm:@supabase/supabase-js"
-import bcrypt from "npm:bcryptjs"
+// 延迟加载 bcrypt，避免预检请求初始化失败
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +33,7 @@ serve(async (req) => {
     const body = await json(req)
     const phone = String(body.phone || "")
     const password = String(body.password || "")
+    const { default: bcrypt } = await import("npm:bcryptjs")
     const { data: user, error } = await supabase
       .from("users")
       .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
