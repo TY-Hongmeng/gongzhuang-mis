@@ -113,16 +113,20 @@ function jsonResponse(data: any, status = 200) {
 }
 
 function getQuery(url: string): URLSearchParams {
-  const u = new URL(url, window.location.origin)
+  // 清理URL中的反引号
+  const cleanUrl = url.replace(/[`]/g, '')
+  const u = new URL(cleanUrl, window.location.origin)
   return u.searchParams
 }
 
 async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
   try {
-    console.log('handleClientSideApi called:', { url, init })
+    // 清理URL中的反引号
+    const cleanUrl = url.replace(/[`]/g, '')
+    console.log('handleClientSideApi called:', { url: cleanUrl, init })
     
     // 无论是否有Supabase实例，都尝试处理请求
-    const u = new URL(url, window.location.origin)
+    const u = new URL(cleanUrl, window.location.origin)
     let path = u.pathname
     
     // 提取真正的API路径，移除任何前缀（如/functions/v1）
