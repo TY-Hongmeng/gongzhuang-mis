@@ -176,28 +176,24 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices
       if (method === 'GET' && path === '/api/tooling/devices') {
         console.log('Fetching devices from Supabase')
-        console.log('supabase instance:', supabase)
-        try {
-          const { data, error } = supabase ? await supabase.from('devices').select('*') : { data: null, error: new Error('supabase not initialized') }
-          console.log('devices result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (err: any) {
-          console.error('Error fetching devices:', err)
+        if (!supabase) {
+          console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
+        const { data, error } = await supabase.from('devices').select('*')
+        console.log('devices result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Fixed inventory options
       if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
         console.log('Fetching fixed_inventory_options from Supabase')
-        console.log('supabase instance:', supabase)
-        try {
-          const { data, error } = supabase ? await supabase.from('fixed_inventory_options').select('*') : { data: null, error: new Error('supabase not initialized') }
-          console.log('fixed_inventory_options result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (err: any) {
-          console.error('Error fetching fixed_inventory_options:', err)
+        if (!supabase) {
+          console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        console.log('fixed_inventory_options result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
     }
     
