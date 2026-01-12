@@ -182,57 +182,52 @@ export default function OptionsManagement() {
     setError(null);
     console.log('fetchData called');
     try {
-      const toJSON = async (p: Promise<Response>, name: string) => {
-        try {
-          const r = await p;
-          console.log(`${name} response status:`, r.status);
-          try {
-            const data = await r.json();
-            console.log(`${name} data:`, data);
-            return data;
-          } catch (e) {
-            console.error(`${name} json parse error:`, e);
-            return null;
-          }
-        } catch (e) {
-          console.error(`${name} request error:`, e);
-          return null;
-        }
-      }
+      // 超时控制：每个请求最多等待5秒
+      const TIMEOUT = 5000;
+
+      // 创建带超时的fetch请求
+      const createTimedFetch = (url: string, name: string): Promise<any> => {
+        return new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            console.warn(`Request to ${url} timed out after ${TIMEOUT}ms`);
+            resolve(null);
+          }, TIMEOUT);
+
+          fetchWithFallback(url)
+            .then(async (response) => {
+              console.log(`${name} response status:`, response.status);
+              try {
+                const data = await response.json();
+                console.log(`${name} data:`, data);
+                resolve(data);
+              } catch (e) {
+                console.error(`${name} json parse error:`, e);
+                resolve(null);
+              } finally {
+                clearTimeout(timeoutId);
+              }
+            })
+            .catch((e) => {
+              console.error(`${name} request error:`, e);
+              resolve(null);
+              clearTimeout(timeoutId);
+            });
+        });
+      };
 
       console.log('Starting data fetching...');
 
-      // 使用Promise.allSettled并行获取所有数据
-      const results = await Promise.allSettled([
-        toJSON(fetchWithFallback('/api/options/production-units'), 'production_units'),
-        toJSON(fetchWithFallback('/api/options/tooling-categories'), 'tooling_categories'),
-        toJSON(fetchWithFallback('/api/part-types'), 'part_types'),
-        toJSON(fetchWithFallback('/api/options/material-sources'), 'material_sources'),
-        toJSON(fetchWithFallback('/api/tooling/devices'), 'devices'),
-        toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'), 'fixed_inventory_options')
+      // 并行获取所有数据，每个请求都有独立的超时控制
+      const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
+        createTimedFetch('/api/options/production-units', 'production_units'),
+        createTimedFetch('/api/options/tooling-categories', 'tooling_categories'),
+        createTimedFetch('/api/part-types', 'part_types'),
+        createTimedFetch('/api/options/material-sources', 'material_sources'),
+        createTimedFetch('/api/tooling/devices', 'devices'),
+        createTimedFetch('/api/tooling/fixed-inventory-options', 'fixed_inventory_options')
       ]);
 
-      console.log('All basic data fetched, results:');
-
-      // 检查每个结果的状态
-      results.forEach((result, index) => {
-        const names = ['production_units', 'tooling_categories', 'part_types', 'material_sources', 'devices', 'fixed_inventory_options'];
-        if (result.status === 'fulfilled') {
-          console.log(`- ${names[index]}: fulfilled with value`, result.value);
-        } else {
-          console.log(`- ${names[index]}: rejected with reason`, result.reason);
-        }
-      });
-
-      // 提取结果数据
-      const unitsData = results[0].status === 'fulfilled' ? results[0].value : null;
-      const categoriesData = results[1].status === 'fulfilled' ? results[1].value : null;
-      const partTypesData = results[2].status === 'fulfilled' ? results[2].value : null;
-      const materialSourcesData = results[3].status === 'fulfilled' ? results[3].value : null;
-      const devicesData = results[4].status === 'fulfilled' ? results[4].value : null;
-      const fixedOptionsData = results[5].status === 'fulfilled' ? results[5].value : null;
-
-      console.log('Processed data:');
+      console.log('All basic data fetched');
       console.log('- productionUnits:', unitsData);
       console.log('- toolingCategories:', categoriesData);
       console.log('- partTypes:', partTypesData);
