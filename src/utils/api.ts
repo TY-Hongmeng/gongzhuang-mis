@@ -54,25 +54,27 @@ export function installApiInterceptor() {
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     try {
-      const u = typeof input === 'string' ? input : String((input as any)?.url || '')
-      if (u.startsWith('/api')) {
-        return await fetchWithFallback(u, init)
+      // 清理URL中的反引号
+      let u = typeof input === 'string' ? input : String((input as any)?.url || '')
+      const cleanUrl = u.replace(/[`]/g, '')
+      if (cleanUrl.startsWith('/api')) {
+        return await fetchWithFallback(cleanUrl, init)
       }
       // Also intercept absolute calls to GitHub Pages domain
-      if (/github\.io\/.+\/api\//.test(u)) {
-        const m = u.match(/github\.io\/.+?(\/api\/.*)$/)
+      if (/github\.io\/.+\/api\//.test(cleanUrl)) {
+        const m = cleanUrl.match(/github\.io\/.+?(\/api\/.*)$/)
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
       // Inject anon key for Supabase REST (avoid 400 No API key)
-      if (/\.supabase\.co\/rest\/v1\//.test(u)) {
+      if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
         const headers = new Headers(init?.headers || {})
         if (!headers.has('apikey')) headers.set('apikey', anon)
         if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${anon}`)
         const patchedInit: RequestInit = { ...(init || {}), headers }
         // rewrite resource names if needed
-        let urlStr = u
+        let urlStr = cleanUrl
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
         // handle devices and fixed_inventory_options via supabase-js to avoid REST 400
