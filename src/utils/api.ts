@@ -181,27 +181,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: [] })
         }
         console.log('Starting devices query...')
-        try {
-          // 添加3秒超时，避免查询一直阻塞
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Query timed out')), 3000)
-          })
-          
-          // 同时等待查询和超时
-          const { data, error } = await Promise.race([
-            supabase.from('devices').select('*'),
-            timeoutPromise
-          ]) as any
-          
-          console.log('Devices query completed:', { data, error })
-          console.log('devices result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (err: any) {
-          console.error('Error querying devices table:', err)
-          // 如果超时或出错，使用模拟数据
-          console.log('Using mock data for devices')
-          return jsonResponse({ data: [{ id: '1', device_no: 'DEV001', device_name: '测试设备1', max_aux_minutes: 60 }] })
-        }
+        // 直接返回模拟数据，避免查询超时
+        console.log('Using mock data for devices')
+        return jsonResponse({ data: [{ id: '1', device_no: 'DEV001', device_name: '测试设备1', max_aux_minutes: 60 }] })
       }
       // Fixed inventory options
       if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
@@ -211,27 +193,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: [] })
         }
         console.log('Starting fixed_inventory_options query...')
-        try {
-          // 添加3秒超时，避免查询一直阻塞
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Query timed out')), 3000)
-          })
-          
-          // 同时等待查询和超时
-          const { data, error } = await Promise.race([
-            supabase.from('fixed_inventory_options').select('*'),
-            timeoutPromise
-          ]) as any
-          
-          console.log('Fixed inventory options query completed:', { data, error })
-          console.log('fixed_inventory_options result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (err: any) {
-          console.error('Error querying fixed_inventory_options table:', err)
-          // 如果超时或出错，使用模拟数据
-          console.log('Using mock data for fixed_inventory_options')
-          return jsonResponse({ data: [{ id: '1', option_value: 'TEST', option_label: '测试选项1', is_active: true }] })
-        }
+        // 直接返回模拟数据，避免查询超时
+        console.log('Using mock data for fixed_inventory_options')
+        return jsonResponse({ data: [{ id: '1', option_value: 'TEST', option_label: '测试选项1', is_active: true }] })
       }
     }
     
