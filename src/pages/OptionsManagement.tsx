@@ -259,7 +259,8 @@ export default function OptionsManagement() {
       setDevices(normDevices);
       setFixedOptions(normFixedOptions);
 
-      const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'), 'materials');
+      // 获取材料数据
+      const matsJson = await createTimedFetch('/api/materials?order=created_at.desc', 'materials');
       setMaterials(getArr(matsJson));
       console.log('materials:', matsJson);
 
