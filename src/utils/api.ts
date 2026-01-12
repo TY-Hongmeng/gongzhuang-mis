@@ -180,8 +180,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
+        console.log('Starting devices query...')
         try {
-          const { data, error } = await supabase.from('devices').select('*')
+          const query = supabase.from('devices').select('*')
+          console.log('Devices query created:', query)
+          const { data, error } = await query
+          console.log('Devices query completed:', { data, error })
           console.log('devices result:', { data, error })
           return jsonResponse({ data: error ? [] : (data || []) })
         } catch (err: any) {
@@ -196,8 +200,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
+        console.log('Starting fixed_inventory_options query...')
         try {
-          const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+          const query = supabase.from('fixed_inventory_options').select('*')
+          console.log('Fixed inventory options query created:', query)
+          const { data, error } = await query
+          console.log('Fixed inventory options query completed:', { data, error })
           console.log('fixed_inventory_options result:', { data, error })
           return jsonResponse({ data: error ? [] : (data || []) })
         } catch (err: any) {
