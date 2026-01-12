@@ -165,6 +165,19 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         console.log('part_types result:', { data, error })
         return jsonResponse({ data: error ? [] : (data || []) })
       }
+      // Devices & fixed inventory options
+      if (method === 'GET' && path === '/api/tooling/devices') {
+        console.log('Fetching devices from Supabase')
+        const { data, error } = await supabase.from('devices').select('*')
+        console.log('devices result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+      if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
+        console.log('Fetching fixed_inventory_options from Supabase')
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        console.log('fixed_inventory_options result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
     }
     
     // 只有在Supabase不可用或查询失败时，才使用模拟数据
@@ -173,7 +186,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       '/api/options/tooling-categories': { data: [{ id: 1, name: '测试工装类别', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
       '/api/options/material-sources': { data: [{ id: 1, name: '测试材料来源', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
       '/api/materials': { data: [{ id: 1, name: '测试材料', density: 7.85, unit_price: 100, effective_date: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
-      '/api/part-types': { data: [{ id: 1, name: '测试部件类型', description: '测试描述', volume_formula: '长*宽*高', input_format: 'A*B*C', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] }
+      '/api/part-types': { data: [{ id: 1, name: '测试部件类型', description: '测试描述', volume_formula: '长*宽*高', input_format: 'A*B*C', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
+      '/api/tooling/devices': { data: [{ id: '1', device_no: 'DEV001', device_name: '测试设备', max_aux_minutes: 60 }] },
+      '/api/tooling/fixed-inventory-options': { data: [{ id: '1', option_value: 'TEST', option_label: '测试选项', is_active: true }] }
     }
     
     if (mockData[path as keyof typeof mockData]) {
