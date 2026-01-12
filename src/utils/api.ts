@@ -174,7 +174,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Devices
-      if (method === 'GET' && path === '/api/tooling/devices') {
+      if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         console.log('Fetching devices from Supabase')
         if (!supabase) {
           console.error('supabase is not initialized')
@@ -185,7 +185,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Fixed inventory options
-      if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
+      if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         console.log('Fetching fixed_inventory_options from Supabase')
         if (!supabase) {
           console.error('supabase is not initialized')
@@ -389,12 +389,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
 
       // Devices / fixed inventory options
-      if (method === 'GET' && path === '/api/tooling/devices') {
+      if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         const { data, error } = await supabase.from('devices').select('*')
         if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
       }
-      if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
+      if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         const { data, error } = await supabase.from('fixed_inventory_options').select('*')
         if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
