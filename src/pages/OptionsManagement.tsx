@@ -183,19 +183,27 @@ export default function OptionsManagement() {
     console.log('fetchData called');
     try {
       const toJSON = async (p: Promise<Response>, name: string) => {
-        const r = await p;
-        console.log(`${name} response status:`, r.status);
         try {
-          const data = await r.json();
-          console.log(`${name} data:`, data);
-          return data;
+          const r = await p;
+          console.log(`${name} response status:`, r.status);
+          try {
+            const data = await r.json();
+            console.log(`${name} data:`, data);
+            return data;
+          } catch (e) {
+            console.error(`${name} json parse error:`, e);
+            return null;
+          }
         } catch (e) {
-          console.error(`${name} json parse error:`, e);
-          return [];
+          console.error(`${name} request error:`, e);
+          return null;
         }
       }
-      console.log('Starting Promise.all for basic data...');
-      const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
+
+      console.log('Starting data fetching...');
+
+      // 使用Promise.allSettled并行获取所有数据
+      const results = await Promise.allSettled([
         toJSON(fetchWithFallback('/api/options/production-units'), 'production_units'),
         toJSON(fetchWithFallback('/api/options/tooling-categories'), 'tooling_categories'),
         toJSON(fetchWithFallback('/api/part-types'), 'part_types'),
@@ -203,16 +211,26 @@ export default function OptionsManagement() {
         toJSON(fetchWithFallback('/api/tooling/devices'), 'devices'),
         toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'), 'fixed_inventory_options')
       ]);
-      console.log('All basic data fetched, processing...');
 
-      const getArr = (obj: any) => Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []));
+      console.log('All basic data fetched, results:', results);
 
-      console.log('Processing production_units:', unitsData);
-      console.log('Processing tooling_categories:', categoriesData);
-      console.log('Processing part_types:', partTypesData);
-      console.log('Processing material_sources:', materialSourcesData);
-      console.log('Processing devices:', devicesData);
-      console.log('Processing fixed_inventory_options:', fixedOptionsData);
+      // 提取结果数据
+      const unitsData = results[0].status === 'fulfilled' ? results[0].value : null;
+      const categoriesData = results[1].status === 'fulfilled' ? results[1].value : null;
+      const partTypesData = results[2].status === 'fulfilled' ? results[2].value : null;
+      const materialSourcesData = results[3].status === 'fulfilled' ? results[3].value : null;
+      const devicesData = results[4].status === 'fulfilled' ? results[4].value : null;
+      const fixedOptionsData = results[5].status === 'fulfilled' ? results[5].value : null;
+
+      console.log('Processed data:');
+      console.log('- productionUnits:', unitsData);
+      console.log('- toolingCategories:', categoriesData);
+      console.log('- partTypes:', partTypesData);
+      console.log('- materialSources:', materialSourcesData);
+      console.log('- devices:', devicesData);
+      console.log('- fixedOptions:', fixedOptionsData);
+
+      const getArr = (obj: any) => obj && typeof obj === 'object' ? (Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : [])) : [];
 
       const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
