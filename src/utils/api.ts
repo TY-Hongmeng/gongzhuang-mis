@@ -367,7 +367,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Work hours
       if (method === 'GET' && path === '/api/tooling/work-hours') {
-        const qs = getQuery(url)
+        const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 200)
         const order = qs.get('order') || 'work_date'
@@ -381,7 +381,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Cutting orders list
       if (method === 'GET' && path === '/api/cutting-orders') {
-        const qs = getQuery(url)
+        const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
         let q = supabase.from('cutting_orders').select('*')
@@ -393,7 +393,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Purchase orders list
       if (method === 'GET' && path === '/api/purchase-orders') {
-        const qs = getQuery(url)
+        const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
         let q = supabase.from('purchase_orders').select('*')
