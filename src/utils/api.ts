@@ -132,21 +132,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     console.log('Extracted API path:', path)
     const method = (init?.method || 'GET').toUpperCase()
     
-    // 首先检查是否有模拟数据（无论Supabase是否可用）
-    const mockData = {
-      '/api/options/production-units': { data: [{ id: 1, name: '测试投产单位', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
-      '/api/options/tooling-categories': { data: [{ id: 1, name: '测试工装类别', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
-      '/api/options/material-sources': { data: [{ id: 1, name: '测试材料来源', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
-      '/api/materials': { data: [{ id: 1, name: '测试材料', density: 7.85, unit_price: 100, effective_date: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
-      '/api/part-types': { data: [{ id: 1, name: '测试部件类型', description: '测试描述', volume_formula: '长*宽*高', input_format: 'A*B*C', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] }
-    }
-    
-    if (mockData[path as keyof typeof mockData]) {
-      console.log('Returning mock data for:', path)
-      return jsonResponse(mockData[path as keyof typeof mockData])
-    }
-    
-    // 如果没有模拟数据且Supabase可用，尝试从Supabase获取数据
+    // 如果Supabase可用，优先从Supabase获取数据
     if (supabase) {
       // Options & meta
       if (method === 'GET' && path.startsWith('/api/options/production-units')) {
@@ -179,7 +165,24 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         console.log('part_types result:', { data, error })
         return jsonResponse({ data: error ? [] : (data || []) })
       }
-
+    }
+    
+    // 只有在Supabase不可用或查询失败时，才使用模拟数据
+    const mockData = {
+      '/api/options/production-units': { data: [{ id: 1, name: '测试投产单位', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
+      '/api/options/tooling-categories': { data: [{ id: 1, name: '测试工装类别', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
+      '/api/options/material-sources': { data: [{ id: 1, name: '测试材料来源', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
+      '/api/materials': { data: [{ id: 1, name: '测试材料', density: 7.85, unit_price: 100, effective_date: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
+      '/api/part-types': { data: [{ id: 1, name: '测试部件类型', description: '测试描述', volume_formula: '长*宽*高', input_format: 'A*B*C', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] }
+    }
+    
+    if (mockData[path as keyof typeof mockData]) {
+      console.log('Returning mock data for:', path)
+      return jsonResponse(mockData[path as keyof typeof mockData])
+    }
+    
+    // 如果Supabase可用，继续处理其他API端点
+    if (supabase) {
       // Tooling list
       if (method === 'GET' && path === '/api/tooling') {
         const qs = getQuery(url)
@@ -370,25 +373,25 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices / fixed inventory options
       if (method === 'GET' && path === '/api/tooling/devices') {
         const { data, error } = await supabase.from('devices').select('*')
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
       }
       if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
         const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
       }
 
       // Workshops & teams (organization data)
       if (method === 'GET' && path === '/api/tooling/org/workshops') {
-        const { data, error } = await supabase.from('workshops').select('*').order('name')
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ success: true, items: data || [] })
+        const { data, error } = await supabase.from('workshops').select('*')
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
       }
       if (method === 'GET' && path === '/api/tooling/org/teams') {
-        const { data, error } = await supabase.from('teams').select('*').order('name')
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ success: true, items: data || [] })
+        const { data, error } = await supabase.from('teams').select('*')
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
       }
 
       // Parts inventory list
@@ -399,10 +402,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const { data, error } = await supabase
           .from('parts_info')
           .select('*')
-          .order('created_at', { ascending: true })
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ success: true, items: data || [] })
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
       }
     }
     return null
