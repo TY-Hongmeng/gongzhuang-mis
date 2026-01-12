@@ -212,7 +212,17 @@ export default function OptionsManagement() {
         toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'), 'fixed_inventory_options')
       ]);
 
-      console.log('All basic data fetched, results:', results);
+      console.log('All basic data fetched, results:');
+
+      // 检查每个结果的状态
+      results.forEach((result, index) => {
+        const names = ['production_units', 'tooling_categories', 'part_types', 'material_sources', 'devices', 'fixed_inventory_options'];
+        if (result.status === 'fulfilled') {
+          console.log(`- ${names[index]}: fulfilled with value`, result.value);
+        } else {
+          console.log(`- ${names[index]}: rejected with reason`, result.reason);
+        }
+      });
 
       // 提取结果数据
       const unitsData = results[0].status === 'fulfilled' ? results[0].value : null;
