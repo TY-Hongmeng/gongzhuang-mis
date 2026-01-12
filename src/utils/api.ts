@@ -1,4 +1,6 @@
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
+  // 清理URL中的反引号
+  const cleanUrl = url.replace(/[`]/g, '')
   const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
   const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
   const rawBase = (import.meta as any)?.env?.VITE_API_URL || (isGhPages ? DEFAULT_FUNCTION_BASE : '')
@@ -14,14 +16,14 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   }
   const base = normalizeBase(rawBase)
   const abs = (() => {
-    if (url.startsWith('/')) {
-      return (base ? base.replace(/\/$/, '') : window.location.origin) + url
+    if (cleanUrl.startsWith('/')) {
+      return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
     }
-    return url
+    return cleanUrl
   })()
 
   // Prefer client-side handling first on GitHub Pages to avoid 404 noise
-  if (isGhPages && url.startsWith('/')) {
+  if (isGhPages && cleanUrl.startsWith('/')) {
     const handled = await handleClientSideApi(abs, init)
     if (handled) return handled
   }
