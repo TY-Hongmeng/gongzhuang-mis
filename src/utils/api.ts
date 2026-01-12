@@ -180,10 +180,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
-        console.log('Starting devices query...')
-        // 直接返回模拟数据，避免查询超时
-        console.log('Using mock data for devices')
-        return jsonResponse({ data: [{ id: '1', device_no: 'DEV001', device_name: '测试设备1', max_aux_minutes: 60 }] })
+        const { data, error } = await supabase.from('devices').select('*')
+        console.log('devices result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Fixed inventory options
       if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
@@ -192,10 +191,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ data: [] })
         }
-        console.log('Starting fixed_inventory_options query...')
-        // 直接返回模拟数据，避免查询超时
-        console.log('Using mock data for fixed_inventory_options')
-        return jsonResponse({ data: [{ id: '1', option_value: 'TEST', option_label: '测试选项1', is_active: true }] })
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        console.log('fixed_inventory_options result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
     }
     
