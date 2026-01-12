@@ -202,7 +202,7 @@ export default function OptionsManagement() {
 
       const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
-      const normSources = getArr(materialSourcesData).map((x: any) => ({ id: Number(x.id ?? x.source_id ?? Date.now()), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
+      const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? x.source_id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }))
       const normDevices = getArr(devicesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }))
       const normFixedOptions = getArr(fixedOptionsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }))
@@ -535,10 +535,10 @@ export default function OptionsManagement() {
     }
   };
 
-  const handleDeleteMaterialSource = async (id: number) => {
+  const handleDeleteMaterialSource = async (id: string | number) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/options/material-sources/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/options/material-sources/${Number(id)}`, { method: 'DELETE' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
@@ -1064,7 +1064,7 @@ export default function OptionsManagement() {
                 {/* 材料来源管理 */}
                 {activeTab === 'materialSources' && !editingMaterialSource && (
                   <div>
-                    {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
+                    {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item, id: String(item.id) }), handleSaveMaterialSource, () => setEditingMaterialSource(null), (id: string) => handleDeleteMaterialSource(id))}
                   </div>
                 )}
 
