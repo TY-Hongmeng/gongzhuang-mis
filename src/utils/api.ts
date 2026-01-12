@@ -441,7 +441,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     }
     return null
   } catch (e: any) {
-    console.error('Error in handleClientSideApi:', e)
+    console.error('Error in handleClientSideApi:', { path, error: e?.message || String(e), stack: e?.stack })
     // 返回null，让fetchWithFallback函数尝试其他处理方式
     return null
   }
