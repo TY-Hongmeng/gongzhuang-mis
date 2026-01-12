@@ -218,7 +218,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     if (supabase) {
       // Tooling list
       if (method === 'GET' && path === '/api/tooling') {
-        const qs = getQuery(url)
+        const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 50)
         const { data, error } = await supabase
@@ -442,6 +442,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     }
     return null
   } catch (e: any) {
-    return jsonResponse({ success: false, error: e?.message || 'Client-side API error' }, 500)
+    console.error('Error in handleClientSideApi:', e)
+    // 返回null，让fetchWithFallback函数尝试其他处理方式
+    return null
   }
 }
