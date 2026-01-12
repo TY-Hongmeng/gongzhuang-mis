@@ -26,6 +26,9 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: List Functions (before)
+        run: supabase functions list || true
+
       - name: Set Function Secrets
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -35,3 +38,11 @@ jobs:
       - name: Deploy API Function
         run: supabase functions deploy api --no-verify-jwt
 
+      - name: List Functions (after)
+        run: supabase functions list
+
+      - name: Smoke test Permissions endpoint
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          curl -sSf "https://${SUPABASE_PROJECT_REF}.functions.supabase.co/functions/v1/api/permissions" | head -c 500 || true

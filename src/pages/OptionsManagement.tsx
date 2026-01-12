@@ -203,12 +203,15 @@ export default function OptionsManagement() {
       const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normSources = getArr(materialSourcesData).map((x: any) => ({ id: Number(x.id ?? x.source_id ?? Date.now()), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
+      const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }))
+      const normDevices = getArr(devicesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }))
+      const normFixedOptions = getArr(fixedOptionsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }))
       setProductionUnits(normUnits);
       setToolingCategories(normCats);
-      setPartTypes(getArr(partTypesData));
+      setPartTypes(normPartTypes);
       setMaterialSources(normSources);
-      setDevices(getArr(devicesData));
-      setFixedOptions(getArr(fixedOptionsData));
+      setDevices(normDevices);
+      setFixedOptions(normFixedOptions);
 
       const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'));
       setMaterials(getArr(matsJson));

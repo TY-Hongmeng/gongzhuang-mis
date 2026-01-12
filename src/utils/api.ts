@@ -76,12 +76,12 @@ export function installApiInterceptor() {
         // handle devices and fixed_inventory_options via supabase-js to avoid REST 400
         if (supabase) {
           if (/\/rest\/v1\/devices\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('devices').select('*').order('name')
+            const { data, error } = await supabase.from('devices').select('*')
             if (error) return jsonResponse({ success: false, error: error.message }, 500)
             return jsonResponse(data || [])
           }
           if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('name')
+            const { data, error } = await supabase.from('fixed_inventory_options').select('*')
             if (error) return jsonResponse({ success: false, error: error.message }, 500)
             return jsonResponse(data || [])
           }
@@ -116,10 +116,23 @@ function getQuery(url: string): URLSearchParams {
 }
 
 async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
-  console.log('handleClientSideApi called:', { url, init })
-  if (!supabase) {
-    console.log('Supabase not initialized, returning mock data')
-    // 返回模拟数据，确保页面能正常显示
+  try {
+    console.log('handleClientSideApi called:', { url, init })
+    
+    // 无论是否有Supabase实例，都尝试处理请求
+    const u = new URL(url, window.location.origin)
+    let path = u.pathname
+    
+    // 提取真正的API路径，移除任何前缀（如/functions/v1）
+    const apiPathMatch = path.match(/(\/api\/.*)/)
+    if (apiPathMatch) {
+      path = apiPathMatch[1]
+    }
+    
+    console.log('Extracted API path:', path)
+    const method = (init?.method || 'GET').toUpperCase()
+    
+    // 首先检查是否有模拟数据（无论Supabase是否可用）
     const mockData = {
       '/api/options/production-units': { data: [{ id: 1, name: '测试投产单位', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
       '/api/options/tooling-categories': { data: [{ id: 1, name: '测试工装类别', description: '测试描述', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] },
@@ -128,284 +141,272 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       '/api/part-types': { data: [{ id: 1, name: '测试部件类型', description: '测试描述', volume_formula: '长*宽*高', input_format: 'A*B*C', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }] }
     }
     
-    const u = new URL(url, window.location.origin)
-    const path = u.pathname.replace(/^(\/functions\/v1)?/, '') // tolerate functions prefix
-    for (const [key, value] of Object.entries(mockData)) {
-      if (path.startsWith(key)) {
-        console.log('Returning mock data for:', key)
-        return jsonResponse(value)
+    if (mockData[path as keyof typeof mockData]) {
+      console.log('Returning mock data for:', path)
+      return jsonResponse(mockData[path as keyof typeof mockData])
+    }
+    
+    // 如果没有模拟数据且Supabase可用，尝试从Supabase获取数据
+    if (supabase) {
+      // Options & meta
+      if (method === 'GET' && path.startsWith('/api/options/production-units')) {
+        console.log('Fetching production_units from Supabase')
+        const { data, error } = await supabase.from('production_units').select('*')
+        console.log('production_units result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+      if (method === 'GET' && path.startsWith('/api/options/tooling-categories')) {
+        console.log('Fetching tooling_categories from Supabase')
+        const { data, error } = await supabase.from('tooling_categories').select('*')
+        console.log('tooling_categories result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+      if (method === 'GET' && path.startsWith('/api/options/material-sources')) {
+        console.log('Fetching material_sources from Supabase')
+        const { data, error } = await supabase.from('material_sources').select('*')
+        console.log('material_sources result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+      if (method === 'GET' && path.startsWith('/api/materials')) {
+        console.log('Fetching materials from Supabase')
+        const { data, error } = await supabase.from('materials').select('*')
+        console.log('materials result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+      if (method === 'GET' && path.startsWith('/api/part-types')) {
+        console.log('Fetching part_types from Supabase')
+        const { data, error } = await supabase.from('part_types').select('*')
+        console.log('part_types result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
+      }
+
+      // Tooling list
+      if (method === 'GET' && path === '/api/tooling') {
+        const qs = getQuery(url)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 50)
+        const { data, error } = await supabase
+          .from('tooling_info')
+          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
+          .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        if (error) return jsonResponse({ data: [] })
+        const items = (data || []).map((x: any) => ({
+          id: x.id,
+          inventory_number: x.inventory_number || '',
+          production_unit: x.production_unit || '',
+          category: x.category || '',
+          received_date: x.received_date || '',
+          demand_date: x.demand_date || '',
+          completed_date: x.completed_date || '',
+          project_name: x.project_name || ''
+        }))
+        return jsonResponse({ data: items })
+      }
+      
+      // Create tooling
+      if (method === 'POST' && path === '/api/tooling') {
+        const body = init?.body ? await new Response(init.body).json() : {}
+        const { data, error } = await supabase
+          .from('tooling')
+          .insert({
+            inventory_number: body.inventory_number || '',
+            production_unit: body.production_unit || '',
+            category: body.category || '',
+            received_date: body.received_date || null,
+            demand_date: body.demand_date || null,
+            completed_date: body.completed_date || null,
+            project_name: body.project_name || '',
+            production_date: body.production_date || null,
+            recorder: body.recorder || '',
+            sets_count: body.sets_count || 1
+          })
+          .select('*')
+          .single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ data: data })
+      }
+      
+      // Update tooling
+      if (method === 'PUT' && path.match(/^\/api\/tooling\/[^\/]+$/)) {
+        const toolingId = path.split('/').pop()
+        if (!toolingId) return jsonResponse({ success: false, error: 'Invalid tooling ID' }, 400)
+        const body = init?.body ? await new Response(init.body).json() : {}
+        const { data, error } = await supabase
+          .from('tooling')
+          .update(body)
+          .eq('id', toolingId)
+          .select('*')
+          .single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ data: data })
+      }
+      
+      // Batch delete tooling
+      if (method === 'POST' && path === '/api/tooling/batch-delete') {
+        const body = init?.body ? await new Response(init.body).json() : {}
+        const { ids } = body
+        if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+        
+        const { error } = await supabase
+          .from('tooling')
+          .delete()
+          .in('id', ids)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+      
+      // Batch delete parts
+      if (method === 'POST' && path === '/api/tooling/parts/batch-delete') {
+        const body = init?.body ? await new Response(init.body).json() : {}
+        const { ids } = body
+        if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+        
+        const { error } = await supabase
+          .from('parts')
+          .delete()
+          .in('id', ids)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+      
+      // Batch delete child items
+      if (method === 'POST' && path === '/api/tooling/child-items/batch-delete') {
+        const body = init?.body ? await new Response(init.body).json() : {}
+        const { ids } = body
+        if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
+        
+        const { error } = await supabase
+          .from('child_items')
+          .delete()
+          .in('id', ids)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+
+      // Tooling batch info
+      if (method === 'GET' && path.startsWith('/api/tooling/batch')) {
+        const qs = getQuery(url)
+        const ids = qs.getAll('ids')
+        if (ids.length === 0) return jsonResponse({ data: [] })
+        const { data, error } = await supabase
+          .from('tooling_info')
+          .select('id,recorder')
+          .in('id', ids)
+        if (error) return jsonResponse({ data: [] })
+        // 兼容字段名
+        const items = (data || []).map((x: any) => ({ id: x.id, recorder: x.recorder }))
+        return jsonResponse({ data: items })
+      }
+
+      // Tooling users basic
+      if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
+        const { data, error } = await supabase.from('users').select('id,real_name,phone')
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Tooling parts by toolingId
+      const partsMatch = path.match(/^\/api\/tooling\/([^\/]+)\/parts$/)
+      if (method === 'GET' && partsMatch) {
+        const toolingId = partsMatch[1]
+        const { data, error } = await supabase
+          .from('parts_info')
+          .select('*')
+          .eq('tooling_id', toolingId)
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Child items by toolingId
+      const childMatch = path.match(/^\/api\/tooling\/([^\/]+)\/child-items$/)
+      if (method === 'GET' && childMatch) {
+        const toolingId = childMatch[1]
+        const { data, error } = await supabase
+          .from('child_items')
+          .select('*')
+          .eq('tooling_id', toolingId)
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Work hours
+      if (method === 'GET' && path === '/api/tooling/work-hours') {
+        const qs = getQuery(url)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 200)
+        const order = qs.get('order') || 'work_date'
+        const orderDir = (qs.get('order_dir') || 'desc').toLowerCase() === 'asc'
+        const { data, error } = await supabase.from('work_hours').select('*')
+          .order(order, { ascending: orderDir })
+          .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Cutting orders list
+      if (method === 'GET' && path === '/api/cutting-orders') {
+        const qs = getQuery(url)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 1000)
+        let q = supabase.from('cutting_orders').select('*')
+        q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        const { data, error } = await q
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Purchase orders list
+      if (method === 'GET' && path === '/api/purchase-orders') {
+        const qs = getQuery(url)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 1000)
+        let q = supabase.from('purchase_orders').select('*')
+        q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        const { data, error } = await q
+        if (error) return jsonResponse({ data: [] })
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Devices / fixed inventory options
+      if (method === 'GET' && path === '/api/tooling/devices') {
+        const { data, error } = await supabase.from('devices').select('*')
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ data: data || [] })
+      }
+      if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Workshops & teams (organization data)
+      if (method === 'GET' && path === '/api/tooling/org/workshops') {
+        const { data, error } = await supabase.from('workshops').select('*').order('name')
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, items: data || [] })
+      }
+      if (method === 'GET' && path === '/api/tooling/org/teams') {
+        const { data, error } = await supabase.from('teams').select('*').order('name')
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, items: data || [] })
+      }
+
+      // Parts inventory list
+      if (method === 'GET' && path === '/api/tooling/parts/inventory-list') {
+        const qs = getQuery(url)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 500)
+        const { data, error } = await supabase
+          .from('parts_info')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, items: data || [] })
       }
     }
-    console.log('No mock data found for path:', path)
     return null
-  }
-  const u = new URL(url, window.location.origin)
-  const path = u.pathname.replace(/^(\/functions\/v1)?/, '') // tolerate functions prefix
-  const method = (init?.method || 'GET').toUpperCase()
-
-  try {
-    // Options & meta
-    if (method === 'GET' && path.startsWith('/api/options/production-units')) {
-      console.log('Fetching production_units from Supabase')
-      const { data, error } = await supabase.from('production_units').select('*').order('name')
-      console.log('production_units result:', { data, error })
-      return jsonResponse({ data: error ? [] : (data || []) })
-    }
-    if (method === 'GET' && path.startsWith('/api/options/tooling-categories')) {
-      console.log('Fetching tooling_categories from Supabase')
-      const { data, error } = await supabase.from('tooling_categories').select('*').order('name')
-      console.log('tooling_categories result:', { data, error })
-      return jsonResponse({ data: error ? [] : (data || []) })
-    }
-    if (method === 'GET' && path.startsWith('/api/options/material-sources')) {
-      console.log('Fetching material_sources from Supabase')
-      const { data, error } = await supabase.from('material_sources').select('*').order('name')
-      console.log('material_sources result:', { data, error })
-      return jsonResponse({ data: error ? [] : (data || []) })
-    }
-    if (method === 'GET' && path.startsWith('/api/materials')) {
-      console.log('Fetching materials from Supabase')
-      const { data, error } = await supabase.from('materials').select('*').order('name')
-      console.log('materials result:', { data, error })
-      return jsonResponse({ data: error ? [] : (data || []) })
-    }
-    if (method === 'GET' && path.startsWith('/api/part-types')) {
-      console.log('Fetching part_types from Supabase')
-      const { data, error } = await supabase.from('part_types').select('*').order('name')
-      console.log('part_types result:', { data, error })
-      return jsonResponse({ data: error ? [] : (data || []) })
-    }
-
-    // Tooling list
-    if (method === 'GET' && path === '/api/tooling') {
-      const qs = getQuery(url)
-      const page = Number(qs.get('page') || 1)
-      const pageSize = Number(qs.get('pageSize') || 50)
-      const { data, error } = await supabase
-        .from('tooling_info')
-        .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
-        .order('created_at', { ascending: true })
-        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      const items = (data || []).map((x: any) => ({
-        id: x.id,
-        inventory_number: x.inventory_number || '',
-        production_unit: x.production_unit || '',
-        category: x.category || '',
-        received_date: x.received_date || '',
-        demand_date: x.demand_date || '',
-        completed_date: x.completed_date || '',
-        project_name: x.project_name || ''
-      }))
-      return jsonResponse({ success: true, items })
-    }
-    
-    // Create tooling
-    if (method === 'POST' && path === '/api/tooling') {
-      const body = init?.body ? await new Response(init.body).json() : {}
-      const { data, error } = await supabase
-        .from('tooling')
-        .insert({
-          inventory_number: body.inventory_number || '',
-          production_unit: body.production_unit || '',
-          category: body.category || '',
-          received_date: body.received_date || null,
-          demand_date: body.demand_date || null,
-          completed_date: body.completed_date || null,
-          project_name: body.project_name || '',
-          production_date: body.production_date || null,
-          recorder: body.recorder || '',
-          sets_count: body.sets_count || 1
-        })
-        .select('*')
-        .single()
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, data })
-    }
-    
-    // Update tooling
-    if (method === 'PUT' && path.match(/^\/api\/tooling\/[^\/]+$/)) {
-      const toolingId = path.split('/').pop()
-      if (!toolingId) return jsonResponse({ success: false, error: 'Invalid tooling ID' }, 400)
-      const body = init?.body ? await new Response(init.body).json() : {}
-      const { data, error } = await supabase
-        .from('tooling')
-        .update(body)
-        .eq('id', toolingId)
-        .select('*')
-        .single()
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, data })
-    }
-    
-    // Batch delete tooling
-    if (method === 'POST' && path === '/api/tooling/batch-delete') {
-      const body = init?.body ? await new Response(init.body).json() : {}
-      const { ids } = body
-      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
-      
-      const { error } = await supabase
-        .from('tooling')
-        .delete()
-        .in('id', ids)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true })
-    }
-    
-    // Batch delete parts
-    if (method === 'POST' && path === '/api/tooling/parts/batch-delete') {
-      const body = init?.body ? await new Response(init.body).json() : {}
-      const { ids } = body
-      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
-      
-      const { error } = await supabase
-        .from('parts')
-        .delete()
-        .in('id', ids)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true })
-    }
-    
-    // Batch delete child items
-    if (method === 'POST' && path === '/api/tooling/child-items/batch-delete') {
-      const body = init?.body ? await new Response(init.body).json() : {}
-      const { ids } = body
-      if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
-      
-      const { error } = await supabase
-        .from('child_items')
-        .delete()
-        .in('id', ids)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true })
-    }
-
-    // Tooling batch info
-    if (method === 'GET' && path.startsWith('/api/tooling/batch')) {
-      const qs = getQuery(url)
-      const ids = qs.getAll('ids')
-      if (ids.length === 0) return jsonResponse({ success: true, items: [] })
-      const { data, error } = await supabase
-        .from('tooling_info')
-        .select('id,recorder')
-        .in('id', ids)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      // 兼容字段名
-      const items = (data || []).map((x: any) => ({ id: x.id, recorder: x.recorder }))
-      return jsonResponse({ success: true, items })
-    }
-
-    // Tooling users basic
-    if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
-      const { data, error } = await supabase.from('users').select('id,real_name,phone').order('real_name')
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Tooling parts by toolingId
-    const partsMatch = path.match(/^\/api\/tooling\/([^\/]+)\/parts$/)
-    if (method === 'GET' && partsMatch) {
-      const toolingId = partsMatch[1]
-      const { data, error } = await supabase
-        .from('parts_info')
-        .select('*')
-        .eq('tooling_id', toolingId)
-        .order('created_at', { ascending: true })
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Child items by toolingId
-    const childMatch = path.match(/^\/api\/tooling\/([^\/]+)\/child-items$/)
-    if (method === 'GET' && childMatch) {
-      const toolingId = childMatch[1]
-      const { data, error } = await supabase
-        .from('child_items')
-        .select('*')
-        .eq('tooling_id', toolingId)
-        .order('created_at', { ascending: true })
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Work hours
-    if (method === 'GET' && path === '/api/tooling/work-hours') {
-      const qs = getQuery(url)
-      const page = Number(qs.get('page') || 1)
-      const pageSize = Number(qs.get('pageSize') || 200)
-      const order = qs.get('order') || 'work_date'
-      const orderDir = (qs.get('order_dir') || 'desc').toLowerCase() === 'asc'
-      const { data, error } = await supabase.from('work_hours').select('*')
-        .order(order, { ascending: orderDir })
-        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Cutting orders list
-    if (method === 'GET' && path === '/api/cutting-orders') {
-      const qs = getQuery(url)
-      const page = Number(qs.get('page') || 1)
-      const pageSize = Number(qs.get('pageSize') || 1000)
-      let q = supabase.from('cutting_orders').select('*')
-      q = q.order('created_date', { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-      const { data, error } = await q
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Purchase orders list
-    if (method === 'GET' && path === '/api/purchase-orders') {
-      const qs = getQuery(url)
-      const page = Number(qs.get('page') || 1)
-      const pageSize = Number(qs.get('pageSize') || 1000)
-      let q = supabase.from('purchase_orders').select('*')
-      q = q.order('created_date', { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-      const { data, error } = await q
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Devices / fixed inventory options
-    if (method === 'GET' && path === '/api/tooling/devices') {
-      const { data, error } = await supabase.from('devices').select('*').order('name')
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-    if (method === 'GET' && path === '/api/tooling/fixed-inventory-options') {
-      const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('name')
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Workshops & teams (organization data)
-    if (method === 'GET' && path === '/api/tooling/org/workshops') {
-      const { data, error } = await supabase.from('workshops').select('*').order('name')
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-    if (method === 'GET' && path === '/api/tooling/org/teams') {
-      const { data, error } = await supabase.from('teams').select('*').order('name')
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
-    // Parts inventory list
-    if (method === 'GET' && path === '/api/tooling/parts/inventory-list') {
-      const qs = getQuery(url)
-      const page = Number(qs.get('page') || 1)
-      const pageSize = Number(qs.get('pageSize') || 500)
-      const { data, error } = await supabase
-        .from('parts_info')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-      if (error) return jsonResponse({ success: false, error: error.message }, 500)
-      return jsonResponse({ success: true, items: data || [] })
-    }
-
   } catch (e: any) {
     return jsonResponse({ success: false, error: e?.message || 'Client-side API error' }, 500)
   }
-  return null
 }

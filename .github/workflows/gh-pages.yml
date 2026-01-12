@@ -26,6 +26,8 @@ jobs:
       - name: Build (relative base for GitHub Pages)
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npx vite build -- --base=./
 
       - name: SPA fallback (copy index.html to 404.html)
