@@ -182,9 +182,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
         console.log('Starting devices query...')
         try {
-          // 添加1.5秒超时，避免查询一直阻塞
+          // 添加3秒超时，避免查询一直阻塞
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Query timed out')), 1500)
+            setTimeout(() => reject(new Error('Query timed out')), 3000)
           })
           
           // 同时等待查询和超时
@@ -212,9 +212,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
         console.log('Starting fixed_inventory_options query...')
         try {
-          // 添加1.5秒超时，避免查询一直阻塞
+          // 添加3秒超时，避免查询一直阻塞
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Query timed out')), 1500)
+            setTimeout(() => reject(new Error('Query timed out')), 3000)
           })
           
           // 同时等待查询和超时
