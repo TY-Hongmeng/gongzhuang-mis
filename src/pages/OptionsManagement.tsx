@@ -180,25 +180,39 @@ export default function OptionsManagement() {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    console.log('fetchData called');
     try {
-      const toJSON = async (p: Promise<Response>) => {
+      const toJSON = async (p: Promise<Response>, name: string) => {
         const r = await p;
+        console.log(`${name} response status:`, r.status);
         try {
-          return await r.json();
-        } catch {
+          const data = await r.json();
+          console.log(`${name} data:`, data);
+          return data;
+        } catch (e) {
+          console.error(`${name} json parse error:`, e);
           return [];
         }
       }
+      console.log('Starting Promise.all for basic data...');
       const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
-        toJSON(fetchWithFallback('/api/options/production-units')),
-        toJSON(fetchWithFallback('/api/options/tooling-categories')),
-        toJSON(fetchWithFallback('/api/part-types')),
-        toJSON(fetchWithFallback('/api/options/material-sources')),
-        toJSON(fetchWithFallback('/api/tooling/devices')),
-        toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'))
+        toJSON(fetchWithFallback('/api/options/production-units'), 'production_units'),
+        toJSON(fetchWithFallback('/api/options/tooling-categories'), 'tooling_categories'),
+        toJSON(fetchWithFallback('/api/part-types'), 'part_types'),
+        toJSON(fetchWithFallback('/api/options/material-sources'), 'material_sources'),
+        toJSON(fetchWithFallback('/api/tooling/devices'), 'devices'),
+        toJSON(fetchWithFallback('/api/tooling/fixed-inventory-options'), 'fixed_inventory_options')
       ]);
+      console.log('All basic data fetched, processing...');
 
       const getArr = (obj: any) => Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : (Array.isArray(obj) ? obj : []));
+
+      console.log('Processing production_units:', unitsData);
+      console.log('Processing tooling_categories:', categoriesData);
+      console.log('Processing part_types:', partTypesData);
+      console.log('Processing material_sources:', materialSourcesData);
+      console.log('Processing devices:', devicesData);
+      console.log('Processing fixed_inventory_options:', fixedOptionsData);
 
       const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
@@ -206,6 +220,15 @@ export default function OptionsManagement() {
       const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }))
       const normDevices = getArr(devicesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }))
       const normFixedOptions = getArr(fixedOptionsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }))
+
+      console.log('Normalized data:');
+      console.log('- productionUnits:', normUnits);
+      console.log('- toolingCategories:', normCats);
+      console.log('- partTypes:', normPartTypes);
+      console.log('- materialSources:', normSources);
+      console.log('- devices:', normDevices);
+      console.log('- fixedOptions:', normFixedOptions);
+
       setProductionUnits(normUnits);
       setToolingCategories(normCats);
       setPartTypes(normPartTypes);
@@ -213,8 +236,9 @@ export default function OptionsManagement() {
       setDevices(normDevices);
       setFixedOptions(normFixedOptions);
 
-      const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'));
+      const matsJson = await toJSON(fetchWithFallback('/api/materials?order=created_at.desc'), 'materials');
       setMaterials(getArr(matsJson));
+      console.log('materials:', matsJson);
 
       // 异步加载每个材料的价格历史（不阻塞页面 loading）
       const materialsArr = getArr(matsJson) || []
