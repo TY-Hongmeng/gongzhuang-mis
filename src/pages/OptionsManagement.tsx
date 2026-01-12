@@ -235,9 +235,11 @@ export default function OptionsManagement() {
       console.log('- devices:', devicesData);
       console.log('- fixedOptions:', fixedOptionsData);
 
-      // 如果devices或fixedOptions为空，使用默认模拟数据
-      const devicesResult = devicesData?.data || devicesData || [];
-      const fixedOptionsResult = fixedOptionsData?.data || fixedOptionsData || [];
+      const getArr = (obj: any) => obj && typeof obj === 'object' ? (Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : [])) : [];
+
+      // 统一处理所有表的数据，使用getArr函数确保能处理不同的数据格式
+      const devicesResult = getArr(devicesData);
+      const fixedOptionsResult = getArr(fixedOptionsData);
 
       // 如果数据为空，使用默认数据
       const defaultDevices = [{ id: '1', device_no: 'DEV001', device_name: '测试设备1', is_active: true, max_aux_minutes: 60 }];
@@ -246,15 +248,11 @@ export default function OptionsManagement() {
       const finalDevices = devicesResult.length > 0 ? devicesResult : defaultDevices;
       const finalFixedOptions = fixedOptionsResult.length > 0 ? fixedOptionsResult : defaultFixedOptions;
 
-      const getArr = (obj: any) => obj && typeof obj === 'object' ? (Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : [])) : [];
-
       const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? x.source_id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
       const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }))
-      // 使用finalDevices替代getArr(devicesData)
       const normDevices = finalDevices.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }))
-      // 使用finalFixedOptions替代getArr(fixedOptionsData)
       const normFixedOptions = finalFixedOptions.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }))
 
       console.log('Normalized data:');
