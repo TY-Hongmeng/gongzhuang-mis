@@ -182,8 +182,8 @@ export default function OptionsManagement() {
     setError(null);
     console.log('fetchData called');
     try {
-      // 超时控制：每个请求最多等待5秒
-      const TIMEOUT = 5000;
+      // 超时控制：每个请求最多等待10秒
+      const TIMEOUT = 10000;
 
       // 创建带超时的fetch请求
       const createTimedFetch = (url: string, name: string): Promise<any> => {

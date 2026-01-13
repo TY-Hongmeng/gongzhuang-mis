@@ -180,9 +180,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ success: true, items: [] })
         }
-        const { data, error } = await supabase.from('devices').select('*')
-        console.log('devices result:', { data, error })
-        return jsonResponse({ success: true, items: error ? [] : (data || []) })
+        try {
+          const { data, error } = await supabase.from('devices').select('*')
+          console.log('devices result:', { data, error })
+          return jsonResponse({ success: true, items: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching devices:', e)
+          return jsonResponse({ success: true, items: [] })
+        }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
@@ -191,9 +196,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           console.error('supabase is not initialized')
           return jsonResponse({ success: true, items: [] })
         }
-        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        console.log('fixed_inventory_options result:', { data, error })
-        return jsonResponse({ success: true, items: error ? [] : (data || []) })
+        try {
+          const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+          console.log('fixed_inventory_options result:', { data, error })
+          return jsonResponse({ success: true, items: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching fixed_inventory_options:', e)
+          return jsonResponse({ success: true, items: [] })
+        }
       }
     }
     
