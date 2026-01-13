@@ -180,11 +180,15 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         try {
-          const { data, error } = await supabase
-            .from('devices')
-            .select('id,device_no,device_name,max_aux_minutes,is_active')
-            .order('device_no')
-          if (error) return jsonResponse({ success: false, error: error.message })
+          // 添加3秒超时限制
+          const { data, error } = await Promise.race([
+            supabase
+              .from('devices')
+              .select('id,device_no,device_name,max_aux_minutes,is_active')
+              .order('device_no'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
+          ])
+          if (error) return jsonResponse({ data: [] })
           const items = (data || []).map((d: any) => ({
             id: String(d.id ?? d.uuid ?? ''),
             device_no: String(d.device_no ?? ''),
@@ -192,47 +196,40 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
             is_active: typeof d.is_active === 'boolean' ? d.is_active : true
           }))
-          return jsonResponse({ success: true, items })
-        } catch {}
+          return jsonResponse({ data: items })
+        } catch (e: any) {
+          console.error('Error fetching devices:', e)
+          return jsonResponse({ data: [] })
+        }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         try {
-          const { data, error } = await supabase
-            .from('fixed_inventory_options')
-            .select('id,option_value,option_label,is_active')
-            .order('created_at', { ascending: true })
-          if (error) return jsonResponse({ success: false, error: error.message })
+          // 添加3秒超时限制
+          const { data, error } = await Promise.race([
+            supabase
+              .from('fixed_inventory_options')
+              .select('id,option_value,option_label,is_active')
+              .order('created_at', { ascending: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
+          ])
+          if (error) return jsonResponse({ data: [] })
           const items = (data || []).map((x: any) => ({
             id: String(x.id ?? x.uuid ?? ''),
             option_value: String(x.option_value ?? ''),
             option_label: String(x.option_label ?? ''),
             is_active: Boolean(x.is_active ?? true)
           }))
-          return jsonResponse({ success: true, items })
+          return jsonResponse({ data: items })
         } catch (e: any) {
-          return jsonResponse({ success: true, items: [] })
+          console.error('Error fetching fixed_inventory_options:', e)
+          return jsonResponse({ data: [] })
         }
       }
 
     }
 
-    // Devices fallback via REST when client not initialized
-    if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-      try {
-        const rest = 'https://oltsiocyesbgezlrcxze.supabase.co/rest/v1/devices?select=id,device_no,device_name,max_aux_minutes'
-        const r = await fetch(rest)
-        const list = await r.json()
-        const items = (Array.isArray(list) ? list : []).map((d: any) => ({
-          id: String(d.id ?? d.uuid ?? ''),
-          device_no: String(d.device_no ?? ''),
-          device_name: String(d.device_name ?? ''),
-          max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
-          is_active: true
-        }))
-        return jsonResponse({ success: true, items })
-      } catch {}
-    }
+
     
     // 移除模拟数据，确保所有请求都从数据库获取数据
     
