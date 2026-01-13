@@ -193,9 +193,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             is_active: typeof d.is_active === 'boolean' ? d.is_active : true
           }))
           return jsonResponse({ success: true, items })
-        } catch (e: any) {
-          return jsonResponse({ success: true, items: [] })
-        }
+        } catch {}
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
@@ -217,6 +215,23 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
       }
 
+    }
+
+    // Devices fallback via REST when client not initialized
+    if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
+      try {
+        const rest = 'https://oltsiocyesbgezlrcxze.supabase.co/rest/v1/devices?select=id,device_no,device_name,max_aux_minutes'
+        const r = await fetch(rest)
+        const list = await r.json()
+        const items = (Array.isArray(list) ? list : []).map((d: any) => ({
+          id: String(d.id ?? d.uuid ?? ''),
+          device_no: String(d.device_no ?? ''),
+          device_name: String(d.device_name ?? ''),
+          max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
+          is_active: true
+        }))
+        return jsonResponse({ success: true, items })
+      } catch {}
     }
     
     // 移除模拟数据，确保所有请求都从数据库获取数据
