@@ -175,55 +175,33 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase REST API')
+        console.log('Fetching devices from Supabase')
         if (!supabase) {
           console.error('supabase is not initialized')
           return jsonResponse({ success: true, items: [] })
         }
         try {
-          console.log('Starting devices REST API query...')
-          const url = `${supabase.supabaseUrl}/rest/v1/devices?apikey=${supabase.supabaseKey}`
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'apikey': supabase.supabaseKey,
-              'Authorization': `Bearer ${supabase.supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          const data = await response.json()
-          console.log('devices REST API result:', data)
-          return jsonResponse({ success: true, items: Array.isArray(data) ? data : [] })
+          const { data, error } = await supabase.from('devices').select('*')
+          console.log('devices result:', { data, error })
+          return jsonResponse({ success: true, items: error ? [] : (data || []) })
         } catch (e: any) {
           console.error('Error fetching devices:', e)
-          console.error('Error stack:', e?.stack)
           return jsonResponse({ success: true, items: [] })
         }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase REST API')
+        console.log('Fetching fixed_inventory_options from Supabase')
         if (!supabase) {
           console.error('supabase is not initialized')
           return jsonResponse({ success: true, items: [] })
         }
         try {
-          console.log('Starting fixed_inventory_options REST API query...')
-          const url = `${supabase.supabaseUrl}/rest/v1/fixed_inventory_options?apikey=${supabase.supabaseKey}`
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'apikey': supabase.supabaseKey,
-              'Authorization': `Bearer ${supabase.supabaseKey}`,
-              'Content-Type': 'application/json'
-            }
-          })
-          const data = await response.json()
-          console.log('fixed_inventory_options REST API result:', data)
-          return jsonResponse({ success: true, items: Array.isArray(data) ? data : [] })
+          const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+          console.log('fixed_inventory_options result:', { data, error })
+          return jsonResponse({ success: true, items: error ? [] : (data || []) })
         } catch (e: any) {
           console.error('Error fetching fixed_inventory_options:', e)
-          console.error('Error stack:', e?.stack)
           return jsonResponse({ success: true, items: [] })
         }
       }
