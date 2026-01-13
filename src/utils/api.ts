@@ -179,27 +179,17 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from mock data')
-        // 直接返回模拟数据，绕过Supabase请求
-        const mockDevices = [
-          { id: '1', device_no: 'DEV001', device_name: '设备1', is_active: true, max_aux_minutes: 60 },
-          { id: '2', device_no: 'DEV002', device_name: '设备2', is_active: true, max_aux_minutes: 30 },
-          { id: '3', device_no: 'DEV003', device_name: '设备3', is_active: false, max_aux_minutes: 45 }
-        ]
-        console.log('devices result:', { data: mockDevices, error: null })
-        return jsonResponse({ data: mockDevices })
+        console.log('Fetching devices from Supabase')
+        const { data, error } = await supabase.from('devices').select('*')
+        console.log('devices result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from mock data')
-        // 直接返回模拟数据，绕过Supabase请求
-        const mockFixedOptions = [
-          { id: '1', option_value: 'option1', option_label: '选项1', is_active: true },
-          { id: '2', option_value: 'option2', option_label: '选项2', is_active: true },
-          { id: '3', option_value: 'option3', option_label: '选项3', is_active: false }
-        ]
-        console.log('fixed_inventory_options result:', { data: mockFixedOptions, error: null })
-        return jsonResponse({ data: mockFixedOptions })
+        console.log('Fetching fixed_inventory_options from Supabase')
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        console.log('fixed_inventory_options result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
 
     }
