@@ -179,17 +179,28 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase')
         const { data, error } = await supabase.from('devices').select('*')
-        console.log('devices result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        if (error) return jsonResponse({ success: false, error: error.message })
+        const items = (data || []).map((d: any) => ({
+          id: String(d.id ?? d.uuid ?? ''),
+          device_no: String(d.device_no ?? ''),
+          device_name: String(d.device_name ?? ''),
+          max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
+          is_active: typeof d.is_active === 'boolean' ? d.is_active : true
+        }))
+        return jsonResponse({ success: true, items })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase')
         const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        console.log('fixed_inventory_options result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        if (error) return jsonResponse({ success: false, error: error.message })
+        const items = (data || []).map((x: any) => ({
+          id: String(x.id ?? x.uuid ?? ''),
+          option_value: String(x.option_value ?? ''),
+          option_label: String(x.option_label ?? ''),
+          is_active: Boolean(x.is_active ?? true)
+        }))
+        return jsonResponse({ success: true, items })
       }
 
     }
@@ -318,9 +329,19 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Tooling users basic
       if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
-        const { data, error } = await supabase.from('users').select('id,real_name,phone')
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        const { data, error } = await supabase.from('users').select('id,real_name,phone,workshop,team,aux_coeff,proc_coeff,capability_coeff')
+        if (error) return jsonResponse({ success: false, error: error.message })
+        const items = (data || []).map((u: any) => ({
+          id: String(u.id ?? u.uuid ?? ''),
+          real_name: String(u.real_name ?? ''),
+          phone: String(u.phone ?? ''),
+          workshop: String(u.workshop ?? ''),
+          team: String(u.team ?? ''),
+          aux_coeff: Number(u.aux_coeff ?? 1),
+          proc_coeff: Number(u.proc_coeff ?? 1),
+          capability_coeff: Number(u.capability_coeff ?? 1)
+        }))
+        return jsonResponse({ success: true, items })
       }
 
       // Tooling parts by toolingId
@@ -406,14 +427,20 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .from('parts_info')
           .select('*')
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        if (error) return jsonResponse({ success: false, error: error.message })
+        const items = (data || []).map((p: any) => ({
+          id: String(p.id ?? p.uuid ?? ''),
+          part_inventory_number: String(p.part_inventory_number ?? ''),
+          part_name: String(p.part_name ?? ''),
+          part_drawing_number: String(p.part_drawing_number ?? ''),
+          process_route: String(p.process_route ?? '')
+        }))
+        return jsonResponse({ success: true, items })
       }
     }
     return null
   } catch (e: any) {
-    console.error('Error in handleClientSideApi:', { path, error: e?.message || String(e), stack: e?.stack })
-    // 返回null，让fetchWithFallback函数尝试其他处理方式
+    console.error('Error in handleClientSideApi:', { error: e?.message || String(e), stack: e?.stack })
     return null
   }
 }
