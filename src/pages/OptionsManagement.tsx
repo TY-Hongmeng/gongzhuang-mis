@@ -243,12 +243,14 @@ export default function OptionsManagement() {
           const devicesData = await createTimedFetch('/api/tooling/devices', 'devices');
           const devicesResult = getArr(devicesData);
           const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }));
+          console.log('normDevices:', normDevices);
           setDevices(normDevices);
           break;
         case 'fixedOptions':
           const fixedOptionsData = await createTimedFetch('/api/tooling/fixed-inventory-options', 'fixed_inventory_options');
           const fixedOptionsResult = getArr(fixedOptionsData);
           const normFixedOptions = fixedOptionsResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          console.log('normFixedOptions:', normFixedOptions);
           setFixedOptions(normFixedOptions);
           break;
         case 'materials':
