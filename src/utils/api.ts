@@ -22,25 +22,29 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     return cleanUrl
   })()
 
-  // Prefer client-side handling first on GitHub Pages to avoid 404 noise
-  if (isGhPages && cleanUrl.startsWith('/')) {
+  // 优先调用客户端API处理，无论是否在GitHub Pages环境中
+  if (cleanUrl.startsWith('/')) {
     const handled = await handleClientSideApi(abs, init)
     if (handled) return handled
   }
   try {
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
-      if (isGhPages) return res
       const u = new URL(abs, window.location.origin)
       const fallback = `http://localhost:3003${u.pathname}${u.search}`
       return await fetch(fallback, init)
     }
-    if (isGhPages && res.status === 404) {
+    if (res.status === 404 && cleanUrl.startsWith('/')) {
       const handled = await handleClientSideApi(abs, init)
       if (handled) return handled
     }
     return res
   } catch {
+    // 网络错误时，尝试调用客户端API处理
+    if (cleanUrl.startsWith('/')) {
+      const handled = await handleClientSideApi(abs, init)
+      if (handled) return handled
+    }
     // 在 GitHub Pages 环境不再回退到 localhost，直接抛错
     if (isGhPages) throw new Error('Network error')
     const u = new URL(abs, window.location.origin)
