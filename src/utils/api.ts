@@ -175,35 +175,27 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase')
-        try {
-          // 添加3秒超时限制
-          const { data, error } = await Promise.race([
-            supabase.from('devices').select('*'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
-          ])
-          console.log('devices result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (e: any) {
-          console.error('Error fetching devices:', e)
-          return jsonResponse({ data: [] })
-        }
+        console.log('Fetching devices from mock data')
+        // 直接返回模拟数据，绕过Supabase请求
+        const mockDevices = [
+          { id: '1', device_no: 'DEV001', device_name: '设备1', is_active: true, max_aux_minutes: 60 },
+          { id: '2', device_no: 'DEV002', device_name: '设备2', is_active: true, max_aux_minutes: 30 },
+          { id: '3', device_no: 'DEV003', device_name: '设备3', is_active: false, max_aux_minutes: 45 }
+        ]
+        console.log('devices result:', { data: mockDevices, error: null })
+        return jsonResponse({ data: mockDevices })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase')
-        try {
-          // 添加3秒超时限制
-          const { data, error } = await Promise.race([
-            supabase.from('fixed_inventory_options').select('*'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
-          ])
-          console.log('fixed_inventory_options result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
-        } catch (e: any) {
-          console.error('Error fetching fixed_inventory_options:', e)
-          return jsonResponse({ data: [] })
-        }
+        console.log('Fetching fixed_inventory_options from mock data')
+        // 直接返回模拟数据，绕过Supabase请求
+        const mockFixedOptions = [
+          { id: '1', option_value: 'option1', option_label: '选项1', is_active: true },
+          { id: '2', option_value: 'option2', option_label: '选项2', is_active: true },
+          { id: '3', option_value: 'option3', option_label: '选项3', is_active: false }
+        ]
+        console.log('fixed_inventory_options result:', { data: mockFixedOptions, error: null })
+        return jsonResponse({ data: mockFixedOptions })
       }
 
     }
