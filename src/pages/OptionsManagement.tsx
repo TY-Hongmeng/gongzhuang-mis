@@ -166,7 +166,7 @@ export default function OptionsManagement() {
       }
       
       // 重新获取数据以确保一致性
-      await fetchData();
+      await fetchTabData(activeTab);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : '排序更新失败');
@@ -176,11 +176,11 @@ export default function OptionsManagement() {
     }
   };
 
-  // 获取数据
-  const fetchData = async () => {
+  // 获取单个页面的数据
+  const fetchTabData = async (tab: string) => {
     setLoading(true);
     setError(null);
-    console.log('fetchData called');
+    console.log(`fetchTabData called for tab: ${tab}`);
     try {
       // 超时控制：每个请求最多等待10秒
       const TIMEOUT = 10000;
@@ -215,78 +215,67 @@ export default function OptionsManagement() {
         });
       };
 
-      console.log('Starting data fetching...');
-
-      // 并行获取所有数据，每个请求都有独立的超时控制
-      const [unitsData, categoriesData, partTypesData, materialSourcesData, devicesData, fixedOptionsData] = await Promise.all([
-        createTimedFetch('/api/options/production-units', 'production_units'),
-        createTimedFetch('/api/options/tooling-categories', 'tooling_categories'),
-        createTimedFetch('/api/part-types', 'part_types'),
-        createTimedFetch('/api/options/material-sources', 'material_sources'),
-        createTimedFetch('/api/tooling/devices', 'devices'),
-        createTimedFetch('/api/tooling/fixed-inventory-options', 'fixed_inventory_options')
-      ]);
-
-      console.log('All basic data fetched');
-      console.log('- productionUnits:', unitsData);
-      console.log('- toolingCategories:', categoriesData);
-      console.log('- partTypes:', partTypesData);
-      console.log('- materialSources:', materialSourcesData);
-      console.log('- devices:', devicesData);
-      console.log('- fixedOptions:', fixedOptionsData);
-
       const getArr = (obj: any) => obj && typeof obj === 'object' ? (Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : [])) : [];
 
-      // 统一处理所有表的数据，使用getArr函数确保能处理不同的数据格式
-      const devicesResult = getArr(devicesData);
-      const fixedOptionsResult = getArr(fixedOptionsData);
-
-      const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
-      const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
-      const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? x.source_id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }))
-      const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }))
-      const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }))
-      const normFixedOptions = fixedOptionsResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }))
-
-      console.log('Normalized data:');
-      console.log('- productionUnits:', normUnits);
-      console.log('- toolingCategories:', normCats);
-      console.log('- partTypes:', normPartTypes);
-      console.log('- materialSources:', normSources);
-      console.log('- devices:', normDevices);
-      console.log('- fixedOptions:', normFixedOptions);
-
-      setProductionUnits(normUnits);
-      setToolingCategories(normCats);
-      setPartTypes(normPartTypes);
-      setMaterialSources(normSources);
-      setDevices(normDevices);
-      setFixedOptions(normFixedOptions);
-
-      // 获取材料数据
-      const matsJson = await createTimedFetch('/api/materials?order=created_at.desc', 'materials');
-      setMaterials(getArr(matsJson));
-      console.log('materials:', matsJson);
-
-      // 异步加载每个材料的价格历史（不阻塞页面 loading）
-      const materialsArr = getArr(matsJson) || []
-      ;(async () => {
-        const pricesMap: Record<string, any[]> = {};
-        await Promise.allSettled(
-          materialsArr.map(async (material: any) => {
-            try {
-              const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`)
-              if (pricesRes.ok) {
-                const pricesJson = await pricesRes.json()
-                pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
-              }
-            } catch (err) {
-              console.error(`获取材料 ${material.id} 的价格失败:`, err)
-            }
-          })
-        )
-        setMaterialPrices(pricesMap)
-      })()
+      // 根据当前标签页加载对应的数据
+      switch (tab) {
+        case 'units':
+          const unitsData = await createTimedFetch('/api/options/production-units', 'production_units');
+          const normUnits = getArr(unitsData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.unit_name ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          setProductionUnits(normUnits);
+          break;
+        case 'categories':
+          const categoriesData = await createTimedFetch('/api/options/tooling-categories', 'tooling_categories');
+          const normCats = getArr(categoriesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.category_name ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          setToolingCategories(normCats);
+          break;
+        case 'materialSources':
+          const materialSourcesData = await createTimedFetch('/api/options/material-sources', 'material_sources');
+          const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? x.source_id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          setMaterialSources(normSources);
+          break;
+        case 'partTypes':
+          const partTypesData = await createTimedFetch('/api/part-types', 'part_types');
+          const normPartTypes = getArr(partTypesData).map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.part_type_name ?? ''), description: x.description ?? '', volume_formula: x.volume_formula ?? '', is_active: Boolean(x.is_active ?? true) }));
+          setPartTypes(normPartTypes);
+          break;
+        case 'devices':
+          const devicesData = await createTimedFetch('/api/tooling/devices', 'devices');
+          const devicesResult = getArr(devicesData);
+          const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }));
+          setDevices(normDevices);
+          break;
+        case 'fixedOptions':
+          const fixedOptionsData = await createTimedFetch('/api/tooling/fixed-inventory-options', 'fixed_inventory_options');
+          const fixedOptionsResult = getArr(fixedOptionsData);
+          const normFixedOptions = fixedOptionsResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), option_value: String(x.option_value ?? ''), option_label: String(x.option_label ?? ''), name: String(x.option_label ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          setFixedOptions(normFixedOptions);
+          break;
+        case 'materials':
+          const matsJson = await createTimedFetch('/api/materials?order=created_at.desc', 'materials');
+          const materialsArr = getArr(matsJson);
+          setMaterials(materialsArr);
+          console.log('materials:', matsJson);
+          // 异步加载每个材料的价格历史（不阻塞页面 loading）
+          ;(async () => {
+            const pricesMap: Record<string, any[]> = {};
+            await Promise.allSettled(
+              materialsArr.map(async (material: any) => {
+                try {
+                  const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`)
+                  if (pricesRes.ok) {
+                    const pricesJson = await pricesRes.json()
+                    pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
+                  }
+                } catch (err) {
+                  console.error(`获取材料 ${material.id} 的价格失败:`, err)
+                }
+              })
+            )
+            setMaterialPrices(pricesMap)
+          })()
+          break;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取数据失败');
       console.error('获取数据失败:', err);
@@ -296,21 +285,8 @@ export default function OptionsManagement() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 2000)
-    return () => clearTimeout(t)
-  }, [])
-
-  // 防御性：只要任一主数据返回，就结束 loading，避免界面卡住
-  useEffect(() => {
-    if (loading) {
-      const hasAny = productionUnits.length || toolingCategories.length || materials.length || partTypes.length || materialSources.length || devices.length || fixedOptions.length
-      if (hasAny) setLoading(false)
-    }
-  }, [loading, productionUnits, toolingCategories, materials, partTypes, materialSources, devices, fixedOptions])
+    fetchTabData(activeTab);
+  }, [activeTab]);
 
   // 基础操作函数
   const handleCreateUnit = () => setEditingUnit({ id: null, name: '', description: '', is_active: true });
@@ -339,7 +315,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingUnit(null);
-      await fetchData();
+      await fetchTabData('units');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -363,7 +339,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingCategory(null);
-      await fetchData();
+      await fetchTabData('categories');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -394,7 +370,7 @@ export default function OptionsManagement() {
         throw new Error(err.error || '保存失败');
       }
       setEditingMaterial(null);
-      await fetchData();
+      await fetchTabData('materials');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -418,7 +394,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingPartType(null);
-      await fetchData();
+      await fetchTabData('partTypes');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -442,7 +418,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingMaterialSource(null);
-      await fetchData();
+      await fetchTabData('materialSources');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -466,7 +442,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingDevice(null);
-      await fetchData();
+      await fetchTabData('devices');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -479,7 +455,7 @@ export default function OptionsManagement() {
     try {
       const response = await fetch(`/api/tooling/devices/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
-      await fetchData();
+      await fetchTabData('devices');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -503,7 +479,7 @@ export default function OptionsManagement() {
       });
       if (!response.ok) throw new Error('保存失败');
       setEditingFixedOption(null);
-      await fetchData();
+      await fetchTabData('fixedOptions');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -516,7 +492,7 @@ export default function OptionsManagement() {
     try {
       const response = await fetch(`/api/tooling/fixed-inventory-options/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
-      await fetchData();
+      await fetchTabData('fixedOptions');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -529,7 +505,7 @@ export default function OptionsManagement() {
     try {
       const response = await fetch(`/api/options/production-units/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
-      await fetchData();
+      await fetchTabData('units');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -542,7 +518,7 @@ export default function OptionsManagement() {
     try {
       const response = await fetch(`/api/options/tooling-categories/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
-      await fetchData();
+      await fetchTabData('categories');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -558,7 +534,7 @@ export default function OptionsManagement() {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
       }
-      await fetchData();
+      await fetchTabData('materials');
     } catch (err: any) {
       if (err?.code === '23503') {
         setError('该材料正在被使用，无法删除');
@@ -575,7 +551,7 @@ export default function OptionsManagement() {
     try {
       const response = await fetch(`/api/part-types/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
-      await fetchData();
+      await fetchTabData('partTypes');
     } catch (err: any) {
       if (err?.code === '23503') {
         setError('该料型正在被使用，无法删除');
@@ -595,7 +571,7 @@ export default function OptionsManagement() {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
       }
-      await fetchData();
+      await fetchTabData('materialSources');
     } catch (err: any) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -675,7 +651,7 @@ export default function OptionsManagement() {
         }
       }
       setEditingPrice(null);
-      await fetchData();
+      await fetchTabData('materials');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存价格失败');
     } finally {
@@ -692,7 +668,7 @@ export default function OptionsManagement() {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
       }
-      await fetchData();
+      await fetchTabData('materials');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
     } finally {
@@ -818,7 +794,7 @@ export default function OptionsManagement() {
               <DatabaseOutlined className="text-3xl text-indigo-500 mb-2 mr-2" /> 基础数据
             </Typography.Title>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => fetchData()} disabled={loading}>刷新</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => fetchTabData(activeTab)} disabled={loading}>刷新</Button>
               <Button icon={<LeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
             </Space>
           </div>
@@ -1055,24 +1031,43 @@ export default function OptionsManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">料型名称</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {partTypes.map((pt) => (
-                          <tr key={pt.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{pt.name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-500">{pt.description || '-'}</td>
-                            <td className="px-6 py-4 text-sm text-gray-500">{pt.volume_formula || '-'}</td>
+                        {partTypes.map((partType) => (
+                          <tr key={partType.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {partType.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {partType.description || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {partType.volume_formula || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {partType.is_active ? '启用' : '禁用'}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
-                                <button onClick={() => handleEditPartType(pt)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
                                   <Edit2 className="w-4 h-4" />
                                 </button>
-                                <Popconfirm title="确定要删除这个料型吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeletePartType(pt.id)}>
+                                <Popconfirm
+                                  title={`确定要删除"${partType.name}"吗？`}
+                                  okText="确定"
+                                  cancelText="取消"
+                                  onConfirm={() => handleDeletePartType(partType.id)}
+                                >
                                   <button className="text-red-600 hover:text-red-900" disabled={loading}>
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -1085,12 +1080,13 @@ export default function OptionsManagement() {
                     </table>
                   </div>
                 )}
+
                 {activeTab === 'partTypes' && editingPartType && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">{editingPartType.id ? '编辑料型' : '新增料型'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">料型名称 *</label>
                         <input type="text" value={editingPartType.name} onChange={(e) => setEditingPartType({ ...editingPartType, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入料型名称" />
                       </div>
                       <div>
@@ -1101,10 +1097,6 @@ export default function OptionsManagement() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">体积公式</label>
                         <input type="text" value={editingPartType.volume_formula} onChange={(e) => setEditingPartType({ ...editingPartType, volume_formula: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入体积公式" />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">输入格式</label>
-                        <input type="text" value={editingPartType.input_format} onChange={(e) => setEditingPartType({ ...editingPartType, input_format: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入输入格式" />
-                      </div>
                     </div>
                     <div className="mt-4 flex justify-end space-x-3">
                       <button onClick={() => setEditingPartType(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -1113,122 +1105,10 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
-                {/* 材料来源管理 */}
+                {/* 材料来源 */}
                 {activeTab === 'materialSources' && !editingMaterialSource && (
                   <div>
-                    {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item, id: String(item.id) }), handleSaveMaterialSource, () => setEditingMaterialSource(null), (id: string) => handleDeleteMaterialSource(id))}
-                  </div>
-                )}
-
-                {/* 设备管理 */}
-                {activeTab === 'devices' && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时长(分钟)</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {devices.map((d) => (
-                          <tr key={d.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{d.device_no}</td>
-                            <td className="px-6 py-4 text-sm text-gray-500">{d.device_name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-500">{typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingDevice({ ...d })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <Popconfirm title="确定要删除这个设备吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(d.id)}>
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </Popconfirm>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {editingDevice && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingDevice.id ? '编辑设备' : '新增设备'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">设备编号 *</label>
-                            <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备编号" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">设备名称 *</label>
-                            <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备名称" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时长(分钟)</label>
-                            <input type="number" min={0} value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value === '' ? null : Number(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="如：120" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingDevice(null)} className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveDevice} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 维修选项管理 */}
-                {activeTab === 'fixedOptions' && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {fixedOptions.map((fo) => (
-                          <tr key={fo.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{fo.option_value}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${fo.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{fo.is_active ? '启用' : '禁用'}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingFixedOption({ ...fo })} className="text-blue-600 hover:text-blue-900" disabled={loading}>编辑</button>
-                                <Popconfirm title="确定要删除这个选项吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(fo.id)}>
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>删除</button>
-                                </Popconfirm>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {editingFixedOption && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingFixedOption.id ? '编辑选项' : '新增选项'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
-                            <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="如：维修-设备" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">启用</label>
-                            <label className="flex items-center"><input type="checkbox" checked={editingFixedOption.is_active} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" /><span className="ml-2 text-sm">启用此选项</span></label>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
+                    {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
                   </div>
                 )}
                 {activeTab === 'materialSources' && editingMaterialSource && (
@@ -1236,8 +1116,12 @@ export default function OptionsManagement() {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">{editingMaterialSource.id ? '编辑材料来源' : '新增材料来源'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">材料来源名称 *</label>
                         <input type="text" value={editingMaterialSource.name} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入材料来源名称" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                        <input type="text" value={editingMaterialSource.description} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, description: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入描述" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
@@ -1253,36 +1137,155 @@ export default function OptionsManagement() {
                     </div>
                   </div>
                 )}
+
+                {/* 设备管理 */}
+                {activeTab === 'devices' && !editingDevice && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {devices.map((device) => (
+                          <tr key={device.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {device.device_no}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {device.device_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {device.max_aux_minutes ?? '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <Popconfirm
+                                  title={`确定要删除"${device.device_name}"吗？`}
+                                  okText="确定"
+                                  cancelText="取消"
+                                  onConfirm={() => handleDeleteDevice(device.id)}
+                                >
+                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeTab === 'devices' && editingDevice && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingDevice.id ? '编辑设备' : '新增设备'}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">设备编号 *</label>
+                        <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备编号" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">设备名称 *</label>
+                        <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备名称" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时间(分钟)</label>
+                        <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入最大辅助时间" />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-3">
+                      <button onClick={() => setEditingDevice(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                      <button onClick={handleSaveDevice} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 维修选项管理 */}
+                {activeTab === 'fixedOptions' && !editingFixedOption && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {fixedOptions.map((option) => (
+                          <tr key={option.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {option.option_value}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {option.option_label}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {option.is_active ? '启用' : '禁用'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <Popconfirm
+                                  title={`确定要删除"${option.option_label}"吗？`}
+                                  okText="确定"
+                                  cancelText="取消"
+                                  onConfirm={() => handleDeleteFixedOption(option.id)}
+                                >
+                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeTab === 'fixedOptions' && editingFixedOption && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingFixedOption.id ? '编辑维修选项' : '新增维修选项'}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
+                        <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <label className="flex items-center">
+                          <input type="checkbox" checked={editingFixedOption.is_active} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                          <span className="ml-2 text-sm">启用</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-3">
+                      <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                      <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
-          </div>
-          
-          {/* 操作按钮 - 表格下方 */}
-          <div className="mt-6 flex justify-end items-center space-x-3">
-            <button
-              onClick={
-                activeTab === 'units' ? handleCreateUnit : 
-                activeTab === 'categories' ? handleCreateCategory : 
-                activeTab === 'materials' ? handleCreateMaterial :
-                activeTab === 'partTypes' ? handleCreatePartType :
-                activeTab === 'devices' ? handleCreateDevice :
-                activeTab === 'fixedOptions' ? handleCreateFixedOption :
-                handleCreateMaterialSource
-              }
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              disabled={loading || !!editingUnit || !!editingCategory || !!editingMaterial || !!editingPartType || !!editingMaterialSource}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              新增{
-                activeTab === 'units' ? '投产单位' : 
-                activeTab === 'categories' ? '工装类别' : 
-                activeTab === 'materials' ? '材料' :
-                activeTab === 'partTypes' ? '料型' :
-                activeTab === 'devices' ? '设备' :
-                activeTab === 'fixedOptions' ? '维修选项' :
-                '材料来源'
-              }
-            </button>
           </div>
         </div>
       </div>
