@@ -176,16 +176,34 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         console.log('Fetching devices from Supabase')
-        const { data, error } = await supabase.from('devices').select('*')
-        console.log('devices result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        try {
+          // 添加3秒超时限制
+          const { data, error } = await Promise.race([
+            supabase.from('devices').select('*'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
+          ])
+          console.log('devices result:', { data, error })
+          return jsonResponse({ data: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching devices:', e)
+          return jsonResponse({ data: [] })
+        }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         console.log('Fetching fixed_inventory_options from Supabase')
-        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        console.log('fixed_inventory_options result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        try {
+          // 添加3秒超时限制
+          const { data, error } = await Promise.race([
+            supabase.from('fixed_inventory_options').select('*'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase request timed out')), 3000))
+          ])
+          console.log('fixed_inventory_options result:', { data, error })
+          return jsonResponse({ data: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching fixed_inventory_options:', e)
+          return jsonResponse({ data: [] })
+        }
       }
 
     }
