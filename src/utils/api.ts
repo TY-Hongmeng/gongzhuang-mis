@@ -173,20 +173,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         console.log('part_types result:', { data, error })
         return jsonResponse({ data: error ? [] : (data || []) })
       }
-      // Devices
-      if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase')
-        const { data, error } = await supabase.from('devices').select('*')
-        console.log('devices result:', { data, error })
-        return jsonResponse({ success: true, items: error ? [] : (data || []) })
-      }
-      // Fixed inventory options
-      if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase')
-        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        console.log('fixed_inventory_options result:', { data, error })
-        return jsonResponse({ success: true, items: error ? [] : (data || []) })
-      }
+
     }
     
     // 移除模拟数据，确保所有请求都从数据库获取数据
