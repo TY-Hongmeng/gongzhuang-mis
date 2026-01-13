@@ -179,28 +179,42 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        const { data, error } = await supabase.from('devices').select('*')
-        if (error) return jsonResponse({ success: false, error: error.message })
-        const items = (data || []).map((d: any) => ({
-          id: String(d.id ?? d.uuid ?? ''),
-          device_no: String(d.device_no ?? ''),
-          device_name: String(d.device_name ?? ''),
-          max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
-          is_active: typeof d.is_active === 'boolean' ? d.is_active : true
-        }))
-        return jsonResponse({ success: true, items })
+        try {
+          const { data, error } = await supabase
+            .from('devices')
+            .select('id,device_no,device_name,max_aux_minutes,is_active')
+            .order('device_no')
+          if (error) return jsonResponse({ success: false, error: error.message })
+          const items = (data || []).map((d: any) => ({
+            id: String(d.id ?? d.uuid ?? ''),
+            device_no: String(d.device_no ?? ''),
+            device_name: String(d.device_name ?? ''),
+            max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
+            is_active: typeof d.is_active === 'boolean' ? d.is_active : true
+          }))
+          return jsonResponse({ success: true, items })
+        } catch (e: any) {
+          return jsonResponse({ success: true, items: [] })
+        }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        if (error) return jsonResponse({ success: false, error: error.message })
-        const items = (data || []).map((x: any) => ({
-          id: String(x.id ?? x.uuid ?? ''),
-          option_value: String(x.option_value ?? ''),
-          option_label: String(x.option_label ?? ''),
-          is_active: Boolean(x.is_active ?? true)
-        }))
-        return jsonResponse({ success: true, items })
+        try {
+          const { data, error } = await supabase
+            .from('fixed_inventory_options')
+            .select('id,option_value,option_label,is_active')
+            .order('created_at', { ascending: true })
+          if (error) return jsonResponse({ success: false, error: error.message })
+          const items = (data || []).map((x: any) => ({
+            id: String(x.id ?? x.uuid ?? ''),
+            option_value: String(x.option_value ?? ''),
+            option_label: String(x.option_label ?? ''),
+            is_active: Boolean(x.is_active ?? true)
+          }))
+          return jsonResponse({ success: true, items })
+        } catch (e: any) {
+          return jsonResponse({ success: true, items: [] })
+        }
       }
 
     }
