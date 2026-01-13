@@ -181,11 +181,13 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true, items: [] })
         }
         try {
+          console.log('Starting devices query...')
           const { data, error } = await supabase.from('devices').select('*')
           console.log('devices result:', { data, error })
           return jsonResponse({ success: true, items: error ? [] : (data || []) })
         } catch (e: any) {
           console.error('Error fetching devices:', e)
+          console.error('Error stack:', e?.stack)
           return jsonResponse({ success: true, items: [] })
         }
       }
@@ -197,11 +199,13 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true, items: [] })
         }
         try {
+          console.log('Starting fixed_inventory_options query...')
           const { data, error } = await supabase.from('fixed_inventory_options').select('*')
           console.log('fixed_inventory_options result:', { data, error })
           return jsonResponse({ success: true, items: error ? [] : (data || []) })
         } catch (e: any) {
           console.error('Error fetching fixed_inventory_options:', e)
+          console.error('Error stack:', e?.stack)
           return jsonResponse({ success: true, items: [] })
         }
       }
