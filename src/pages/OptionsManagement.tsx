@@ -848,6 +848,17 @@ export default function OptionsManagement() {
                 {/* 投产单位 */}
                 {activeTab === 'units' && !editingUnit && (
                   <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateUnit} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增投产单位
+                      </button>
+                    </div>
                     {renderTable(productionUnits, editingUnit, (item) => setEditingUnit({ ...item }), handleSaveUnit, () => setEditingUnit(null), handleDeleteUnit)}
                   </div>
                 )}
@@ -877,6 +888,17 @@ export default function OptionsManagement() {
                 {/* 工装类别 */}
                 {activeTab === 'categories' && !editingCategory && (
                   <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateCategory} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增工装类别
+                      </button>
+                    </div>
                     {renderTable(toolingCategories, editingCategory, (item) => setEditingCategory({ ...item }), handleSaveCategory, () => setEditingCategory(null), handleDeleteCategory)}
                   </div>
                 )}
@@ -1029,57 +1051,70 @@ export default function OptionsManagement() {
 
                 {/* 料型管理 */}
                 {activeTab === 'partTypes' && !editingPartType && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {partTypes.map((partType) => (
-                          <tr key={partType.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {partType.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {partType.description || '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {partType.volume_formula || '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
-                                {partType.is_active ? '启用' : '禁用'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <Popconfirm
-                                  title={`确定要删除"${partType.name}"吗？`}
-                                  okText="确定"
-                                  cancelText="取消"
-                                  onConfirm={() => handleDeletePartType(partType.id)}
-                                >
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </Popconfirm>
-                              </div>
-                            </td>
+                  <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreatePartType} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增料型
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {partTypes.map((partType) => (
+                            <tr key={partType.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {partType.name}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {partType.description || '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {partType.volume_formula || '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {partType.is_active ? '启用' : '禁用'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm
+                                    title={`确定要删除"${partType.name}"吗？`}
+                                    okText="确定"
+                                    cancelText="取消"
+                                    onConfirm={() => handleDeletePartType(partType.id)}
+                                  >
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
@@ -1110,6 +1145,17 @@ export default function OptionsManagement() {
                 {/* 材料来源 */}
                 {activeTab === 'materialSources' && !editingMaterialSource && (
                   <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateMaterialSource} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增材料来源
+                      </button>
+                    </div>
                     {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
                   </div>
                 )}
@@ -1142,49 +1188,62 @@ export default function OptionsManagement() {
 
                 {/* 设备管理 */}
                 {activeTab === 'devices' && !editingDevice && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {devices.map((device) => (
-                          <tr key={device.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {device.device_no}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {device.device_name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {device.max_aux_minutes ?? '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <Popconfirm
-                                  title={`确定要删除"${device.device_name}"吗？`}
-                                  okText="确定"
-                                  cancelText="取消"
-                                  onConfirm={() => handleDeleteDevice(device.id)}
-                                >
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </Popconfirm>
-                              </div>
-                            </td>
+                  <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateDevice} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增设备
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {devices.map((device) => (
+                            <tr key={device.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {device.device_no}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {device.device_name}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {device.max_aux_minutes ?? '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm
+                                    title={`确定要删除"${device.device_name}"吗？`}
+                                    okText="确定"
+                                    cancelText="取消"
+                                    onConfirm={() => handleDeleteDevice(device.id)}
+                                  >
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
@@ -1214,53 +1273,64 @@ export default function OptionsManagement() {
 
                 {/* 维修选项管理 */}
                 {activeTab === 'fixedOptions' && !editingFixedOption && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {fixedOptions.map((option) => (
-                          <tr key={option.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {option.option_value}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {option.option_label}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
-                                {option.is_active ? '启用' : '禁用'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <Popconfirm
-                                  title={`确定要删除"${option.option_label}"吗？`}
-                                  okText="确定"
-                                  cancelText="取消"
-                                  onConfirm={() => handleDeleteFixedOption(option.id)}
-                                >
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </Popconfirm>
-                              </div>
-                            </td>
+                  <div>
+                    {/* 新增按钮 */}
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateFixedOption} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增维修选项
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {fixedOptions.map((option) => (
+                            <tr key={option.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {option.option_value}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {option.option_label}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {option.is_active ? '启用' : '禁用'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm
+                                    title={`确定要删除"${option.option_label}"吗？`}
+                                    okText="确定"
+                                    cancelText="取消"
+                                    onConfirm={() => handleDeleteFixedOption(option.id)}
+                                  >
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
