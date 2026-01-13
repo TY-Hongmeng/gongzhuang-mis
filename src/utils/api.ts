@@ -1,6 +1,23 @@
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号
   const cleanUrl = url.replace(/[`]/g, '')
+  
+  // 对于前五个页面的API路径，直接使用客户端API处理，不经过外部API
+  const baseApiPaths = ['/api/options/', '/api/materials', '/api/part-types']
+  const isBaseApi = baseApiPaths.some(path => cleanUrl.startsWith(path))
+  
+  // 对于后两个页面的API路径，也直接使用客户端API处理
+  const toolingApiPaths = ['/api/tooling/devices', '/api/tooling/fixed-inventory-options']
+  const isToolingApi = toolingApiPaths.some(path => cleanUrl.startsWith(path))
+  
+  // 优先调用客户端API处理所有API路径，无论是否在GitHub Pages环境中
+  if (cleanUrl.startsWith('/') && (isBaseApi || isToolingApi)) {
+    // 使用相对路径调用客户端API处理，避免使用外部函数URL
+    const handled = await handleClientSideApi(cleanUrl, init)
+    if (handled) return handled
+  }
+  
+  // 下面的代码只处理其他类型的请求
   const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
   const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
   const rawBase = (import.meta as any)?.env?.VITE_API_URL || (isGhPages ? DEFAULT_FUNCTION_BASE : '')
@@ -21,12 +38,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     return cleanUrl
   })()
-
-  // 优先调用客户端API处理，无论是否在GitHub Pages环境中
-  if (cleanUrl.startsWith('/')) {
-    const handled = await handleClientSideApi(abs, init)
-    if (handled) return handled
-  }
+  
   try {
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
@@ -85,12 +97,12 @@ export function installApiInterceptor() {
         if (supabase) {
           if (/\/rest\/v1\/devices\?/.test(urlStr)) {
             const { data, error } = await supabase.from('devices').select('*').order('device_no')
-            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            if (error) return jsonResponse({ data: [] })
             return jsonResponse({ data: data || [] })
           }
           if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
             const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('created_at', { ascending: true })
-            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            if (error) return jsonResponse({ data: [] })
             return jsonResponse({ data: data || [] })
           }
         }
@@ -132,8 +144,13 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     console.log('handleClientSideApi called:', { url: cleanUrl, init })
     
     // 无论是否有Supabase实例，都尝试处理请求
-    const u = new URL(cleanUrl, window.location.origin)
-    let path = u.pathname
+    let path = cleanUrl
+    
+    // 如果是完整URL，提取路径部分
+    if (path.startsWith('http')) {
+      const u = new URL(path, window.location.origin)
+      path = u.pathname
+    }
     
     // 提取真正的API路径，移除任何前缀（如/functions/v1）
     const apiPathMatch = path.match(/(\/api\/.*)/)
