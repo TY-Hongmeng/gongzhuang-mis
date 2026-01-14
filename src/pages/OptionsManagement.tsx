@@ -361,14 +361,15 @@ export default function OptionsManagement() {
     }
     setLoading(true);
     try {
-      const url = editingDevice.id ? `/api/tooling/devices/${editingDevice.id}` : '/api/tooling/devices';
-      const method = editingDevice.id ? 'PUT' : 'POST';
+      const isUpdate = Boolean(editingDevice.id)
+      const url = isUpdate ? '/api/tooling/devices/update' : '/api/tooling/devices'
       const response = await fetchWithFallback(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          device_no: editingDevice.device_no.trim(), 
-          device_name: editingDevice.device_name.trim(), 
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          id: isUpdate ? String(editingDevice.id) : undefined,
+          device_no: editingDevice.device_no.trim(),
+          device_name: editingDevice.device_name.trim(),
           max_aux_minutes: (editingDevice.max_aux_minutes === '' || editingDevice.max_aux_minutes === undefined) ? null : Number(editingDevice.max_aux_minutes)
         })
       });
@@ -386,7 +387,7 @@ export default function OptionsManagement() {
   const handleDeleteDevice = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetchWithFallback(`/api/tooling/devices/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback('/api/tooling/devices/delete', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id }) });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('devices');
     } catch (err) {
@@ -403,12 +404,12 @@ export default function OptionsManagement() {
     }
     setLoading(true);
     try {
-      const url = editingFixedOption.id ? `/api/tooling/fixed-inventory-options/${editingFixedOption.id}` : '/api/tooling/fixed-inventory-options';
-      const method = editingFixedOption.id ? 'PUT' : 'POST';
+      const isUpdate = Boolean(editingFixedOption.id)
+      const url = isUpdate ? '/api/tooling/fixed-inventory-options/update' : '/api/tooling/fixed-inventory-options'
       const response = await fetchWithFallback(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_label.trim(), is_active: Boolean(editingFixedOption.is_active) })
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ id: isUpdate ? String(editingFixedOption.id) : undefined, option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_label.trim(), is_active: Boolean(editingFixedOption.is_active) })
       });
       if (!response.ok) throw new Error('保存失败');
       await response.json();
@@ -424,7 +425,7 @@ export default function OptionsManagement() {
   const handleDeleteFixedOption = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetchWithFallback(`/api/tooling/fixed-inventory-options/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback('/api/tooling/fixed-inventory-options/delete', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id }) });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('fixedOptions');
     } catch (err) {

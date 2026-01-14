@@ -236,15 +236,30 @@ serve(async (req) => {
 
   if (path === "/tooling/devices" && req.method === "GET") {
     const { data, error } = await supabase.from("devices").select("*").order("created_at", { ascending: true })
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/tooling/devices" && req.method === "POST") {
     const body = await json(req)
     const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
     const { data, error } = await supabase.from("devices").insert(payload).select("*").single()
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, item: data }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, item: data }, { headers: baseHeaders })
+  }
+  if (path === "/tooling/devices/update" && req.method === "POST") {
+    const body = await json(req)
+    const id = String(body.id || "")
+    const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
+    const { error } = await supabase.from("devices").update(payload).eq("id", id)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
+  }
+  if (path === "/tooling/devices/delete" && req.method === "POST") {
+    const body = await json(req)
+    const id = String(body.id || "")
+    const { error } = await supabase.from("devices").delete().eq("id", id)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
   const devMatch = path.match(/^\/tooling\/devices\/([^\/]+)$/)
   if (devMatch && req.method === "PUT") {
@@ -252,27 +267,42 @@ serve(async (req) => {
     const body = await json(req)
     const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
     const { error } = await supabase.from("devices").update(payload).eq("id", id)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (devMatch && req.method === "DELETE") {
     const id = devMatch[1]
     const { error } = await supabase.from("devices").delete().eq("id", id)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   if (path === "/tooling/fixed-inventory-options" && req.method === "GET") {
     const { data, error } = await supabase.from("fixed_inventory_options").select("*").order("created_at", { ascending: true })
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/tooling/fixed-inventory-options" && req.method === "POST") {
     const body = await json(req)
     const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
     const { data, error } = await supabase.from("fixed_inventory_options").insert(payload).select("*").single()
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, item: data }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, item: data }, { headers: baseHeaders })
+  }
+  if (path === "/tooling/fixed-inventory-options/update" && req.method === "POST") {
+    const body = await json(req)
+    const id = String(body.id || "")
+    const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
+    const { error } = await supabase.from("fixed_inventory_options").update(payload).eq("id", id)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
+  }
+  if (path === "/tooling/fixed-inventory-options/delete" && req.method === "POST") {
+    const body = await json(req)
+    const id = String(body.id || "")
+    const { error } = await supabase.from("fixed_inventory_options").delete().eq("id", id)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
   const fioMatch = path.match(/^\/tooling\/fixed-inventory-options\/([^\/]+)$/)
   if (fioMatch && req.method === "PUT") {
@@ -280,14 +310,14 @@ serve(async (req) => {
     const body = await json(req)
     const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
     const { error } = await supabase.from("fixed_inventory_options").update(payload).eq("id", id)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (fioMatch && req.method === "DELETE") {
     const id = fioMatch[1]
     const { error } = await supabase.from("fixed_inventory_options").delete().eq("id", id)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Tooling batch info (for responsible person mapping)
