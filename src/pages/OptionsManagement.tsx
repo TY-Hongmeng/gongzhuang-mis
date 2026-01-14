@@ -99,7 +99,7 @@ export default function OptionsManagement() {
     e.preventDefault();
     setDragOverIndex(null);
     
-    if (!draggedItem || draggedItem.originalIndex === dropIndex) {
+    if (!draggedItem) {
       setDraggedItem(null);
       return;
     }
@@ -139,11 +139,23 @@ export default function OptionsManagement() {
           return;
       }
 
-      // 重新排序数组
-      const draggedIndex = draggedItem.originalIndex;
+      // 重新排序数组（以id定位，避免原索引过期导致插入undefined）
       const newItems = [...items];
+      const draggedIndex = newItems.findIndex((x: any) => String(x.id) === String(draggedItem.id));
+      if (draggedIndex < 0) {
+        setDraggedItem(null);
+        setLoading(false);
+        return;
+      }
       const [removed] = newItems.splice(draggedIndex, 1);
-      newItems.splice(dropIndex, 0, removed);
+      if (!removed || !removed.id) {
+        // 防御性：不插入空项
+        setDraggedItem(null);
+        setLoading(false);
+        return;
+      }
+      const safeDropIndex = Math.max(0, Math.min(dropIndex, newItems.length));
+      newItems.splice(safeDropIndex, 0, removed);
       
       // 更新本地状态
       updateState(newItems);
@@ -154,7 +166,7 @@ export default function OptionsManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: draggedItem.id,
-          newIndex: dropIndex,
+          newIndex: safeDropIndex,
           oldIndex: draggedIndex
         })
       });
