@@ -839,7 +839,12 @@ export default function OptionsManagement() {
                               <div className="flex items-center space-x-6 flex-1">
                                 <h3 className="text-lg font-semibold text-gray-900 min-w-[80px]">{material.name}</h3>
                                 <p className="text-sm text-gray-600">密度: {material.density} g/cm³</p>
-                                
+                                <p className="text-sm text-gray-600">
+                                  当前价格:
+                                  <span className={`font-medium ${materialCurrentPrice[material.id]?.unit_price ? 'text-green-600' : 'text-red-500'}`}>
+                                    ¥{materialCurrentPrice[material.id]?.unit_price ? Number(materialCurrentPrice[material.id].unit_price).toFixed(2) : '0.00'} 元/kg
+                                  </span>
+                                </p>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
@@ -1075,6 +1080,9 @@ export default function OptionsManagement() {
                         新增设备
                       </button>
                     </div>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {devices.length} 台设备</p>
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -1191,6 +1199,9 @@ export default function OptionsManagement() {
                         <Plus className="w-4 h-4 mr-2" />
                         新增维修选项
                       </button>
+                    </div>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {fixedOptions.length} 个选项</p>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
