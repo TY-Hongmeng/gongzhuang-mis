@@ -182,8 +182,8 @@ export default function OptionsManagement() {
     setError(null);
     console.log(`fetchTabData called for tab: ${tab}`);
     try {
-      // 超时控制：每个请求最多等待10秒
-      const TIMEOUT = 10000;
+      // 超时控制：每个请求最多等待30秒，确保有足够时间获取数据
+      const TIMEOUT = 30000;
 
       // 创建带超时的fetch请求
       const createTimedFetch = (url: string, name: string): Promise<any> => {
