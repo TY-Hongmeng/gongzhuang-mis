@@ -83,44 +83,16 @@ export const useAuthStore = create<AuthState>()(
         };
 
         try {
-          const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-          if (!isGhPages) {
-            const response = await fetchWithTimeout('/api/auth/login');
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success) {
-                set({ user: data.user, isAuthenticated: true, isLoading: false });
-                return { success: true, message: '登录成功' };
-              } else {
-                set({ isLoading: false });
-                return { success: false, message: data.error || '登录失败' };
-              }
-            }
-          }
-          
-          if (supabase) {
-            const { data: userRow, error } = await supabase
-              .from('users')
-              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
-              .eq('phone', phone)
-              .single()
-            if (error || !userRow) {
+          const response = await fetchWithTimeout('/api/auth/login');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              set({ user: data.user, isAuthenticated: true, isLoading: false });
+              return { success: true, message: '登录成功' };
+            } else {
               set({ isLoading: false });
-              return { success: false, message: '用户不存在' };
+              return { success: false, message: data.error || '登录失败' };
             }
-            const { default: bcrypt } = await import('bcryptjs')
-            const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
-            if (!ok) {
-              set({ isLoading: false });
-              return { success: false, message: '密码错误' };
-            }
-            if (String((userRow as any).status) !== 'active') {
-              set({ isLoading: false });
-              return { success: false, message: '账户未激活或已被禁用' };
-            }
-            const { password_hash, ...safeUser } = (userRow as any)
-            set({ user: safeUser, isAuthenticated: true, isLoading: false });
-            return { success: true, message: '登录成功' };
           }
           set({ isLoading: false });
           return { success: false, message: '登录失败' };
@@ -139,7 +111,7 @@ export const useAuthStore = create<AuthState>()(
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
-            const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
+            const res = await fetchWithFallback(url, { method: 'POST', headers, body, signal: controller.signal });
             return res;
           } finally {
             clearTimeout(timer);
@@ -173,7 +145,7 @@ export const useAuthStore = create<AuthState>()(
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
-            const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
+            const res = await fetchWithFallback(url, { method: 'POST', headers, body, signal: controller.signal });
             return res;
           } finally {
             clearTimeout(timer);
