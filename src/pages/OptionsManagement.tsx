@@ -171,7 +171,13 @@ export default function OptionsManagement() {
                   const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`)
                   if (pricesRes.ok) {
                     const pricesJson = await pricesRes.json()
-                    pricesMap[material.id] = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
+                    const rawArr = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
+                    pricesMap[material.id] = rawArr.map((p: any) => ({
+                      ...p,
+                      unit_price: Number(p?.unit_price ?? NaN),
+                      effective_start_date: p?.effective_start_date || null,
+                      effective_end_date: p?.effective_end_date || null
+                    }))
                   }
                 } catch (err) {
                   console.error(`获取材料 ${material.id} 的价格失败:`, err)
@@ -966,13 +972,18 @@ export default function OptionsManagement() {
                         </div>
                       )}
                       
-                      <div className="space-y-2">
-                        {(materialPrices[editingMaterial.id] || []).map((price: any) => (
+                    <div className="space-y-2">
+                      {(materialPrices[editingMaterial.id] || []).map((price: any) => {
+                        const up = Number(price?.unit_price)
+                        const upText = Number.isFinite(up) ? up.toFixed(2) : '0.00'
+                        const s = price?.effective_start_date ? String(price.effective_start_date) : '—'
+                        const e = price?.effective_end_date ? String(price.effective_end_date) : '至今'
+                        return (
                           <div key={price.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">¥{Number(price.unit_price).toFixed(2)} 元/kg</div>
+                              <div className="text-sm font-medium text-gray-900">¥{upText} 元/kg</div>
                               <div className="text-xs text-gray-500">
-                                {price.effective_start_date} 至 {price.effective_end_date || '至今'}
+                                {s} 至 {e}
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -982,8 +993,9 @@ export default function OptionsManagement() {
                               </Popconfirm>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })}
+                    </div>
                       
                       {!materialPrices[editingMaterial.id]?.length && (
                         <div className="text-center py-4 text-gray-500 text-sm">
