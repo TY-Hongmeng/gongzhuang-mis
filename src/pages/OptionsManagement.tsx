@@ -214,7 +214,27 @@ export default function OptionsManagement() {
   // 基础操作函数
   const handleCreateUnit = () => setEditingUnit({ id: null, name: '', description: '', is_active: true });
   const handleCreateCategory = () => setEditingCategory({ id: null, name: '', description: '', is_active: true });
-  const handleCreateMaterial = () => setEditingMaterial({ id: null, name: '', density: 7.850 });
+  const handleCreateMaterial = () => setEditingMaterial({ id: null, name: '', density: 7.850, unit_price: '' });
+  const handleEditMaterial = async (material: any) => {
+    setLoading(true);
+    try {
+      let unit_price: any = '';
+      const res = await fetchWithFallback(`/api/materials/${material.id}/prices`);
+      if (res.ok) {
+        const pj = await res.json();
+        const arr = Array.isArray(pj?.items) ? pj.items : (Array.isArray(pj?.data) ? pj.data : (Array.isArray(pj) ? pj : []));
+        if (arr.length) {
+          const latest = arr[arr.length - 1];
+          if (latest && Number.isFinite(Number(latest.unit_price))) unit_price = Number(latest.unit_price);
+        }
+      }
+      setEditingMaterial({ ...material, unit_price });
+    } catch {
+      setEditingMaterial({ ...material });
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleCreatePartType = () => setEditingPartType({ id: '', name: '', description: '', volume_formula: '', created_at: '', updated_at: '' });
   const handleCreateMaterialSource = () => setEditingMaterialSource({ id: null, name: '', description: '', is_active: true, created_at: '', updated_at: '' });
   const handleCreateDevice = () => setEditingDevice({ id: '', device_no: '', device_name: '' });
@@ -306,11 +326,31 @@ export default function OptionsManagement() {
       }
       const resJson = await response.json();
       const created = resJson?.item || resJson?.data || null;
+      const materialId = String(editingMaterial.id || (created?.id ?? ''));
       if (created) {
         setMaterials((prev) => [...prev, { id: String(created.id), name: String(created.name), density: Number(created.density) }]);
-      } else {
-        await fetchTabData('materials');
       }
+      // 同步当前价格（仅维护一条记录）
+      const up = Number((editingMaterial as any)?.unit_price);
+      if (materialId && Number.isFinite(up) && up > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const existing = materialCurrentPrice[materialId];
+        const payload = { unit_price: up, effective_start_date: today, effective_end_date: null };
+        try {
+          if (existing?.id) {
+            const pr = await fetch(`/api/materials/${materialId}/prices/${existing.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (pr.ok) setMaterialCurrentPrice(prev => ({ ...prev, [materialId]: { id: existing.id, unit_price: up } }));
+          } else {
+            const pr = await fetch(`/api/materials/${materialId}/prices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (pr.ok) {
+              const pj = await pr.json();
+              const newId = pj?.item?.id ? String(pj.item.id) : undefined;
+              setMaterialCurrentPrice(prev => ({ ...prev, [materialId]: { id: newId, unit_price: up } }));
+            }
+          }
+        } catch {}
+      }
+      await fetchTabData('materials');
       setEditingMaterial(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
