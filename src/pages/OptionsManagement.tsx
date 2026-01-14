@@ -76,99 +76,9 @@ export default function OptionsManagement() {
   const [editingFixedOption, setEditingFixedOption] = useState<FixedOptionItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draggedItem, setDraggedItem] = useState<any>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
 
-  // 拖拽排序函数
-  const handleDragStart = (e: React.DragEvent, item: any, index: number) => {
-    if (activeTab !== 'units') return;
-    setDraggedItem({ ...item, originalIndex: index });
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    if (activeTab !== 'units') return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverIndex(index);
-  };
-
-  const handleDragLeave = () => {
-    if (activeTab !== 'units') return;
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (activeTab !== 'units') return;
-    setDragOverIndex(null);
-    
-    if (!draggedItem) {
-      setDraggedItem(null);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // 获取当前标签页的数据和API端点
-      let items: any[] = [];
-      let endpoint = '';
-      let updateState: (items: any[]) => void = () => {};
-      
-      // 仅支持“投产单位管理”的拖拽排序
-      items = [...productionUnits];
-      endpoint = '/api/options/production-units/reorder';
-      updateState = setProductionUnits;
-
-      // 重新排序数组（以id定位，避免原索引过期导致插入undefined）
-      const newItems = [...items];
-      const draggedIndex = newItems.findIndex((x: any) => String(x.id) === String(draggedItem.id));
-      if (draggedIndex < 0) {
-        setDraggedItem(null);
-        setLoading(false);
-        return;
-      }
-      const [removed] = newItems.splice(draggedIndex, 1);
-      if (!removed || !removed.id) {
-        // 防御性：不插入空项
-        setDraggedItem(null);
-        setLoading(false);
-        return;
-      }
-      const safeDropIndex = Math.max(0, Math.min(dropIndex, newItems.length));
-      newItems.splice(safeDropIndex, 0, removed);
-      
-      // 更新本地状态
-      updateState(newItems);
-      
-      // 发送重新排序请求到后端
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemId: draggedItem.id,
-          newIndex: safeDropIndex,
-          oldIndex: draggedIndex
-        })
-      });
-      
-      if (!response.ok) {
-        // 如果后端更新失败，恢复原始状态
-        updateState(items);
-        throw new Error('排序更新失败');
-      }
-      
-      // 重新获取数据以确保一致性
-      await fetchTabData(activeTab);
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '排序更新失败');
-    } finally {
-      setDraggedItem(null);
-      setLoading(false);
-    }
-  };
+  
 
   // 获取单个页面的数据
   const fetchTabData = async (tab: string) => {
@@ -688,25 +598,12 @@ export default function OptionsManagement() {
           {items.map((item, index) => (
             <tr 
               key={item.id} 
-              draggable={activeTab === 'units' && !editingItem}
-              onDragStart={(e) => handleDragStart(e, item, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, index)}
-              className={`${
-                activeTab === 'units' && dragOverIndex === index ? 'bg-blue-50 border-blue-300' : ''
-              } ${draggedItem?.id === item.id ? 'opacity-50' : ''} transition-colors duration-200`}
+              draggable={false}
+              className={`transition-colors duration-200`}
             >
               <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {!editingItem && (
-                  activeTab === 'units' ? (
-                    <div className="flex items-center cursor-move">
-                      <GripVertical className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="font-medium">{index + 1}</span>
-                    </div>
-                  ) : (
-                    <span className="font-medium">{index + 1}</span>
-                  )
+                  <span className="font-medium">{index + 1}</span>
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
