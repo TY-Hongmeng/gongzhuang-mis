@@ -95,7 +95,8 @@ export const useAuthStore = create<AuthState>()(
             }
           }
           const isDev = (import.meta as any)?.env?.MODE === 'development'
-          if (isDev && supabase) {
+          const isLocalHost = typeof window !== 'undefined' && /localhost/i.test(String(window.location?.host || ''))
+          if ((isDev || isLocalHost) && supabase) {
             const { data: userRow, error } = await supabase
               .from('users')
               .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
