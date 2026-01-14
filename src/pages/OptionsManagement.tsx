@@ -59,15 +59,15 @@ export default function OptionsManagement() {
   const [productionUnits, setProductionUnits] = useState<ProductionUnit[]>([]);
   const [toolingCategories, setToolingCategories] = useState<ToolingCategory[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [materialPrices, setMaterialPrices] = useState<Record<string, any[]>>({});
+  
   const [partTypes, setPartTypes] = useState<PartType[]>([]);
   const [materialSources, setMaterialSources] = useState<MaterialSource[]>([]);
   const [activeTab, setActiveTab] = useState<'units' | 'categories' | 'materials' | 'partTypes' | 'materialSources' | 'devices' | 'fixedOptions'>('units');
   const [editingUnit, setEditingUnit] = useState<EditableItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<EditableItem | null>(null);
   const [editingMaterial, setEditingMaterial] = useState<any | null>(null);
-  const [editingPrice, setEditingPrice] = useState<any | null>(null);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  
+  
   const [editingPartType, setEditingPartType] = useState<PartType | null>(null);
   const [editingMaterialSource, setEditingMaterialSource] = useState<MaterialSource | null>(null);
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -533,29 +533,7 @@ export default function OptionsManagement() {
     }
   };
 
-  // 计算当前价格
-  const getCurrentPrice = (materialId: string) => {
-    const prices = Array.isArray(materialPrices[materialId]) ? materialPrices[materialId] : [];
-    if (!prices.length) return null;
-    const today = new Date();
-    // 过滤出今天在有效范围内的价格
-    const inRange = prices.filter((p: any) => {
-      const start = new Date(String(p.effective_start_date));
-      const endStr = String(p.effective_end_date || '');
-      const end = endStr ? new Date(endStr) : null;
-      const startOk = start.getTime() <= today.getTime();
-      const endOk = !end || end.getTime() >= today.getTime();
-      return startOk && endOk;
-    });
-    // 若存在多个，取开始日期最近的一个
-    const sorted = inRange.sort((a: any, b: any) => new Date(a.effective_start_date).getTime() - new Date(b.effective_start_date).getTime());
-    const current = sorted[sorted.length - 1];
-    return current ? Number(current.unit_price) : null;
-  };
-  const handleCreatePrice = (materialId: string) => {
-    setSelectedMaterialId(materialId);
-    setEditingPrice({ id: null, material_id: materialId, unit_price: '', effective_start_date: new Date().toISOString().split('T')[0], effective_end_date: '' });
-  };
+  
 
   const handleEditPrice = (price: any) => {
     setSelectedMaterialId(price.material_id);
@@ -568,55 +546,7 @@ export default function OptionsManagement() {
     });
   };
 
-  const handleSavePrice = async () => {
-    const unitPrice = Number(editingPrice?.unit_price);
-    if (!editingPrice?.unit_price || isNaN(unitPrice) || unitPrice <= 0) {
-      setError('请输入有效的单价');
-      return;
-    }
-    if (!editingPrice?.effective_start_date) {
-      setError('请输入生效开始日期');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const requestData = {
-        unit_price: unitPrice,
-        effective_start_date: editingPrice.effective_start_date,
-        effective_end_date: editingPrice.effective_end_date || null
-      };
-      
-      if (editingPrice.id) {
-        const response = await fetch(`/api/materials/${editingPrice.material_id}/prices/${editingPrice.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestData)
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || '更新价格失败');
-        }
-      } else {
-        const response = await fetch(`/api/materials/${editingPrice.material_id}/prices`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestData)
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || '创建价格失败');
-        }
-      }
-      setEditingPrice(null);
-      await fetchTabData('materials');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '保存价格失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const handleDeletePrice = async (materialId: string, priceId: string) => {
     setLoading(true);
@@ -888,7 +818,6 @@ export default function OptionsManagement() {
                       <p className="text-blue-800 font-medium">共有 {materials.length} 种材料</p>
                     </div>
                     {materials.map((material, index) => {
-                      const currentPrice = getCurrentPrice(material.id);
                       return (
                         <div key={material.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                           <div className="flex items-center justify-between">
@@ -938,71 +867,7 @@ export default function OptionsManagement() {
                       </div>
                     </div>
                     
-                    {/* 价格历史管理 */}
-                    <div className="mt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-md font-medium text-gray-900">价格历史</h4>
-                        <button onClick={() => handleCreatePrice(editingMaterial.id)} className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700" disabled={loading}>
-                          <Plus className="w-4 h-4 mr-1" />
-                          添加新价格
-                        </button>
-                      </div>
-                      
-                      {editingPrice && (
-                        <div className="mb-4 p-3 bg-white rounded-lg border">
-                          <h5 className="text-sm font-medium text-gray-900 mb-2">{editingPrice.id ? '编辑价格' : '新增价格'}</h5>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">单价 (元/kg) *</label>
-                              <input type="number" step="0.01" value={editingPrice.unit_price} onChange={(e) => setEditingPrice({ ...editingPrice, unit_price: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1 text-sm" placeholder="请输入单价" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">开始日期 *</label>
-                              <input type="date" value={editingPrice.effective_start_date} onChange={(e) => setEditingPrice({ ...editingPrice, effective_start_date: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1 text-sm" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">结束日期</label>
-                              <input type="date" value={editingPrice.effective_end_date} onChange={(e) => setEditingPrice({ ...editingPrice, effective_end_date: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1 text-sm" />
-                            </div>
-                          </div>
-                          <div className="mt-3 flex justify-end space-x-2">
-                            <button onClick={() => setEditingPrice(null)} className="px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                            <button onClick={handleSavePrice} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700" disabled={loading}>保存</button>
-                          </div>
-                        </div>
-                      )}
-                      
-                    <div className="space-y-2">
-                      {(materialPrices[editingMaterial.id] || []).map((price: any) => {
-                        const up = Number(price?.unit_price)
-                        const upText = Number.isFinite(up) ? up.toFixed(2) : '0.00'
-                        const s = price?.effective_start_date ? String(price.effective_start_date) : '—'
-                        const e = price?.effective_end_date ? String(price.effective_end_date) : '至今'
-                        return (
-                          <div key={price.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">¥{upText} 元/kg</div>
-                              <div className="text-xs text-gray-500">
-                                {s} 至 {e}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button onClick={() => handleEditPrice(price)} className="text-blue-600 hover:text-blue-900 text-sm" disabled={loading}>编辑</button>
-                              <Popconfirm title="确定要删除这个价格记录吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeletePrice(editingMaterial.id, price.id)}>
-                                <button className="text-red-600 hover:text-red-900 text-sm" disabled={loading}>删除</button>
-                              </Popconfirm>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                      
-                      {!materialPrices[editingMaterial.id]?.length && (
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          暂无价格记录，点击上方按钮添加第一个价格
-                        </div>
-                      )}
-                    </div>
+                    
                     
                     <div className="mt-6 flex justify-end space-x-3 pt-4 border-t">
                       <button onClick={() => setEditingMaterial(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -1011,47 +876,7 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
-                {activeTab === 'materials' && editingMaterial && (
-                  <div className="space-y-4">
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {materials.length} 种材料</p>
-                    </div>
-                    {materials.map((material, index) => {
-                      const currentPrice = getCurrentPrice(material.id);
-                      return (
-                        <div key={material.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4 flex-1">
-                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center font-semibold text-sm">
-                                {index + 1}
-                              </div>
-                              <div className="flex items-center space-x-6 flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 min-w-[80px]">{material.name}</h3>
-                                <p className="text-sm text-gray-600">密度: {material.density} g/cm³</p>
-                                <p className="text-sm text-gray-600">
-                                  当前价格:
-                                  <span className={`font-medium ${currentPrice !== null ? 'text-green-600' : 'text-red-500'}`}>
-                                    ¥{currentPrice !== null ? currentPrice.toFixed(2) : '0.00'} 元/kg
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2 ml-4">
-                              <button onClick={() => setEditingMaterial(material)} className="text-blue-600 hover:text-blue-900 p-2" title="编辑材料">
-                                <Edit2 className="w-5 h-5" />
-                              </button>
-                              <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
-                                <button className="text-red-600 hover:text-red-900 p-2" title="删除材料">
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </Popconfirm>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                
 
                 {/* 料型管理 */}
                 {activeTab === 'partTypes' && !editingPartType && (
