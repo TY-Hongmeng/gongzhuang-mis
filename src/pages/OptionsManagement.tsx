@@ -123,8 +123,11 @@ export default function OptionsManagement() {
       const getArr = (obj: any) => {
         if (Array.isArray(obj)) return obj;
         if (obj && typeof obj === 'object') {
-          if (Array.isArray(obj.data)) return obj.data;
-          if (Array.isArray(obj.items)) return obj.items;
+          const d = (obj as any).data;
+          if (Array.isArray(d)) return d;
+          if (d && typeof d === 'object' && Array.isArray((d as any).data)) return (d as any).data;
+          const items = (obj as any).items;
+          if (Array.isArray(items)) return items;
         }
         return [];
       };
