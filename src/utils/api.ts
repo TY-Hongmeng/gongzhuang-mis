@@ -412,101 +412,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
       }
 
-      // ---- Devices CRUD ----
+      // ---- Devices CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/devices')) {
-        if (method === 'POST' && path === '/api/tooling/devices') {
-          const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
-          // prefer client, fallback to REST
-          const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
-          if (error) {
-            try {
-              const resp = await fetch(`${supabaseUrl}/rest/v1/devices`, {
-                method: 'POST',
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-              })
-              const data2 = await resp.json()
-              return jsonResponse({ data: Array.isArray(data2) ? data2[0] : data2 })
-            } catch (e: any) {
-              return jsonResponse({ error: String(e?.message || 'insert failed') }, 500)
-            }
-          }
-          return jsonResponse({ data })
-        }
-        const dev = path.match(/^\/api\/tooling\/devices\/([^\/]+)$/)
-        if (dev && method === 'PUT') {
-          const id = dev[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
-          const { error } = await supabase.from('devices').update(payload).eq('id', id)
-          if (error) {
-            try {
-              const resp = await fetch(`${supabaseUrl}/rest/v1/devices?id=eq.${id}`, {
-                method: 'PATCH',
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-              })
-              if (!resp.ok) throw new Error(`PATCH failed ${resp.status}`)
-            } catch (e: any) {
-              return jsonResponse({ error: String(e?.message || 'update failed') }, 500)
-            }
-          }
-          return jsonResponse({ data: { success: true } })
-        }
-        if (dev && method === 'DELETE') {
-          const id = dev[1]
-          const { error } = await supabase.from('devices').delete().eq('id', id)
-          if (error) {
-            try {
-              const resp = await fetch(`${supabaseUrl}/rest/v1/devices?id=eq.${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`
-                }
-              })
-              if (!resp.ok) throw new Error(`DELETE failed ${resp.status}`)
-            } catch (e: any) {
-              return jsonResponse({ error: String(e?.message || 'delete failed') }, 500)
-            }
-          }
-          return jsonResponse({ data: { success: true } })
-        }
+        if (method !== 'GET') return null
       }
 
-      // ---- Fixed inventory options CRUD ----
+      // ---- Fixed inventory options CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/fixed-inventory-options')) {
-        if (method === 'POST' && path === '/api/tooling/fixed-inventory-options') {
-          const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
-          const { data, error } = await supabase.from('fixed_inventory_options').insert(payload).select('*').single()
-          if (error) return jsonResponse({ error: error.message }, 500)
-          return jsonResponse({ data })
-        }
-        const fio = path.match(/^\/api\/tooling\/fixed-inventory-options\/([^\/]+)$/)
-        if (fio && method === 'PUT') {
-          const id = fio[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
-          const { error } = await supabase.from('fixed_inventory_options').update(payload).eq('id', id)
-          if (error) return jsonResponse({ error: error.message }, 500)
-          return jsonResponse({ data: { success: true } })
-        }
-        if (fio && method === 'DELETE') {
-          const id = fio[1]
-          const { error } = await supabase.from('fixed_inventory_options').delete().eq('id', id)
-          if (error) return jsonResponse({ error: error.message }, 500)
-          return jsonResponse({ data: { success: true } })
-        }
+        if (method !== 'GET') return null
       }
       // Options & meta
       if (method === 'GET' && path.startsWith('/api/options/production-units')) {
