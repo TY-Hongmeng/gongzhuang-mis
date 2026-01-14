@@ -96,17 +96,35 @@ export function installApiInterceptor() {
         let urlStr = cleanUrl
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
-        // handle devices and fixed_inventory_options via supabase-js to avoid REST 400
-        if (supabase) {
-          if (/\/rest\/v1\/devices\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('devices').select('*')
-            if (error) return jsonResponse({ data: [] })
+        // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
+        if (/\/rest\/v1\/devices\?/.test(urlStr)) {
+          // 直接调用REST API获取设备数据
+          try {
+            const response = await fetch(urlStr.replace(/\?.*/, ''), {
+              headers: {
+                'apikey': anon,
+                'Authorization': `Bearer ${anon}`
+              }
+            })
+            const data = await response.json()
             return jsonResponse({ data: data || [] })
+          } catch (e) {
+            return jsonResponse({ data: [] })
           }
-          if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-            if (error) return jsonResponse({ data: [] })
+        }
+        if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
+          // 直接调用REST API获取固定库存选项数据
+          try {
+            const response = await fetch(urlStr.replace(/\?.*/, ''), {
+              headers: {
+                'apikey': anon,
+                'Authorization': `Bearer ${anon}`
+              }
+            })
+            const data = await response.json()
             return jsonResponse({ data: data || [] })
+          } catch (e) {
+            return jsonResponse({ data: [] })
           }
         }
         return await originalFetch(urlStr as any, patchedInit)
@@ -120,6 +138,10 @@ export function installApiInterceptor() {
 
 // ---------- Client-side API fallback (Supabase direct) ----------
 import { supabase } from '../lib/supabase'
+
+// Supabase配置
+const supabaseUrl = 'https://oltsiocyesbgezlrcxze.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -199,15 +221,18 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase')
+        console.log('Fetching devices from Supabase REST API')
         try {
-          // 添加超时保护，确保在5秒内返回结果
-          const { data, error } = await Promise.race([
-            supabase.from('devices').select('*'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase query timed out')), 5000))
-          ])
-          console.log('devices result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
+          // 使用直接的REST API调用，避免Supabase JS客户端可能的问题
+          const response = await fetch(`${supabaseUrl}/rest/v1/devices`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            }
+          })
+          const data = await response.json()
+          console.log('devices result:', { data })
+          return jsonResponse({ data: data || [] })
         } catch (e: any) {
           console.error('Error fetching devices:', e)
           return jsonResponse({ data: [] })
@@ -215,15 +240,18 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase')
+        console.log('Fetching fixed_inventory_options from Supabase REST API')
         try {
-          // 添加超时保护，确保在5秒内返回结果
-          const { data, error } = await Promise.race([
-            supabase.from('fixed_inventory_options').select('*'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase query timed out')), 5000))
-          ])
-          console.log('fixed_inventory_options result:', { data, error })
-          return jsonResponse({ data: error ? [] : (data || []) })
+          // 使用直接的REST API调用，避免Supabase JS客户端可能的问题
+          const response = await fetch(`${supabaseUrl}/rest/v1/fixed_inventory_options`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            }
+          })
+          const data = await response.json()
+          console.log('fixed_inventory_options result:', { data })
+          return jsonResponse({ data: data || [] })
         } catch (e: any) {
           console.error('Error fetching fixed_inventory_options:', e)
           return jsonResponse({ data: [] })
