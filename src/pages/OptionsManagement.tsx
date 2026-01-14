@@ -120,7 +120,14 @@ export default function OptionsManagement() {
         });
       };
 
-      const getArr = (obj: any) => obj && typeof obj === 'object' ? (Array.isArray(obj?.data) ? obj.data : (Array.isArray(obj?.items) ? obj.items : [])) : [];
+      const getArr = (obj: any) => {
+        if (Array.isArray(obj)) return obj;
+        if (obj && typeof obj === 'object') {
+          if (Array.isArray(obj.data)) return obj.data;
+          if (Array.isArray(obj.items)) return obj.items;
+        }
+        return [];
+      };
 
       // 根据当前标签页加载对应的数据
       switch (tab) {
