@@ -197,69 +197,16 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         console.log('🔍 Fetching devices from Supabase')
-        try {
-          // 直接获取真实数据，不使用默认数据
-          const { data, error } = await supabase
-            .from('devices')
-            .select('id,device_no,device_name,max_aux_minutes,is_active')
-            .limit(50)
-          
-          console.log('devices result:', { data, error })
-          
-          // 如果有错误，返回错误信息，不使用默认数据
-          if (error) {
-            console.error('获取devices错误:', error)
-            return jsonResponse({ success: false, error: error.message }, 500)
-          }
-          
-          // 转换数据格式，只返回真实数据
-          const items = (data || []).map((d: any) => ({
-            id: String(d.id ?? d.uuid ?? ''),
-            device_no: String(d.device_no ?? ''),
-            device_name: String(d.device_name ?? ''),
-            max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : null,
-            is_active: typeof d.is_active === 'boolean' ? d.is_active : true
-          }))
-          
-          return jsonResponse({ data: items })
-        } catch (e: any) {
-          console.error('Error fetching devices:', e)
-          // 发生异常时返回错误信息，不使用默认数据
-          return jsonResponse({ success: false, error: e.message }, 500)
-        }
+        const { data, error } = await supabase.from('devices').select('*')
+        console.log('devices result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         console.log('🔍 Fetching fixed_inventory_options from Supabase')
-        try {
-          // 直接获取真实数据，不使用默认数据
-          const { data, error } = await supabase
-            .from('fixed_inventory_options')
-            .select('id,option_value,option_label,is_active')
-            .limit(50)
-          
-          console.log('fixed_inventory_options result:', { data, error })
-          
-          // 如果有错误，返回错误信息，不使用默认数据
-          if (error) {
-            console.error('获取fixed_inventory_options错误:', error)
-            return jsonResponse({ success: false, error: error.message }, 500)
-          }
-          
-          // 转换数据格式，只返回真实数据
-          const items = (data || []).map((x: any) => ({
-            id: String(x.id ?? x.uuid ?? ''),
-            option_value: String(x.option_value ?? ''),
-            option_label: String(x.option_label ?? ''),
-            is_active: typeof x.is_active === 'boolean' ? x.is_active : true
-          }))
-          
-          return jsonResponse({ data: items })
-        } catch (e: any) {
-          console.error('Error fetching fixed_inventory_options:', e)
-          // 发生异常时返回错误信息，不使用默认数据
-          return jsonResponse({ success: false, error: e.message }, 500)
-        }
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
+        console.log('fixed_inventory_options result:', { data, error })
+        return jsonResponse({ data: error ? [] : (data || []) })
       }
 
     }
