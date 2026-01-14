@@ -344,7 +344,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
       }
 
-      // ---- Materials CRUD ----
+      // ---- Materials CRUD (single current price on materials) ----
       if (path.startsWith('/api/materials')) {
         if (method === 'GET') {
           const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: true })
@@ -352,15 +352,23 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
         if (method === 'POST' && path === '/api/materials') {
           const body = init?.body ? await new Response(init.body).json() : {}
-          const { data, error } = await supabase.from('materials').insert({ name: String(body.name || ''), density: Number(body.density || 0) }).select('*').single()
+          const payload: any = { name: String(body.name || ''), density: Number(body.density || 0) }
+          if (body.unit_price !== undefined && body.unit_price !== null && body.unit_price !== '') {
+            payload.unit_price = Number(body.unit_price)
+          }
+          const { data, error } = await supabase.from('materials').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
         }
-        const mat = path.match(/^\/api\/materials\/(.+)$/)
+        const mat = path.match(/^\/api\/materials\/([^\/]+)$/)
         if (mat && method === 'PUT') {
           const id = mat[1]
           const body = init?.body ? await new Response(init.body).json() : {}
-          const { error } = await supabase.from('materials').update({ name: String(body.name || ''), density: Number(body.density || 0) }).eq('id', id)
+          const payload: any = { name: String(body.name || ''), density: Number(body.density || 0) }
+          if (body.unit_price !== undefined && body.unit_price !== null && body.unit_price !== '') {
+            payload.unit_price = Number(body.unit_price)
+          }
+          const { error } = await supabase.from('materials').update(payload).eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
@@ -370,34 +378,29 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
-        // Materials price subresource
-        const priceList = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
-        if (priceList && method === 'GET') {
-          const material_id = priceList[1]
-          const { data, error } = await supabase
-            .from('material_prices')
-            .select('*')
-            .eq('material_id', material_id)
-            .order('effective_start_date', { ascending: true })
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, items: data || [] })
+        // Backward compatibility for old endpoints
+        const priceProxyList = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
+        if (priceProxyList && method === 'GET') {
+          const material_id = priceProxyList[1]
+          const { data } = await supabase.from('materials').select('unit_price, created_at').eq('id', material_id).single()
+          const items = data && data.unit_price != null ? [{ id: null, material_id, unit_price: data.unit_price, effective_start_date: (data.created_at || null), effective_end_date: null }] : []
+          return jsonResponse({ success: true, items })
         }
-        const priceCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
-        if (priceCreate && method === 'POST') {
-          const material_id = priceCreate[1]
+        const priceProxyCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
+        if (priceProxyCreate && method === 'POST') {
+          const material_id = priceProxyCreate[1]
           const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { material_id, unit_price: Number(body.unit_price), effective_start_date: body.effective_start_date, effective_end_date: body.effective_end_date || null }
-          const { data, error } = await supabase.from('material_prices').insert(payload).select('*').single()
+          const up = Number(body.unit_price)
+          const { error } = await supabase.from('materials').update({ unit_price: up }).eq('id', material_id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, item: data })
+          return jsonResponse({ success: true, item: { id: null, material_id, unit_price: up } })
         }
-        const priceUpdate = path.match(/^\/api\/materials\/([^\/]+)\/prices\/([^\/]+)$/)
-        if (priceUpdate && method === 'PUT') {
-          const material_id = priceUpdate[1]
-          const price_id = priceUpdate[2]
+        const priceProxyUpdate = path.match(/^\/api\/materials\/([^\/]+)\/prices\/([^\/]+)$/)
+        if (priceProxyUpdate && method === 'PUT') {
+          const material_id = priceProxyUpdate[1]
           const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { unit_price: Number(body.unit_price), effective_start_date: body.effective_start_date, effective_end_date: body.effective_end_date || null }
-          const { error } = await supabase.from('material_prices').update(payload).eq('id', price_id).eq('material_id', material_id)
+          const up = Number(body.unit_price)
+          const { error } = await supabase.from('materials').update({ unit_price: up }).eq('id', material_id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
