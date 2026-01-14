@@ -487,39 +487,25 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
-        console.log('Fetching devices from Supabase REST API')
-        try {
-          const response = await fetch(`${supabaseUrl}/rest/v1/devices?select=*&order=created_at.asc`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`
-            }
-          })
-          const data = await response.json()
-          console.log('devices result:', { data })
-          return jsonResponse({ data: data || [] })
-        } catch (e: any) {
-          console.error('Error fetching devices:', e)
+        console.log('Fetching devices from Supabase client')
+        const { data, error } = await supabase.from('devices').select('*').order('created_at', { ascending: true })
+        if (error) {
+          console.error('Error fetching devices:', error)
           return jsonResponse({ data: [] })
         }
+        console.log('devices result:', { data })
+        return jsonResponse({ data: data || [] })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
-        console.log('Fetching fixed_inventory_options from Supabase REST API')
-        try {
-          const response = await fetch(`${supabaseUrl}/rest/v1/fixed_inventory_options?select=*&order=created_at.asc`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`
-            }
-          })
-          const data = await response.json()
-          console.log('fixed_inventory_options result:', { data })
-          return jsonResponse({ data: data || [] })
-        } catch (e: any) {
-          console.error('Error fetching fixed_inventory_options:', e)
+        console.log('Fetching fixed_inventory_options from Supabase client')
+        const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('created_at', { ascending: true })
+        if (error) {
+          console.error('Error fetching fixed_inventory_options:', error)
           return jsonResponse({ data: [] })
         }
+        console.log('fixed_inventory_options result:', { data })
+        return jsonResponse({ data: data || [] })
       }
 
     }
