@@ -162,30 +162,6 @@ export default function OptionsManagement() {
           const materialsArr = getArr(matsJson);
           setMaterials(materialsArr);
           console.log('materials:', matsJson);
-          // 异步加载每个材料的价格历史（不阻塞页面 loading）
-          ;(async () => {
-            const pricesMap: Record<string, any[]> = {};
-            await Promise.allSettled(
-              materialsArr.map(async (material: any) => {
-                try {
-                  const pricesRes = await fetchWithFallback(`/api/materials/${material.id}/prices`)
-                  if (pricesRes.ok) {
-                    const pricesJson = await pricesRes.json()
-                    const rawArr = Array.isArray(pricesJson?.data) ? pricesJson.data : (Array.isArray(pricesJson?.items) ? pricesJson.items : (Array.isArray(pricesJson) ? pricesJson : []))
-                    pricesMap[material.id] = rawArr.map((p: any) => ({
-                      ...p,
-                      unit_price: Number(p?.unit_price ?? NaN),
-                      effective_start_date: p?.effective_start_date || null,
-                      effective_end_date: p?.effective_end_date || null
-                    }))
-                  }
-                } catch (err) {
-                  console.error(`获取材料 ${material.id} 的价格失败:`, err)
-                }
-              })
-            )
-            setMaterialPrices(pricesMap)
-          })()
           break;
       }
     } catch (err) {
@@ -828,12 +804,7 @@ export default function OptionsManagement() {
                               <div className="flex items-center space-x-6 flex-1">
                                 <h3 className="text-lg font-semibold text-gray-900 min-w-[80px]">{material.name}</h3>
                                 <p className="text-sm text-gray-600">密度: {material.density} g/cm³</p>
-                                <p className="text-sm text-gray-600">
-                                  当前价格: 
-                                  <span className={`font-medium ${currentPrice !== null ? 'text-green-600' : 'text-red-500'}`}>
-                                    ¥{currentPrice !== null ? currentPrice.toFixed(2) : '0.00'} 元/kg
-                                  </span>
-                                </p>
+                                
                               </div>
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
