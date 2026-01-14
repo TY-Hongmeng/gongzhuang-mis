@@ -193,8 +193,8 @@ export default function OptionsManagement() {
   const handleEditMaterial = (material: any) => setEditingMaterial({ ...material });
   const handleCreatePartType = () => setEditingPartType({ id: '', name: '', description: '', volume_formula: '', created_at: '', updated_at: '' });
   const handleCreateMaterialSource = () => setEditingMaterialSource({ id: null, name: '', description: '', is_active: true, created_at: '', updated_at: '' });
-  const handleCreateDevice = () => setEditingDevice({ id: '', device_no: '', device_name: '' });
-  const handleCreateFixedOption = () => setEditingFixedOption({ id: '', option_value: '', option_label: '', is_active: true });
+  const handleCreateDevice = () => setEditingDevice({ id: null as any, device_no: '', device_name: '', max_aux_minutes: null } as any);
+  const handleCreateFixedOption = () => setEditingFixedOption({ id: null as any, option_value: '', option_label: '', is_active: true } as any);
 
   const handleEditPartType = (partType: any) => setEditingPartType({ ...partType });
 
@@ -408,16 +408,11 @@ export default function OptionsManagement() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_value.trim(), is_active: editingFixedOption.is_active })
+        body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_value.trim(), is_active: Boolean(editingFixedOption.is_active) })
       });
       if (!response.ok) throw new Error('保存失败');
-      const resJson = await response.json();
-      const created = resJson?.item || resJson?.data || null;
-      if (created) {
-        setFixedOptions((prev) => [...prev, { id: String(created.id), option_value: String(created.option_value), option_label: String(created.option_label), is_active: Boolean(created.is_active) }]);
-      } else {
-        await fetchTabData('fixedOptions');
-      }
+      await response.json();
+      await fetchTabData('fixedOptions');
       setEditingFixedOption(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
