@@ -185,10 +185,51 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     
     console.log('Extracted API path:', path)
     const method = (init?.method || 'GET').toUpperCase()
+    if (method === 'OPTIONS') {
+      return jsonResponse({ success: true })
+    }
     
     // 如果Supabase可用，优先从Supabase获取数据
       if (supabase) {
       
+      // ---- Production units CRUD ----
+      if (path.startsWith('/api/options/production-units')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase.from('production_units').select('*').order('sort_order', { ascending: true })
+          return jsonResponse({ data: error ? [] : (data || []) })
+        }
+        if (method === 'POST') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), sort_order: Number(body.sort_order ?? 0) }
+          const { data, error } = await supabase.from('production_units').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const pu = path.match(/^\/api\/options\/production-units\/(\d+)$/)
+        if (pu && method === 'PUT') {
+          const id = Number(pu[1])
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { name: String(body.name || ''), is_active: Boolean(body.is_active ?? true) }
+          const { error } = await supabase.from('production_units').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (pu && method === 'DELETE') {
+          const id = Number(pu[1])
+          const { error } = await supabase.from('production_units').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path.endsWith('/reorder')) {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const itemId = Number(body.itemId)
+          const newIndex = Number(body.newIndex)
+          const { error } = await supabase.from('production_units').update({ sort_order: newIndex + 1 }).eq('id', itemId)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
+
       // ---- Tooling categories CRUD ----
       if (path.startsWith('/api/options/tooling-categories')) {
         if (method === 'GET') {
