@@ -741,9 +741,8 @@ export default function OptionsManagement() {
             ) : (
               <>
                 {/* 投产单位 */}
-                {activeTab === 'units' && !editingUnit && (
+                {activeTab === 'units' && (
                   <div>
-                    {/* 新增按钮 */}
                     <div className="mb-4 flex justify-end">
                       <button 
                         onClick={handleCreateUnit} 
@@ -754,36 +753,35 @@ export default function OptionsManagement() {
                         新增投产单位
                       </button>
                     </div>
+                    {editingUnit && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingUnit.id ? '编辑投产单位' : '新增投产单位'}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
+                            <input type="text" value={editingUnit.name} onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入投产单位名称" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                            <label className="flex items-center">
+                              <input type="checkbox" checked={editingUnit.is_active} onChange={(e) => setEditingUnit({ ...editingUnit, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                              <span className="ml-2 text-sm">启用</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-end space-x-3">
+                          <button onClick={() => setEditingUnit(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                          <button onClick={handleSaveUnit} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                        </div>
+                      </div>
+                    )}
                     {renderTable(productionUnits, editingUnit, (item) => setEditingUnit({ ...item }), handleSaveUnit, () => setEditingUnit(null), handleDeleteUnit)}
-                  </div>
-                )}
-                {activeTab === 'units' && editingUnit && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingUnit.id ? '编辑投产单位' : '新增投产单位'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
-                        <input type="text" value={editingUnit.name} onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入投产单位名称" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={editingUnit.is_active} onChange={(e) => setEditingUnit({ ...editingUnit, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="ml-2 text-sm">启用</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button onClick={() => setEditingUnit(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSaveUnit} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                    </div>
                   </div>
                 )}
 
                 {/* 工装类别 */}
-                {activeTab === 'categories' && !editingCategory && (
+                {activeTab === 'categories' && (
                   <div>
-                    {/* 新增按钮 */}
                     <div className="mb-4 flex justify-end">
                       <button 
                         onClick={handleCreateCategory} 
@@ -794,29 +792,29 @@ export default function OptionsManagement() {
                         新增工装类别
                       </button>
                     </div>
+                    {editingCategory && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingCategory.id ? '编辑工装类别' : '新增工装类别'}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
+                            <input type="text" value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工装类别名称" />
+                          </div>
+                          <div>
+                            <label className="block text.sm font-medium text-gray-700 mb-1">状态</label>
+                            <label className="flex items-center">
+                              <input type="checkbox" checked={editingCategory.is_active} onChange={(e) => setEditingCategory({ ...editingCategory, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                              <span className="ml-2 text-sm">启用</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-end space-x-3">
+                          <button onClick={() => setEditingCategory(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                          <button onClick={handleSaveCategory} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                        </div>
+                      </div>
+                    )}
                     {renderTable(toolingCategories, editingCategory, (item) => setEditingCategory({ ...item }), handleSaveCategory, () => setEditingCategory(null), handleDeleteCategory)}
-                  </div>
-                )}
-                {activeTab === 'categories' && editingCategory && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingCategory.id ? '编辑工装类别' : '新增工装类别'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
-                        <input type="text" value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工装类别名称" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={editingCategory.is_active} onChange={(e) => setEditingCategory({ ...editingCategory, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="ml-2 text-sm">启用</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button onClick={() => setEditingCategory(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSaveCategory} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                    </div>
                   </div>
                 )}
 
@@ -944,6 +942,48 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
+                {activeTab === 'materials' && editingMaterial && (
+                  <div className="space-y-4">
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {materials.length} 种材料</p>
+                    </div>
+                    {materials.map((material, index) => {
+                      const currentPrice = getCurrentPrice(material.id);
+                      return (
+                        <div key={material.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 flex-1">
+                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center font-semibold text-sm">
+                                {index + 1}
+                              </div>
+                              <div className="flex items-center space-x-6 flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 min-w-[80px]">{material.name}</h3>
+                                <p className="text-sm text-gray-600">密度: {material.density} g/cm³</p>
+                                <p className="text-sm text-gray-600">
+                                  当前价格:
+                                  <span className={`font-medium ${currentPrice !== null ? 'text-green-600' : 'text-red-500'}`}>
+                                    ¥{currentPrice !== null ? currentPrice.toFixed(2) : '0.00'} 元/kg
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
+                              <button onClick={() => setEditingMaterial(material)} className="text-blue-600 hover:text-blue-900 p-2" title="编辑材料">
+                                <Edit2 className="w-5 h-5" />
+                              </button>
+                              <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
+                                <button className="text-red-600 hover:text-red-900 p-2" title="删除材料">
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </Popconfirm>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* 料型管理 */}
                 {activeTab === 'partTypes' && !editingPartType && (
                   <div>
@@ -1034,6 +1074,42 @@ export default function OptionsManagement() {
                       <button onClick={() => setEditingPartType(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
                       <button onClick={handleSavePartType} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'partTypes' && editingPartType && (
+                  <div className="overflow-x-auto mt-4">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {partTypes.map((partType) => (
+                          <tr key={partType.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{partType.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.description || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.volume_formula || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{partType.is_active ? '启用' : '禁用'}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
+                                <Popconfirm title={`确定要删除"${partType.name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeletePartType(partType.id)}>
+                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
@@ -1166,6 +1242,38 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
+                {activeTab === 'devices' && editingDevice && (
+                  <div className="overflow-x-auto mt-4">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {devices.map((device) => (
+                          <tr key={device.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{device.device_no}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.device_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.max_aux_minutes ?? '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
+                                <Popconfirm title={`确定要删除"${device.device_name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(device.id)}>
+                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
                 {/* 维修选项管理 */}
                 {activeTab === 'fixedOptions' && !editingFixedOption && (
                   <div>
@@ -1249,6 +1357,40 @@ export default function OptionsManagement() {
                       <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
                       <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'fixedOptions' && editingFixedOption && (
+                  <div className="overflow-x-auto mt-4">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {fixedOptions.map((option) => (
+                          <tr key={option.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{option.option_value}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{option.option_label}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{option.is_active ? '启用' : '禁用'}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
+                                <Popconfirm title={`确定要删除"${option.option_label}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(option.id)}>
+                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </>
