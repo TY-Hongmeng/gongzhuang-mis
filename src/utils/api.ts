@@ -1,6 +1,6 @@
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
-  // 清理URL中的反引号
-  const cleanUrl = url.replace(/[`]/g, '')
+  // 清理URL中的反引号和空格
+  const cleanUrl = url.replace(/[`]/g, '').trim()
   
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
@@ -15,6 +15,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 优先调用客户端API处理所有API路径，无论是否在GitHub Pages环境中
   if (cleanUrl.startsWith('/') && isApiPath) {
     // 使用相对路径调用客户端API处理，避免使用外部函数URL
+    // 确保传递给handleClientSideApi的URL格式一致，都是相对路径，没有空格
     const handled = await handleClientSideApi(cleanUrl, init)
     if (handled) return handled
   }
@@ -72,9 +73,9 @@ export function installApiInterceptor() {
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     try {
-      // 清理URL中的反引号
+      // 清理URL中的反引号和空格
       let u = typeof input === 'string' ? input : String((input as any)?.url || '')
-      const cleanUrl = u.replace(/[`]/g, '')
+      const cleanUrl = u.replace(/[`]/g, '').trim()
       if (cleanUrl.startsWith('/api')) {
         return await fetchWithFallback(cleanUrl, init)
       }
@@ -141,8 +142,8 @@ function getQuery(url: string): URLSearchParams {
 
 async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
   try {
-    // 清理URL中的反引号
-    const cleanUrl = url.replace(/[`]/g, '')
+    // 清理URL中的反引号和空格
+    const cleanUrl = url.replace(/[`]/g, '').trim()
     console.log('handleClientSideApi called:', { url: cleanUrl, init })
     
     // 无论是否有Supabase实例，都尝试处理请求
@@ -199,16 +200,34 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // Devices
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         console.log('Fetching devices from Supabase')
-        const { data, error } = await supabase.from('devices').select('*')
-        console.log('devices result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        try {
+          // 添加超时保护，确保在5秒内返回结果
+          const { data, error } = await Promise.race([
+            supabase.from('devices').select('*'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase query timed out')), 5000))
+          ])
+          console.log('devices result:', { data, error })
+          return jsonResponse({ data: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching devices:', e)
+          return jsonResponse({ data: [] })
+        }
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         console.log('Fetching fixed_inventory_options from Supabase')
-        const { data, error } = await supabase.from('fixed_inventory_options').select('*')
-        console.log('fixed_inventory_options result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
+        try {
+          // 添加超时保护，确保在5秒内返回结果
+          const { data, error } = await Promise.race([
+            supabase.from('fixed_inventory_options').select('*'),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase query timed out')), 5000))
+          ])
+          console.log('fixed_inventory_options result:', { data, error })
+          return jsonResponse({ data: error ? [] : (data || []) })
+        } catch (e: any) {
+          console.error('Error fetching fixed_inventory_options:', e)
+          return jsonResponse({ data: [] })
+        }
       }
 
     }
