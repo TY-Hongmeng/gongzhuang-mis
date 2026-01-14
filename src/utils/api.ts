@@ -96,12 +96,12 @@ export function installApiInterceptor() {
         // handle devices and fixed_inventory_options via supabase-js to avoid REST 400
         if (supabase) {
           if (/\/rest\/v1\/devices\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('devices').select('*').order('device_no')
+            const { data, error } = await supabase.from('devices').select('*')
             if (error) return jsonResponse({ data: [] })
             return jsonResponse({ data: data || [] })
           }
           if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
-            const { data, error } = await supabase.from('fixed_inventory_options').select('*').order('created_at', { ascending: true })
+            const { data, error } = await supabase.from('fixed_inventory_options').select('*')
             if (error) return jsonResponse({ data: [] })
             return jsonResponse({ data: data || [] })
           }
