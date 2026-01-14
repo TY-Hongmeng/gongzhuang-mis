@@ -59,6 +59,7 @@ export default function OptionsManagement() {
   const [productionUnits, setProductionUnits] = useState<ProductionUnit[]>([]);
   const [toolingCategories, setToolingCategories] = useState<ToolingCategory[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [materialCurrentPrice, setMaterialCurrentPrice] = useState<Record<string, { id?: string, unit_price: number }>>({});
   
   const [partTypes, setPartTypes] = useState<PartType[]>([]);
   const [materialSources, setMaterialSources] = useState<MaterialSource[]>([]);
@@ -162,6 +163,30 @@ export default function OptionsManagement() {
           const materialsArr = getArr(matsJson);
           setMaterials(materialsArr);
           console.log('materials:', matsJson);
+          // 加载当前价（取最后一条）
+          {
+            const map: Record<string, { id?: string, unit_price: number }> = {}
+            await Promise.allSettled(
+              materialsArr.map(async (m: any) => {
+                try {
+                  const res = await fetchWithFallback(`/api/materials/${m.id}/prices`)
+                  if (res.ok) {
+                    const pj = await res.json()
+                    const arr = Array.isArray(pj?.items) ? pj.items : (Array.isArray(pj?.data) ? pj.data : (Array.isArray(pj) ? pj : []))
+                    if (arr.length) {
+                      const latest = arr[arr.length - 1]
+                      if (latest && Number.isFinite(Number(latest.unit_price))) {
+                        map[m.id] = { id: String(latest.id), unit_price: Number(latest.unit_price) }
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.warn('价格加载失败', e)
+                }
+              })
+            )
+            setMaterialCurrentPrice(map)
+          }
           break;
       }
     } catch (err) {
@@ -808,7 +833,7 @@ export default function OptionsManagement() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2 ml-4">
-                              <button onClick={() => setEditingMaterial(material)} className="text-blue-600 hover:text-blue-900 p-2" title="编辑材料">
+                              <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900 p-2" title="编辑材料">
                                 <Edit2 className="w-5 h-5" />
                               </button>
                               <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
@@ -835,6 +860,10 @@ export default function OptionsManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">密度 (g/cm³) *</label>
                         <input type="number" step="0.001" value={editingMaterial.density} onChange={(e) => setEditingMaterial({ ...editingMaterial, density: parseFloat(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入密度" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">单价 (元/kg)</label>
+                        <input type="number" step="0.01" value={(editingMaterial as any).unit_price ?? ''} onChange={(e) => setEditingMaterial({ ...editingMaterial, unit_price: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入单价" />
                       </div>
                     </div>
                     
