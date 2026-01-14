@@ -7,7 +7,7 @@ import { PartType } from '../types/tooling';
 import { fetchWithFallback } from '../utils/api'
 
 interface ProductionUnit {
-  id: number;
+  id: string;
   name: string;
   description: string;
   is_active: boolean;
@@ -16,7 +16,7 @@ interface ProductionUnit {
 }
 
 interface ToolingCategory {
-  id: number;
+  id: string;
   name: string;
   description: string;
   is_active: boolean;
@@ -25,7 +25,7 @@ interface ToolingCategory {
 }
 
 interface MaterialSource {
-  id: number;
+  id: string;
   name: string;
   description: string;
   is_active: boolean;
@@ -48,7 +48,7 @@ interface FixedOptionItem {
 }
 
 interface EditableItem {
-  id: number | null;
+  id: string | null;
   name: string;
   description: string;
   is_active: boolean;
@@ -207,7 +207,7 @@ export default function OptionsManagement() {
     try {
       const url = editingUnit.id ? `/api/options/production-units/${editingUnit.id}` : '/api/options/production-units';
       const method = editingUnit.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingUnit.name.trim(), is_active: editingUnit.is_active })
@@ -216,7 +216,7 @@ export default function OptionsManagement() {
       const resJson = await response.json();
       const created = resJson?.item || resJson?.data || null;
       if (created) {
-        setProductionUnits((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+        setProductionUnits((prev) => [...prev, { id: String(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
       } else {
         await fetchTabData('units');
       }
@@ -237,7 +237,7 @@ export default function OptionsManagement() {
     try {
       const url = editingCategory.id ? `/api/options/tooling-categories/${editingCategory.id}` : '/api/options/tooling-categories';
       const method = editingCategory.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingCategory.name.trim(), is_active: editingCategory.is_active })
@@ -246,7 +246,7 @@ export default function OptionsManagement() {
       const resJson = await response.json();
       const created = resJson?.item || resJson?.data || null;
       if (created) {
-        setToolingCategories((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+        setToolingCategories((prev) => [...prev, { id: String(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
       } else {
         await fetchTabData('categories');
       }
@@ -271,7 +271,7 @@ export default function OptionsManagement() {
     try {
       const url = editingMaterial.id ? `/api/materials/${editingMaterial.id}` : '/api/materials';
       const method = editingMaterial.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ name: editingMaterial.name.trim(), density: Number(editingMaterial.density), unit_price: (editingMaterial as any)?.unit_price ?? null })
@@ -303,7 +303,7 @@ export default function OptionsManagement() {
     try {
       const url = editingPartType.id ? `/api/part-types/${editingPartType.id}` : '/api/part-types';
       const method = editingPartType.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingPartType.name.trim(), description: editingPartType.description?.trim() || null, volume_formula: editingPartType.volume_formula?.trim() || null })
@@ -333,7 +333,7 @@ export default function OptionsManagement() {
     try {
       const url = editingMaterialSource.id ? `/api/options/material-sources/${editingMaterialSource.id}` : '/api/options/material-sources';
       const method = editingMaterialSource.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingMaterialSource.name.trim(), description: editingMaterialSource.description?.trim() || '', is_active: editingMaterialSource.is_active })
@@ -342,7 +342,7 @@ export default function OptionsManagement() {
       const resJson = await response.json();
       const created = resJson?.item || resJson?.data || null;
       if (created) {
-        setMaterialSources((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+        setMaterialSources((prev) => [...prev, { id: String(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
       } else {
         await fetchTabData('materialSources');
       }
@@ -363,7 +363,7 @@ export default function OptionsManagement() {
     try {
       const url = editingDevice.id ? `/api/tooling/devices/${editingDevice.id}` : '/api/tooling/devices';
       const method = editingDevice.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -386,7 +386,7 @@ export default function OptionsManagement() {
   const handleDeleteDevice = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/tooling/devices/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/tooling/devices/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('devices');
     } catch (err) {
@@ -405,7 +405,7 @@ export default function OptionsManagement() {
     try {
       const url = editingFixedOption.id ? `/api/tooling/fixed-inventory-options/${editingFixedOption.id}` : '/api/tooling/fixed-inventory-options';
       const method = editingFixedOption.id ? 'PUT' : 'POST';
-      const response = await fetch(url, {
+      const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_value.trim(), is_active: Boolean(editingFixedOption.is_active) })
@@ -424,7 +424,7 @@ export default function OptionsManagement() {
   const handleDeleteFixedOption = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/tooling/fixed-inventory-options/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/tooling/fixed-inventory-options/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('fixedOptions');
     } catch (err) {
@@ -434,10 +434,10 @@ export default function OptionsManagement() {
     }
   };
 
-  const handleDeleteUnit = async (id: number) => {
+  const handleDeleteUnit = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/options/production-units/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/options/production-units/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('units');
     } catch (err) {
@@ -447,10 +447,10 @@ export default function OptionsManagement() {
     }
   };
 
-  const handleDeleteCategory = async (id: number) => {
+  const handleDeleteCategory = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/options/tooling-categories/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/options/tooling-categories/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('categories');
     } catch (err) {
@@ -463,7 +463,7 @@ export default function OptionsManagement() {
   const handleDeleteMaterial = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/materials/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/materials/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
@@ -483,7 +483,7 @@ export default function OptionsManagement() {
   const handleDeletePartType = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/part-types/${id}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/part-types/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('partTypes');
     } catch (err: any) {
@@ -497,10 +497,10 @@ export default function OptionsManagement() {
     }
   };
 
-  const handleDeleteMaterialSource = async (id: string | number) => {
+  const handleDeleteMaterialSource = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/options/material-sources/${Number(id)}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/options/material-sources/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
@@ -532,7 +532,7 @@ export default function OptionsManagement() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/materials/${materialId}/prices/${priceId}`, { method: 'DELETE' });
+      const response = await fetchWithFallback(`/api/materials/${materialId}/prices/${priceId}`, { method: 'DELETE' });
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || '删除失败');
@@ -716,6 +716,9 @@ export default function OptionsManagement() {
                         新增投产单位
                       </button>
                     </div>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {productionUnits.length} 个投产单位</p>
+                    </div>
                     {editingUnit && (
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">{editingUnit.id ? '编辑投产单位' : '新增投产单位'}</h3>
@@ -754,6 +757,9 @@ export default function OptionsManagement() {
                         <Plus className="w-4 h-4 mr-2" />
                         新增工装类别
                       </button>
+                    </div>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {toolingCategories.length} 个工装类别</p>
                     </div>
                     {editingCategory && (
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -875,6 +881,9 @@ export default function OptionsManagement() {
                         <Plus className="w-4 h-4 mr-2" />
                         新增料型
                       </button>
+                    </div>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {partTypes.length} 种料型</p>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
@@ -1031,6 +1040,9 @@ export default function OptionsManagement() {
                         </div>
                       </div>
                     )}
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 font-medium">共有 {materialSources.length} 个材料来源</p>
+                    </div>
                     {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
                   </div>
                 )}
