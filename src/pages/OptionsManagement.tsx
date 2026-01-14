@@ -220,8 +220,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ name: editingUnit.name.trim(), is_active: editingUnit.is_active })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setProductionUnits((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+      } else {
+        await fetchTabData('units');
+      }
       setEditingUnit(null);
-      await fetchTabData('units');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -244,8 +250,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ name: editingCategory.name.trim(), is_active: editingCategory.is_active })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setToolingCategories((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+      } else {
+        await fetchTabData('categories');
+      }
       setEditingCategory(null);
-      await fetchTabData('categories');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -275,8 +287,14 @@ export default function OptionsManagement() {
         const err = await response.json();
         throw new Error(err.error || '保存失败');
       }
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setMaterials((prev) => [...prev, { id: String(created.id), name: String(created.name), density: Number(created.density) }]);
+      } else {
+        await fetchTabData('materials');
+      }
       setEditingMaterial(null);
-      await fetchTabData('materials');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -299,8 +317,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ name: editingPartType.name.trim(), description: editingPartType.description?.trim() || null, volume_formula: editingPartType.volume_formula?.trim() || null })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setPartTypes((prev) => [...prev, { id: String(created.id), name: String(created.name), description: String(created.description || ''), volume_formula: String(created.volume_formula || ''), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') } as any]);
+      } else {
+        await fetchTabData('partTypes');
+      }
       setEditingPartType(null);
-      await fetchTabData('partTypes');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -323,8 +347,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ name: editingMaterialSource.name.trim(), description: editingMaterialSource.description?.trim() || '', is_active: editingMaterialSource.is_active })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setMaterialSources((prev) => [...prev, { id: Number(created.id), name: String(created.name), description: String(created.description || ''), is_active: Boolean(created.is_active), created_at: String(created.created_at || ''), updated_at: String(created.updated_at || '') }]);
+      } else {
+        await fetchTabData('materialSources');
+      }
       setEditingMaterialSource(null);
-      await fetchTabData('materialSources');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -347,8 +377,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ device_no: editingDevice.device_no.trim(), device_name: editingDevice.device_name.trim(), max_aux_minutes: editingDevice.max_aux_minutes ?? null })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setDevices((prev) => [...prev, { id: String(created.id), device_no: String(created.device_no), device_name: String(created.device_name), max_aux_minutes: created.max_aux_minutes ?? null }]);
+      } else {
+        await fetchTabData('devices');
+      }
       setEditingDevice(null);
-      await fetchTabData('devices');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -384,8 +420,14 @@ export default function OptionsManagement() {
         body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_value.trim(), is_active: editingFixedOption.is_active })
       });
       if (!response.ok) throw new Error('保存失败');
+      const resJson = await response.json();
+      const created = resJson?.item || resJson?.data || null;
+      if (created) {
+        setFixedOptions((prev) => [...prev, { id: String(created.id), option_value: String(created.option_value), option_label: String(created.option_label), is_active: Boolean(created.is_active) }]);
+      } else {
+        await fetchTabData('fixedOptions');
+      }
       setEditingFixedOption(null);
-      await fetchTabData('fixedOptions');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {
@@ -821,6 +863,16 @@ export default function OptionsManagement() {
                 {/* 材料管理 - 简化版本 */}
                 {activeTab === 'materials' && !editingMaterial && (
                   <div className="space-y-4">
+                    <div className="mb-4 flex justify-end">
+                      <button 
+                        onClick={handleCreateMaterial} 
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增材料
+                      </button>
+                    </div>
                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-blue-800 font-medium">共有 {materials.length} 种材料</p>
                     </div>

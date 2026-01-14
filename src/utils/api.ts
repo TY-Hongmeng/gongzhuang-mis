@@ -195,12 +195,15 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Production units CRUD ----
       if (path.startsWith('/api/options/production-units')) {
         if (method === 'GET') {
-          const { data, error } = await supabase.from('production_units').select('*').order('sort_order', { ascending: true })
+          const { data, error } = await supabase.from('production_units').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: true })
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
           const body = init?.body ? await new Response(init.body).json() : {}
-          const payload = { name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), sort_order: Number(body.sort_order ?? 0) }
+          const maxRes = await supabase.from('production_units').select('sort_order').order('sort_order', { ascending: false }).limit(1)
+          const maxOrder = Array.isArray(maxRes.data) && maxRes.data.length ? Number(maxRes.data[0].sort_order || 0) : 0
+          const nextOrder = maxOrder + 1
+          const payload = { name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), sort_order: nextOrder }
           const { data, error } = await supabase.from('production_units').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
@@ -233,7 +236,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Tooling categories CRUD ----
       if (path.startsWith('/api/options/tooling-categories')) {
         if (method === 'GET') {
-          const { data, error } = await supabase.from('tooling_categories').select('*').order('name')
+          const { data, error } = await supabase.from('tooling_categories').select('*').order('created_at', { ascending: true })
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
@@ -272,7 +275,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Material sources CRUD ----
       if (path.startsWith('/api/options/material-sources')) {
         if (method === 'GET') {
-          const { data, error } = await supabase.from('material_sources').select('*').order('name')
+          const { data, error } = await supabase.from('material_sources').select('*').order('created_at', { ascending: true })
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
@@ -311,7 +314,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Part types CRUD ----
       if (path.startsWith('/api/part-types')) {
         if (method === 'GET') {
-          const { data, error } = await supabase.from('part_types').select('*').order('name')
+          const { data, error } = await supabase.from('part_types').select('*').order('created_at', { ascending: true })
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
@@ -344,7 +347,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Materials CRUD ----
       if (path.startsWith('/api/materials')) {
         if (method === 'GET') {
-          const { data, error } = await supabase.from('materials').select('*').order('name')
+          const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: true })
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST' && path === '/api/materials') {
@@ -475,8 +478,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       if (method === 'GET' && path.startsWith('/api/tooling/devices')) {
         console.log('Fetching devices from Supabase REST API')
         try {
-          // 使用直接的REST API调用，避免Supabase JS客户端可能的问题
-          const response = await fetch(`${supabaseUrl}/rest/v1/devices`, {
+          const response = await fetch(`${supabaseUrl}/rest/v1/devices?select=*&order=created_at.asc`, {
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
@@ -494,8 +496,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
         console.log('Fetching fixed_inventory_options from Supabase REST API')
         try {
-          // 使用直接的REST API调用，避免Supabase JS客户端可能的问题
-          const response = await fetch(`${supabaseUrl}/rest/v1/fixed_inventory_options`, {
+          const response = await fetch(`${supabaseUrl}/rest/v1/fixed_inventory_options?select=*&order=created_at.asc`, {
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
