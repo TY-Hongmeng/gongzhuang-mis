@@ -81,22 +81,26 @@ export default function OptionsManagement() {
 
   // 拖拽排序函数
   const handleDragStart = (e: React.DragEvent, item: any, index: number) => {
+    if (activeTab !== 'units') return;
     setDraggedItem({ ...item, originalIndex: index });
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
+    if (activeTab !== 'units') return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
   };
 
   const handleDragLeave = () => {
+    if (activeTab !== 'units') return;
     setDragOverIndex(null);
   };
 
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
+    if (activeTab !== 'units') return;
     setDragOverIndex(null);
     
     if (!draggedItem) {
@@ -112,32 +116,10 @@ export default function OptionsManagement() {
       let endpoint = '';
       let updateState: (items: any[]) => void = () => {};
       
-      switch (activeTab) {
-        case 'units':
-          items = [...productionUnits];
-          endpoint = '/api/options/production-units/reorder';
-          updateState = setProductionUnits;
-          break;
-        case 'categories':
-          items = [...toolingCategories];
-          endpoint = '/api/options/tooling-categories/reorder';
-          updateState = setToolingCategories;
-          break;
-        case 'materialSources':
-          items = [...materialSources];
-          endpoint = '/api/options/material-sources/reorder';
-          updateState = setMaterialSources;
-          break;
-        case 'partTypes':
-          items = [...partTypes];
-          endpoint = '/api/part-types/reorder';
-          updateState = setPartTypes;
-          break;
-        default:
-          setDraggedItem(null);
-          setLoading(false);
-          return;
-      }
+      // 仅支持“投产单位管理”的拖拽排序
+      items = [...productionUnits];
+      endpoint = '/api/options/production-units/reorder';
+      updateState = setProductionUnits;
 
       // 重新排序数组（以id定位，避免原索引过期导致插入undefined）
       const newItems = [...items];
@@ -706,21 +688,25 @@ export default function OptionsManagement() {
           {items.map((item, index) => (
             <tr 
               key={item.id} 
-              draggable={!editingItem}
+              draggable={activeTab === 'units' && !editingItem}
               onDragStart={(e) => handleDragStart(e, item, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
               className={`${
-                dragOverIndex === index ? 'bg-blue-50 border-blue-300' : ''
+                activeTab === 'units' && dragOverIndex === index ? 'bg-blue-50 border-blue-300' : ''
               } ${draggedItem?.id === item.id ? 'opacity-50' : ''} transition-colors duration-200`}
             >
               <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                 {!editingItem && (
-                  <div className="flex items-center cursor-move">
-                    <GripVertical className="w-4 h-4 text-gray-400 mr-2" />
+                  activeTab === 'units' ? (
+                    <div className="flex items-center cursor-move">
+                      <GripVertical className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="font-medium">{index + 1}</span>
+                    </div>
+                  ) : (
                     <span className="font-medium">{index + 1}</span>
-                  </div>
+                  )
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
