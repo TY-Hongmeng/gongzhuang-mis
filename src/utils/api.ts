@@ -404,6 +404,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
+        if (priceProxyUpdate && method === 'DELETE') {
+          const material_id = priceProxyUpdate[1]
+          const { error } = await supabase.from('materials').update({ unit_price: null }).eq('id', material_id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
       }
 
       // ---- Devices CRUD ----

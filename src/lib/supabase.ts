@@ -6,8 +6,8 @@ const envAnon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY
 const fallbackUrl = 'https://oltsiocyesbgezlrcxze.supabase.co'
 const fallbackAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
 
-const supabaseUrl = envUrl || (isGhPages ? fallbackUrl : '')
-const supabaseAnonKey = envAnon || (isGhPages ? fallbackAnon : '')
+const supabaseUrl = envUrl || fallbackUrl
+const supabaseAnonKey = envAnon || fallbackAnon
 
 export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
