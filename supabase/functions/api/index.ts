@@ -33,11 +33,11 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || '*'
     const headers = { 
       ...corsHeaders, 
-      "Access-Control-Allow-Headers": reqHeaders, 
-      "Access-Control-Allow-Methods": `${reqMethod}, OPTIONS`,
+      "Access-Control-Allow-Headers": reqHeaders,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Origin": origin
     }
-    return new Response('ok', { status: 200, headers })
+    return new Response(null, { status: 204, headers })
   }
   const url = new URL(req.url)
   const pathname = url.pathname
