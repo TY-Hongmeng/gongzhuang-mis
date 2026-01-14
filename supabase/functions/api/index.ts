@@ -45,6 +45,8 @@ serve(async (req) => {
     .replace(/^\/functions\/v1\/api/, '')
     .replace(/^\/api/, '')
     .replace(/^\/?/, '/')
+  const origin = req.headers.get('origin') || '*'
+  const baseHeaders = { ...corsHeaders, "Access-Control-Allow-Origin": origin }
 
   if (path === "/auth/login" && req.method === "POST") {
     const body = await json(req)
@@ -56,12 +58,12 @@ serve(async (req) => {
       .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
       .eq("phone", phone)
       .single()
-    if (error || !user) return Response.json({ error: "用户不存在" }, { status: 401, headers: corsHeaders })
+    if (error || !user) return Response.json({ error: "用户不存在" }, { status: 401, headers: baseHeaders })
     const ok = await bcrypt.compare(password, String(user.password_hash || ""))
-    if (!ok) return Response.json({ error: "密码错误" }, { status: 401, headers: corsHeaders })
-    if (user.status !== "active") return Response.json({ error: "账户未激活或已被禁用" }, { status: 401, headers: corsHeaders })
+    if (!ok) return Response.json({ error: "密码错误" }, { status: 401, headers: baseHeaders })
+    if (user.status !== "active") return Response.json({ error: "账户未激活或已被禁用" }, { status: 401, headers: baseHeaders })
     const { password_hash, ...safeUser } = user
-    return Response.json({ success: true, user: safeUser }, { headers: corsHeaders })
+    return Response.json({ success: true, user: safeUser }, { headers: baseHeaders })
   }
 
   if (path === "/auth/register" && req.method === "POST") {
@@ -75,13 +77,13 @@ serve(async (req) => {
     const teamId = body.teamId || null
     const password = String(body.password || "")
     const { data: existingPhone } = await supabase.from("users").select("id").eq("phone", phone).single()
-    if (existingPhone) return Response.json({ error: "手机号已被注册" }, { status: 400, headers: corsHeaders })
+    if (existingPhone) return Response.json({ error: "手机号已被注册" }, { status: 400, headers: baseHeaders })
     const { data: existingId } = await supabase.from("users").select("id").eq("id_card", idCard).single()
-    if (existingId) return Response.json({ error: "身份证号已被注册" }, { status: 400, headers: corsHeaders })
+    if (existingId) return Response.json({ error: "身份证号已被注册" }, { status: 400, headers: baseHeaders })
     const passwordHash = await bcrypt.hash(password, 10)
     const { error } = await supabase.from("users").insert({ phone, real_name: realName, id_card: idCard, company_id: companyId, role_id: roleId, workshop_id: workshopId, team_id: teamId, password_hash: passwordHash, status: "pending" })
-    if (error) return Response.json({ error: "注册失败" }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, message: "注册成功，请等待管理员审核" }, { headers: corsHeaders })
+    if (error) return Response.json({ error: "注册失败" }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, message: "注册成功，请等待管理员审核" }, { headers: baseHeaders })
   }
 
   if (path === "/auth/reset-password" && req.method === "POST") {
@@ -89,11 +91,11 @@ serve(async (req) => {
     const idCard = String(body.idCard || "")
     const newPassword = String(body.newPassword || "")
     const { data: user } = await supabase.from("users").select("id").eq("id_card", idCard).single()
-    if (!user) return Response.json({ error: "用户不存在" }, { status: 404, headers: corsHeaders })
+    if (!user) return Response.json({ error: "用户不存在" }, { status: 404, headers: baseHeaders })
     const passwordHash = await bcrypt.hash(newPassword, 10)
     const { error } = await supabase.from("users").update({ password_hash: passwordHash }).eq("id", user.id)
-    if (error) return Response.json({ error: "密码重置失败" }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, message: "密码重置成功" }, { headers: corsHeaders })
+    if (error) return Response.json({ error: "密码重置失败" }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, message: "密码重置成功" }, { headers: baseHeaders })
   }
 
   if (path === "/permissions/sync" && req.method === "POST") {
@@ -107,15 +109,15 @@ serve(async (req) => {
     })
     if (rows.length > 0) {
       const { error } = await supabase.from("permissions").upsert(rows, { onConflict: "module,name" })
-      if (error) return Response.json({ error: "同步权限失败" }, { status: 500, headers: corsHeaders })
+      if (error) return Response.json({ error: "同步权限失败" }, { status: 500, headers: baseHeaders })
     }
-    return Response.json({ success: true }, { headers: corsHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   if (path === "/permissions" && req.method === "GET") {
     const { data, error } = await supabase.from("permissions").select("*").order("module", { ascending: true })
-    if (error) return Response.json({ success: false, error: "加载权限失败" }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: "加载权限失败" }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
 
   // Cutting Orders - list
@@ -140,8 +142,8 @@ serve(async (req) => {
     q = q.order("created_date", { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
     const t0 = Date.now()
     const { data, count, error } = await q
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [], total: count || 0, queryTime: Date.now() - t0, page, pageSize }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [], total: count || 0, queryTime: Date.now() - t0, page, pageSize }, { headers: baseHeaders })
   }
 
   // Cutting Orders - create
@@ -150,8 +152,8 @@ serve(async (req) => {
     const rows = Array.isArray(body.orders) ? body.orders : []
     if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: corsHeaders })
     const { error } = await supabase.from("cutting_orders").insert(rows)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Cutting Orders - delete one
@@ -181,8 +183,8 @@ serve(async (req) => {
     let q = supabase.from("purchase_orders").select("*", { count: "exact" })
     q = q.order("created_date", { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
     const { data, count, error } = await q
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [], total: count || 0, page, pageSize }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [], total: count || 0, page, pageSize }, { headers: baseHeaders })
   }
 
   // Purchase Orders - create
@@ -191,8 +193,8 @@ serve(async (req) => {
     const rows = Array.isArray(body.orders) ? body.orders : []
     if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: corsHeaders })
     const { error } = await supabase.from("purchase_orders").insert(rows)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Purchase Orders - batch delete
@@ -208,23 +210,23 @@ serve(async (req) => {
   // Options and meta endpoints
   if (path === "/options/production-units" && req.method === "GET") {
     const { data, error } = await supabase.from("production_units").select("*").order("name")
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/options/tooling-categories" && req.method === "GET") {
     const { data, error } = await supabase.from("tooling_categories").select("*").order("name")
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/materials" && req.method === "GET") {
     const { data, error } = await supabase.from("materials").select("*").order("name")
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/part-types" && req.method === "GET") {
     const { data, error } = await supabase.from("part_types").select("*").order("name")
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/options/material-sources" && req.method === "GET") {
     const { data, error } = await supabase.from("material_sources").select("*").order("name")
