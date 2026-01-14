@@ -23,7 +23,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 下面的代码只处理其他类型的请求
   const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
   const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-  const rawBase = (import.meta as any)?.env?.VITE_API_URL || (isGhPages ? DEFAULT_FUNCTION_BASE : '')
+  const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
   const normalizeBase = (b: string): string => {
     if (!b) return ''
     let out = b.replace(/\/$/, '')
