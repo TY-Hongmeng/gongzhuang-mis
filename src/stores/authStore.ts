@@ -94,6 +94,31 @@ export const useAuthStore = create<AuthState>()(
               return { success: false, message: data.error || '登录失败' };
             }
           }
+          const isDev = (import.meta as any)?.env?.MODE === 'development'
+          if (isDev && supabase) {
+            const { data: userRow, error } = await supabase
+              .from('users')
+              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+              .eq('phone', phone)
+              .single()
+            if (error || !userRow) {
+              set({ isLoading: false });
+              return { success: false, message: '用户不存在' };
+            }
+            const { default: bcrypt } = await import('bcryptjs')
+            const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
+            if (!ok) {
+              set({ isLoading: false });
+              return { success: false, message: '密码错误' };
+            }
+            if (String((userRow as any).status) !== 'active') {
+              set({ isLoading: false });
+              return { success: false, message: '账户未激活或已被禁用' };
+            }
+            const { password_hash, ...safeUser } = (userRow as any)
+            set({ user: safeUser, isAuthenticated: true, isLoading: false });
+            return { success: true, message: '登录成功(开发兜底)' };
+          }
           set({ isLoading: false });
           return { success: false, message: '登录失败' };
         } catch (error) {
