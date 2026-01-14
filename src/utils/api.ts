@@ -411,8 +411,25 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         if (method === 'POST' && path === '/api/tooling/devices') {
           const body = init?.body ? await new Response(init.body).json() : {}
           const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          // prefer client, fallback to REST
           const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          if (error) {
+            try {
+              const resp = await fetch(`${supabaseUrl}/rest/v1/devices`, {
+                method: 'POST',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+              })
+              const data2 = await resp.json()
+              return jsonResponse({ success: true, item: Array.isArray(data2) ? data2[0] : data2 })
+            } catch (e: any) {
+              return jsonResponse({ success: false, error: String(e?.message || 'insert failed') }, 500)
+            }
+          }
           return jsonResponse({ success: true, item: data })
         }
         const dev = path.match(/^\/api\/tooling\/devices\/([^\/]+)$/)
@@ -421,13 +438,41 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const body = init?.body ? await new Response(init.body).json() : {}
           const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
           const { error } = await supabase.from('devices').update(payload).eq('id', id)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          if (error) {
+            try {
+              const resp = await fetch(`${supabaseUrl}/rest/v1/devices?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+              })
+              if (!resp.ok) throw new Error(`PATCH failed ${resp.status}`)
+            } catch (e: any) {
+              return jsonResponse({ success: false, error: String(e?.message || 'update failed') }, 500)
+            }
+          }
           return jsonResponse({ success: true })
         }
         if (dev && method === 'DELETE') {
           const id = dev[1]
           const { error } = await supabase.from('devices').delete().eq('id', id)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          if (error) {
+            try {
+              const resp = await fetch(`${supabaseUrl}/rest/v1/devices?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              })
+              if (!resp.ok) throw new Error(`DELETE failed ${resp.status}`)
+            } catch (e: any) {
+              return jsonResponse({ success: false, error: String(e?.message || 'delete failed') }, 500)
+            }
+          }
           return jsonResponse({ success: true })
         }
       }
