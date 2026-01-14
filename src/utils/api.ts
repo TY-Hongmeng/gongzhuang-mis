@@ -187,7 +187,218 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     const method = (init?.method || 'GET').toUpperCase()
     
     // 如果Supabase可用，优先从Supabase获取数据
-    if (supabase) {
+      if (supabase) {
+      
+      // ---- Tooling categories CRUD ----
+      if (path.startsWith('/api/options/tooling-categories')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase.from('tooling_categories').select('*').order('name')
+          return jsonResponse({ data: error ? [] : (data || []) })
+        }
+        if (method === 'POST') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { data, error } = await supabase
+            .from('tooling_categories')
+            .insert({ name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), description: String(body.description || '') })
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const m = path.match(/^\/api\/options\/tooling-categories\/(\d+)$/)
+        if (m && method === 'PUT') {
+          const id = Number(m[1])
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { error } = await supabase
+            .from('tooling_categories')
+            .update({ name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), description: String(body.description || '') })
+            .eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (m && method === 'DELETE') {
+          const id = Number(m[1])
+          const { error } = await supabase.from('tooling_categories').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path.endsWith('/reorder')) {
+          // 无排序字段，直接返回成功，避免前端报错
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Material sources CRUD ----
+      if (path.startsWith('/api/options/material-sources')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase.from('material_sources').select('*').order('name')
+          return jsonResponse({ data: error ? [] : (data || []) })
+        }
+        if (method === 'POST') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { data, error } = await supabase
+            .from('material_sources')
+            .insert({ name: String(body.name || ''), description: String(body.description || ''), is_active: Boolean(body.is_active ?? true) })
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const ms = path.match(/^\/api\/options\/material-sources\/(\d+)$/)
+        if (ms && method === 'PUT') {
+          const id = Number(ms[1])
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { error } = await supabase
+            .from('material_sources')
+            .update({ name: String(body.name || ''), description: String(body.description || ''), is_active: Boolean(body.is_active ?? true) })
+            .eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (ms && method === 'DELETE') {
+          const id = Number(ms[1])
+          const { error } = await supabase.from('material_sources').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path.endsWith('/reorder')) {
+          // 无排序字段，直接返回成功
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Part types CRUD ----
+      if (path.startsWith('/api/part-types')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase.from('part_types').select('*').order('name')
+          return jsonResponse({ data: error ? [] : (data || []) })
+        }
+        if (method === 'POST') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { name: String(body.name || ''), description: body.description ?? null, volume_formula: body.volume_formula ?? null }
+          const { data, error } = await supabase.from('part_types').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const pt = path.match(/^\/api\/part-types\/(.+)$/)
+        if (pt && method === 'PUT') {
+          const id = pt[1]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { name: String(body.name || ''), description: body.description ?? null, volume_formula: body.volume_formula ?? null }
+          const { error } = await supabase.from('part_types').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (pt && method === 'DELETE') {
+          const id = pt[1]
+          const { error } = await supabase.from('part_types').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path.endsWith('/reorder')) {
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Materials CRUD ----
+      if (path.startsWith('/api/materials')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase.from('materials').select('*').order('name')
+          return jsonResponse({ data: error ? [] : (data || []) })
+        }
+        if (method === 'POST' && path === '/api/materials') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { data, error } = await supabase.from('materials').insert({ name: String(body.name || ''), density: Number(body.density || 0) }).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const mat = path.match(/^\/api\/materials\/(.+)$/)
+        if (mat && method === 'PUT') {
+          const id = mat[1]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const { error } = await supabase.from('materials').update({ name: String(body.name || ''), density: Number(body.density || 0) }).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (mat && method === 'DELETE') {
+          const id = mat[1]
+          const { error } = await supabase.from('materials').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        // Materials price subresource
+        const priceCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
+        if (priceCreate && method === 'POST') {
+          const material_id = priceCreate[1]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { material_id, unit_price: Number(body.unit_price), effective_start_date: body.effective_start_date, effective_end_date: body.effective_end_date || null }
+          const { data, error } = await supabase.from('material_prices').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const priceUpdate = path.match(/^\/api\/materials\/([^\/]+)\/prices\/([^\/]+)$/)
+        if (priceUpdate && method === 'PUT') {
+          const material_id = priceUpdate[1]
+          const price_id = priceUpdate[2]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { unit_price: Number(body.unit_price), effective_start_date: body.effective_start_date, effective_end_date: body.effective_end_date || null }
+          const { error } = await supabase.from('material_prices').update(payload).eq('id', price_id).eq('material_id', material_id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Devices CRUD ----
+      if (path.startsWith('/api/tooling/devices')) {
+        if (method === 'POST' && path === '/api/tooling/devices') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const dev = path.match(/^\/api\/tooling\/devices\/([^\/]+)$/)
+        if (dev && method === 'PUT') {
+          const id = dev[1]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const { error } = await supabase.from('devices').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (dev && method === 'DELETE') {
+          const id = dev[1]
+          const { error } = await supabase.from('devices').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Fixed inventory options CRUD ----
+      if (path.startsWith('/api/tooling/fixed-inventory-options')) {
+        if (method === 'POST' && path === '/api/tooling/fixed-inventory-options') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
+          const { data, error } = await supabase.from('fixed_inventory_options').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        const fio = path.match(/^\/api\/tooling\/fixed-inventory-options\/([^\/]+)$/)
+        if (fio && method === 'PUT') {
+          const id = fio[1]
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
+          const { error } = await supabase.from('fixed_inventory_options').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (fio && method === 'DELETE') {
+          const id = fio[1]
+          const { error } = await supabase.from('fixed_inventory_options').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
       // Options & meta
       if (method === 'GET' && path.startsWith('/api/options/production-units')) {
         console.log('Fetching production_units from Supabase')
