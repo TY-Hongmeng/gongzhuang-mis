@@ -366,16 +366,15 @@ export default function OptionsManagement() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_no: editingDevice.device_no.trim(), device_name: editingDevice.device_name.trim(), max_aux_minutes: editingDevice.max_aux_minutes ?? null })
+        body: JSON.stringify({ 
+          device_no: editingDevice.device_no.trim(), 
+          device_name: editingDevice.device_name.trim(), 
+          max_aux_minutes: (editingDevice.max_aux_minutes === '' || editingDevice.max_aux_minutes === undefined) ? null : Number(editingDevice.max_aux_minutes)
+        })
       });
       if (!response.ok) throw new Error('保存失败');
-      const resJson = await response.json();
-      const created = resJson?.item || resJson?.data || null;
-      if (created) {
-        setDevices((prev) => [...prev, { id: String(created.id), device_no: String(created.device_no), device_name: String(created.device_name), max_aux_minutes: created.max_aux_minutes ?? null }]);
-      } else {
-        await fetchTabData('devices');
-      }
+      await response.json();
+      await fetchTabData('devices');
       setEditingDevice(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
