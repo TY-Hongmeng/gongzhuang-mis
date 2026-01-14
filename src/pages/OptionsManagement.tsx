@@ -408,7 +408,7 @@ export default function OptionsManagement() {
       const response = await fetchWithFallback(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_value.trim(), is_active: Boolean(editingFixedOption.is_active) })
+        body: JSON.stringify({ option_value: editingFixedOption.option_value.trim(), option_label: editingFixedOption.option_label.trim(), is_active: Boolean(editingFixedOption.is_active) })
       });
       if (!response.ok) throw new Error('保存失败');
       await response.json();
@@ -1240,6 +1240,10 @@ export default function OptionsManagement() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
                         <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">选项标签 *</label>
+                        <input type="text" value={editingFixedOption.option_label} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_label: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项标签" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>

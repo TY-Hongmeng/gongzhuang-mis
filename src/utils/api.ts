@@ -177,8 +177,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       path = u.pathname
     }
     
-    // 提取真正的API路径，移除任何前缀（如/functions/v1）
-    const apiPathMatch = path.match(/(\/api\/.*)/)
+    // 提取真正的API路径，移除任何前缀（如/functions/v1）和查询参数
+    const apiPathMatch = path.match(/(\/api\/[^?]+)/)
     if (apiPathMatch) {
       path = apiPathMatch[1]
     }
