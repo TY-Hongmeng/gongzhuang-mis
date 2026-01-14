@@ -371,6 +371,17 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true })
         }
         // Materials price subresource
+        const priceList = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
+        if (priceList && method === 'GET') {
+          const material_id = priceList[1]
+          const { data, error } = await supabase
+            .from('material_prices')
+            .select('*')
+            .eq('material_id', material_id)
+            .order('effective_start_date', { ascending: true })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
         const priceCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
         if (priceCreate && method === 'POST') {
           const material_id = priceCreate[1]

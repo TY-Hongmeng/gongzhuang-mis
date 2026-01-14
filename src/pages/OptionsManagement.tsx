@@ -529,17 +529,22 @@ export default function OptionsManagement() {
 
   // 计算当前价格
   const getCurrentPrice = (materialId: string) => {
-    const prices = materialPrices[materialId] || [];
-    const today = new Date().toISOString().split('T')[0];
-    
-    // 找到当前有效的价格（开始日期 <= 今天，且结束日期为空或 >= 今天）
-    const currentPrice = prices.find(price => {
-      const startDate = price.effective_start_date;
-      const endDate = price.effective_end_date;
-      return startDate <= today && (!endDate || endDate >= today);
+    const prices = Array.isArray(materialPrices[materialId]) ? materialPrices[materialId] : [];
+    if (!prices.length) return null;
+    const today = new Date();
+    // 过滤出今天在有效范围内的价格
+    const inRange = prices.filter((p: any) => {
+      const start = new Date(String(p.effective_start_date));
+      const endStr = String(p.effective_end_date || '');
+      const end = endStr ? new Date(endStr) : null;
+      const startOk = start.getTime() <= today.getTime();
+      const endOk = !end || end.getTime() >= today.getTime();
+      return startOk && endOk;
     });
-    
-    return currentPrice ? currentPrice.unit_price : null;
+    // 若存在多个，取开始日期最近的一个
+    const sorted = inRange.sort((a: any, b: any) => new Date(a.effective_start_date).getTime() - new Date(b.effective_start_date).getTime());
+    const current = sorted[sorted.length - 1];
+    return current ? Number(current.unit_price) : null;
   };
   const handleCreatePrice = (materialId: string) => {
     setSelectedMaterialId(materialId);
