@@ -2,16 +2,18 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 清理URL中的反引号
   const cleanUrl = url.replace(/[`]/g, '')
   
-  // 对于前五个页面的API路径，直接使用客户端API处理，不经过外部API
-  const baseApiPaths = ['/api/options/', '/api/materials', '/api/part-types']
-  const isBaseApi = baseApiPaths.some(path => cleanUrl.startsWith(path))
-  
-  // 对于后两个页面的API路径，也直接使用客户端API处理
-  const toolingApiPaths = ['/api/tooling/devices', '/api/tooling/fixed-inventory-options']
-  const isToolingApi = toolingApiPaths.some(path => cleanUrl.startsWith(path))
+  // 所有API路径都直接使用客户端API处理，不经过外部API
+  const apiPaths = [
+    '/api/options/', 
+    '/api/materials', 
+    '/api/part-types',
+    '/api/tooling/devices', 
+    '/api/tooling/fixed-inventory-options'
+  ]
+  const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
   // 优先调用客户端API处理所有API路径，无论是否在GitHub Pages环境中
-  if (cleanUrl.startsWith('/') && (isBaseApi || isToolingApi)) {
+  if (cleanUrl.startsWith('/') && isApiPath) {
     // 使用相对路径调用客户端API处理，避免使用外部函数URL
     const handled = await handleClientSideApi(cleanUrl, init)
     if (handled) return handled
