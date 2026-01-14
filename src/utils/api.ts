@@ -431,12 +431,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
                 body: JSON.stringify(payload)
               })
               const data2 = await resp.json()
-              return jsonResponse({ success: true, item: Array.isArray(data2) ? data2[0] : data2 })
+              return jsonResponse({ data: Array.isArray(data2) ? data2[0] : data2 })
             } catch (e: any) {
-              return jsonResponse({ success: false, error: String(e?.message || 'insert failed') }, 500)
+              return jsonResponse({ error: String(e?.message || 'insert failed') }, 500)
             }
           }
-          return jsonResponse({ success: true, item: data })
+          return jsonResponse({ data })
         }
         const dev = path.match(/^\/api\/tooling\/devices\/([^\/]+)$/)
         if (dev && method === 'PUT') {
@@ -457,10 +457,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
               })
               if (!resp.ok) throw new Error(`PATCH failed ${resp.status}`)
             } catch (e: any) {
-              return jsonResponse({ success: false, error: String(e?.message || 'update failed') }, 500)
+              return jsonResponse({ error: String(e?.message || 'update failed') }, 500)
             }
           }
-          return jsonResponse({ success: true })
+          return jsonResponse({ data: { success: true } })
         }
         if (dev && method === 'DELETE') {
           const id = dev[1]
@@ -476,10 +476,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
               })
               if (!resp.ok) throw new Error(`DELETE failed ${resp.status}`)
             } catch (e: any) {
-              return jsonResponse({ success: false, error: String(e?.message || 'delete failed') }, 500)
+              return jsonResponse({ error: String(e?.message || 'delete failed') }, 500)
             }
           }
-          return jsonResponse({ success: true })
+          return jsonResponse({ data: { success: true } })
         }
       }
 
@@ -489,8 +489,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const body = init?.body ? await new Response(init.body).json() : {}
           const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
           const { data, error } = await supabase.from('fixed_inventory_options').insert(payload).select('*').single()
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, item: data })
+          if (error) return jsonResponse({ error: error.message }, 500)
+          return jsonResponse({ data })
         }
         const fio = path.match(/^\/api\/tooling\/fixed-inventory-options\/([^\/]+)$/)
         if (fio && method === 'PUT') {
@@ -498,14 +498,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const body = init?.body ? await new Response(init.body).json() : {}
           const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
           const { error } = await supabase.from('fixed_inventory_options').update(payload).eq('id', id)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true })
+          if (error) return jsonResponse({ error: error.message }, 500)
+          return jsonResponse({ data: { success: true } })
         }
         if (fio && method === 'DELETE') {
           const id = fio[1]
           const { error } = await supabase.from('fixed_inventory_options').delete().eq('id', id)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true })
+          if (error) return jsonResponse({ error: error.message }, 500)
+          return jsonResponse({ data: { success: true } })
         }
       }
       // Options & meta
