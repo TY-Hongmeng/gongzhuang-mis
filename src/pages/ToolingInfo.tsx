@@ -3141,13 +3141,13 @@ const ToolingInfoPage: React.FC = () => {
                     width: 160,
                     render: (text: string, rec: PartItem) => (
                       <EditableCell
-                        value={materialSources.find(ms => ms.id === text)?.name || (rec as any)?.material_source?.name || ''}
+                        value={materialSources.find(ms => String(ms.id) === String(text))?.name || (rec as any)?.material_source?.name || ''}
                         record={rec as any}
                         dataIndex={'material_source_id' as any}
                         options={materialSources.length > 0 ? materialSources.map(ms => ms.name) : ['']}
                         onSave={(_pid, _k, v) => {
                           const selectedSource = materialSources.find(ms => ms.name === v)
-                          const oldSource = materialSources.find(ms => ms.id === rec.material_source_id)?.name || ''
+                          const oldSource = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
                           const newSource = v
                           
                           // 如果材料来源从外购改为其他，需要处理备注字段
@@ -3194,7 +3194,7 @@ const ToolingInfoPage: React.FC = () => {
                     dataIndex: 'remarks',
                     width: 160,
                     render: (text: string, rec: PartItem) => {
-                      const materialSource = materialSources.find(ms => ms.id === rec.material_source_id)?.name || (rec as any)?.material_source?.name || ''
+                      const materialSource = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || (rec as any)?.material_source?.name || ''
                       
                       if (materialSource === '外购') {
                         return (
