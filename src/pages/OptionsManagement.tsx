@@ -890,7 +890,6 @@ export default function OptionsManagement() {
                           <tr>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
@@ -904,9 +903,6 @@ export default function OptionsManagement() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {partType.name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {partType.description || '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {partType.volume_formula || '-'}
@@ -952,10 +948,6 @@ export default function OptionsManagement() {
                         <input type="text" value={editingPartType.name} onChange={(e) => setEditingPartType({ ...editingPartType, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入料型名称" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
-                        <input type="text" value={editingPartType.description} onChange={(e) => setEditingPartType({ ...editingPartType, description: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入描述" />
-                      </div>
-                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">体积公式</label>
                         <input type="text" value={editingPartType.volume_formula} onChange={(e) => setEditingPartType({ ...editingPartType, volume_formula: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入体积公式" />
                       </div>
@@ -964,46 +956,6 @@ export default function OptionsManagement() {
                       <button onClick={() => setEditingPartType(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
                       <button onClick={handleSavePartType} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'partTypes' && editingPartType && (
-                  <div className="overflow-x-auto mt-4">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {partTypes.map((partType, index) => (
-                          <tr key={partType.id}>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="font-medium">{index + 1}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{partType.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.description || '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.volume_formula || '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{partType.is_active ? '启用' : '禁用'}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
-                                <Popconfirm title={`确定要删除"${partType.name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeletePartType(partType.id)}>
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
-                                </Popconfirm>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 )}
 
