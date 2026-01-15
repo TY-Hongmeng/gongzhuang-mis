@@ -92,12 +92,14 @@ export function installApiInterceptor() {
         if (!headers.has('apikey')) headers.set('apikey', anon)
         if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${anon}`)
         const patchedInit: RequestInit = { ...(init || {}), headers }
+        const method = (patchedInit?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
         let urlStr = cleanUrl
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
+          if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取设备数据
           try {
             const response = await fetch(urlStr.replace(/\?.*/, ''), {
@@ -113,6 +115,7 @@ export function installApiInterceptor() {
           }
         }
         if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
+          if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取固定库存选项数据
           try {
             const response = await fetch(urlStr.replace(/\?.*/, ''), {
