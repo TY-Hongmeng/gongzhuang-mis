@@ -4,6 +4,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
+    '/api/auth/',
     '/api/options/', 
     '/api/materials', 
     '/api/part-types',
@@ -170,7 +171,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
   try {
     // 清理URL中的反引号和空格
     const cleanUrl = url.replace(/[`]/g, '').trim()
-    console.log('handleClientSideApi called:', { url: cleanUrl, init })
     
     // 无论是否有Supabase实例，都尝试处理请求
     let path = cleanUrl
@@ -187,7 +187,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       path = apiPathMatch[1]
     }
     
-    console.log('Extracted API path:', path)
     const method = (init?.method || 'GET').toUpperCase()
     if (method === 'OPTIONS') {
       return jsonResponse({ success: true })
