@@ -109,6 +109,12 @@ export function installApiInterceptor() {
         const method = (patchedInit?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
         let urlStr = cleanUrl
+
+        if (/\.supabase\.co\/rest\/v1\/users\?/.test(urlStr) && !/([?&])apikey=/.test(urlStr)) {
+          const u = new URL(urlStr)
+          u.searchParams.set('apikey', anon)
+          urlStr = u.toString()
+        }
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
