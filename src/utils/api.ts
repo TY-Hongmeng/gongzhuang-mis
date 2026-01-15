@@ -8,6 +8,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/options/', 
     '/api/materials', 
     '/api/part-types',
+    '/api/tooling',
     '/api/tooling/devices', 
     '/api/tooling/fixed-inventory-options'
   ]
@@ -578,11 +579,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 50)
+        const sortField = String(qs.get('sortField') || 'created_at')
+        const sortOrder = String(qs.get('sortOrder') || 'asc').toLowerCase() === 'asc'
         const { data, error } = await supabase
           .from('tooling_info')
           .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
+          .order(sortField as any, { ascending: sortOrder })
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        if (error) return jsonResponse({ data: [] })
+        if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize })
         const items = (data || []).map((x: any) => ({
           id: x.id,
           inventory_number: x.inventory_number || '',
@@ -593,12 +597,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           completed_date: x.completed_date || '',
           project_name: x.project_name || ''
         }))
-        return jsonResponse({ data: items })
+        return jsonResponse({ success: true, items, total: items.length, page, pageSize, data: items })
       }
       
       // Create tooling
       if (method === 'POST' && path === '/api/tooling') {
-        const body = init?.body ? await new Response(init.body).json() : {}
+        const body = await readBody()
         const { data, error } = await supabase
           .from('tooling')
           .insert({
@@ -616,14 +620,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .select('*')
           .single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ data: data })
+        return jsonResponse({ success: true, data })
       }
       
       // Update tooling
       if (method === 'PUT' && path.match(/^\/api\/tooling\/[^\/]+$/)) {
         const toolingId = path.split('/').pop()
         if (!toolingId) return jsonResponse({ success: false, error: 'Invalid tooling ID' }, 400)
-        const body = init?.body ? await new Response(init.body).json() : {}
+        const body = await readBody()
         const { data, error } = await supabase
           .from('tooling')
           .update(body)
@@ -631,12 +635,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .select('*')
           .single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ data: data })
+        return jsonResponse({ success: true, data })
       }
       
       // Batch delete tooling
       if (method === 'POST' && path === '/api/tooling/batch-delete') {
-        const body = init?.body ? await new Response(init.body).json() : {}
+        const body = await readBody()
         const { ids } = body
         if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
         
@@ -650,7 +654,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       
       // Batch delete parts
       if (method === 'POST' && path === '/api/tooling/parts/batch-delete') {
-        const body = init?.body ? await new Response(init.body).json() : {}
+        const body = await readBody()
         const { ids } = body
         if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
         
@@ -664,7 +668,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       
       // Batch delete child items
       if (method === 'POST' && path === '/api/tooling/child-items/batch-delete') {
-        const body = init?.body ? await new Response(init.body).json() : {}
+        const body = await readBody()
         const { ids } = body
         if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
         
@@ -716,8 +720,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .from('parts_info')
           .select('*')
           .eq('tooling_id', toolingId)
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        if (error) return jsonResponse({ success: true, items: [], data: [] })
+        return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
 
       // Child items by toolingId
@@ -728,8 +732,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .from('child_items')
           .select('*')
           .eq('tooling_id', toolingId)
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        if (error) return jsonResponse({ success: true, items: [], data: [] })
+        return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
 
       // Work hours
@@ -742,8 +746,19 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const { data, error } = await supabase.from('work_hours').select('*')
           .order(order, { ascending: orderDir })
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
+        const items = data || []
+        const totals = (items as any[]).reduce(
+          (acc, r: any) => {
+            acc.total_hours += Number(r.hours || 0)
+            acc.aux_hours += Number(r.aux_hours || 0)
+            acc.proc_hours += Number(r.proc_hours || 0)
+            acc.completed_quantity += Number(r.completed_quantity || 0)
+            return acc
+          },
+          { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }
+        )
+        return jsonResponse({ success: true, items, total: items.length, page, pageSize, totals, data: items })
       }
 
       // Cutting orders list
