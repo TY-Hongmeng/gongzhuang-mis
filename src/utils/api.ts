@@ -117,6 +117,28 @@ export function installApiInterceptor() {
         }
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
+        if (/\/rest\/v1\/users\?/.test(urlStr) && method === 'GET') {
+          try {
+            const { data, error } = await supabase
+              .from('users')
+              .select('id,real_name,phone,workshop,team,aux_coeff,proc_coeff,capability_coeff')
+            if (error) {
+              return new Response('[]', {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              })
+            }
+            return new Response(JSON.stringify(data || []), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            })
+          } catch {
+            return new Response('[]', {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            })
+          }
+        }
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
