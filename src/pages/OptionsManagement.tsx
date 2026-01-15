@@ -554,7 +554,6 @@ export default function OptionsManagement() {
           <tr>
             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
@@ -583,29 +582,6 @@ export default function OptionsManagement() {
                   />
                 ) : (
                   item.name
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {editingItem?.id === item.id ? (
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={editingItem.is_active}
-                      onChange={(e) => {
-                      if (activeTab === 'units') setEditingUnit({ ...editingItem, is_active: e.target.checked });
-                      else if (activeTab === 'categories') setEditingCategory({ ...editingItem, is_active: e.target.checked });
-                      else if (activeTab === 'materialSources') setEditingMaterialSource({ ...item, is_active: e.target.checked });
-                    }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm">启用</span>
-                  </label>
-                ) : (
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    item.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {item.is_active ? '启用' : '禁用'}
-                  </span>
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -723,13 +699,6 @@ export default function OptionsManagement() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
                             <input type="text" value={editingUnit.name} onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入投产单位名称" />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
-                            <label className="flex items-center">
-                              <input type="checkbox" checked={editingUnit.is_active} onChange={(e) => setEditingUnit({ ...editingUnit, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                              <span className="ml-2 text-sm">启用</span>
-                            </label>
-                          </div>
                         </div>
                         <div className="mt-4 flex justify-end space-x-3">
                           <button onClick={() => setEditingUnit(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -761,13 +730,6 @@ export default function OptionsManagement() {
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
                             <input type="text" value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工装类别名称" />
-                          </div>
-                          <div>
-                            <label className="block text.sm font-medium text-gray-700 mb-1">状态</label>
-                            <label className="flex items-center">
-                              <input type="checkbox" checked={editingCategory.is_active} onChange={(e) => setEditingCategory({ ...editingCategory, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                              <span className="ml-2 text-sm">启用</span>
-                            </label>
                           </div>
                         </div>
                         <div className="mt-4 flex justify-end space-x-3">
@@ -801,7 +763,6 @@ export default function OptionsManagement() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">材料名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">密度(g/cm³)</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单价(元/kg)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
@@ -815,11 +776,6 @@ export default function OptionsManagement() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{material.density}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 ¥{material.unit_price ? Number(material.unit_price).toFixed(2) : '0.00'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${material.is_active === false ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                  {material.is_active === false ? '禁用' : '启用'}
-                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
@@ -891,7 +847,6 @@ export default function OptionsManagement() {
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
@@ -906,13 +861,6 @@ export default function OptionsManagement() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {partType.volume_formula || '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  partType.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {partType.is_active ? '启用' : '禁用'}
-                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
@@ -985,13 +933,6 @@ export default function OptionsManagement() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
                             <input type="text" value={editingMaterialSource.description} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, description: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入描述" />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
-                            <label className="flex items-center">
-                              <input type="checkbox" checked={editingMaterialSource.is_active} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                              <span className="ml-2 text-sm">启用</span>
-                            </label>
-                          </div>
                         </div>
                         <div className="mt-4 flex justify-end space-x-3">
                           <button onClick={() => setEditingMaterialSource(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -1025,7 +966,6 @@ export default function OptionsManagement() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
@@ -1043,11 +983,6 @@ export default function OptionsManagement() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {device.max_aux_minutes ?? '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${device.is_active === false ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                  {device.is_active === false ? '禁用' : '启用'}
-                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
@@ -1107,7 +1042,6 @@ export default function OptionsManagement() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
                       </thead>
@@ -1120,11 +1054,6 @@ export default function OptionsManagement() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{device.device_no}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.device_name}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.max_aux_minutes ?? '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${device.is_active === false ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                {device.is_active === false ? '禁用' : '启用'}
-                              </span>
-                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
                                 <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
@@ -1160,7 +1089,6 @@ export default function OptionsManagement() {
                           <tr>
                             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
@@ -1172,11 +1100,6 @@ export default function OptionsManagement() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {option.option_value}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                  {option.is_active ? '启用' : '禁用'}
-                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
@@ -1211,13 +1134,6 @@ export default function OptionsManagement() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
                         <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">状态</label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={editingFixedOption.is_active} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                          <span className="ml-2 text-sm">启用</span>
-                        </label>
-                      </div>
                     </div>
                     <div className="mt-4 flex justify-end space-x-3">
                       <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -1233,7 +1149,6 @@ export default function OptionsManagement() {
                         <tr>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
                       </thead>
@@ -1244,9 +1159,6 @@ export default function OptionsManagement() {
                               <span className="font-medium">{index + 1}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{option.option_value}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${option.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{option.is_active ? '启用' : '禁用'}</span>
-                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
                                 <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
