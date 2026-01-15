@@ -87,6 +87,12 @@ export function installApiInterceptor() {
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
+      // Intercept supabase functions api calls and reroute to client handler
+      if (/functions\.supabase\.co\/functions\/v1\/api\//.test(cleanUrl)) {
+        const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
+        const path = m ? m[1] : ''
+        if (path) return await fetchWithFallback(path, init)
+      }
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
@@ -766,6 +772,25 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         if (error) return jsonResponse({ success: true, items: [], data: [] })
         return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
+      if (method === 'POST' && partsMatch) {
+        const toolingId = partsMatch[1]
+        const body = await readBody()
+        const payload: any = {
+          tooling_id: toolingId,
+          part_inventory_number: String(body.part_inventory_number || ''),
+          part_drawing_number: String(body.part_drawing_number || ''),
+          part_name: String(body.part_name || ''),
+          part_quantity: body.part_quantity ?? null,
+          material_id: body.material_id ?? null,
+          material_source_id: body.material_source_id ?? null,
+          part_category: String(body.part_category || ''),
+          specifications: body.specifications ?? {},
+          remarks: body.remarks ?? ''
+        }
+        const { data, error } = await supabase.from('parts').insert(payload).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
+      }
 
       // Child items by toolingId
       const childMatch = path.match(/^\/api\/tooling\/([^\/]+)\/child-items$/)
@@ -777,6 +802,22 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           .eq('tooling_id', toolingId)
         if (error) return jsonResponse({ success: true, items: [], data: [] })
         return jsonResponse({ success: true, items: data || [], data: data || [] })
+      }
+      if (method === 'POST' && childMatch) {
+        const toolingId = childMatch[1]
+        const body = await readBody()
+        const payload: any = {
+          tooling_id: toolingId,
+          name: String(body.name || ''),
+          model: String(body.model || ''),
+          quantity: body.quantity ?? null,
+          unit: String(body.unit || ''),
+          required_date: String(body.required_date || ''),
+          remark: body.remark ?? ''
+        }
+        const { data, error } = await supabase.from('child_items').insert(payload).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
       }
 
       // Work hours
