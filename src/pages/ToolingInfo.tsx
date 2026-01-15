@@ -553,6 +553,9 @@ const ToolingInfoPage: React.FC = () => {
             }
             return dedup
           })
+          await runWithPreservedScroll(async () => {
+            await fetchToolingData()
+          })
         } else {
           message.error('创建工装失败：' + (created?.error || '未知错误'))
         }
@@ -573,13 +576,22 @@ const ToolingInfoPage: React.FC = () => {
         const success = await saveToolingData(id, { [key]: value })
         if (!success) {
           // 如果API调用失败，重新获取数据以回滚到服务器状态
-          setTimeout(() => fetchToolingData(), 100)
+          await runWithPreservedScroll(async () => {
+            await fetchToolingData()
+          })
+        } else {
+          // 成功后轻量重新拉取，确保派生数据一致
+          await runWithPreservedScroll(async () => {
+            await fetchToolingData()
+          })
         }
       }
     } catch (error) {
       console.warn('保存失败:', error)
       message.error('保存失败，请重试')
-      fetchToolingData()
+      await runWithPreservedScroll(async () => {
+        await fetchToolingData()
+      })
     }
   }
 
