@@ -90,9 +90,21 @@ export function installApiInterceptor() {
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
-        const headers = new Headers(init?.headers || {})
-        if (!headers.has('apikey')) headers.set('apikey', anon)
-        if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${anon}`)
+        const headers = new Headers()
+        const h = (init as any)?.headers
+        if (h instanceof Headers) {
+          for (const [k, v] of h.entries()) headers.set(k, v)
+        } else if (Array.isArray(h)) {
+          for (const [k, v] of h) {
+            if (k && v != null) headers.set(String(k), String(v))
+          }
+        } else if (h && typeof h === 'object') {
+          for (const [k, v] of Object.entries(h)) {
+            if (v != null) headers.set(String(k), String(v))
+          }
+        }
+        if (!headers.get('apikey')) headers.set('apikey', anon)
+        if (!headers.get('authorization')) headers.set('authorization', `Bearer ${anon}`)
         const patchedInit: RequestInit = { ...(init || {}), headers }
         const method = (patchedInit?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
@@ -104,7 +116,7 @@ export function installApiInterceptor() {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取设备数据
           try {
-            const response = await fetch(urlStr.replace(/\?.*/, ''), {
+            const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
               headers: {
                 'apikey': anon,
                 'Authorization': `Bearer ${anon}`
@@ -120,7 +132,7 @@ export function installApiInterceptor() {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取固定库存选项数据
           try {
-            const response = await fetch(urlStr.replace(/\?.*/, ''), {
+            const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
               headers: {
                 'apikey': anon,
                 'Authorization': `Bearer ${anon}`
