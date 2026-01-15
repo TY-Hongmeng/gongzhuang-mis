@@ -141,6 +141,7 @@ export function installApiInterceptor() {
 
 // ---------- Client-side API fallback (Supabase direct) ----------
 import { supabase } from '../lib/supabase'
+import bcrypt from 'bcryptjs'
 
 // Supabase配置
 const supabaseUrl = 'https://oltsiocyesbgezlrcxze.supabase.co'
@@ -191,10 +192,55 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     if (method === 'OPTIONS') {
       return jsonResponse({ success: true })
     }
+
+    const readBody = async (): Promise<any> => {
+      try {
+        if (!init?.body) return {}
+        try {
+          return await new Response(init.body).json()
+        } catch {
+          const txt = await new Response(init.body).text()
+          try { return JSON.parse(txt) } catch { return {} }
+        }
+      } catch {
+        return {}
+      }
+    }
     
     // 如果Supabase可用，优先从Supabase获取数据
       if (supabase) {
-      
+
+      if (path === '/api/auth/login' && method === 'POST') {
+        const body = await readBody()
+        const phone = String(body.phone || '')
+        const password = String(body.password || '')
+        const { data: userRow, error } = await supabase
+          .from('users')
+          .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+          .eq('phone', phone)
+          .single()
+        if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 401)
+        const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
+        if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
+        if (String((userRow as any).status) !== 'active') return jsonResponse({ success: false, error: '账户未激活或已被禁用' }, 401)
+        const { password_hash, ...safeUser } = (userRow as any)
+        return jsonResponse({ success: true, user: safeUser })
+      }
+
+      if (path === '/api/auth/me' && method === 'GET') {
+        const qs = getQuery(cleanUrl)
+        const userId = String(qs.get('userId') || '')
+        if (!userId) return jsonResponse({ success: false, error: '缺少userId' }, 400)
+        const { data: userRow, error } = await supabase
+          .from('users')
+          .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+          .eq('id', userId)
+          .single()
+        if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 404)
+        const { password_hash, ...safeUser } = (userRow as any)
+        return jsonResponse({ success: true, user: safeUser })
+      }
+
       // ---- Production units CRUD ----
       if (path.startsWith('/api/options/production-units')) {
         if (method === 'GET') {
@@ -202,7 +248,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const maxRes = await supabase.from('production_units').select('sort_order').order('sort_order', { ascending: false }).limit(1)
           const maxOrder = Array.isArray(maxRes.data) && maxRes.data.length ? Number(maxRes.data[0].sort_order || 0) : 0
           const nextOrder = maxOrder + 1
@@ -214,7 +260,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const pu = path.match(/^\/api\/options\/production-units\/(\d+)$/)
         if (pu && method === 'PUT') {
           const id = Number(pu[1])
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload = { name: String(body.name || ''), is_active: Boolean(body.is_active ?? true) }
           const { error } = await supabase.from('production_units').update(payload).eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -227,7 +273,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true })
         }
         if (method === 'POST' && path.endsWith('/reorder')) {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const itemId = Number(body.itemId)
           const newIndex = Number(body.newIndex)
           const { error } = await supabase.from('production_units').update({ sort_order: newIndex + 1 }).eq('id', itemId)
@@ -243,7 +289,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const { data, error } = await supabase
             .from('tooling_categories')
             .insert({ name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), description: String(body.description || '') })
@@ -255,7 +301,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const m = path.match(/^\/api\/options\/tooling-categories\/(\d+)$/)
         if (m && method === 'PUT') {
           const id = Number(m[1])
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const { error } = await supabase
             .from('tooling_categories')
             .update({ name: String(body.name || ''), is_active: Boolean(body.is_active ?? true), description: String(body.description || '') })
@@ -282,7 +328,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const { data, error } = await supabase
             .from('material_sources')
             .insert({ name: String(body.name || ''), description: String(body.description || ''), is_active: Boolean(body.is_active ?? true) })
@@ -294,7 +340,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const ms = path.match(/^\/api\/options\/material-sources\/(\d+)$/)
         if (ms && method === 'PUT') {
           const id = Number(ms[1])
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const { error } = await supabase
             .from('material_sources')
             .update({ name: String(body.name || ''), description: String(body.description || ''), is_active: Boolean(body.is_active ?? true) })
@@ -321,7 +367,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload = { name: String(body.name || ''), description: body.description ?? null, volume_formula: body.volume_formula ?? null }
           const { data, error } = await supabase.from('part_types').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -330,7 +376,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const pt = path.match(/^\/api\/part-types\/(.+)$/)
         if (pt && method === 'PUT') {
           const id = pt[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload = { name: String(body.name || ''), description: body.description ?? null, volume_formula: body.volume_formula ?? null }
           const { error } = await supabase.from('part_types').update(payload).eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -354,7 +400,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ data: error ? [] : (data || []) })
         }
         if (method === 'POST' && path === '/api/materials') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload: any = { name: String(body.name || ''), density: Number(body.density || 0) }
           if (body.unit_price !== undefined && body.unit_price !== null && body.unit_price !== '') {
             payload.unit_price = Number(body.unit_price)
@@ -366,7 +412,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const mat = path.match(/^\/api\/materials\/([^\/]+)$/)
         if (mat && method === 'PUT') {
           const id = mat[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload: any = { name: String(body.name || ''), density: Number(body.density || 0) }
           if (body.unit_price !== undefined && body.unit_price !== null && body.unit_price !== '') {
             payload.unit_price = Number(body.unit_price)
@@ -392,7 +438,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const priceProxyCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
         if (priceProxyCreate && method === 'POST') {
           const material_id = priceProxyCreate[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const up = Number(body.unit_price)
           const { error } = await supabase.from('materials').update({ unit_price: up }).eq('id', material_id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -401,7 +447,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const priceProxyUpdate = path.match(/^\/api\/materials\/([^\/]+)\/prices\/([^\/]+)$/)
         if (priceProxyUpdate && method === 'PUT') {
           const material_id = priceProxyUpdate[1]
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const up = Number(body.unit_price)
           const { error } = await supabase.from('materials').update({ unit_price: up }).eq('id', material_id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -418,14 +464,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Devices CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/devices')) {
         if (method === 'POST' && path === '/api/tooling/devices') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
           const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
         }
         if (method === 'POST' && path === '/api/tooling/devices/update') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const id = String(body.id || '')
           const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
           const { error } = await supabase.from('devices').update(payload).eq('id', id)
@@ -433,7 +479,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true })
         }
         if (method === 'POST' && path === '/api/tooling/devices/delete') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const id = String(body.id || '')
           const { error } = await supabase.from('devices').delete().eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -444,14 +490,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       // ---- Fixed inventory options CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/fixed-inventory-options')) {
         if (method === 'POST' && path === '/api/tooling/fixed-inventory-options') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
           const { data, error } = await supabase.from('fixed_inventory_options').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
         }
         if (method === 'POST' && path === '/api/tooling/fixed-inventory-options/update') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const id = String(body.id || '')
           const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
           const { error } = await supabase.from('fixed_inventory_options').update(payload).eq('id', id)
@@ -459,7 +505,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: true })
         }
         if (method === 'POST' && path === '/api/tooling/fixed-inventory-options/delete') {
-          const body = init?.body ? await new Response(init.body).json() : {}
+          const body = await readBody()
           const id = String(body.id || '')
           const { error } = await supabase.from('fixed_inventory_options').delete().eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
