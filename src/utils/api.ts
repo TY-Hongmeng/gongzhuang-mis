@@ -623,7 +623,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const sortOrder = String(qs.get('sortOrder') || 'asc').toLowerCase() === 'asc'
         const { data, error } = await supabase
           .from('tooling_info')
-          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name')
+          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder')
           .order(sortField as any, { ascending: sortOrder })
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize })
@@ -635,7 +635,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           received_date: x.received_date || '',
           demand_date: x.demand_date || '',
           completed_date: x.completed_date || '',
-          project_name: x.project_name || ''
+          project_name: x.project_name || '',
+          production_date: x.production_date || '',
+          sets_count: typeof x.sets_count === 'number' ? x.sets_count : 1,
+          recorder: x.recorder || ''
         }))
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, data: items })
       }
