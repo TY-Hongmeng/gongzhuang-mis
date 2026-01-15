@@ -552,7 +552,7 @@ export default function OptionsManagement() {
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">排序</th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
@@ -566,9 +566,7 @@ export default function OptionsManagement() {
               className={`transition-colors duration-200`}
             >
               <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                {!editingItem && (
-                  <span className="font-medium">{index + 1}</span>
-                )}
+                <span className="font-medium">{index + 1}</span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 {editingItem?.id === item.id ? (
@@ -717,9 +715,6 @@ export default function OptionsManagement() {
                         新增投产单位
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {productionUnits.length} 个投产单位</p>
-                    </div>
                     {editingUnit && (
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">{editingUnit.id ? '编辑投产单位' : '新增投产单位'}</h3>
@@ -759,9 +754,6 @@ export default function OptionsManagement() {
                         新增工装类别
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {toolingCategories.length} 个工装类别</p>
-                    </div>
                     {editingCategory && (
                       <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">{editingCategory.id ? '编辑工装类别' : '新增工装类别'}</h3>
@@ -790,7 +782,7 @@ export default function OptionsManagement() {
 
                 {/* 材料管理 - 简化版本 */}
                 {activeTab === 'materials' && !editingMaterial && (
-                  <div className="space-y-4">
+                  <div>
                     <div className="mb-4 flex justify-end">
                       <button 
                         onClick={handleCreateMaterial} 
@@ -801,42 +793,45 @@ export default function OptionsManagement() {
                         新增材料
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {materials.length} 种材料</p>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">材料名称</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">密度(g/cm³)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单价(元/kg)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {materials.map((material, index) => (
+                            <tr key={material.id}>
+                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="font-medium">{index + 1}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{material.name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{material.density}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ¥{material.unit_price ? Number(material.unit_price).toFixed(2) : '0.00'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    {materials.map((material, index) => {
-                      return (
-                        <div key={material.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4 flex-1">
-                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center font-semibold text-sm">
-                                {index + 1}
-                              </div>
-                              <div className="flex items-center space-x-6 flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 min-w-[80px]">{material.name}</h3>
-                                <p className="text-sm text-gray-600">密度: {material.density} g/cm³</p>
-                                <p className="text-sm text-gray-600">
-                                  当前价格:
-                                  <span className={`font-medium ${material.unit_price ? 'text-green-600' : 'text-red-500'}`}>
-                                    ¥{material.unit_price ? Number(material.unit_price).toFixed(2) : '0.00'} 元/kg
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2 ml-4">
-                              <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900 p-2" title="编辑材料">
-                                <Edit2 className="w-5 h-5" />
-                              </button>
-                              <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
-                                <button className="text-red-600 hover:text-red-900 p-2" title="删除材料">
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </Popconfirm>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
 
@@ -883,13 +878,11 @@ export default function OptionsManagement() {
                         新增料型
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {partTypes.length} 种料型</p>
-                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
@@ -898,8 +891,11 @@ export default function OptionsManagement() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {partTypes.map((partType) => (
+                          {partTypes.map((partType, index) => (
                             <tr key={partType.id}>
+                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="font-medium">{index + 1}</span>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {partType.name}
                               </td>
@@ -970,6 +966,7 @@ export default function OptionsManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
@@ -978,8 +975,11 @@ export default function OptionsManagement() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {partTypes.map((partType) => (
+                        {partTypes.map((partType, index) => (
                           <tr key={partType.id}>
+                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="font-medium">{index + 1}</span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{partType.name}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.description || '-'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{partType.volume_formula || '-'}</td>
@@ -1041,9 +1041,6 @@ export default function OptionsManagement() {
                         </div>
                       </div>
                     )}
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {materialSources.length} 个材料来源</p>
-                    </div>
                     {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
                   </div>
                 )}
@@ -1062,13 +1059,11 @@ export default function OptionsManagement() {
                         新增设备
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {devices.length} 台设备</p>
-                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
@@ -1076,8 +1071,11 @@ export default function OptionsManagement() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {devices.map((device) => (
+                          {devices.map((device, index) => (
                             <tr key={device.id}>
+                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="font-medium">{index + 1}</span>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {device.device_no}
                               </td>
@@ -1141,6 +1139,7 @@ export default function OptionsManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
@@ -1148,8 +1147,11 @@ export default function OptionsManagement() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {devices.map((device) => (
+                        {devices.map((device, index) => (
                           <tr key={device.id}>
+                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="font-medium">{index + 1}</span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{device.device_no}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.device_name}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.max_aux_minutes ?? '-'}</td>
@@ -1182,13 +1184,11 @@ export default function OptionsManagement() {
                         新增维修选项
                       </button>
                     </div>
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 font-medium">共有 {fixedOptions.length} 个选项</p>
-                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
+                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
@@ -1196,8 +1196,11 @@ export default function OptionsManagement() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {fixedOptions.map((option) => (
+                          {fixedOptions.map((option, index) => (
                             <tr key={option.id}>
+                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span className="font-medium">{index + 1}</span>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {option.option_value}
                               </td>
@@ -1266,6 +1269,7 @@ export default function OptionsManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项标签</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
@@ -1273,8 +1277,11 @@ export default function OptionsManagement() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {fixedOptions.map((option) => (
+                        {fixedOptions.map((option, index) => (
                           <tr key={option.id}>
+                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="font-medium">{index + 1}</span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{option.option_value}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{option.option_label}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
