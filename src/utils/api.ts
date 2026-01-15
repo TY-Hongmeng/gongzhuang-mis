@@ -96,7 +96,8 @@ export function installApiInterceptor() {
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
-        const headers = new Headers()
+        const baseReq = input instanceof Request ? input : null
+        const headers = new Headers(baseReq?.headers || undefined)
         const h = (init as any)?.headers
         if (h instanceof Headers) {
           for (const [k, v] of h.entries()) headers.set(k, v)
@@ -111,8 +112,8 @@ export function installApiInterceptor() {
         }
         if (!headers.get('apikey')) headers.set('apikey', anon)
         if (!headers.get('authorization')) headers.set('authorization', `Bearer ${anon}`)
-        const patchedInit: RequestInit = { ...(init || {}), headers }
-        const method = (patchedInit?.method || 'GET').toUpperCase()
+        const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
+        const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
         let urlStr = cleanUrl
 
@@ -123,6 +124,11 @@ export function installApiInterceptor() {
         }
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
+        if (!/([?&])apikey=/.test(urlStr)) {
+          const u = new URL(urlStr)
+          u.searchParams.set('apikey', anon)
+          urlStr = u.toString()
+        }
         if (/\/rest\/v1\/users\?/.test(urlStr) && method === 'GET') {
           try {
             const { data, error } = await supabase
@@ -177,6 +183,10 @@ export function installApiInterceptor() {
           } catch (e) {
             return jsonResponse({ data: [] })
           }
+        }
+        if (baseReq) {
+          const req = new Request(urlStr, baseReq)
+          return await originalFetch(req, patchedInit)
         }
         return await originalFetch(urlStr as any, patchedInit)
       }
@@ -775,19 +785,31 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       if (method === 'POST' && partsMatch) {
         const toolingId = partsMatch[1]
         const body = await readBody()
+        const rawSource = String(body.source || '').trim()
+        const source = (rawSource === '下料' || rawSource === '自备' || rawSource === '外购')
+          ? rawSource
+          : '自备'
+        const msRaw = body.material_source_id
+        const msNum = msRaw === null || msRaw === undefined || String(msRaw).trim() === '' ? null : Number(msRaw)
+        const material_source_id = typeof msNum === 'number' && !Number.isNaN(msNum) ? msNum : null
+        const qtyRaw = body.part_quantity
+        const qtyNum = qtyRaw === null || qtyRaw === undefined || String(qtyRaw).trim() === '' ? null : Number(qtyRaw)
+        const part_quantity = typeof qtyNum === 'number' && !Number.isNaN(qtyNum) ? qtyNum : null
         const payload: any = {
           tooling_id: toolingId,
           part_inventory_number: String(body.part_inventory_number || ''),
+          inventory_number: String(body.part_inventory_number || ''),
           part_drawing_number: String(body.part_drawing_number || ''),
           part_name: String(body.part_name || ''),
-          part_quantity: body.part_quantity ?? null,
+          part_quantity,
           material_id: body.material_id ?? null,
-          material_source_id: body.material_source_id ?? null,
+          material_source_id,
           part_category: String(body.part_category || ''),
           specifications: body.specifications ?? {},
-          remarks: body.remarks ?? ''
+          remarks: body.remarks ?? '',
+          source
         }
-        const { data, error } = await supabase.from('parts').insert(payload).select('*').single()
+        const { data, error } = await supabase.from('parts_info').insert(payload).select('*').single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true, data })
       }
@@ -812,8 +834,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           model: String(body.model || ''),
           quantity: body.quantity ?? null,
           unit: String(body.unit || ''),
-          required_date: String(body.required_date || ''),
-          remark: body.remark ?? ''
+          required_date: String(body.required_date || '') || null
         }
         const { data, error } = await supabase.from('child_items').insert(payload).select('*').single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
