@@ -383,6 +383,9 @@ const ToolingInfoPage: React.FC = () => {
       window.scrollTo(0, savedScrollTopRef.current)
     }, 100)
   }
+  const runWithPreservedScroll = async (action: () => Promise<void>) => {
+    await handleExternalAction(action)
+  }
 
   // 为指定行生成盘存编号
   const generateInventoryNumberForRow = async (rowId: string) => {
