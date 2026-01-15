@@ -564,19 +564,23 @@ const ToolingInfoPage: React.FC = () => {
         }
       } else {
         // 更新现有记录
+        let autoRecorder: string | undefined
         setData(prev => prev.map(r => {
           if (r.id === id) {
             const updatedRow = { ...r, [key]: value }
             // 检查是否应该自动填入责任人
             if (!updatedRow.recorder && shouldAutoFillRecorder(updatedRow)) {
               updatedRow.recorder = user?.real_name || '系统用户'
+              autoRecorder = updatedRow.recorder
             }
             return updatedRow
           }
           return r
         }))
         
-        const success = await saveToolingData(id, { [key]: value })
+        const payload: any = { [key]: value }
+        if (autoRecorder) payload.recorder = autoRecorder
+        const success = await saveToolingData(id, payload)
         if (!success) {
           // 如果API调用失败，重新获取数据以回滚到服务器状态
           await runWithPreservedScroll(async () => {
