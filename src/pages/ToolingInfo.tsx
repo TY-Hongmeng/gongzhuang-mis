@@ -422,11 +422,11 @@ const ToolingInfoPage: React.FC = () => {
       // 重复盘存编号即时校验与提示
       if (key === 'inventory_number') {
         const newInv = String(value || '').trim().toUpperCase()
+        value = newInv
         if (newInv) {
           const dup = data.find(r => !String(r.id).startsWith('blank-') && String(r.inventory_number || '').trim().toUpperCase() === newInv)
           if (dup && dup.id !== id) {
             message.error(`盘存编号“${newInv}”已存在，不能重复`)
-            fetchToolingData()
             return
           }
         }
