@@ -414,12 +414,54 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // ---- Devices CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/devices')) {
-        if (method !== 'GET') return null
+        if (method === 'POST' && path === '/api/tooling/devices') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        if (method === 'POST' && path === '/api/tooling/devices/update') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const id = String(body.id || '')
+          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const { error } = await supabase.from('devices').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path === '/api/tooling/devices/delete') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const id = String(body.id || '')
+          const { error } = await supabase.from('devices').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
       }
 
       // ---- Fixed inventory options CRUD (client handles GET only; writes defer to server) ----
       if (path.startsWith('/api/tooling/fixed-inventory-options')) {
-        if (method !== 'GET') return null
+        if (method === 'POST' && path === '/api/tooling/fixed-inventory-options') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
+          const { data, error } = await supabase.from('fixed_inventory_options').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, item: data })
+        }
+        if (method === 'POST' && path === '/api/tooling/fixed-inventory-options/update') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const id = String(body.id || '')
+          const payload = { option_value: String(body.option_value || ''), option_label: String(body.option_label || ''), is_active: Boolean(body.is_active ?? true) }
+          const { error } = await supabase.from('fixed_inventory_options').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (method === 'POST' && path === '/api/tooling/fixed-inventory-options/delete') {
+          const body = init?.body ? await new Response(init.body).json() : {}
+          const id = String(body.id || '')
+          const { error } = await supabase.from('fixed_inventory_options').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
       }
       // Options & meta
       if (method === 'GET' && path.startsWith('/api/options/production-units')) {
