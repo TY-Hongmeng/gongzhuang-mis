@@ -1110,14 +1110,31 @@ const ToolingInfoPage: React.FC = () => {
           Object.entries(merged)
             .filter(([_, value]) => typeof value === 'string')
         )
+
+        const MAX_CACHE_CHARS = 900_000
+        let persistValue = finalSafe
+        let persistJson = ''
         try {
-          localStorage.setItem('process_routes_map', JSON.stringify(finalSafe))
-        } catch (e) {
+          persistJson = JSON.stringify(finalSafe)
+          if (persistJson.length > MAX_CACHE_CHARS) {
+            persistValue = safeMapUpdates
+            persistJson = JSON.stringify(safeMapUpdates)
+            message.warning('工艺路线缓存过大，已只缓存本次导入映射（避免浏览器卡死）')
+          }
+        } catch {
+          persistValue = safeMapUpdates
+          try { persistJson = JSON.stringify(safeMapUpdates) } catch { persistJson = '{}' }
+        }
+
+        try {
+          localStorage.setItem('process_routes_map', persistJson)
+        } catch {
           message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
         }
-        setProcessRoutes(finalSafe)
+
+        setProcessRoutes(persistValue)
         // 本地更新已加载的零件数据，立即显示路线
-        const mapKeys = Object.keys(mapUpdates)
+        const mapKeys = Object.keys(safeMapUpdates)
         setPartsMap(prev => {
           const next: Record<string, any[]> = {}
           Object.entries(prev).forEach(([tid, list]) => {
@@ -3376,7 +3393,16 @@ const ToolingInfoPage: React.FC = () => {
                                     ...processRoutes,
                                     [String(rec.part_inventory_number).trim().toUpperCase()]: value
                                   }
-                                  localStorage.setItem('process_routes_map', JSON.stringify(newProcessRoutes))
+                                  try {
+                                    const json = JSON.stringify(newProcessRoutes)
+                                    if (json.length <= 900_000) {
+                                      localStorage.setItem('process_routes_map', json)
+                                    } else {
+                                      message.warning('工艺路线缓存过大，已跳过写入本地缓存')
+                                    }
+                                  } catch {
+                                    message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
+                                  }
                                   setProcessRoutes(newProcessRoutes)
                                 }
                               }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { fetchWithFallback } from '../utils/api'
 import { supabase } from '../lib/supabase'
+import { safeLocalStorage } from '../utils/safeStorage'
 
 interface Company {
   id: string;
@@ -68,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (phone: string, password: string) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'text/plain' };
+        const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify({ phone, password });
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {
@@ -93,6 +94,12 @@ export const useAuthStore = create<AuthState>()(
               set({ isLoading: false });
               return { success: false, message: data.error || '登录失败' };
             }
+          }
+
+          const errData = await response.json().catch(() => ({} as any))
+          if (errData?.error) {
+            set({ isLoading: false });
+            return { success: false, message: String(errData.error) };
           }
           const isDev = (import.meta as any)?.env?.MODE === 'development'
           const isLocalHost = typeof window !== 'undefined' && /localhost/i.test(String(window.location?.host || ''))
@@ -130,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (data: RegisterData) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'text/plain' };
+        const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify(data);
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {
@@ -164,7 +171,7 @@ export const useAuthStore = create<AuthState>()(
 
       resetPassword: async (idCard: string, newPassword: string) => {
         set({ isLoading: true });
-        const headers = { 'Content-Type': 'text/plain' };
+        const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify({ idCard, newPassword });
 
         const fetchWithTimeout = async (url: string, ms = 8000) => {
@@ -222,7 +229,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );
