@@ -8,11 +8,27 @@
     <script>
       (function(){
         try {
-          var isGhPages = /github\.io\/[^\/]+\/?$/.test(location.href) || /github\.io\/.+/.test(location.href)
           if (!location.hash) {
             location.hash = '/login'
           }
         } catch(e) {}
+
+        try {
+          var ls = window.localStorage
+          var max = 900000
+          var v = ls.getItem('process_routes_map')
+          if (v && v.length > max) {
+            ls.removeItem('process_routes_map')
+          }
+          try {
+            ls.setItem('__ls_test', '1')
+            ls.removeItem('__ls_test')
+          } catch (e2) {
+            ;['process_routes_map','process_done_map','temporary_plans','temporary_hidden_ids'].forEach(function(k){
+              try { ls.removeItem(k) } catch(e3) {}
+            })
+          }
+        } catch(e4) {}
       })();
     </script>
     <script type="module">
