@@ -336,6 +336,94 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true, user: safeUser })
       }
 
+      if (path === '/api/auth/register' && method === 'POST') {
+        const body = await readBody()
+        const phone = String(body.phone || '').trim()
+        const password = String(body.password || '')
+        const realName = String(body.realName || body.real_name || '').trim()
+        const idCard = String(body.idCard || body.id_card || '').trim()
+        const companyId = String(body.companyId || body.company_id || '').trim()
+        const roleId = String(body.roleId || body.role_id || '').trim()
+        const workshopId = String(body.workshopId || body.workshop_id || '').trim()
+        const teamId = String(body.teamId || body.team_id || '').trim()
+
+        if (!phone || !password || !realName || !idCard) {
+          return jsonResponse({ success: false, error: '缺少必要信息' }, 400)
+        }
+        if (password.length < 6) {
+          return jsonResponse({ success: false, error: '密码至少6位' }, 400)
+        }
+
+        try {
+          const exists = await withTimeout(
+            supabase.from('users').select('id').eq('phone', phone).limit(1),
+            8000
+          )
+          const has = Array.isArray((exists as any).data) && (exists as any).data.length > 0
+          if (has) return jsonResponse({ success: false, error: '手机号已注册' }, 409)
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '注册失败') }, 500)
+        }
+
+        try {
+          const password_hash = await bcrypt.hash(password, 10)
+          const payload: any = {
+            phone,
+            real_name: realName,
+            id_card: idCard,
+            company_id: companyId || null,
+            role_id: roleId || null,
+            workshop_id: workshopId || null,
+            team_id: teamId || null,
+            status: 'pending',
+            password_hash
+          }
+          const { error } = await withTimeout(supabase.from('users').insert(payload), 8000)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, message: '注册成功，请等待管理员审核' })
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '注册失败') }, 500)
+        }
+      }
+
+      if (path === '/api/auth/reset-password' && method === 'POST') {
+        const body = await readBody()
+        const idCard = String(body.idCard || body.id_card || '').trim()
+        const newPassword = String(body.newPassword || body.password || '').trim()
+        if (!idCard || !newPassword) return jsonResponse({ success: false, error: '缺少必要信息' }, 400)
+        if (newPassword.length < 6) return jsonResponse({ success: false, error: '密码至少6位' }, 400)
+
+        let userRow: any = null
+        let error: any = null
+        try {
+          const res = await withTimeout(
+            supabase.from('users').select('id,status').eq('id_card', idCard).single(),
+            8000
+          )
+          userRow = (res as any).data
+          error = (res as any).error
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '重置失败') }, 500)
+        }
+        if (error || !userRow?.id) return jsonResponse({ success: false, error: '未找到对应用户' }, 404)
+
+        try {
+          const password_hash = await bcrypt.hash(newPassword, 10)
+          const { error: upErr } = await withTimeout(
+            supabase.from('users').update({ password_hash }).eq('id', userRow.id),
+            8000
+          )
+          if (upErr) return jsonResponse({ success: false, error: upErr.message }, 500)
+          return jsonResponse({ success: true, message: '密码重置成功' })
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '重置失败') }, 500)
+        }
+      }
+
       // ---- Production units CRUD ----
       if (path.startsWith('/api/options/production-units')) {
         if (method === 'GET') {
