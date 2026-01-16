@@ -151,6 +151,39 @@ const ToolingInfoPage: React.FC = () => {
     } catch { return {} }
   })
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // 导入相关状态
+  const [importModalVisible, setImportModalVisible] = useState(false)
+  const [importPreviewVisible, setImportPreviewVisible] = useState(false)
+  const [importPreviewData, setImportPreviewData] = useState<any[]>([])
+  const [importFile, setImportFile] = useState<File | null>(null)
+
+  // 使用自定义Hooks
+  const {
+    data,
+    loading,
+    selectedRowKeys,
+    partsMap,
+    childItemsMap,
+    expandedRowKeys,
+    expandedChildKeys,
+    setData,
+    setSelectedRowKeys,
+    setPartsMap,
+    setChildItemsMap,
+    setExpandedRowKeys,
+    setExpandedChildKeys,
+    fetchToolingData,
+    fetchPartsData,
+    fetchChildItemsData,
+    saveToolingData,
+    savePartData,
+    createTooling,
+    createPart,
+    createChildItem,
+    batchDelete
+  } = useToolingData()
 
   useEffect(() => {
     const keys = new Set<string>()
@@ -186,39 +219,6 @@ const ToolingInfoPage: React.FC = () => {
       cancelled = true
     }
   }, [partsMap])
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  // 导入相关状态
-  const [importModalVisible, setImportModalVisible] = useState(false)
-  const [importPreviewVisible, setImportPreviewVisible] = useState(false)
-  const [importPreviewData, setImportPreviewData] = useState<any[]>([])
-  const [importFile, setImportFile] = useState<File | null>(null)
-
-  // 使用自定义Hooks
-  const {
-    data,
-    loading,
-    selectedRowKeys,
-    partsMap,
-    childItemsMap,
-    expandedRowKeys,
-    expandedChildKeys,
-    setData,
-    setSelectedRowKeys,
-    setPartsMap,
-    setChildItemsMap,
-    setExpandedRowKeys,
-    setExpandedChildKeys,
-    fetchToolingData,
-    fetchPartsData,
-    fetchChildItemsData,
-    saveToolingData,
-    savePartData,
-    createTooling,
-    createPart,
-    createChildItem,
-    batchDelete
-  } = useToolingData()
   const [userTeamsMap, setUserTeamsMap] = useState<Record<string, string>>({})
   const [teamsLoaded, setTeamsLoaded] = useState(false)
   const isTechnician = String(user?.roles?.name || '').includes('技术员')
