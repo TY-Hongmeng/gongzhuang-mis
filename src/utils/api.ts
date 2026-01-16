@@ -206,10 +206,6 @@ export function installApiInterceptor() {
 import { supabase } from '../lib/supabase'
 import bcrypt from 'bcryptjs'
 
-// Supabase配置
-const supabaseUrl = 'https://oltsiocyesbgezlrcxze.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
-
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -295,61 +291,43 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const phone = rawPhone.trim()
         const password = String(body.password || '').trim()
         
-        console.log('API: Login request', { phone: JSON.stringify(phone), phoneLength: phone.length })
+        console.log('API: Login request via Supabase Client', { phone: JSON.stringify(phone) })
         
         let userRow: any = null
         
         try {
-          // Construct REST URL manually to bypass supabase-js client
-          const selectQuery = '*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))'
-          // Fix: Ensure phone is trimmed and quoted to handle text columns correctly
-          const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&select=${encodeURIComponent(selectQuery)}&limit=1`
+          // 1. Try complex query with joins
+          const { data: complexData, error: complexError } = await supabase
+            .from('users')
+            .select('*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))')
+            .eq('phone', phone)
+            .maybeSingle()
           
-          console.log('API: Query URL', restUrl)
-          
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 30000)
-          
-          const resp = await fetch(restUrl, {
-            method: 'GET',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'count=none' 
-            },
-            signal: controller.signal
-          })
-          
-          clearTimeout(timeoutId)
-          
-          if (!resp.ok) {
-            const errText = await resp.text()
-            console.error('API: User fetch failed', resp.status, errText)
-            return jsonResponse({ success: false, error: `数据库查询失败: ${resp.status}` }, 500)
+          if (complexError) {
+            console.warn('API: Complex query error, trying fallback', complexError)
           }
-          
-          const rows = await resp.json()
-          console.log('API: Rows found:', rows.length)
-          
-          if (Array.isArray(rows) && rows.length > 0) {
-            userRow = rows[0]
+
+          if (complexData) {
+            userRow = complexData
           } else {
-             // Fallback: Try simple fetch without joins
-             console.warn('API: Complex fetch failed/empty, trying simple fetch')
-             const simpleUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&limit=1`
-             const simpleResp = await fetch(simpleUrl, {
-                method: 'GET',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-             })
-             if (simpleResp.ok) {
-               const simpleRows = await simpleResp.json()
-               if (simpleRows.length > 0) userRow = simpleRows[0]
+             // 2. Fallback: Simple query if complex failed or returned nothing (though maybeSingle returns null, not error on empty)
+             // If complexData is null, it means user not found OR RLS blocked it. 
+             // Let's try simple query to be sure.
+             console.log('API: Complex data empty or error, trying simple query')
+             const { data: simpleData, error: simpleError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('phone', phone)
+                .maybeSingle()
+             
+             if (simpleData) {
+                userRow = simpleData
+             } else if (simpleError) {
+                console.error('API: Simple query error', simpleError)
              }
           }
         } catch (e: any) {
           console.error('API: Exception', e)
-          if (e.name === 'AbortError') return jsonResponse({ success: false, error: '请求超时' }, 504)
           return jsonResponse({ success: false, error: '登录异常' }, 500)
         }
 
