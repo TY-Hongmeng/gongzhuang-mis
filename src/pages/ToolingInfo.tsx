@@ -1086,7 +1086,7 @@ const ToolingInfoPage: React.FC = () => {
         : { part_inventory_number: k, process_route: v }
     ))
     try {
-      const resp = await fetch('/api/tooling/parts/process-routes', {
+      const resp = await fetchWithFallback('/api/tooling/parts/process-routes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mappings })
@@ -1110,7 +1110,11 @@ const ToolingInfoPage: React.FC = () => {
           Object.entries(merged)
             .filter(([_, value]) => typeof value === 'string')
         )
-        localStorage.setItem('process_routes_map', JSON.stringify(finalSafe))
+        try {
+          localStorage.setItem('process_routes_map', JSON.stringify(finalSafe))
+        } catch (e) {
+          message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
+        }
         setProcessRoutes(finalSafe)
         // 本地更新已加载的零件数据，立即显示路线
         const mapKeys = Object.keys(mapUpdates)

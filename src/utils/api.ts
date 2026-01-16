@@ -217,6 +217,21 @@ function jsonResponse(data: any, status = 200) {
   })
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('TIMEOUT')), ms)
+    promise
+      .then((v) => {
+        clearTimeout(timer)
+        resolve(v)
+      })
+      .catch((e) => {
+        clearTimeout(timer)
+        reject(e)
+      })
+  })
+}
+
 function getQuery(url: string): URLSearchParams {
   // 清理URL中的反引号
   const cleanUrl = url.replace(/[`]/g, '')
@@ -270,11 +285,23 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const body = await readBody()
         const phone = String(body.phone || '')
         const password = String(body.password || '')
-        const { data: userRow, error } = await supabase
-          .from('users')
-          .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
-          .eq('phone', phone)
-          .single()
+        let userRow: any = null
+        let error: any = null
+        try {
+          const res = await withTimeout(
+            supabase
+              .from('users')
+              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+              .eq('phone', phone)
+              .single(),
+            8000
+          )
+          userRow = (res as any).data
+          error = (res as any).error
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '登录失败') }, 500)
+        }
         if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 401)
         const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
         if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
@@ -287,11 +314,23 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const qs = getQuery(cleanUrl)
         const userId = String(qs.get('userId') || '')
         if (!userId) return jsonResponse({ success: false, error: '缺少userId' }, 400)
-        const { data: userRow, error } = await supabase
-          .from('users')
-          .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
-          .eq('id', userId)
-          .single()
+        let userRow: any = null
+        let error: any = null
+        try {
+          const res = await withTimeout(
+            supabase
+              .from('users')
+              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+              .eq('id', userId)
+              .single(),
+            8000
+          )
+          userRow = (res as any).data
+          error = (res as any).error
+        } catch (e: any) {
+          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '获取用户失败') }, 500)
+        }
         if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 404)
         const { password_hash, ...safeUser } = (userRow as any)
         return jsonResponse({ success: true, user: safeUser })
@@ -920,6 +959,36 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           process_route: String(p.process_route ?? '')
         }))
         return jsonResponse({ success: true, items })
+      }
+
+      // Update parts process routes (client-side fallback)
+      if (method === 'POST' && path === '/api/tooling/parts/process-routes') {
+        const body = await readBody()
+        const mappings: any[] = Array.isArray(body?.mappings) ? body.mappings : []
+        if (!mappings.length) return jsonResponse({ success: false, error: '缺少mappings' }, 400)
+        try {
+          for (const m of mappings) {
+            const inv = String(m?.part_inventory_number || '').trim().toUpperCase()
+            const drawing = String(m?.part_drawing_number || '').trim()
+            const route = String(m?.process_route || '')
+            if (!route) continue
+            if (inv) {
+              await withTimeout(
+                supabase.from('parts_info').update({ process_route: route }).eq('inventory_number', inv),
+                8000
+              )
+            } else if (drawing) {
+              await withTimeout(
+                supabase.from('parts_info').update({ process_route: route }).eq('part_drawing_number', drawing),
+                8000
+              )
+            }
+          }
+          return jsonResponse({ success: true })
+        } catch (e: any) {
+          const msg = String(e?.message || '更新工艺路线失败')
+          return jsonResponse({ success: false, error: msg }, /TIMEOUT/.test(msg) ? 504 : 500)
+        }
       }
     }
     return null
