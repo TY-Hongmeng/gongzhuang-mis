@@ -302,11 +302,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
               .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
               .eq('phone', phone)
               .single(),
-            8000
+            30000
           )
           userRow = (res as any).data
           error = (res as any).error
         } catch (e: any) {
+          console.error('handleClientSideApi: Supabase login query failed/timed out', e)
           if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
           return jsonResponse({ success: false, error: String(e?.message || '登录失败') }, 500)
         }
@@ -365,7 +366,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         try {
           const exists = await withTimeout(
             supabase.from('users').select('id').eq('phone', phone).limit(1),
-            8000
+            30000
           )
           const has = Array.isArray((exists as any).data) && (exists as any).data.length > 0
           if (has) return jsonResponse({ success: false, error: '手机号已注册' }, 409)
@@ -387,7 +388,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             status: 'pending',
             password_hash
           }
-          const { error } = await withTimeout(supabase.from('users').insert(payload), 8000)
+          const { error } = await withTimeout(supabase.from('users').insert(payload), 30000)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, message: '注册成功，请等待管理员审核' })
         } catch (e: any) {
@@ -408,7 +409,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         try {
           const res = await withTimeout(
             supabase.from('users').select('id,status').eq('id_card', idCard).single(),
-            8000
+            30000
           )
           userRow = (res as any).data
           error = (res as any).error
@@ -422,7 +423,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const password_hash = await bcrypt.hash(newPassword, 10)
           const { error: upErr } = await withTimeout(
             supabase.from('users').update({ password_hash }).eq('id', userRow.id),
-            8000
+            30000
           )
           if (upErr) return jsonResponse({ success: false, error: upErr.message }, 500)
           return jsonResponse({ success: true, message: '密码重置成功' })

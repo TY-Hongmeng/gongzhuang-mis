@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthState>()(
         const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify({ phone, password });
 
-        const fetchWithTimeout = async (url: string, ms = 8000) => {
+        const fetchWithTimeout = async (url: string, ms = 30000) => {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
@@ -85,7 +85,7 @@ export const useAuthStore = create<AuthState>()(
         };
 
         try {
-          const response = await fetchWithTimeout('/api/auth/login');
+          const response = await fetchWithTimeout('/api/auth/login', 30000);
           if (response.ok) {
             const data = await response.json();
             console.log('AuthStore: Login response OK', data)
@@ -146,7 +146,7 @@ export const useAuthStore = create<AuthState>()(
         const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify(data);
 
-        const fetchWithTimeout = async (url: string, ms = 8000) => {
+        const fetchWithTimeout = async (url: string, ms = 30000) => {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
         };
 
         try {
-          let response = await fetchWithTimeout('/api/auth/register');
+          let response = await fetchWithTimeout('/api/auth/register', 30000);
 
           const result = await response.json();
 
@@ -180,7 +180,7 @@ export const useAuthStore = create<AuthState>()(
         const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify({ idCard, newPassword });
 
-        const fetchWithTimeout = async (url: string, ms = 8000) => {
+        const fetchWithTimeout = async (url: string, ms = 30000) => {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), ms);
           try {
@@ -192,7 +192,7 @@ export const useAuthStore = create<AuthState>()(
         };
 
         try {
-          let response = await fetchWithTimeout('/api/auth/reset-password');
+          let response = await fetchWithTimeout('/api/auth/reset-password', 30000);
 
           const result = await response.json();
 
