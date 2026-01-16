@@ -4,6 +4,7 @@ import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/ic
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate } from 'react-router-dom'
+import { safeLocalStorage } from '../utils/safeStorage'
 
 // 立即在全局作用域定义setAuxRange函数，确保在任何地方调用都不会出错
 ;(function() {
@@ -662,15 +663,20 @@ const WorkHours: React.FC = () => {
                   try {
                     const k = String(selectedInv || selectedInfo.drawing || '')
                     if (k) {
-                      const raw = localStorage.getItem('process_done_map') || '{}'
+                      const raw = safeLocalStorage.getItem('process_done_map') || '{}'
                       let map: any = {}
                       try { map = JSON.parse(raw) } catch { map = {} }
                       const pn = String(vals.process_name || '')
                       const prev = map[k] || { done: [], last: '' }
                       const set = new Set<string>(Array.isArray(prev.done) ? prev.done : [])
                       if (pn) set.add(pn)
-                      map[k] = { done: Array.from(set), last: pn, time: Date.now() }
-                      localStorage.setItem('process_done_map', JSON.stringify(map))
+                      const doneArr = Array.from(set).slice(-50)
+                      map[k] = { done: doneArr, last: pn, time: Date.now() }
+                      const entries = Object.entries(map)
+                        .sort((a: any, b: any) => Number(b?.[1]?.time || 0) - Number(a?.[1]?.time || 0))
+                        .slice(0, 300)
+                      const compact = Object.fromEntries(entries)
+                      safeLocalStorage.setItem('process_done_map', JSON.stringify(compact))
                     }
                   } catch {}
                   // 直接清空所有状态

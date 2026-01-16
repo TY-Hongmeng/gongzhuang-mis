@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message, Spin } from 'antd'
 import { UserOutlined, LockOutlined, PhoneOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { clearAppCaches } from '../utils/safeStorage'
 
 const { Title, Text } = Typography
 
@@ -120,6 +121,18 @@ const Login: React.FC = () => {
             >
               忘记密码？
             </Link>
+          </div>
+          <div>
+            <Button
+              type="link"
+              className="text-blue-500 hover:text-blue-600 text-sm"
+              onClick={() => {
+                clearAppCaches()
+                window.location.reload()
+              }}
+            >
+              清理缓存并重启
+            </Button>
           </div>
           <div className="text-gray-500 text-sm">
             还没有账号？{' '}

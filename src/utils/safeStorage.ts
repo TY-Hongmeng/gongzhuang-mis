@@ -7,12 +7,7 @@ function isQuotaExceededError(error: unknown): boolean {
 
 function tryCleanupStorage() {
   try {
-    const keysToRemove = [
-      'process_routes_map',
-      'process_done_map',
-      'temporary_plans',
-      'temporary_hidden_ids'
-    ]
+    const keysToRemove = APP_CACHE_KEYS
     for (const k of keysToRemove) {
       try {
         window.localStorage.removeItem(k)
@@ -87,3 +82,32 @@ export const safeLocalStorage: Storage = {
   }
 }
 
+export const APP_CACHE_KEYS = [
+  'process_routes_map',
+  'process_done_map',
+  'temporary_plans',
+  'temporary_hidden_ids'
+] as const
+
+export function clearAppCaches() {
+  try {
+    for (const k of APP_CACHE_KEYS) {
+      try {
+        safeLocalStorage.removeItem(k)
+      } catch {}
+    }
+    const prefixes = ['status_part_', 'status_child_']
+    const toRemove: string[] = []
+    for (let i = 0; i < safeLocalStorage.length; i++) {
+      const k = safeLocalStorage.key(i)
+      if (!k) continue
+      if (prefixes.some((p) => k.startsWith(p))) toRemove.push(k)
+      if (toRemove.length >= 2000) break
+    }
+    for (const k of toRemove) {
+      try {
+        safeLocalStorage.removeItem(k)
+      } catch {}
+    }
+  } catch {}
+}

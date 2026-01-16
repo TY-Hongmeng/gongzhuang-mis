@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
+import { safeLocalStorage } from '../utils/safeStorage'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { CATEGORY_CODE_MAP } from '../types/tooling'
@@ -134,7 +135,11 @@ const ToolingInfoPage: React.FC = () => {
   const [processRoutes, setProcessRoutes] = useState<Record<string, string>>(() => {
     try {
       // 关键修复：安全解析localStorage数据，确保没有循环引用
-      const stored = localStorage.getItem('process_routes_map') || '{}'
+      const stored = safeLocalStorage.getItem('process_routes_map') || '{}'
+      if (stored.length > 900_000) {
+        safeLocalStorage.removeItem('process_routes_map')
+        return {}
+      }
       const parsed = JSON.parse(stored)
       // 确保只保留字符串值
       return Object.fromEntries(
@@ -146,7 +151,11 @@ const ToolingInfoPage: React.FC = () => {
   })
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => {
     try {
-      const stored = localStorage.getItem('process_done_map') || '{}'
+      const stored = safeLocalStorage.getItem('process_done_map') || '{}'
+      if (stored.length > 900_000) {
+        safeLocalStorage.removeItem('process_done_map')
+        return {}
+      }
       const parsed = JSON.parse(stored)
       const norm: any = {}
       Object.entries(parsed).forEach(([k, v]: any) => {
@@ -1127,7 +1136,7 @@ const ToolingInfoPage: React.FC = () => {
         }
 
         try {
-          localStorage.setItem('process_routes_map', persistJson)
+          safeLocalStorage.setItem('process_routes_map', persistJson)
         } catch {
           message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
         }
@@ -3302,9 +3311,9 @@ const ToolingInfoPage: React.FC = () => {
                     width: 160,
                     render: (_t: any, rec: PartItem) => {
                       const statusKey = `status_part_${rec.id}`
-                      let derived = localStorage.getItem(statusKey) || ''
+                      let derived = safeLocalStorage.getItem(statusKey) || ''
                       try {
-                        const plans = JSON.parse(localStorage.getItem('temporary_plans') || '[]')
+                        const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
                         const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.part_id === rec.id)
                         if (hit) {
                           if (hit.arrival_date) derived = '已到货'
@@ -3396,7 +3405,7 @@ const ToolingInfoPage: React.FC = () => {
                                   try {
                                     const json = JSON.stringify(newProcessRoutes)
                                     if (json.length <= 900_000) {
-                                      localStorage.setItem('process_routes_map', json)
+                                      safeLocalStorage.setItem('process_routes_map', json)
                                     } else {
                                       message.warning('工艺路线缓存过大，已跳过写入本地缓存')
                                     }
@@ -3554,9 +3563,9 @@ const ToolingInfoPage: React.FC = () => {
                     width: 120,
                     render: (_t: any, rec: ChildItem) => {
                       const statusKey = `status_child_${rec.id}`
-                      let derived = localStorage.getItem(statusKey) || ''
+                      let derived = safeLocalStorage.getItem(statusKey) || ''
                       try {
-                        const plans = JSON.parse(localStorage.getItem('temporary_plans') || '[]')
+                        const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
                         const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.child_item_id === rec.id)
                         if (hit) {
                           if (hit.arrival_date) derived = '已到货'
