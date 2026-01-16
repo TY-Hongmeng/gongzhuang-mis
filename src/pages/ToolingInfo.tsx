@@ -3289,10 +3289,15 @@ const ToolingInfoPage: React.FC = () => {
                           const updates: any = { material_source_id: selectedSource?.id || '' }
                           
                           // 如果材料来源从外购改为其他，需要处理备注字段
-                          if (oldSource === '外购' && newSource !== '外购' && rec.remarks && rec.remarks.includes('-')) {
-                            updates.remarks = '需调质'
-                          } else if (oldSource !== '外购' && newSource === '外购') {
-                            updates.remarks = ''
+                          // 仅当oldSource确认为“外购”时才执行此逻辑，防止因识别错误导致的误判
+                          if (oldSource === '外购' && newSource !== '外购') {
+                             // 如果原来的备注看起来是日期格式（包含-），则重置为需调质，否则保留
+                             if (rec.remarks && rec.remarks.includes('-')) {
+                                updates.remarks = '需调质'
+                             }
+                          } else if (newSource === '外购' && oldSource !== '外购') {
+                             // 切到外购，清空备注以便填写日期
+                             updates.remarks = ''
                           }
                           
                           handlePartBatchSave(toolingId, rec.id, updates)
