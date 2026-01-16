@@ -145,7 +145,7 @@ export default function OptionsManagement() {
           break;
         case 'materialSources':
           const materialSourcesData = await createTimedFetch('/api/options/material-sources', 'material_sources');
-          const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? x.source_id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? x.source_name ?? ''), is_active: Boolean(x.is_active ?? true) }));
+          const normSources = getArr(materialSourcesData).map((x: any) => ({ id: String(x.id ?? Math.random().toString(36).slice(2)), name: String(x.name ?? ''), description: String(x.description ?? ''), is_active: Boolean(x.is_active ?? true) }));
           setMaterialSources(normSources);
           break;
         case 'partTypes':

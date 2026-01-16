@@ -710,24 +710,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
       }
       // Options & meta
-      if (method === 'GET' && path.startsWith('/api/options/production-units')) {
-        console.log('Fetching production_units from Supabase')
-        const { data, error } = await supabase.from('production_units').select('*')
-        console.log('production_units result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
-      }
-      if (method === 'GET' && path.startsWith('/api/options/tooling-categories')) {
-        console.log('Fetching tooling_categories from Supabase')
-        const { data, error } = await supabase.from('tooling_categories').select('*')
-        console.log('tooling_categories result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
-      }
-      if (method === 'GET' && path.startsWith('/api/options/material-sources')) {
-        console.log('Fetching material_sources from Supabase')
-        const { data, error } = await supabase.from('material_sources').select('*')
-        console.log('material_sources result:', { data, error })
-        return jsonResponse({ data: error ? [] : (data || []) })
-      }
       if (method === 'GET' && path.startsWith('/api/materials')) {
         console.log('Fetching materials from Supabase')
         const { data, error } = await supabase.from('materials').select('*')
