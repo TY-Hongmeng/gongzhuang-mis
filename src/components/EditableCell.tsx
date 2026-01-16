@@ -86,7 +86,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   useEffect(() => {
     if (isEditing) {
       if (options) {
-        setTimeout(() => selectRef.current?.focus(), 50)
+        // Antd Select with autoFocus handles focus automatically
       } else {
         inputRef.current?.focus()
         inputRef.current?.select?.()
@@ -122,6 +122,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }
 
   if (options) {
+    const selectOptions = options.map(opt => ({ label: opt, value: opt }));
     return (
       <Select
         ref={selectRef}
@@ -156,12 +157,9 @@ const EditableCell: React.FC<EditableCellProps> = ({
         defaultOpen
         autoFocus
         showSearch
-        optionFilterProp="children"
-      >
-        {options.map(option => (
-          <Select.Option key={option} value={option}>{option}</Select.Option>
-        ))}
-      </Select>
+        options={selectOptions}
+        optionFilterProp="label"
+      />
     )
   }
 

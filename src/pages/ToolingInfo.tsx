@@ -377,7 +377,8 @@ const ToolingInfoPage: React.FC = () => {
   }, [partTypes])
 
   const materialOptions = useMemo(() => {
-    return materials.length > 0 ? materials.map(m => m.name) : ['']
+    const list = materials.length > 0 ? materials.map(m => m.name) : ['']
+    return Array.from(new Set(list))
   }, [materials])
 
   const {
