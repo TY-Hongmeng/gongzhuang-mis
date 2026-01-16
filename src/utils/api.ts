@@ -301,9 +301,16 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         try {
           // Construct REST URL manually to bypass supabase-js client
           const selectQuery = '*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))'
+          // 使用 POST 方法查询，避免 URL 编码问题和 GET 长度限制
+          // Supabase REST API 支持通过 POST 方法查询（rpc 或者 filter）
+          // 这里我们仍然使用 GET，但是要确保 phone 参数正确编码
+          // 修正：Supabase REST API 查询通常需要 correct quoting for strings
+          // 之前失败可能是因为 phone=eq.18004499801 没有加引号？不，数字不需要，但是 phone 是 text 类型
+          // 让我们尝试对值进行更严格的编码，并且添加 debug 日志查看响应内容
+          
           const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&select=${encodeURIComponent(selectQuery)}&limit=1`
           
-          console.log('API: Fetching user URL constructed')
+          console.log('API: Fetching user URL constructed', restUrl)
           
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -313,7 +320,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Prefer': 'count=none' 
             },
             signal: controller.signal
           })
@@ -327,6 +335,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           }
           
           const rows = await resp.json()
+          console.log('API: REST response rows length:', rows.length)
+          
           if (Array.isArray(rows) && rows.length > 0) {
             userRow = rows[0]
           } else {
@@ -339,6 +349,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              })
              if (simpleResp.ok) {
                const simpleRows = await simpleResp.json()
+               console.log('API: Simple REST response rows length:', simpleRows.length)
                if (simpleRows.length > 0) userRow = simpleRows[0]
              }
           }
