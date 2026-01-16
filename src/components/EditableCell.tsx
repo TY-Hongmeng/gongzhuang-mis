@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Input, InputRef } from 'antd'
+import { Input, InputRef, Select } from 'antd'
 
 interface EditableCellProps {
   value: string | undefined
@@ -23,7 +23,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const [editValue, setEditValue] = useState(String(value ?? ''))
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef<InputRef>(null)
-  const selectRef = useRef<HTMLSelectElement>(null)
+  const selectRef = useRef<any>(null)
   const didSaveRef = useRef(false)
   const saveTriggeredRef = useRef(false)
 
@@ -86,7 +86,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   useEffect(() => {
     if (isEditing) {
       if (options) {
-        selectRef.current?.focus()
+        setTimeout(() => selectRef.current?.focus(), 50)
       } else {
         inputRef.current?.focus()
         inputRef.current?.select?.()
@@ -123,11 +123,10 @@ const EditableCell: React.FC<EditableCellProps> = ({
 
   if (options) {
     return (
-      <select
+      <Select
         ref={selectRef}
         value={editValue}
-        onChange={(e) => {
-          const newValue = e.target.value
+        onChange={(newValue) => {
           setEditValue(newValue)
           // 选择后立即保存，使用事件中的新值避免状态未更新问题
           saveTriggeredRef.current = true
@@ -140,22 +139,29 @@ const EditableCell: React.FC<EditableCellProps> = ({
               }
           }, 0)
         }}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
+        onBlur={() => {
+          // Select onBlur behavior: just close edit mode, don't save if not changed via onChange
+          setIsEditing(false)
+        }}
+        onKeyDown={(e) => {
+           if (e.key === 'Escape') {
+             e.preventDefault()
+             handleCancel()
+           }
+        }}
         style={{
           width: '100%',
-          height: '32px',
-          border: '1px solid #1890ff',
-          borderRadius: '4px',
-          padding: '4px',
-          backgroundColor: '#fff'
+          ...customStyle
         }}
+        defaultOpen
+        autoFocus
+        showSearch
+        optionFilterProp="children"
       >
-        <option value="" hidden></option>
         {options.map(option => (
-          <option key={option} value={option}>{option}</option>
+          <Select.Option key={option} value={option}>{option}</Select.Option>
         ))}
-      </select>
+      </Select>
     )
   }
 
