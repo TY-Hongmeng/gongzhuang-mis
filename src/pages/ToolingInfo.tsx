@@ -3274,8 +3274,11 @@ const ToolingInfoPage: React.FC = () => {
                         dataIndex={'material_source_id' as any}
                         options={materialSourceOptions}
                         onSave={(_pid, _k, v) => {
+                          // 导入的数据可能不存在于映射中，需要从materialSources中查找一次（防御性编程）
                           const selectedSource = materialSources.find(ms => ms.name === v)
-                          const oldSource = materialSourceNameMap[String(rec.material_source_id)] || ''
+                          const oldSource = materialSourceNameMap[String(rec.material_source_id)] || 
+                                           (rec as any)?.material_source?.name || 
+                                           materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
                           const newSource = v
                           
                           if (rec.id.startsWith('blank-')) {
