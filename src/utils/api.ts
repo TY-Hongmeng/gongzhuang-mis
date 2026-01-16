@@ -301,6 +301,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         try {
           // 1. Connectivity Check: Fetch ANY user to verify RLS/Access
           // This is a diagnostic step.
+          const checkController = new AbortController()
+          const checkTimeoutId = setTimeout(() => checkController.abort(), 10000)
+          
           try {
              const checkUrl = `${supabaseUrl}/rest/v1/users?limit=1`
              const checkResp = await fetch(checkUrl, {
@@ -310,7 +313,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
                   'Authorization': `Bearer ${supabaseKey}`,
                   'Prefer': 'count=none'
                 },
-                signal: controller.signal
+                signal: checkController.signal
              })
              if (checkResp.ok) {
                const checkRows = await checkResp.json()
@@ -320,6 +323,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              }
           } catch (e) {
              console.error('API: Connectivity check exception', e)
+          } finally {
+             clearTimeout(checkTimeoutId)
           }
 
           // 2. Actual Login Query with Quoted Phone
@@ -329,6 +334,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&select=${encodeURIComponent(selectQuery)}&limit=1`
           
           console.log('API: Fetching user URL constructed', restUrl)
+
 
           
           const controller = new AbortController()
