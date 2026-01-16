@@ -291,51 +291,21 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       if (path === '/api/auth/login' && method === 'POST') {
         const body = await readBody()
-        const phone = String(body.phone || '')
-        const password = String(body.password || '')
+        const rawPhone = String(body.phone || '')
+        const phone = rawPhone.trim()
+        const password = String(body.password || '').trim()
         
-        console.log('API: Login request via Direct REST', { phone })
+        console.log('API: Login request', { phone: JSON.stringify(phone), phoneLength: phone.length })
         
         let userRow: any = null
         
         try {
-          // 1. Connectivity Check: Fetch ANY user to verify RLS/Access
-          // This is a diagnostic step.
-          const checkController = new AbortController()
-          const checkTimeoutId = setTimeout(() => checkController.abort(), 10000)
-          
-          try {
-             const checkUrl = `${supabaseUrl}/rest/v1/users?limit=1`
-             const checkResp = await fetch(checkUrl, {
-                method: 'GET',
-                headers: { 
-                  'apikey': supabaseKey, 
-                  'Authorization': `Bearer ${supabaseKey}`,
-                  'Prefer': 'count=none'
-                },
-                signal: checkController.signal
-             })
-             if (checkResp.ok) {
-               const checkRows = await checkResp.json()
-               console.log('API: Connectivity check (Any User) rows:', checkRows.length)
-             } else {
-               console.warn('API: Connectivity check failed', checkResp.status)
-             }
-          } catch (e) {
-             console.error('API: Connectivity check exception', e)
-          } finally {
-             clearTimeout(checkTimeoutId)
-          }
-
-          // 2. Actual Login Query with Quoted Phone
           // Construct REST URL manually to bypass supabase-js client
           const selectQuery = '*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))'
-          // 尝试给 phone 值加上双引号，以防 PostgREST 解析问题
-          const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&select=${encodeURIComponent(selectQuery)}&limit=1`
+          // Fix: Ensure phone is trimmed and quoted to handle text columns correctly
+          const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&select=${encodeURIComponent(selectQuery)}&limit=1`
           
-          console.log('API: Fetching user URL constructed', restUrl)
-
-
+          console.log('API: Query URL', restUrl)
           
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -360,32 +330,33 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           }
           
           const rows = await resp.json()
-          console.log('API: REST response rows length:', rows.length)
+          console.log('API: Rows found:', rows.length)
           
           if (Array.isArray(rows) && rows.length > 0) {
             userRow = rows[0]
           } else {
-             // 尝试不带关联数据查询，作为降级方案
-             console.warn('API: Fetch with relations failed or empty, trying simple fetch')
-             const simpleUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&limit=1`
+             // Fallback: Try simple fetch without joins
+             console.warn('API: Complex fetch failed/empty, trying simple fetch')
+             const simpleUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${encodeURIComponent(phone)}&limit=1`
              const simpleResp = await fetch(simpleUrl, {
                 method: 'GET',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
              })
              if (simpleResp.ok) {
                const simpleRows = await simpleResp.json()
-               console.log('API: Simple REST response rows length:', simpleRows.length)
                if (simpleRows.length > 0) userRow = simpleRows[0]
              }
           }
-          
         } catch (e: any) {
-          console.error('API: Direct REST exception', e)
-          if (e.name === 'AbortError') return jsonResponse({ success: false, error: '请求超时，请检查网络' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '登录异常') }, 500)
+          console.error('API: Exception', e)
+          if (e.name === 'AbortError') return jsonResponse({ success: false, error: '请求超时' }, 504)
+          return jsonResponse({ success: false, error: '登录异常' }, 500)
         }
 
-        if (!userRow) return jsonResponse({ success: false, error: '用户不存在' }, 401)
+        if (!userRow) {
+            console.warn('API: User not found for phone:', phone)
+            return jsonResponse({ success: false, error: '用户不存在' }, 401)
+        }
         
         try {
             const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
