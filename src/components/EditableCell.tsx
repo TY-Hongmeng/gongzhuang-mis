@@ -43,7 +43,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const handleStartEdit = () => {
     setEditValue(String(value ?? ''))
     setIsEditing(true)
-  }
     didSaveRef.current = false
   }
 
