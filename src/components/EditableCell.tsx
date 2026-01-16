@@ -49,10 +49,20 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }
 
   const handleSave = () => {
+    // 对于 select 类型，如果已经触发了保存（在 onChange 中），则不再保存
+    // 甚至更严格：如果 options 存在，onBlur 仅仅是关闭编辑模式，不应触发保存
+    // 除非我们支持“输入筛选”的 Select，但目前看是原生 Select
     if (saveTriggeredRef.current) {
       saveTriggeredRef.current = false
       return
     }
+    // 针对 Select 的额外保护：如果 options 存在，禁止 onBlur 触发保存
+    // 因为 Select 的值变更必须通过 onChange
+    if (options && options.length > 0) {
+      setIsEditing(false)
+      return
+    }
+
     if (editValue !== String(value ?? '')) {
       onSave(record.id, dataIndex, editValue)
       didSaveRef.current = true

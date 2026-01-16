@@ -128,6 +128,15 @@ const ensureBlankChildItems = (items: ChildItem[], toolingId: string) => {
 
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
+  const {
+    productionUnits,
+    toolingCategories,
+    materials,
+    partTypes,
+    materialSources,
+    fetchAllMeta
+  } = useToolingMeta()
+
   const { user } = useAuthStore()
   const [extraRows, setExtraRows] = useState(2)
   const tableWrapRef = useRef<HTMLDivElement>(null)
@@ -352,14 +361,24 @@ const ToolingInfoPage: React.FC = () => {
   // 导入文件输入框ref
   const importFileInputRef = useRef<HTMLInputElement>(null)
 
-  const {
-    productionUnits,
-    toolingCategories,
-    materials,
-    partTypes,
-    materialSources,
-    fetchAllMeta
-  } = useToolingMeta()
+  const materialSourceOptions = useMemo(() => {
+    return materialSources.length > 0 ? materialSources.map(ms => ms.name) : ['']
+  }, [materialSources])
+
+  const materialSourceNameMap = useMemo(() => {
+    return materialSources.reduce((acc, ms) => {
+      acc[String(ms.id)] = ms.name
+      return acc
+    }, {} as Record<string, string>)
+  }, [materialSources])
+
+  const partTypeOptions = useMemo(() => {
+    return partTypes.length > 0 ? partTypes.map(pt => pt.name) : ['']
+  }, [partTypes])
+
+  const materialOptions = useMemo(() => {
+    return materials.length > 0 ? materials.map(m => m.name) : ['']
+  }, [materials])
 
   const {
     generateCuttingOrders,
@@ -3236,7 +3255,7 @@ const ToolingInfoPage: React.FC = () => {
                         value={materials.find(m => m.id === text)?.name || ''}
                         record={rec as any}
                         dataIndex={'material_id' as any}
-                        options={materials.length > 0 ? materials.map(m => m.name) : ['']}
+                        options={materialOptions}
                         onSave={(_pid, _k, v) => {
                           const selectedMaterial = materials.find(m => m.name === v)
                           handlePartSave(toolingId, rec.id, 'material_id', selectedMaterial?.id || '')
@@ -3250,13 +3269,13 @@ const ToolingInfoPage: React.FC = () => {
                     width: 160,
                     render: (text: string, rec: PartItem) => (
                       <EditableCell
-                        value={materialSources.find(ms => String(ms.id) === String(text))?.name || (rec as any)?.material_source?.name || ''}
+                        value={materialSourceNameMap[String(text)] || (rec as any)?.material_source?.name || ''}
                         record={rec as any}
                         dataIndex={'material_source_id' as any}
-                        options={materialSources.length > 0 ? materialSources.map(ms => ms.name) : ['']}
+                        options={materialSourceOptions}
                         onSave={(_pid, _k, v) => {
                           const selectedSource = materialSources.find(ms => ms.name === v)
-                          const oldSource = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+                          const oldSource = materialSourceNameMap[String(rec.material_source_id)] || ''
                           const newSource = v
                           
                           if (rec.id.startsWith('blank-')) {
@@ -3287,7 +3306,7 @@ const ToolingInfoPage: React.FC = () => {
                         value={text || ''}
                         record={rec as any}
                         dataIndex={'part_category' as any}
-                        options={partTypes.length > 0 ? partTypes.map(pt => pt.name) : ['']}
+                        options={partTypeOptions}
                         onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_category', v)}
                       />
                     )
@@ -3310,7 +3329,7 @@ const ToolingInfoPage: React.FC = () => {
                     dataIndex: 'remarks',
                     width: 160,
                     render: (text: string, rec: PartItem) => {
-                      const materialSource = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || (rec as any)?.material_source?.name || ''
+                      const materialSource = materialSourceNameMap[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
                       
                       if (materialSource === '外购') {
                         return (
