@@ -453,6 +453,11 @@ router.post('/:id/parts', async (req, res) => {
       delete payload.weight;
     }
 
+    // 清理分类字段的空字符串
+    if (payload.part_category === '' || payload.part_category === null) {
+      delete payload.part_category;
+    }
+
     // 补齐材料来源：如果没有提供 material_source_id，但提供了 source 名称，则按名称匹配 material_sources 的 id
     try {
       const srcNameRaw = String((payload as any).material_source_id ? '' : ((payload as any).source || '')).trim()
