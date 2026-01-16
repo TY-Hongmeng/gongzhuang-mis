@@ -41,10 +41,9 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }, [value, isEditing])
 
   const handleStartEdit = () => {
+    setEditValue(String(value ?? ''))
     setIsEditing(true)
-    // 使用当前显示的值作为初始值，而不是value prop
-    // 这样可以确保用户再次编辑时，看到的是最新保存的值
-    setEditValue(editValue)
+  }
     didSaveRef.current = false
   }
 
@@ -104,7 +103,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
     return (
       <div 
         className="cell-content"
-        onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
+        onClick={(e) => { e.stopPropagation(); if (!isEditing) handleStartEdit() }}
         onMouseDown={(e) => { e.stopPropagation() }}
         onDoubleClick={(e) => { e.stopPropagation(); handleStartEdit() }}
         style={{ 
@@ -134,7 +133,13 @@ const EditableCell: React.FC<EditableCellProps> = ({
           // 选择后立即保存，使用事件中的新值避免状态未更新问题
           saveTriggeredRef.current = true
           onSave(record.id, dataIndex, newValue)
-          setIsEditing(false)
+          // 使用 setTimeout 将 setIsEditing(false) 推迟到下一个事件循环
+          // 这样可以确保当前的 onChange 事件处理完毕，且避免立即 unmount 导致的潜在冲突
+          setTimeout(() => {
+              if (saveTriggeredRef.current) {
+                  setIsEditing(false)
+              }
+          }, 0)
         }}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
