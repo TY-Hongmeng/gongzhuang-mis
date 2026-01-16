@@ -819,6 +819,64 @@ const ToolingInfoPage: React.FC = () => {
     }
   }
 
+  const handlePartBatchSave = async (toolingId: string, id: string, updates: Partial<PartItem>) => {
+    try {
+      let updatedPartData: PartItem | null = null
+      
+      setPartsMap(prev => {
+        const list = prev[toolingId] || []
+        let updated = list.map(r => {
+          if (r.id !== id) return r
+          const updatedRow = { ...r, ...updates }
+          if (r.id === id) {
+            updatedPartData = updatedRow
+          }
+          return updatedRow
+        })
+        
+        // 如果更新包含规格等字段，重新计算重量
+        if ('specifications' in updates || 'material_id' in updates || 'part_category' in updates) {
+          updated = updated.map(r => {
+            if (r.id === id) {
+              const weight = calculatePartWeight(r.specifications, r.material_id, r.part_category, partTypes, materials)
+              return { ...r, weight }
+            }
+            return r
+          })
+        }
+        
+        return { ...prev, [toolingId]: ensureBlankParts(toolingId, updated) }
+      })
+      
+      if (!id.startsWith('blank-') && updatedPartData) {
+        // 构建完整 payload 以确保数据完整性
+        const payload = {
+            part_inventory_number: updatedPartData.part_inventory_number,
+            part_drawing_number: updatedPartData.part_drawing_number,
+            part_name: updatedPartData.part_name,
+            part_quantity: (updatedPartData.part_quantity === '' || updatedPartData.part_quantity === null || typeof updatedPartData.part_quantity === 'undefined')
+              ? null
+              : Number(updatedPartData.part_quantity),
+            material_id: updatedPartData.material_id,
+            material_source_id: updatedPartData.material_source_id,
+            part_category: updatedPartData.part_category,
+            specifications: updatedPartData.specifications,
+            remarks: updatedPartData.remarks,
+            weight: updatedPartData.weight
+        }
+        
+        const success = await savePartData(id, payload)
+        if (!success) {
+          fetchPartsData(toolingId)
+        }
+      }
+    } catch (error) {
+      console.error('批量保存失败:', error)
+      message.error('保存失败')
+      fetchPartsData(toolingId)
+    }
+  }
+
   // 保存标准件数据
   const handleChildItemSave = async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
     try {
@@ -3201,14 +3259,21 @@ const ToolingInfoPage: React.FC = () => {
                           const oldSource = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
                           const newSource = v
                           
+                          if (rec.id.startsWith('blank-')) {
+                             handlePartSave(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
+                             return
+                          }
+
+                          const updates: any = { material_source_id: selectedSource?.id || '' }
+                          
                           // 如果材料来源从外购改为其他，需要处理备注字段
                           if (oldSource === '外购' && newSource !== '外购' && rec.remarks && rec.remarks.includes('-')) {
-                            handlePartSave(toolingId, rec.id, 'remarks', '需调质')
+                            updates.remarks = '需调质'
                           } else if (oldSource !== '外购' && newSource === '外购') {
-                            handlePartSave(toolingId, rec.id, 'remarks', '')
+                            updates.remarks = ''
                           }
                           
-                          handlePartSave(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
+                          handlePartBatchSave(toolingId, rec.id, updates)
                         }}
                       />
                     )

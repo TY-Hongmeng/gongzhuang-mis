@@ -25,6 +25,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const inputRef = useRef<InputRef>(null)
   const selectRef = useRef<HTMLSelectElement>(null)
   const didSaveRef = useRef(false)
+  const saveTriggeredRef = useRef(false)
 
   // 当外部value变化时，更新内部状态（但仅在非编辑状态下）
   useEffect(() => {
@@ -48,6 +49,10 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }
 
   const handleSave = () => {
+    if (saveTriggeredRef.current) {
+      saveTriggeredRef.current = false
+      return
+    }
     if (editValue !== String(value ?? '')) {
       onSave(record.id, dataIndex, editValue)
       didSaveRef.current = true
@@ -117,6 +122,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           const newValue = e.target.value
           setEditValue(newValue)
           // 选择后立即保存，使用事件中的新值避免状态未更新问题
+          saveTriggeredRef.current = true
           onSave(record.id, dataIndex, newValue)
           setIsEditing(false)
         }}
