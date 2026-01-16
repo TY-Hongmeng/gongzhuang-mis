@@ -641,34 +641,41 @@ router.post('/:id/parts', async (req, res) => {
     console.log('零件更新成功:', arr[0]);
 
     // 联动更新采购单的总重量与总金额，确保审批端与工装信息一致
+    // 只在材料ID、重量或数量发生变化时才执行，避免不必要的数据库查询
     try {
       const partRow = arr[0];
-      const qty = Number(partRow?.part_quantity || 0);
-      const unitW = Number(partRow?.weight || 0);
-      const totalW = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : null;
+      const materialIdChanged = cleanedPayload.material_id !== undefined;
+      const quantityChanged = cleanedPayload.part_quantity !== undefined;
+      const weightChanged = cleanedPayload.weight !== undefined;
 
-      let unitPrice: number | null = null;
-      const materialId = partRow?.material_id;
-      if (materialId) {
-        const today = new Date().toISOString().slice(0, 10);
-        const { data: prices } = await supabase
-          .from('material_prices')
-          .select('unit_price,effective_start_date,effective_end_date')
-          .eq('material_id', materialId)
-          .order('effective_start_date', { ascending: false });
-        if (Array.isArray(prices) && prices.length > 0) {
-          const applicable = prices.find((p: any) => (!p.effective_end_date || p.effective_end_date >= today) && p.effective_start_date <= today) || prices[0];
-          unitPrice = Number(applicable?.unit_price || 0);
+      if (materialIdChanged || quantityChanged || weightChanged) {
+        const qty = Number(partRow?.part_quantity || 0);
+        const unitW = Number(partRow?.weight || 0);
+        const totalW = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : null;
+
+        let unitPrice: number | null = null;
+        const materialId = partRow?.material_id;
+        if (materialId) {
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: prices } = await supabase
+            .from('material_prices')
+            .select('unit_price,effective_start_date,effective_end_date')
+            .eq('material_id', materialId)
+            .order('effective_start_date', { ascending: false });
+          if (Array.isArray(prices) && prices.length > 0) {
+            const applicable = prices.find((p: any) => (!p.effective_end_date || p.effective_end_date >= today) && p.effective_start_date <= today) || prices[0];
+            unitPrice = Number(applicable?.unit_price || 0);
+          }
         }
-      }
-      if (unitPrice === null) unitPrice = 50; // 回退单价
-      const totalPrice = totalW && unitPrice ? Math.round(totalW * unitPrice * 100) / 100 : null;
+        if (unitPrice === null) unitPrice = 50; // 回退单价
+        const totalPrice = totalW && unitPrice ? Math.round(totalW * unitPrice * 100) / 100 : null;
 
-      await supabase
-        .from('purchase_orders')
-        .update({ weight: totalW, total_price: totalPrice })
-        .eq('part_id', id);
-      console.log(`[Tooling] 联动更新采购单成功 part_id=${id}, weight=${totalW}, total_price=${totalPrice}`);
+        await supabase
+          .from('purchase_orders')
+          .update({ weight: totalW, total_price: totalPrice })
+          .eq('part_id', id);
+        console.log(`[Tooling] 联动更新采购单成功 part_id=${id}, weight=${totalW}, total_price=${totalPrice}`);
+      }
     } catch (linkErr) {
       console.warn('[Tooling] 联动更新采购单失败:', linkErr);
     }

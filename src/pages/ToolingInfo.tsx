@@ -828,8 +828,7 @@ const ToolingInfoPage: React.FC = () => {
             } : r)
             return { ...prev, [toolingId]: ensureBlankParts(toolingId, nl) }
           })
-          // 刷新一次列表，确保最新值可见
-          fetchPartsData(toolingId)
+          // 移除不必要的 fetchPartsData 调用，避免重复查询导致卡死
         }
       }
     } catch (error) {
@@ -854,7 +853,7 @@ const ToolingInfoPage: React.FC = () => {
           return updatedRow
         })
         
-        // 如果更新包含规格等字段，重新计算重量
+        // 如果更新包含规格等字段，重新计算重量（只更新当前修改的零件，避免遍历所有零件）
         if ('specifications' in updates || 'material_id' in updates || 'part_category' in updates) {
           updated = updated.map(r => {
             if (r.id === id) {
