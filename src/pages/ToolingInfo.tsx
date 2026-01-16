@@ -4,6 +4,7 @@ import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, 
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import { safeLocalStorage } from '../utils/safeStorage'
+import { getProcessDone } from '../utils/processDone'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { CATEGORY_CODE_MAP } from '../types/tooling'
@@ -149,22 +150,42 @@ const ToolingInfoPage: React.FC = () => {
       )
     } catch { return {} }
   })
-  const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => {
+  const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
+
+  useEffect(() => {
+    const keys = new Set<string>()
     try {
-      const stored = safeLocalStorage.getItem('process_done_map') || '{}'
-      if (stored.length > 900_000) {
-        safeLocalStorage.removeItem('process_done_map')
-        return {}
-      }
-      const parsed = JSON.parse(stored)
-      const norm: any = {}
-      Object.entries(parsed).forEach(([k, v]: any) => {
-        const d = Array.isArray(v?.done) ? v.done.filter((x: any) => typeof x === 'string') : []
-        norm[k] = { done: d, last: typeof v?.last === 'string' ? v.last : undefined, time: typeof v?.time === 'number' ? v.time : undefined }
+      Object.values(partsMap).forEach((list: any) => {
+        ;(list || []).forEach((p: any) => {
+          const k = String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase()
+          if (k) keys.add(k)
+        })
       })
-      return norm
-    } catch { return {} }
-  })
+    } catch {}
+
+    const batch = Array.from(keys).slice(0, 2000)
+    if (batch.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      const pairs: Array<[string, any]> = []
+      for (const k of batch) {
+        const v = await getProcessDone(k)
+        if (v) pairs.push([k, v])
+      }
+      if (cancelled) return
+      if (pairs.length === 0) return
+      setProcessDoneMap((prev) => {
+        const next = { ...prev }
+        for (const [k, v] of pairs) next[k] = v
+        return next
+      })
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [partsMap])
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // 导入相关状态

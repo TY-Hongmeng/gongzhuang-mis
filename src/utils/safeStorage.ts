@@ -84,7 +84,6 @@ export const safeLocalStorage: Storage = {
 
 export const APP_CACHE_KEYS = [
   'process_routes_map',
-  'process_done_map',
   'temporary_plans',
   'temporary_hidden_ids'
 ] as const
