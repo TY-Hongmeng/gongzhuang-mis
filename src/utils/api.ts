@@ -293,30 +293,74 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const body = await readBody()
         const phone = String(body.phone || '')
         const password = String(body.password || '')
+        
+        console.log('API: Login request via Direct REST', { phone })
+        
         let userRow: any = null
-        let error: any = null
+        
         try {
-          const res = await withTimeout(
-            supabase
-              .from('users')
-              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
-              .eq('phone', phone)
-              .single(),
-            30000
-          )
-          userRow = (res as any).data
-          error = (res as any).error
+          // Construct REST URL manually to bypass supabase-js client
+          const selectQuery = '*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))'
+          const restUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&select=${encodeURIComponent(selectQuery)}&limit=1`
+          
+          console.log('API: Fetching user URL constructed')
+          
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 30000)
+          
+          const resp = await fetch(restUrl, {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            signal: controller.signal
+          })
+          
+          clearTimeout(timeoutId)
+          
+          if (!resp.ok) {
+            const errText = await resp.text()
+            console.error('API: User fetch failed', resp.status, errText)
+            return jsonResponse({ success: false, error: `数据库查询失败: ${resp.status}` }, 500)
+          }
+          
+          const rows = await resp.json()
+          if (Array.isArray(rows) && rows.length > 0) {
+            userRow = rows[0]
+          } else {
+             // 尝试不带关联数据查询，作为降级方案
+             console.warn('API: Fetch with relations failed or empty, trying simple fetch')
+             const simpleUrl = `${supabaseUrl}/rest/v1/users?phone=eq.${phone}&limit=1`
+             const simpleResp = await fetch(simpleUrl, {
+                method: 'GET',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+             })
+             if (simpleResp.ok) {
+               const simpleRows = await simpleResp.json()
+               if (simpleRows.length > 0) userRow = simpleRows[0]
+             }
+          }
+          
         } catch (e: any) {
-          console.error('handleClientSideApi: Supabase login query failed/timed out', e)
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '登录失败') }, 500)
+          console.error('API: Direct REST exception', e)
+          if (e.name === 'AbortError') return jsonResponse({ success: false, error: '请求超时，请检查网络' }, 504)
+          return jsonResponse({ success: false, error: String(e?.message || '登录异常') }, 500)
         }
-        if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 401)
-        const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
-        if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
-        if (String((userRow as any).status) !== 'active') return jsonResponse({ success: false, error: '账户未激活或已被禁用' }, 401)
-        const { password_hash, ...safeUser } = (userRow as any)
-        return jsonResponse({ success: true, user: safeUser })
+
+        if (!userRow) return jsonResponse({ success: false, error: '用户不存在' }, 401)
+        
+        try {
+            const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
+            if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
+            if (String((userRow as any).status) !== 'active') return jsonResponse({ success: false, error: '账户未激活或已被禁用' }, 401)
+            const { password_hash, ...safeUser } = (userRow as any)
+            return jsonResponse({ success: true, user: safeUser })
+        } catch (e) {
+            console.error('API: Password check error', e)
+            return jsonResponse({ success: false, error: '密码验证出错' }, 500)
+        }
       }
 
       if (path === '/api/auth/me' && method === 'GET') {
