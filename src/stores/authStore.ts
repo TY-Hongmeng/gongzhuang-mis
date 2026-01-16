@@ -211,8 +211,10 @@ export const useAuthStore = create<AuthState>()(
         // 检查本地存储的用户信息是否有效
         const { user } = get();
         if (user) {
-          set({ isAuthenticated: true });
+          set({ isAuthenticated: true, isLoading: false });
+          return
         }
+        set({ isAuthenticated: false, isLoading: false })
       },
 
       refreshUser: async () => {
@@ -230,6 +232,15 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => safeLocalStorage),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated
+      }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState as any),
+        isLoading: false
+      }),
     }
   )
 );
