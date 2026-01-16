@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录诊断工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #52c41a; }
+        .error { color: #ff4d4f; }
+        .info { color: #1890ff; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #1890ff; color: white; }
+        .btn-success { background: #52c41a; color: white; }
+        .btn-danger { background: #ff4d4f; color: white; }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f0f0f0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 工装制造管理系统 - 登录诊断工具</h1>
+    
+    <div class="test-section">
+        <h2>1. 连接测试</h2>
+        <button class="btn-primary" onclick="testConnections()">测试服务器连接</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 登录测试</h2>
+        <div>
+            <label>手机号：</label>
+            <input type="text" id="phone" placeholder="13800000001" value="13800000001">
+        </div>
+        <div>
+            <label>密码：</label>
+            <input type="password" id="password" placeholder="123456" value="123456">
+        </div>
+        <button class="btn-success" onclick="testLogin()">测试登录</button>
+        <button class="btn-primary" onclick="testAllUsers()">测试所有账户</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 可用测试账户</h2>
+        <div class="result">
+            <strong>密码都是：123456</strong><br><br>
+            13800000001 - 张三<br>
+            13800000002 - 申震<br>
+            13800000003 - 郭大师<br>
+            13800000004 - 饭团
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 快速跳转</h2>
+        <button class="btn-primary" onclick="window.open('http://localhost:5182/login', '_blank')">打开登录页面</button>
+        <button class="btn-primary" onclick="window.open('http://localhost:5182/dashboard', '_blank')">打开仪表板</button>
+    </div>
+
+    <script>
+        async function testConnections() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.innerHTML = '正在测试连接...\n';
+            
+            let results = [];
+            
+            // 测试前端代理
+            try {
+                const resp = await fetch('http://localhost:5182/api/health');
+                const data = await resp.json();
+                results.push(`✅ 前端代理 (http://localhost:5182): ${JSON.stringify(data)}`);
+            } catch (error) {
+                results.push(`❌ 前端代理连接失败: ${error.message}`);
+            }
+            
+            // 测试后端服务器
+            try {
+                const resp = await fetch('http://localhost:3003/api/health');
+                const data = await resp.json();
+                results.push(`✅ 后端服务器 (http://localhost:3003): ${JSON.stringify(data)}`);
+            } catch (error) {
+                results.push(`❌ 后端服务器连接失败: ${error.message}`);
+            }
+            
+            resultDiv.innerHTML = results.join('\n');
+        }
+
+        async function testLogin() {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            resultDiv.innerHTML = `正在测试登录...\n手机号: ${phone}\n`;
+            
+            try {
+                const resp = await fetch('http://localhost:5182/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password })
+                });
+                
+                const data = await resp.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML += `\n✅ 登录成功！\n用户信息:\n${JSON.stringify(data.user, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML += `\n❌ 登录失败\n错误信息: ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `\n❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        async function testAllUsers() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = '正在测试所有账户...\n\n';
+            
+            const users = [
+                { phone: '13800000001', password: '123456', name: '张三' },
+                { phone: '13800000002', password: '123456', name: '申震' },
+                { phone: '13800000003', password: '123456', name: '郭大师' },
+                { phone: '13800000004', password: '123456', name: '饭团' }
+            ];
+            
+            let results = [];
+            
+            for (const user of users) {
+                try {
+                    const resp = await fetch('http://localhost:5182/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone: user.phone, password: user.password })
+                    });
+                    
+                    const data = await resp.json();
+                    
+                    if (data.success) {
+                        results.push(`✅ ${user.name} (${user.phone}): 登录成功`);
+                    } else {
+                        results.push(`❌ ${user.name} (${user.phone}): ${data.error}`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${user.name} (${user.phone}): ${error.message}`);
+                }
+            }
+            
+            resultDiv.innerHTML += results.join('\n');
+        }
+
+        // 页面加载时自动测试连接
+        window.onload = function() {
+            testConnections();
+        };
+    </script>
+</body>
+</html>

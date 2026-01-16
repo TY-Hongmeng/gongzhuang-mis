@@ -68,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (phone: string, password: string) => {
+        console.log('AuthStore: Starting login...', { phone })
         set({ isLoading: true });
         const headers = { 'Content-Type': 'application/json' };
         const body = JSON.stringify({ phone, password });
@@ -87,16 +88,19 @@ export const useAuthStore = create<AuthState>()(
           const response = await fetchWithTimeout('/api/auth/login');
           if (response.ok) {
             const data = await response.json();
+            console.log('AuthStore: Login response OK', data)
             if (data.success) {
               set({ user: data.user, isAuthenticated: true, isLoading: false });
               return { success: true, message: '登录成功' };
             } else {
               set({ isLoading: false });
+              console.warn('AuthStore: Login success=false', data)
               return { success: false, message: data.error || '登录失败' };
             }
           }
 
           const errData = await response.json().catch(() => ({} as any))
+          console.error('AuthStore: Login response not OK', response.status, errData)
           if (errData?.error) {
             set({ isLoading: false });
             return { success: false, message: String(errData.error) };
@@ -104,6 +108,7 @@ export const useAuthStore = create<AuthState>()(
           const isDev = (import.meta as any)?.env?.MODE === 'development'
           const isLocalHost = typeof window !== 'undefined' && /localhost/i.test(String(window.location?.host || ''))
           if ((isDev || isLocalHost) && supabase) {
+            console.log('AuthStore: Attempting dev fallback login')
             const { data: userRow, error } = await supabase
               .from('users')
               .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
@@ -130,6 +135,7 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return { success: false, message: '登录失败' };
         } catch (error) {
+          console.error('AuthStore: Login exception caught', error)
           set({ isLoading: false });
           return { success: false, message: '网络错误，请重试' };
         }

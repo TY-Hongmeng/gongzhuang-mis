@@ -1,6 +1,7 @@
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
+  console.log('fetchWithFallback calling:', cleanUrl)
   
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
@@ -56,14 +57,18 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       if (handled) return handled
     }
     return res
-  } catch {
+  } catch (err) {
+    console.error('fetchWithFallback: Network error or similar', err)
     // 网络错误时，尝试调用客户端API处理
     if (cleanUrl.startsWith('/')) {
       const handled = await handleClientSideApi(abs, init)
       if (handled) return handled
     }
     // 在 GitHub Pages 环境不再回退到 localhost，直接抛错
-    if (isGhPages) throw new Error('Network error')
+    if (isGhPages) {
+      console.error('fetchWithFallback: isGhPages=true, throwing Network error')
+      throw new Error('Network error')
+    }
     const u = new URL(abs, window.location.origin)
     const fallback = `http://localhost:3003${u.pathname}${u.search}`
     return await fetch(fallback, init)
@@ -240,6 +245,7 @@ function getQuery(url: string): URLSearchParams {
 }
 
 async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
+  console.log('handleClientSideApi called:', url)
   try {
     // 清理URL中的反引号和空格
     const cleanUrl = url.replace(/[`]/g, '').trim()
@@ -258,7 +264,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     if (apiPathMatch) {
       path = apiPathMatch[1]
     }
-    
+    console.log('handleClientSideApi path:', path, 'method:', init?.method || 'GET')
+
     const method = (init?.method || 'GET').toUpperCase()
     if (method === 'OPTIONS') {
       return jsonResponse({ success: true })
@@ -280,6 +287,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     
     // 如果Supabase可用，优先从Supabase获取数据
       if (supabase) {
+      console.log('handleClientSideApi: Supabase client is available')
 
       if (path === '/api/auth/login' && method === 'POST') {
         const body = await readBody()
