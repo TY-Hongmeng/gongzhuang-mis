@@ -1,7 +1,6 @@
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
-  console.log('fetchWithFallback calling:', cleanUrl)
   
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
@@ -224,7 +223,6 @@ function getQuery(url: string): URLSearchParams {
 }
 
 async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
-  console.log('handleClientSideApi called:', url)
   try {
     // 清理URL中的反引号和空格
     const cleanUrl = url.replace(/[`]/g, '').trim()
@@ -243,7 +241,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     if (apiPathMatch) {
       path = apiPathMatch[1]
     }
-    console.log('handleClientSideApi path:', path, 'method:', init?.method || 'GET')
 
     const method = (init?.method || 'GET').toUpperCase()
     if (method === 'OPTIONS') {
@@ -266,15 +263,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     
     // 如果Supabase可用，优先从Supabase获取数据
       if (supabase) {
-      console.log('handleClientSideApi: Supabase client is available')
 
       if (path === '/api/auth/login' && method === 'POST') {
         const body = await readBody()
         const rawPhone = String(body.phone || '')
         const phone = rawPhone.trim()
         const password = String(body.password || '').trim()
-        
-        console.log('API: Login request via Supabase Client', { phone: JSON.stringify(phone) })
         
         let userRow: any = null
         
@@ -296,7 +290,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              // 2. Fallback: Simple query if complex failed or returned nothing (though maybeSingle returns null, not error on empty)
              // If complexData is null, it means user not found OR RLS blocked it. 
              // Let's try simple query to be sure.
-             console.log('API: Complex data empty or error, trying simple query')
              const { data: simpleData, error: simpleError } = await supabase
                 .from('users')
                 .select('*')
