@@ -750,6 +750,105 @@ const ToolingInfoPage: React.FC = () => {
     ]
   }, [materials, materialOptions, materialSources, materialSourceOptions, materialSourceNameMap, partTypes, partTypeOptions, handlePartSave, handlePartBatchSave, calculatePartWeight, calculateTotalPrice, processRoutes, workHoursData, processDoneMap, setPartsMap, savePartData, setProcessRoutes])
 
+  const childColumns = useMemo(() => {
+    return [
+      {
+        title: '序号',
+        dataIndex: '__seq',
+        width: 60,
+        render: (_text: any, _record: ChildItem, index: number) => (
+          <span style={{ display: 'inline-block', width: '100%', textAlign: 'center', color: '#888' }}>
+            {index + 1}
+          </span>
+        )
+      },
+      {
+        title: '名称',
+        dataIndex: 'name',
+        width: 180,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'name' as any}
+            onSave={(pid, _k, v) => handleChildItemSave((rec as any).tooling_id, pid, 'name', v)}
+          />
+        )
+      },
+      {
+        title: '型号',
+        dataIndex: 'model',
+        width: 150,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'model' as any}
+            onSave={(pid, _k, v) => handleChildItemSave((rec as any).tooling_id, pid, 'model', v)}
+          />
+        )
+      },
+      {
+        title: '数量',
+        dataIndex: 'quantity',
+        width: 80,
+        render: (text: number, rec: ChildItem) => (
+          <EditableCell
+            value={text as any}
+            record={rec as any}
+            dataIndex={'quantity' as any}
+            onSave={(pid, _k, v) => handleChildItemSave((rec as any).tooling_id, pid, 'quantity', v)}
+          />
+        )
+      },
+      {
+        title: '单位',
+        dataIndex: 'unit',
+        width: 80,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'unit' as any}
+            onSave={(pid, _k, v) => handleChildItemSave((rec as any).tooling_id, pid, 'unit', v)}
+          />
+        )
+      },
+      {
+        title: '需求日期',
+        dataIndex: 'required_date',
+        width: 160,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'required_date' as any}
+            onSave={(pid, _k, v) => handleChildItemSave((rec as any).tooling_id, pid, 'required_date', v)}
+          />
+        )
+      },
+      {
+        title: '状态',
+        dataIndex: '__status',
+        width: 120,
+        render: (_t: any, rec: ChildItem) => {
+          const statusKey = `status_child_${rec.id}`
+          let derived = safeLocalStorage.getItem(statusKey) || ''
+          try {
+            const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
+            const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.child_item_id === rec.id)
+            if (hit) {
+              if (hit.arrival_date) derived = '已到货'
+              else if (hit.purchaser && String(hit.purchaser).trim()) derived = '采购中'
+              else derived = '审批中'
+            }
+          } catch {}
+          return <span style={{ color: '#1890ff' }}>{derived || '-'}</span>
+        }
+      }
+    ]
+  }, [handleChildItemSave])
+
   // 空白行数据
   const ensureBlankToolings = (list: RowItem[]) => {
     const seenIds = new Set<string>()
