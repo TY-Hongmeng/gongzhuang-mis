@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { Input, InputRef, Select } from 'antd'
 
 interface EditableCellProps {
@@ -26,6 +26,10 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const selectRef = useRef<any>(null)
   const didSaveRef = useRef(false)
   const saveTriggeredRef = useRef(false)
+
+  const selectOptions = useMemo(() => {
+    return options ? options.map(opt => ({ label: opt, value: opt })) : []
+  }, [options])
 
   // 当外部value变化时，更新内部状态（但仅在非编辑状态下）
   useEffect(() => {
@@ -86,7 +90,10 @@ const EditableCell: React.FC<EditableCellProps> = ({
   useEffect(() => {
     if (isEditing) {
       if (options) {
-        // Antd Select with autoFocus handles focus automatically
+        // 延迟打开下拉框，避免立即渲染导致性能问题
+        setTimeout(() => {
+          selectRef.current?.focus()
+        }, 0)
       } else {
         inputRef.current?.focus()
         inputRef.current?.select?.()
@@ -122,7 +129,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }
 
   if (options) {
-    const selectOptions = options.map(opt => ({ label: opt, value: opt }));
     return (
       <Select
         ref={selectRef}
@@ -154,8 +160,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
           width: '100%',
           ...customStyle
         }}
-        defaultOpen
-        autoFocus
         showSearch
         options={selectOptions}
         optionFilterProp="label"
