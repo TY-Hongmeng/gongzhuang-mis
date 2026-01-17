@@ -4053,110 +4053,13 @@ const ToolingInfoPage: React.FC = () => {
                   const applicantOk = !!String(parentApplicant).trim()
                   return nameOk && modelOk && qtyOk && unitOk && demandDateOk && projectOk && prodUnitOk && applicantOk
                 }
-
-                const childCols = [
-                  {
-                    title: '序号',
-                    dataIndex: '__seq',
-                    width: 60,
-                    render: (_text: any, _record: ChildItem, index: number) => (
-                      <span style={{ display: 'inline-block', width: '100%', textAlign: 'center', color: '#888' }}>
-                        {index + 1}
-                      </span>
-                    )
-                  },
-                  {
-                    title: '名称',
-                    dataIndex: 'name',
-                    width: 180,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'name' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'name', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '型号',
-                    dataIndex: 'model',
-                    width: 150,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'model' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'model', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '数量',
-                    dataIndex: 'quantity',
-                    width: 80,
-                    render: (text: number, rec: ChildItem) => (
-                      <EditableCell
-                        value={text as any}
-                        record={rec as any}
-                        dataIndex={'quantity' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'quantity', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '单位',
-                    dataIndex: 'unit',
-                    width: 80,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'unit' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'unit', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '需求日期',
-                    dataIndex: 'required_date',
-                    width: 160,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'required_date' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'required_date', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '状态',
-                    dataIndex: '__status',
-                    width: 120,
-                    render: (_t: any, rec: ChildItem) => {
-                      const statusKey = `status_child_${rec.id}`
-                      let derived = safeLocalStorage.getItem(statusKey) || ''
-                      try {
-                        const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
-                        const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.child_item_id === rec.id)
-                        if (hit) {
-                          if (hit.arrival_date) derived = '已到货'
-                          else if (hit.purchaser && String(hit.purchaser).trim()) derived = '采购中'
-                          else derived = '审批中'
-                        }
-                      } catch {}
-                      return <span style={{ color: '#1890ff' }}>{derived || '-'}</span>
-                    }
-                  }
-                ]
-
+                
                 return (
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 8, color: '#52c41a' }}>标准件信息</div>
                     <Table
                       rowKey="id"
-                      columns={childCols as any}
+                      columns={childColumns as any}
                       dataSource={processedList as any}
                       pagination={false}
                     bordered={false}
