@@ -161,6 +161,7 @@ const ToolingInfoPage: React.FC = () => {
   })
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
   
   // 导入相关状态
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -209,9 +210,20 @@ const ToolingInfoPage: React.FC = () => {
     if (batch.length === 0) return
 
     let cancelled = false
-    ;(async () => {
+    
+    const fetchProcessDone = async () => {
+      const now = Date.now()
+      const timeSinceLastFetch = now - processDoneFetchRef.current.lastFetchTime
+      
+      if (timeSinceLastFetch < 1000) {
+        return
+      }
+      
+      processDoneFetchRef.current.lastFetchTime = now
+      
       const pairs: Array<[string, any]> = []
       for (const k of batch) {
+        if (cancelled) break
         const v = await getProcessDone(k)
         if (v) pairs.push([k, v])
       }
@@ -222,10 +234,21 @@ const ToolingInfoPage: React.FC = () => {
         for (const [k, v] of pairs) next[k] = v
         return next
       })
-    })()
+    }
+
+    if (processDoneFetchRef.current.timer) {
+      clearTimeout(processDoneFetchRef.current.timer)
+    }
+    
+    processDoneFetchRef.current.timer = setTimeout(() => {
+      fetchProcessDone()
+    }, 500) as any
 
     return () => {
       cancelled = true
+      if (processDoneFetchRef.current.timer) {
+        clearTimeout(processDoneFetchRef.current.timer)
+      }
     }
   }, [partsMap])
   const [userTeamsMap, setUserTeamsMap] = useState<Record<string, string>>({})
@@ -751,7 +774,7 @@ const ToolingInfoPage: React.FC = () => {
           // 成功后依赖本地乐观状态，避免立即刷新导致计算抖动
         } else {
           // 保存失败，回滚为服务端数据
-          fetchPartsData(toolingId)
+          // 移除 fetchPartsData 调用，避免重复请求导致卡死
           return
         }
       }
@@ -834,7 +857,7 @@ const ToolingInfoPage: React.FC = () => {
     } catch (error) {
       console.error('保存零件数据错误:', error)
       message.error('保存零件数据失败')
-      fetchPartsData(toolingId)
+      // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
   }
 
@@ -886,13 +909,13 @@ const ToolingInfoPage: React.FC = () => {
         
         const success = await savePartData(id, payload)
         if (!success) {
-          fetchPartsData(toolingId)
+          // 移除 fetchPartsData 调用，避免重复请求导致卡死
         }
       }
     } catch (error) {
       console.error('批量保存失败:', error)
       message.error('保存失败')
-      fetchPartsData(toolingId)
+      // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
   }
 
@@ -2372,19 +2395,13 @@ const ToolingInfoPage: React.FC = () => {
       
       console.log('导入完成，成功条数:', successCount)
       
-      // 刷新数据：先刷新工装列表，再刷新相关的零件数据
+      // 刷新数据：只刷新工装列表，不刷新零件数据
+      // 因为导入时已经在本地状态中更新了数据，不需要再次刷新
       await fetchToolingData()
       
-      // 刷新所有工装的零件数据，确保导入的零件数据能立即显示
-      for (const row of validToolingRows) {
-        const inventoryNumber = String(row['盘存编号']).trim()
-        // 查找对应的工装ID
-        const toolingId = inventoryNumberMap[inventoryNumber]
-        if (toolingId) {
-          await fetchPartsData(toolingId)
-          await fetchChildItemsData(toolingId)
-        }
-      }
+      // 移除对每个工装都调用 fetchPartsData 和 fetchChildItemsData 的逻辑
+      // 这样可以避免大量请求导致页面卡死
+      // 如果用户需要查看导入的数据，可以手动展开工装行
       
       // 根据成功条数显示不同的消息
       if (successCount > 0) {
@@ -3180,6 +3197,18 @@ const ToolingInfoPage: React.FC = () => {
                 const parentUnit = parent?.production_unit || ''
                 const parentApplicant = parent?.recorder || ''
 
+                // 优化：预先计算所有零件的重量，避免在 render 函数中重复计算
+                const weightCache = new Map<string, number>()
+                const getWeight = (rec: PartItem): number => {
+                  if (weightCache.has(rec.id)) {
+                    return weightCache.get(rec.id)!
+                  }
+                  const w = rec.weight
+                  const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
+                  weightCache.set(rec.id, weight)
+                  return weight
+                }
+
                 const isPartReady = (rec: PartItem): boolean => {
                   const nameOk = !!String(rec.part_name || '').trim()
                   const q = (rec as any).part_quantity
@@ -3379,11 +3408,7 @@ const ToolingInfoPage: React.FC = () => {
                         const n = typeof q === 'number' ? q : parseFloat(String(q || '0'))
                         return isNaN(n) ? 0 : n
                       })()
-                      const unitW = (() => {
-                        const w = rec.weight
-                        if (w && w > 0) return w
-                        return calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
-                      })()
+                      const unitW = getWeight(rec)
                       const totalWeight = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : null
                       return (
                         <span>
@@ -3402,11 +3427,7 @@ const ToolingInfoPage: React.FC = () => {
                         const n = typeof q === 'number' ? q : parseFloat(String(q || '0'))
                         return isNaN(n) ? 0 : n
                       })()
-                      const unitW = (() => {
-                        const w = rec.weight
-                        if (w && w > 0) return w
-                        return calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
-                      })()
+                      const unitW = getWeight(rec)
                       const totalWeight = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : 0
                       const material = materials.find(m => m.id === rec.material_id)
                       const unitPrice = material ? 50 : 0
