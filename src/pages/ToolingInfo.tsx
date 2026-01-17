@@ -4004,7 +4004,7 @@ const ToolingInfoPage: React.FC = () => {
                     <div style={{ fontWeight: 600, marginBottom: 8, color: '#1890ff' }}>零件信息</div>
                     <Table
                       rowKey="id"
-                      columns={cols as any}
+                      columns={partColumns as any}
                       dataSource={processedList as any}
                       pagination={false}
                     bordered={false}
