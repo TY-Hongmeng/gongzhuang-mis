@@ -161,7 +161,7 @@ const ToolingInfoPage: React.FC = () => {
   })
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
+  const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number; lastPartsMapSize: number }>({ timer: null, lastFetchTime: 0, lastPartsMapSize: 0 })
   
   // 导入相关状态
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -196,6 +196,14 @@ const ToolingInfoPage: React.FC = () => {
   } = useToolingData()
 
   useEffect(() => {
+    const currentPartsMapSize = Object.keys(partsMap).length
+    
+    if (currentPartsMapSize === processDoneFetchRef.current.lastPartsMapSize) {
+      return
+    }
+    
+    processDoneFetchRef.current.lastPartsMapSize = currentPartsMapSize
+    
     const keys = new Set<string>()
     try {
       Object.values(partsMap).forEach((list: any) => {
@@ -676,7 +684,7 @@ const ToolingInfoPage: React.FC = () => {
   }
 
   // 保存零件数据
-  const handlePartSave = async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
+  const handlePartSave = useCallback(async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
     try {
       // 零件盘存编号重复即时校验
       if (key === 'part_inventory_number') {
@@ -859,9 +867,9 @@ const ToolingInfoPage: React.FC = () => {
       message.error('保存零件数据失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
-  }
+  }, [data, partsMap, savePartData, partTypes, materials])
 
-  const handlePartBatchSave = async (toolingId: string, id: string, updates: Partial<PartItem>) => {
+  const handlePartBatchSave = useCallback(async (toolingId: string, id: string, updates: Partial<PartItem>) => {
     try {
       let updatedPartData: PartItem | null = null
       
@@ -917,10 +925,10 @@ const ToolingInfoPage: React.FC = () => {
       message.error('保存失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
-  }
+  }, [data, partsMap, savePartData, partTypes, materials])
 
   // 保存标准件数据
-  const handleChildItemSave = async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
+  const handleChildItemSave = useCallback(async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
     try {
       let nextItem: ChildItem | null = null
       setChildItemsMap(prev => {
@@ -990,7 +998,7 @@ const ToolingInfoPage: React.FC = () => {
       console.error('处理标准件数据错误:', error)
       message.error('处理标准件数据失败')
     }
-  }
+  }, [childItemsMap, createChildItem])
 
   // 初始化数据
   useEffect(() => {
