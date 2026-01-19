@@ -195,6 +195,11 @@ const ToolingInfoPage: React.FC = () => {
     batchDelete
   } = useToolingData()
 
+  const partsMapRef = useRef(partsMap)
+  useEffect(() => {
+    partsMapRef.current = partsMap
+  }, [partsMap])
+
   useEffect(() => {
     const keys = new Set<string>()
     try {
@@ -690,7 +695,7 @@ const ToolingInfoPage: React.FC = () => {
             return
           }
           // 本地已加载数据去重
-          const localDup = Object.values(partsMap).some((list: any) =>
+          const localDup = Object.values(partsMapRef.current).some((list: any) =>
             (list || []).some((p: any) => String(p.part_inventory_number || '').trim().toUpperCase() === newInv && p.id !== id)
           )
           if (localDup) {
@@ -761,7 +766,7 @@ const ToolingInfoPage: React.FC = () => {
           // 最小保存载荷：保存本次变更的字段，并在需要时联动重量
           payload = { [key]: key === 'part_quantity' ? (Number(value) || null) : value }
           if (key === 'specifications' || key === 'material_id' || key === 'part_category') {
-            const list = partsMap[toolingId] || []
+            const list = partsMapRef.current[toolingId] || []
             const current = list.find(r => r.id === id) as any
             const nextRow = { ...(current || {}), [key]: value }
             const newWeight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
@@ -781,7 +786,7 @@ const ToolingInfoPage: React.FC = () => {
       
       // 如果是空白行，创建新记录
       if (id.startsWith('blank-')) {
-        const list = partsMap[toolingId] || []
+        const list = partsMapRef.current[toolingId] || []
         const existing = list.find(x => x.id === id) || { 
           id, 
           tooling_id: toolingId, 
@@ -917,7 +922,7 @@ const ToolingInfoPage: React.FC = () => {
       message.error('保存失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
-  }, [partsMap, partTypes, materials, savePartData])
+  }, [partTypes, materials, savePartData])
 
   // 保存标准件数据
   const handleChildItemSave = useCallback(async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
@@ -1205,19 +1210,76 @@ const ToolingInfoPage: React.FC = () => {
         title: '工艺路线',
         dataIndex: 'process_route',
         width: 320,
-        render: (text: string, rec: PartItem) => {
-          const route = rec.process_route || ''
-          if (!route) return <span style={{ color: '#999' }}>-</span>
-          const hasWorkHours = workHoursData[rec.id]?.length > 0
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
+        render: (_t: any, rec: PartItem) => {
+          const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          let currentRoute = String((rec as any).process_route || '')
+          if (!currentRoute && keyCandidate) {
+            currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
+            if (!currentRoute) {
+              let longest = ''
+              Object.keys(processRoutes).forEach(k => {
+                if (keyCandidate.startsWith(k) && k.length > longest.length) longest = k
+              })
+              if (longest) currentRoute = processRoutes[longest]
+            }
+          }
+          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          const completedSet = new Set<string>((workHoursData[inventoryNo] || []).map(x => x.trim().toLowerCase()))
+          const display = (val: string | undefined) => {
+            const route = String(val || '')
+            if (!route) return <span style={{ color: '#999' }}>-</span>
+            const steps = route.split(/\s*→\s*/).filter(Boolean)
+            return (
+              <span>
+                {steps.map((s, i) => {
+                  const ok = completedSet.has(s.trim().toLowerCase())
+                  return <span key={i} style={{ color: ok ? '#28a745' : '#333', fontWeight: 400 }}>{s}{i < steps.length - 1 ? '→' : ''}</span>
+                })}
+              </span>
+            )
+          }
           return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ flex: 1 }}>{route}</span>
-              {hasWorkHours && (
-                <span style={{ fontSize: 12, color: '#52c41a', whiteSpace: 'nowrap' }}>
-                  ✓ 已录入
-                </span>
-              )}
-            </div>
+            <EditableCell
+              value={currentRoute}
+              record={rec}
+              dataIndex="process_route"
+              renderDisplay={display}
+              onSave={async (id: string, _key: keyof PartItem, value: string) => {
+                try {
+                  setPartsMap(prev => {
+                    const newPartsMap = { ...prev }
+                    Object.keys(newPartsMap).forEach(tid => {
+                      newPartsMap[tid] = newPartsMap[tid].map(part => 
+                        part.id === id ? { ...part, process_route: value } : part
+                      )
+                    })
+                    return newPartsMap
+                  })
+                  const success = await savePartData(id, { process_route: value })
+                  if (success && rec.part_inventory_number) {
+                    const newProcessRoutes = {
+                      ...processRoutes,
+                      [String(rec.part_inventory_number).trim().toUpperCase()]: value
+                    }
+                    try {
+                      const json = JSON.stringify(newProcessRoutes)
+                      if (json.length <= 900_000) {
+                        safeLocalStorage.setItem('process_routes_map', json)
+                      } else {
+                        message.warning('工艺路线缓存过大，已跳过写入本地缓存')
+                      }
+                    } catch {
+                      message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
+                    }
+                    setProcessRoutes(newProcessRoutes)
+                  }
+                } catch (error) {
+                  console.error('保存工艺路线失败:', error)
+                  message.error('保存工艺路线失败，请重试')
+                }
+              }}
+            />
           )
         }
       }
@@ -3557,343 +3619,7 @@ const ToolingInfoPage: React.FC = () => {
                 const parentUnit = parent?.production_unit || ''
                 const parentApplicant = parent?.recorder || ''
 
-                const cols = useMemo(() => createPartColumns(toolingId, parentProject, parentUnit, parentApplicant), [toolingId, parentProject, parentUnit, parentApplicant, materials, materialOptions, materialSourceNameMap, materialSources, materialSourceOptions, partTypeOptions, partTypes, handlePartSave, handlePartBatchSave, calculatePartWeight, getApplicableMaterialPrice, calculateTotalPrice, workHoursData])
-                  {
-                    title: '盘存编号',
-                    dataIndex: 'part_inventory_number',
-                    width: 160,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'part_inventory_number' as any}
-                        onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_inventory_number', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '图号',
-                    dataIndex: 'part_drawing_number',
-                    width: 180,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'part_drawing_number' as any}
-                        onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_drawing_number', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '零件名称',
-                    dataIndex: 'part_name',
-                    width: 180,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'part_name' as any}
-                        onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_name', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '数量',
-                    dataIndex: 'part_quantity',
-                    width: 80,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={text as any}
-                        record={rec as any}
-                        dataIndex={'part_quantity' as any}
-                        onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_quantity', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '材质',
-                    dataIndex: 'material_id',
-                    width: 160,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={materials.find(m => m.id === text)?.name || ''}
-                        record={rec as any}
-                        dataIndex={'material_id' as any}
-                        options={materialOptions}
-                        onSave={(_pid, _k, v) => {
-                          const selectedMaterial = materials.find(m => m.name === v)
-                          handlePartSave(toolingId, rec.id, 'material_id', selectedMaterial?.id || '')
-                        }}
-                      />
-                    )
-                  },
-                  {
-                    title: '材料来源',
-                    dataIndex: 'material_source_id',
-                    width: 160,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={materialSourceNameMap[String(text)] || (rec as any)?.material_source?.name || ''}
-                        record={rec as any}
-                        dataIndex={'material_source_id' as any}
-                        options={materialSourceOptions}
-                        onSave={(_pid, _k, v) => {
-                          // 导入的数据可能不存在于映射中，需要从materialSources中查找一次（防御性编程）
-                          const selectedSource = materialSources.find(ms => ms.name === v)
-                          const oldSource = materialSourceNameMap[String(rec.material_source_id)] || 
-                                           (rec as any)?.material_source?.name || 
-                                           materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
-                          const newSource = v
-                          
-                          if (rec.id.startsWith('blank-')) {
-                             handlePartSave(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
-                             return
-                          }
-
-                          const updates: any = { material_source_id: selectedSource?.id || '' }
-                          
-                          // 如果材料来源从外购改为其他，需要处理备注字段
-                          // 仅当oldSource确认为“外购”时才执行此逻辑，防止因识别错误导致的误判
-                          if (oldSource === '外购' && newSource !== '外购') {
-                             // 如果原来的备注看起来是日期格式（包含-），则重置为需调质，否则保留
-                             if (rec.remarks && rec.remarks.includes('-')) {
-                                updates.remarks = '需调质'
-                             }
-                          } else if (newSource === '外购' && oldSource !== '外购') {
-                             // 切到外购，清空备注以便填写日期
-                             updates.remarks = ''
-                          }
-                          
-                          handlePartBatchSave(toolingId, rec.id, updates)
-                        }}
-                      />
-                    )
-                  },
-                  {
-                    title: '料型',
-                    dataIndex: 'part_category',
-                    width: 160,
-                    render: (text: string, rec: PartItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'part_category' as any}
-                        options={partTypeOptions}
-                        onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_category', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '规格',
-                    dataIndex: 'specifications',
-                    width: 200,
-                    render: (text: string, rec: PartItem) => (
-                      <SpecificationsInput
-                        specs={rec.specifications || {}}
-                        partType={rec.part_category}
-                        partTypes={partTypes}
-                        onSave={(v) => handlePartSave(toolingId, rec.id, 'specifications', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '备注',
-                    dataIndex: 'remarks',
-                    width: 160,
-                    render: (text: string, rec: PartItem) => {
-                      const materialSource = materialSourceNameMap[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
-                      
-                      if (materialSource === '外购') {
-                        return (
-                          <EditableCell
-                            value={text || ''}
-                            record={rec as any}
-                            dataIndex={'remarks' as any}
-                            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'remarks', v)}
-                          />
-                        )
-                      }
-                      
-                      if (materialSource === '') {
-                        return null
-                      }
-                      
-                      return (
-                        <input
-                          type="checkbox"
-                          checked={text === '需调质'}
-                          onChange={(e) => handlePartSave(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
-                          style={{
-                            width: '16px',
-                            height: '16px',
-                            margin: '0 auto',
-                            display: 'block'
-                          }}
-                        />
-                      )
-                    }
-                  },
-                  {
-                    title: '重量(kg)',
-                    dataIndex: 'weight',
-                    width: 100,
-                    render: (_text: number, rec: PartItem) => {
-                      const qty = (() => {
-                        const q = rec.part_quantity as any
-                        const n = typeof q === 'number' ? q : parseFloat(String(q || '0'))
-                        return isNaN(n) ? 0 : n
-                      })()
-                      const unitW = getWeight(rec)
-                      const totalWeight = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : null
-                      return (
-                        <span>
-                          {totalWeight ? `${totalWeight.toFixed(3)}` : '-'}
-                        </span>
-                      )
-                    }
-                  },
-                  {
-                    title: '金额(元)',
-                    dataIndex: 'total_price',
-                    width: 160,
-                    render: (_text: number, rec: PartItem) => {
-                      const qty = (() => {
-                        const q = rec.part_quantity as any
-                        const n = typeof q === 'number' ? q : parseFloat(String(q || '0'))
-                        return isNaN(n) ? 0 : n
-                      })()
-                      const unitW = getWeight(rec)
-                      const totalWeight = qty > 0 && unitW > 0 ? Math.round(qty * unitW * 1000) / 1000 : 0
-                      const material = materials.find(m => m.id === rec.material_id)
-                      const unitPrice = material ? 50 : 0
-                      const totalPrice = calculateTotalPrice(totalWeight, unitPrice)
-                      return (
-                        <span>
-                          {totalPrice ? `¥${totalPrice.toFixed(2)}` : '-'}
-                        </span>
-                      )
-                    }
-                  },
-                  {
-                    title: '状态',
-                    dataIndex: '__status',
-                    width: 160,
-                    render: (_t: any, rec: PartItem) => {
-                      const statusKey = `status_part_${rec.id}`
-                      let derived = safeLocalStorage.getItem(statusKey) || ''
-                      try {
-                        const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
-                        const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.part_id === rec.id)
-                        if (hit) {
-                          if (hit.arrival_date) derived = '已到货'
-                          else if (hit.purchaser && String(hit.purchaser).trim()) derived = '采购中'
-                          else derived = '审批中'
-                        }
-                      } catch {}
-                      const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-                      let route = String((rec as any).process_route || '')
-                      if (!route && keyCandidate) {
-                        route = (keyCandidate && processRoutes[keyCandidate]) || ''
-                        if (!route) {
-                          let longest = ''
-                          Object.keys(processRoutes).forEach(k => { if (keyCandidate.startsWith(k) && k.length > longest.length) longest = k })
-                          if (longest) route = processRoutes[longest]
-                        }
-                      }
-                      const steps = route ? route.split(/\s*→\s*/) : []
-                      const completed = new Set((workHoursData[keyCandidate] || []).map(x => String(x).trim().toLowerCase()))
-                      let latest = ''
-                      for (const s of steps) { const t = s.trim().toLowerCase(); if (completed.has(t)) latest = s }
-                      if (!latest) latest = processDoneMap[keyCandidate]?.last || ''
-                      const txt = latest ? `${latest}` : derived
-                      const color = latest ? '#28a745' : '#1890ff'
-                      return <span style={{ color }}>{txt || '-'}</span>
-                    }
-                  },
-                  {
-                    title: '工艺路线',
-                    dataIndex: 'process_route',
-                    width: 320,
-                    onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
-                    render: (_t: any, rec: PartItem) => {
-                      const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-                      let currentRoute = String((rec as any).process_route || '')
-                      if (!currentRoute && keyCandidate) {
-                        currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
-                        if (!currentRoute) {
-                          let longest = ''
-                          Object.keys(processRoutes).forEach(k => {
-                            if (keyCandidate.startsWith(k) && k.length > longest.length) longest = k
-                          })
-                          if (longest) currentRoute = processRoutes[longest]
-                        }
-                      }
-                      const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-                      const completedSet = new Set<string>((workHoursData[inventoryNo] || []).map(x => x.trim().toLowerCase()))
-                      const display = (val: string | undefined) => {
-                        const route = String(val || '')
-                        if (!route) return <span style={{ color: '#999' }}>-</span>
-                        const steps = route.split(/\s*→\s*/).filter(Boolean)
-                        return (
-                          <span>
-                            {steps.map((s, i) => {
-                              const ok = completedSet.has(s.trim().toLowerCase())
-                              return <span key={i} style={{ color: ok ? '#28a745' : '#333', fontWeight: 400 }}>{s}{i < steps.length - 1 ? '→' : ''}</span>
-                            })}
-                          </span>
-                        )
-                      }
-                      return (
-                        <EditableCell
-                          value={currentRoute}
-                          record={rec}
-                          dataIndex="process_route"
-                          renderDisplay={display}
-                          onSave={async (id: string, key: keyof PartItem, value: string) => {
-                            try {
-                              // 更新本地零件数据
-                              setPartsMap(prev => {
-                                const newPartsMap = { ...prev }
-                                Object.keys(newPartsMap).forEach(toolingId => {
-                                  newPartsMap[toolingId] = newPartsMap[toolingId].map(part => 
-                                    part.id === id ? { ...part, process_route: value } : part
-                                  )
-                                })
-                                return newPartsMap
-                              })
-                               
-                              // 保存到后端
-                              const success = await savePartData(id, { process_route: value })
-                              if (success) {
-                                // 更新本地缓存
-                                if (rec.part_inventory_number) {
-                                  const newProcessRoutes = {
-                                    ...processRoutes,
-                                    [String(rec.part_inventory_number).trim().toUpperCase()]: value
-                                  }
-                                  try {
-                                    const json = JSON.stringify(newProcessRoutes)
-                                    if (json.length <= 900_000) {
-                                      safeLocalStorage.setItem('process_routes_map', json)
-                                    } else {
-                                      message.warning('工艺路线缓存过大，已跳过写入本地缓存')
-                                    }
-                                  } catch {
-                                    message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
-                                  }
-                                  setProcessRoutes(newProcessRoutes)
-                                }
-                              }
-                            } catch (error) {
-                              console.error('保存工艺路线失败:', error)
-                              message.error('保存工艺路线失败，请重试')
-                            }
-                          }}
-                        />
-                      )
-                    }
-                  }
-                ]
+                const cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
                 
                 return (
                   <div style={{ marginBottom: 16 }}>
