@@ -33,14 +33,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
 
   // 当外部value变化时，更新内部状态（但仅在非编辑状态下）
   useEffect(() => {
-    // 当从编辑状态切换到非编辑状态时，不立即更新editValue
-    // 这样可以确保保存后立即显示最新值，而不是等待外部value更新
-    if (!isEditing && !didSaveRef.current) {
-      setEditValue(String(value ?? ''))
-    }
-    // 重置保存标记
     if (!isEditing) {
-      didSaveRef.current = false
+      setEditValue(String(value ?? ''))
     }
   }, [value, isEditing])
 

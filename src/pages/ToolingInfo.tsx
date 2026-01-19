@@ -3557,32 +3557,7 @@ const ToolingInfoPage: React.FC = () => {
                 const parentUnit = parent?.production_unit || ''
                 const parentApplicant = parent?.recorder || ''
 
-                // 优化：预先计算所有零件的重量，避免在 render 函数中重复计算
-                const weightCache = new Map<string, number>()
-                const getWeight = (rec: PartItem): number => {
-                  if (weightCache.has(rec.id)) {
-                    return weightCache.get(rec.id)!
-                  }
-                  const w = rec.weight
-                  const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
-                  weightCache.set(rec.id, weight)
-                  return weight
-                }
-
-                const isPartReady = (rec: PartItem): boolean => {
-                  const nameOk = !!String(rec.part_name || '').trim()
-                  const q = (rec as any).part_quantity
-                  const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
-                  const demandDateOk = !!String((rec as any).remarks || '').match(/\d{4}-\d{2}-\d{2}/)
-                  const projectOk = !!String(parentProject).trim()
-                  const prodUnitOk = !!String(parentUnit).trim()
-                  const applicantOk = !!String(parentApplicant).trim()
-                  const msName = materialSources.find(ms => String(ms.id) === String((rec as any).material_source_id))?.name || ''
-                  const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
-                  const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
-                  return nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
-                }
-                const cols = [
+                const cols = useMemo(() => createPartColumns(toolingId, parentProject, parentUnit, parentApplicant), [toolingId, parentProject, parentUnit, parentApplicant, materials, materialOptions, materialSourceNameMap, materialSources, materialSourceOptions, partTypeOptions, partTypes, handlePartSave, handlePartBatchSave, calculatePartWeight, getApplicableMaterialPrice, calculateTotalPrice, workHoursData])
                   {
                     title: '盘存编号',
                     dataIndex: 'part_inventory_number',
