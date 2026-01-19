@@ -859,7 +859,7 @@ const ToolingInfoPage: React.FC = () => {
       message.error('保存零件数据失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
     }
-  }, [data, partsMap, partTypes, materials, savePartData, createPart])
+  }, [data, partTypes, materials, savePartData, createPart])
 
   const handlePartBatchSave = useCallback(async (toolingId: string, id: string, updates: Partial<PartItem>) => {
     try {
@@ -991,6 +991,366 @@ const ToolingInfoPage: React.FC = () => {
       message.error('处理标准件数据失败')
     }
   }, [createChildItem])
+
+  const createPartColumns = (toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
+    return [
+      {
+        title: '盘存编号',
+        dataIndex: 'part_inventory_number',
+        width: 160,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'part_inventory_number' as any}
+            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_inventory_number', v)}
+          />
+        )
+      },
+      {
+        title: '图号',
+        dataIndex: 'part_drawing_number',
+        width: 180,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'part_drawing_number' as any}
+            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_drawing_number', v)}
+          />
+        )
+      },
+      {
+        title: '零件名称',
+        dataIndex: 'part_name',
+        width: 180,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'part_name' as any}
+            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_name', v)}
+          />
+        )
+      },
+      {
+        title: '数量',
+        dataIndex: 'part_quantity',
+        width: 80,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={text as any}
+            record={rec as any}
+            dataIndex={'part_quantity' as any}
+            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_quantity', v)}
+          />
+        )
+      },
+      {
+        title: '材质',
+        dataIndex: 'material_id',
+        width: 160,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={materials.find(m => m.id === text)?.name || ''}
+            record={rec as any}
+            dataIndex={'material_id' as any}
+            options={materialOptions}
+            onSave={(_pid, _k, v) => {
+              const selectedMaterial = materials.find(m => m.name === v)
+              handlePartSave(toolingId, rec.id, 'material_id', selectedMaterial?.id || '')
+            }}
+          />
+        )
+      },
+      {
+        title: '材料来源',
+        dataIndex: 'material_source_id',
+        width: 160,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={materialSourceNameMap[String(text)] || (rec as any)?.material_source?.name || ''}
+            record={rec as any}
+            dataIndex={'material_source_id' as any}
+            options={materialSourceOptions}
+            onSave={(_pid, _k, v) => {
+              const selectedSource = materialSources.find(ms => ms.name === v)
+              const oldSource = materialSourceNameMap[String(rec.material_source_id)] || 
+                               (rec as any)?.material_source?.name || 
+                               materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+              const newSource = v
+              
+              if (rec.id.startsWith('blank-')) {
+                 handlePartSave(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
+                 return
+              }
+
+              const updates: any = { material_source_id: selectedSource?.id || '' }
+              
+              if (oldSource === '外购' && newSource !== '外购') {
+                 if (rec.remarks && rec.remarks.includes('-')) {
+                    updates.remarks = '需调质'
+                 }
+              } else if (newSource === '外购' && oldSource !== '外购') {
+                 updates.remarks = ''
+              }
+              
+              handlePartBatchSave(toolingId, rec.id, updates)
+            }}
+          />
+        )
+      },
+      {
+        title: '料型',
+        dataIndex: 'part_category',
+        width: 160,
+        render: (text: string, rec: PartItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'part_category' as any}
+            options={partTypeOptions}
+            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_category', v)}
+          />
+        )
+      },
+      {
+        title: '规格',
+        dataIndex: 'specifications',
+        width: 200,
+        render: (text: string, rec: PartItem) => (
+          <SpecificationsInput
+            specs={rec.specifications || {}}
+            partType={rec.part_category}
+            partTypes={partTypes}
+            onSave={(v) => handlePartSave(toolingId, rec.id, 'specifications', v)}
+          />
+        )
+      },
+      {
+        title: '备注',
+        dataIndex: 'remarks',
+        width: 160,
+        render: (text: string, rec: PartItem) => {
+          const materialSource = materialSourceNameMap[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
+          
+          if (materialSource === '外购') {
+            return (
+              <EditableCell
+                value={text || ''}
+                record={rec as any}
+                dataIndex={'remarks' as any}
+                onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'remarks', v)}
+              />
+            )
+          }
+          
+          if (materialSource === '') {
+            return null
+          }
+          
+          return (
+            <input
+              type="checkbox"
+              checked={text === '需调质'}
+              onChange={(e) => handlePartSave(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
+              style={{ cursor: 'pointer' }}
+            />
+          )
+        }
+      },
+      {
+        title: '重量(kg)',
+        dataIndex: 'weight',
+        width: 100,
+        render: (text: number, rec: PartItem) => {
+          const w = rec.weight
+          const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
+          return <span style={{ color: '#999' }}>{weight.toFixed(3)}</span>
+        }
+      },
+      {
+        title: '金额(元)',
+        dataIndex: 'total_price',
+        width: 100,
+        render: (text: number, rec: PartItem) => {
+          const w = rec.weight
+          const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
+          const material = materials.find(m => m.id === rec.material_id)
+          const unitPrice = getApplicableMaterialPrice(material, rec.specifications || {})
+          const total = calculateTotalPrice(weight, unitPrice, rec.part_quantity)
+          return <span style={{ color: '#999' }}>{total.toFixed(2)}</span>
+        }
+      },
+      {
+        title: '状态',
+        dataIndex: '__status',
+        width: 100,
+        render: (_text: any, rec: PartItem) => {
+          const nameOk = !!String(rec.part_name || '').trim()
+          const q = rec.part_quantity
+          const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
+          const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
+          const projectOk = !!String(parentProject).trim()
+          const prodUnitOk = !!String(parentUnit).trim()
+          const applicantOk = !!String(parentApplicant).trim()
+          const msName = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+          const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
+          const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
+          const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
+          return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+        }
+      },
+      {
+        title: '工艺路线',
+        dataIndex: 'process_route',
+        width: 320,
+        render: (text: string, rec: PartItem) => {
+          const route = rec.process_route || ''
+          if (!route) return <span style={{ color: '#999' }}>-</span>
+          const hasWorkHours = workHoursData[rec.id]?.length > 0
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ flex: 1 }}>{route}</span>
+              {hasWorkHours && (
+                <span style={{ fontSize: 12, color: '#52c41a', whiteSpace: 'nowrap' }}>
+                  ✓ 已录入
+                </span>
+              )}
+            </div>
+          )
+        }
+      }
+    ]
+  }
+
+  const createChildColumns = (toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
+    return [
+      {
+        title: '序号',
+        dataIndex: '__seq',
+        width: 60,
+        render: (_text: any, _record: ChildItem, index: number) => (
+          <span style={{ display: 'inline-block', width: '100%', textAlign: 'center', color: '#888' }}>
+            {index + 1}
+          </span>
+        )
+      },
+      {
+        title: '名称',
+        dataIndex: 'name',
+        width: 180,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'name' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'name', v)}
+          />
+        )
+      },
+      {
+        title: '型号',
+        dataIndex: 'model',
+        width: 150,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'model' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'model', v)}
+          />
+        )
+      },
+      {
+        title: '数量',
+        dataIndex: 'quantity',
+        width: 80,
+        render: (text: number, rec: ChildItem) => (
+          <EditableCell
+            value={text as any}
+            record={rec as any}
+            dataIndex={'quantity' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'quantity', v)}
+          />
+        )
+      },
+      {
+        title: '单位',
+        dataIndex: 'unit',
+        width: 80,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'unit' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'unit', v)}
+          />
+        )
+      },
+      {
+        title: '需求日期',
+        dataIndex: 'required_date',
+        width: 160,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'required_date' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'required_date', v)}
+          />
+        )
+      },
+      {
+        title: '状态',
+        dataIndex: '__status',
+        width: 120,
+        render: (_text: any, rec: ChildItem) => {
+          const nameOk = !!String(rec.name || '').trim()
+          const modelOk = !!String(rec.model || '').trim()
+          const qtyOk = Number(rec.quantity || 0) > 0
+          const unitOk = !!String(rec.unit || '').trim()
+          const demandDateOk = !!String(rec.required_date || '').trim()
+          const projectOk = !!String(parentProject).trim()
+          const prodUnitOk = !!String(parentUnit).trim()
+          const applicantOk = !!String(parentApplicant).trim()
+          const ready = nameOk && modelOk && qtyOk && unitOk && demandDateOk && projectOk && prodUnitOk && applicantOk
+          return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+        }
+      },
+      {
+        title: '备注',
+        dataIndex: 'remark',
+        width: 200,
+        render: (text: string, rec: ChildItem) => (
+          <EditableCell
+            value={text || ''}
+            record={rec as any}
+            dataIndex={'remark' as any}
+            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'remark', v)}
+          />
+        )
+      },
+      {
+        title: '操作',
+        dataIndex: '__action',
+        width: 80,
+        render: (_text: any, rec: ChildItem) => (
+          <Button
+            danger
+            size="small"
+            disabled={!String(rec.id || '').startsWith('blank-')}
+            onClick={() => handleDeleteChildItem(toolingId, rec.id)}
+          >
+            删除
+          </Button>
+        )
+      }
+    ]
+  }
+
+  const partColumnsMemo = useMemo(() => createPartColumns('', '', '', ''), [materials, materialOptions, materialSourceNameMap, materialSources, materialSourceOptions, partTypeOptions, partTypes, handlePartSave, handlePartBatchSave, calculatePartWeight, getApplicableMaterialPrice, calculateTotalPrice, workHoursData])
+  const childColumnsMemo = useMemo(() => createChildColumns('', '', '', ''), [handleChildItemSave, handleDeleteChildItem])
 
   // 初始化数据
   useEffect(() => {
