@@ -62,26 +62,7 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
     }
     
     const newSpecs = parseProductionSpecifications(finalEditValue, partType)
-    
-    // 关键修复：避免直接对specs对象使用JSON.stringify，防止循环引用警告
-    // 1. 先将specs转换为可安全序列化的对象
-    // 2. 提取仅需要比较的属性
-    // 3. 避免深层嵌套和循环引用
-    const safeSpecs = specs ? Object.fromEntries(
-      Object.entries(specs)
-        .filter(([_, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
-        .map(([key, value]) => [key, value === null || value === undefined ? '' : value])
-    ) : {};
-    
-    const safeNewSpecs = Object.fromEntries(
-      Object.entries(newSpecs)
-        .filter(([_, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
-        .map(([key, value]) => [key, value === null || value === undefined ? '' : value])
-    );
-    
-    if (JSON.stringify(safeNewSpecs) !== JSON.stringify(safeSpecs)) {
-      onSave(newSpecs)
-    }
+    onSave(newSpecs)
     setIsEditing(false)
   }
   

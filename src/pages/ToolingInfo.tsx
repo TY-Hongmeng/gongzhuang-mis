@@ -1242,13 +1242,6 @@ const ToolingInfoPage: React.FC = () => {
           let currentRoute = String((rec as any).process_route || '')
           if (!currentRoute && keyCandidate) {
             currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
-            if (!currentRoute) {
-              let longest = ''
-              Object.keys(processRoutes).forEach(k => {
-                if (keyCandidate.startsWith(k) && k.length > longest.length) longest = k
-              })
-              if (longest) currentRoute = processRoutes[longest]
-            }
           }
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           const completedSet = new Set<string>((workHoursData[inventoryNo] || []).map(x => x.trim().toLowerCase()))
