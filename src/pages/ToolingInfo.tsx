@@ -3639,7 +3639,6 @@ const ToolingInfoPage: React.FC = () => {
               // 零件信息表格
               const partsContent = (() => {
                 const list = partsMap[toolingId] || []
-                const processedList = ensureBlankParts(toolingId, list as any)
                 const parent = data.find(d => d.id === toolingId) as any
                 const parentProject = parent?.project_name || ''
                 const parentUnit = parent?.production_unit || ''
@@ -3666,7 +3665,7 @@ const ToolingInfoPage: React.FC = () => {
                     <Table
                       rowKey="id"
                       columns={cols as any}
-                      dataSource={processedList as any}
+                    dataSource={list as any}
                       pagination={false}
                     bordered={false}
                     onRow={(rec: any) => ({
@@ -3679,7 +3678,7 @@ const ToolingInfoPage: React.FC = () => {
                           setSelectedRowKeys(prev => {
                             const others = prev.filter(k => {
                               if (!k.startsWith('part-')) return true
-                              return !processedList.some((p: any) => ('part-' + p.id) === k)
+                              return !list.some((p: any) => ('part-' + p.id) === k)
                             })
                             const merged = Array.from(new Set([...others, ...prefixed]))
                             return merged
@@ -3697,7 +3696,6 @@ const ToolingInfoPage: React.FC = () => {
               // 标准件信息表格
               const childContent = (() => {
                 const childList = childItemsMap[toolingId] || []
-                const processedList = ensureBlankChildItems(childList, toolingId)
                 const parent = data.find(d => d.id === toolingId) as any
                 const parentProject = parent?.project_name || ''
                 const parentUnit = parent?.production_unit || ''
@@ -3818,7 +3816,7 @@ const ToolingInfoPage: React.FC = () => {
                     <Table
                       rowKey="id"
                       columns={childCols as any}
-                      dataSource={processedList as any}
+                      dataSource={childList as any}
                       pagination={false}
                     bordered={false}
                     size="small"
@@ -3832,7 +3830,7 @@ const ToolingInfoPage: React.FC = () => {
                           setSelectedRowKeys(prev => {
                             const others = prev.filter(k => {
                               if (!k.startsWith('child-')) return true
-                              return !processedList.some(p => ('child-' + p.id) === k)
+                              return !childList.some(p => ('child-' + p.id) === k)
                             })
                             const merged = Array.from(new Set([...others, ...prefixed]))
                             return merged
