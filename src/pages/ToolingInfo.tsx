@@ -997,6 +997,32 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [createChildItem])
 
+  const handleDeleteChildItem = useCallback(async (toolingId: string, id: string) => {
+    try {
+      if (String(id || '').startsWith('blank-')) {
+        setChildItemsMap(prev => {
+          const list = prev[toolingId] || []
+          const updated = list.filter(item => item.id !== id)
+          return { ...prev, [toolingId]: ensureBlankChildItems(updated as any, toolingId) }
+        })
+        return
+      }
+      const resp = await fetch(`/api/tooling/child-items/${id}`, { method: 'DELETE' })
+      if (resp.ok) {
+        setChildItemsMap(prev => {
+          const list = prev[toolingId] || []
+          const updated = list.filter(item => item.id !== id)
+          return { ...prev, [toolingId]: ensureBlankChildItems(updated as any, toolingId) }
+        })
+        message.success('已删除标准件')
+      } else {
+        message.error('删除标准件失败')
+      }
+    } catch {
+      message.error('删除标准件失败')
+    }
+  }, [])
+
   const createPartColumns = (toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
       {
