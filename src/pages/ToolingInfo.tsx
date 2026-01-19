@@ -3646,6 +3646,19 @@ const ToolingInfoPage: React.FC = () => {
                 const parentApplicant = parent?.recorder || ''
 
                 const cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
+                const isPartReady = (rec: PartItem): boolean => {
+                  const nameOk = !!String(rec.part_name || '').trim()
+                  const q = rec.part_quantity
+                  const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
+                  const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
+                  const projectOk = !!String(parentProject).trim()
+                  const prodUnitOk = !!String(parentUnit).trim()
+                  const applicantOk = !!String(parentApplicant).trim()
+                  const msName = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+                  const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
+                  const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
+                  return nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
+                }
                 
                 return (
                   <div style={{ marginBottom: 16 }}>
