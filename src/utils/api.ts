@@ -10,7 +10,9 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling',
     '/api/tooling/devices', 
     '/api/tooling/fixed-inventory-options',
-    '/api/auth'
+    '/api/auth',
+    '/api/cutting-orders',
+    '/api/purchase-orders'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -966,6 +968,26 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const { data, error } = await q
         if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
+      }
+
+      // Cutting orders create
+      if (method === 'POST' && path === '/api/cutting-orders') {
+        const body = await readBody()
+        const rows = Array.isArray(body?.orders) ? body.orders : []
+        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+        const { error } = await supabase.from('cutting_orders').insert(rows)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+
+      // Cutting orders batch delete
+      if (method === 'POST' && path === '/api/cutting-orders/batch-delete') {
+        const body = await readBody()
+        const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
+        if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+        const { error } = await supabase.from('cutting_orders').delete().in('id', ids)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
       }
 
       // Purchase orders list
