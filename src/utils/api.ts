@@ -276,26 +276,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const phone = String(body.phone || '').trim()
           const password = String(body.password || '')
           if (!phone || !password) return jsonResponse({ success: false, error: '手机号和密码不能为空' }, 400)
-          // 在 GitHub Pages 环境下，优先调用 Supabase Functions 以使用服务端权限
-          const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-          if (isGhPages) {
-            const envUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
-            const fnUrl = envUrl.replace(/\/$/, '') + '/functions/v1/api/auth/login'
-            try {
-              const resp = await fetch(fnUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, password })
-              })
-              const data = await resp.json().catch(() => ({} as any))
-              if (!resp.ok || !data?.success) {
-                return jsonResponse({ success: false, error: String(data?.error || '登录失败') }, resp.status || 500)
-              }
-              return jsonResponse(data)
-            } catch (e) {
-              return jsonResponse({ success: false, error: '网络错误或服务不可用' }, 502)
-            }
-          }
           const { data: user, error } = await supabase
             .from('users')
             .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
