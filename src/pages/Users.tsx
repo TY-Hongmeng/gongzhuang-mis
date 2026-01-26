@@ -66,52 +66,15 @@ const Users: React.FC = () => {
   const loadUsers = async () => {
     setLoading(true)
     try {
-      if (!supabase) {
-        const r = await fetch('/api/users')
-        const j = await r.json()
-        if (!r.ok || !j?.success) {
-          message.error('加载用户列表失败')
-          return
-        }
-        setUsers(j.items || [])
-        return
-      }
-
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          company:companies(*),
-          role:roles(*),
-          workshop:workshops(name),
-          team:teams(name)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        const r = await fetch('/api/users')
-        const j = await r.json()
-        if (!r.ok || !j?.success) {
-          message.error('加载用户列表失败')
-          return
-        }
-        setUsers(j.items || [])
-        return
-      }
-
-      setUsers(data || [])
-    } catch (error) {
-      try {
-        const r = await fetch('/api/users')
-        const j = await r.json()
-        if (!r.ok || !j?.success) {
-          message.error('加载用户列表失败')
-        } else {
-          setUsers(j.items || [])
-        }
-      } catch {
+      const r = await fetch('/api/users')
+      const j = await r.json()
+      if (!r.ok || !j?.success) {
         message.error('加载用户列表失败')
+        return
       }
+      setUsers(j.items || [])
+    } catch {
+      message.error('加载用户列表失败')
     } finally {
       setLoading(false)
     }
@@ -119,45 +82,37 @@ const Users: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('name')
-
-      if (error) {
-        console.error('Error loading companies:', error)
+      const r = await fetch('/api/users/companies')
+      const j = await r.json()
+      if (!r.ok || j?.success !== true) {
+        console.error('加载公司列表失败')
         return
       }
-
-      const list = data || []
+      const list = j.items || []
       setCompanies(list)
       const cmap: Record<string,string> = {}
       list.forEach((c: any) => { if (c?.id) cmap[c.id] = c.name })
       setCompanyIndex(cmap)
     } catch (error) {
-      console.error('Error loading companies:', error)
+      console.error('加载公司列表失败:', error)
     }
   }
 
   const loadRoles = async () => {
     try {
-      const { data, error } = await supabase
-        .from('roles')
-        .select('*')
-        .order('name')
-
-      if (error) {
-        console.error('Error loading roles:', error)
+      const r = await fetch('/api/users/roles')
+      const j = await r.json()
+      if (!r.ok || j?.success !== true) {
+        console.error('加载角色列表失败')
         return
       }
-
-      const list = data || []
+      const list = j.items || []
       setRoles(list)
       const rmap: Record<string,string> = {}
       list.forEach((r: any) => { if (r?.id) rmap[r.id] = r.name })
       setRoleIndex(rmap)
     } catch (error) {
-      console.error('Error loading roles:', error)
+      console.error('加载角色列表失败:', error)
     }
   }
 
@@ -201,24 +156,19 @@ const Users: React.FC = () => {
 
   const handleUpdateStatus = async (userId: string, status: 'active' | 'inactive' | 'pending') => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-
-      if (error) {
-        console.error('Error updating user status:', error)
+      const r = await fetch(`/api/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      const j = await r.json().catch(() => ({} as any))
+      if (!r.ok || j?.success !== true) {
         message.error('更新用户状态失败')
         return
       }
-
       message.success('用户状态更新成功')
       loadUsers()
     } catch (error) {
-      console.error('Error updating user status:', error)
       message.error('更新用户状态失败')
     }
   }
@@ -226,35 +176,32 @@ const Users: React.FC = () => {
   const handleSubmit = async (values: any) => {
     try {
       if (!editingUser) return
-
-      const { error } = await supabase
-        .from('users')
-        .update({
-          real_name: values.real_name,
-          phone: values.phone,
-          id_card: values.id_card,
-          company_id: values.company_id,
-          role_id: values.role_id,
-          capability_coeff: Number(values.capability_coeff ?? 1),
-          workshop_id: values.workshop_id || null,
-          team_id: values.team_id || null,
-          status: values.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingUser.id)
-
-      if (error) {
-        console.error('Error updating user:', error)
+      const payload = {
+        real_name: values.real_name,
+        phone: values.phone,
+        id_card: values.id_card,
+        company_id: values.company_id,
+        role_id: values.role_id,
+        capability_coeff: Number(values.capability_coeff ?? 1),
+        workshop_id: values.workshop_id || null,
+        team_id: values.team_id || null,
+        status: values.status
+      }
+      const r = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const j = await r.json().catch(() => ({} as any))
+      if (!r.ok || j?.success !== true) {
         message.error('更新用户失败')
         return
       }
-
       message.success('更新用户成功')
       setModalVisible(false)
       form.resetFields()
       loadUsers()
     } catch (error) {
-      console.error('Error updating user:', error)
       message.error('更新用户失败')
     }
   }

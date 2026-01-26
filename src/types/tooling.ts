@@ -6,6 +6,7 @@ export interface Material {
   name: string;
   density: number; // 密度 g/cm³
   description?: string;
+  prices?: MaterialPrice[]; // 材料价格历史
   created_at: string;
   updated_at: string;
 }

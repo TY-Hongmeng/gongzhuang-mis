@@ -11,7 +11,7 @@ interface EditableCellProps {
   renderDisplay?: (value: string | undefined, record: any, dataIndex: string) => React.ReactNode
 }
 
-const EditableCell: React.FC<EditableCellProps> = ({ 
+const EditableCell: React.FC<EditableCellProps> = React.memo(({ 
   value, 
   record, 
   dataIndex, 
@@ -26,14 +26,17 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const selectRef = useRef<any>(null)
   const didSaveRef = useRef(false)
   const saveTriggeredRef = useRef(false)
+  const isSavingRef = useRef(false)
+  const lastValueRef = useRef(String(value ?? ''))
+  const compositionRef = useRef(false)
 
   const selectOptions = useMemo(() => {
     return options ? options.map(opt => ({ label: opt, value: opt })) : []
   }, [options])
 
-  // 当外部value变化时，更新内部状态（但仅在非编辑状态下）
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing && String(value ?? '') !== lastValueRef.current) {
+      lastValueRef.current = String(value ?? '')
       setEditValue(String(value ?? ''))
     }
   }, [value, isEditing])
@@ -44,24 +47,24 @@ const EditableCell: React.FC<EditableCellProps> = ({
     didSaveRef.current = false
   }
 
-  const handleSave = () => {
-    // 对于 select 类型，如果已经触发了保存（在 onChange 中），则不再保存
-    // 甚至更严格：如果 options 存在，onBlur 仅仅是关闭编辑模式，不应触发保存
-    // 除非我们支持“输入筛选”的 Select，但目前看是原生 Select
-    if (saveTriggeredRef.current) {
-      saveTriggeredRef.current = false
+  const handleSave = async () => {
+    if (saveTriggeredRef.current || isSavingRef.current) {
       return
     }
-    // 针对 Select 的额外保护：如果 options 存在，禁止 onBlur 触发保存
-    // 因为 Select 的值变更必须通过 onChange
     if (options && options.length > 0) {
       setIsEditing(false)
       return
     }
 
     if (editValue !== String(value ?? '')) {
-      onSave(record.id, dataIndex, editValue)
-      didSaveRef.current = true
+      isSavingRef.current = true
+      try {
+        await onSave(record.id, dataIndex, editValue)
+        didSaveRef.current = true
+        lastValueRef.current = editValue
+      } finally {
+        isSavingRef.current = false
+      }
     }
     setIsEditing(false)
   }
@@ -72,7 +75,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !compositionRef.current) {
       e.preventDefault()
       handleSave()
     } else if (e.key === 'Escape') {
@@ -84,7 +87,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
   useEffect(() => {
     if (isEditing) {
       if (options) {
-        // 延迟打开下拉框，避免立即渲染导致性能问题
         setTimeout(() => {
           selectRef.current?.focus()
         }, 0)
@@ -96,14 +98,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }, [isEditing, options])
 
   if (!isEditing) {
-    // 优化显示逻辑：当刚保存完数据时，优先使用editValue，确保立即显示最新值
-    // 这样可以解决盘存编号列保存后不显示的问题
     const displayValue = String(editValue ?? '')
     const content = renderDisplay ? renderDisplay(displayValue, record, dataIndex) : (displayValue || '\u00A0')
     return (
       <div 
         className="cell-content"
-        onClick={(e) => { e.stopPropagation(); if (!isEditing) handleStartEdit() }}
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          if (!isEditing) handleStartEdit() 
+        }}
         onMouseDown={(e) => { e.stopPropagation() }}
         onDoubleClick={(e) => { e.stopPropagation(); handleStartEdit() }}
         style={{ 
@@ -127,13 +130,17 @@ const EditableCell: React.FC<EditableCellProps> = ({
       <Select
         ref={selectRef}
         value={editValue}
-        onChange={(newValue) => {
+        onChange={async (newValue) => {
+          if (isSavingRef.current) return
           setEditValue(newValue)
-          // 选择后立即保存，使用事件中的新值避免状态未更新问题
           saveTriggeredRef.current = true
-          onSave(record.id, dataIndex, newValue)
-          // 使用 setTimeout 将 setIsEditing(false) 推迟到下一个事件循环
-          // 这样可以确保当前的 onChange 事件处理完毕，且避免立即 unmount 导致的潜在冲突
+          isSavingRef.current = true
+          try {
+            await onSave(record.id, dataIndex, newValue)
+            lastValueRef.current = newValue
+          } finally {
+            isSavingRef.current = false
+          }
           setTimeout(() => {
               if (saveTriggeredRef.current) {
                   setIsEditing(false)
@@ -141,7 +148,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
           }, 0)
         }}
         onBlur={() => {
-          // Select onBlur behavior: just close edit mode, don't save if not changed via onChange
           setIsEditing(false)
         }}
         onKeyDown={(e) => {
@@ -169,6 +175,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
         const newVal = e.target.value
         setEditValue(newVal)
       }}
+      onCompositionStart={() => { compositionRef.current = true }}
+      onCompositionEnd={() => { compositionRef.current = false }}
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
       style={{
@@ -178,6 +186,11 @@ const EditableCell: React.FC<EditableCellProps> = ({
       }}
     />
   )
-}
+}, (prev, next) => {
+  return prev.value === next.value &&
+         prev.record === next.record &&
+         prev.dataIndex === next.dataIndex &&
+         prev.options === next.options
+})
 
 export default EditableCell

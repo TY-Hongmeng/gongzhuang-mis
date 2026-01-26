@@ -76,7 +76,9 @@ export const useToolingData = () => {
   // 获取零件数据
   const fetchPartsData = useCallback(async (toolingId: string) => {
     try {
-      const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts`, { cache: 'no-store' })
+      // 添加时间戳参数以避免缓存问题
+      const timestamp = Date.now()
+      const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts?t=${timestamp}`, { cache: 'no-store' })
       const result = await response.json()
       
       // 兼容 data 和 items 两种格式
@@ -193,8 +195,7 @@ export const useToolingData = () => {
         message.error(msg)
         return false
       }
-      // 显示成功消息
-      message.success('保存成功')
+      // 移除成功消息，避免频繁提示
       return true
     } catch (error) {
       message.error('保存零件数据失败')
@@ -326,6 +327,36 @@ export const useToolingData = () => {
       }
       
       await Promise.all(promises)
+
+      // 更新本地状态
+      if (toolingIds.length > 0) {
+        setData(prev => prev.filter(item => !toolingIds.includes(item.id)))
+      }
+
+      if (partIds.length > 0) {
+        setPartsMap(prev => {
+          const next = { ...prev }
+          Object.keys(next).forEach(tid => {
+            if (next[tid]) {
+              next[tid] = next[tid].filter(p => !partIds.includes(p.id))
+            }
+          })
+          return next
+        })
+      }
+
+      if (childItemIds.length > 0) {
+        setChildItemsMap(prev => {
+          const next = { ...prev }
+          Object.keys(next).forEach(tid => {
+            if (next[tid]) {
+              next[tid] = next[tid].filter(c => !childItemIds.includes(c.id))
+            }
+          })
+          return next
+        })
+      }
+
       message.success(`已删除 ${toolingIds.length + partIds.length + childItemIds.length} 条记录`)
       return true
     } catch (error) {

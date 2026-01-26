@@ -9,8 +9,25 @@ const fallbackAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseUrl = envUrl || fallbackUrl
 const supabaseAnonKey = envAnon || fallbackAnon
 
+const customFetch = (url: RequestInfo | URL, options?: RequestInit) => {
+  return fetch(url, options)
+}
+
 export const supabase = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        }
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      },
+      fetch: customFetch
+    })
   : null as any
 
 // 数据库类型定义

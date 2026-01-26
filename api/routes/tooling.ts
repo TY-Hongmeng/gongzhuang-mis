@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabase } from '../lib/supabase.js';
 import { query } from '../lib/db.js';
+import { sendSuccess, sendSuccessList, sendError, sendNotFound, sendCreated, sendUpdated, sendDeleted } from '../lib/response.js';
 
 const router = express.Router();
 
@@ -107,13 +108,13 @@ router.delete('/:id', async (req, res) => {
 
     if (error) {
       console.error('Delete tooling_info error:', error);
-      return res.status(500).json({ success: false, error: error.message, code: error.code });
+      return sendError(res, error.message, error.code);
     }
 
-    res.json({ success: true });
+    return sendDeleted(res, '删除成功');
   } catch (err) {
     console.error('Delete tooling route error:', err);
-    res.status(500).json({ success: false, error: '服务器错误' });
+    return sendError(res, '服务器错误');
   }
 });
 
@@ -146,6 +147,18 @@ router.post('/batch-delete', async (req, res) => {
 router.delete('/parts/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // 先检查记录是否存在
+    const { data: existing } = await supabase
+      .from('parts_info')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (!existing) {
+      return res.status(404).json({ success: false, error: '零件不存在' });
+    }
+    
     const { error } = await supabase
       .from('parts_info')
       .delete()
@@ -401,6 +414,10 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/parts', async (req, res) => {
   try {
     const { id } = req.params;
+    // 添加缓存控制头，确保获取最新数据
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     try {
       const sel = [
         'id','tooling_id','part_inventory_number','part_drawing_number','part_name','part_quantity',
@@ -451,6 +468,11 @@ router.post('/:id/parts', async (req, res) => {
     }
     if (payload.weight === '' || payload.weight === null) {
       delete payload.weight;
+    }
+    
+    // 清理盘存编号的空字符串
+    if (payload.part_inventory_number === '' || payload.part_inventory_number === null) {
+      delete payload.part_inventory_number;
     }
 
     // 清理分类字段的空字符串
@@ -504,6 +526,11 @@ router.post('/:id/parts', async (req, res) => {
           console.log(`自动生成盘存编号: ${newInventoryNumber}`);
         }
       }
+    }
+    
+    // 如果没有盘存编号，不创建记录
+    if (!payload.part_inventory_number) {
+      return res.status(400).json({ success: false, error: '盘存编号不能为空' });
     }
 
     const { data, error } = await supabase
@@ -1499,6 +1526,18 @@ router.put('/child-items/:id', async (req, res) => {
 router.delete('/child-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // 先检查记录是否存在
+    const { data: existing } = await supabase
+      .from('child_items')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (!existing) {
+      return res.status(404).json({ success: false, error: '标准件不存在' });
+    }
+    
     const { error } = await supabase
       .from('child_items')
       .delete()

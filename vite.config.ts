@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5182,
       host: 'localhost',
-      strictPort: true,
+      strictPort: false,
       hmr: {
         overlay: false,
       },

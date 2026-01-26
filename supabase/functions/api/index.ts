@@ -325,7 +325,7 @@ serve(async (req) => {
     const u = new URL(req.url)
     const ids = u.searchParams.getAll("ids")
     if (ids.length === 0) return Response.json({ success: true, items: [] }, { headers: corsHeaders })
-    const { data, error } = await supabase.from("tooling").select("id,responsible_person_id,recorder").in("id", ids)
+    const { data, error } = await supabase.from("tooling_info").select("id,responsible_person_id,recorder").in("id", ids)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
   }

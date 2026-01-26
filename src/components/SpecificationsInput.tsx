@@ -91,7 +91,8 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
   if (!isEditing) {
     return (
       <div 
-        onClick={handleStartEdit}
+        onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
+        onMouseDown={(e) => e.stopPropagation()}
         style={{ 
           width: '100%', 
           height: '100%', 

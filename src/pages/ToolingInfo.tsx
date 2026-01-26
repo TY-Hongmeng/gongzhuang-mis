@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -19,6 +19,28 @@ import SpecificationsInput from '../components/SpecificationsInput'
 import type { Material } from '../types/tooling'
 
 const { Title } = Typography
+
+const getBatchSize = () => {
+  try {
+    const raw = safeLocalStorage.getItem('parts_fetch_batch_size') || ''
+    const n = parseInt(raw, 10)
+    if (!Number.isFinite(n) || Number.isNaN(n)) return 10
+    return Math.min(20, Math.max(2, n))
+  } catch { return 10 }
+}
+
+// 防抖函数
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      timeout = null
+      func(...args)
+    }
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
 
 interface RowItem {
   id: string
@@ -83,48 +105,132 @@ const shouldAutoFillRecorder = (row: RowItem): boolean => {
   return fieldsToCheck.some(field => field && field.toString().trim() !== '')
 }
 
-// 确保空白零件行
-const ensureBlankParts = (toolingId: string, list: PartItem[]) => {
-  const arr = [...list]
-  const blankId = `blank-${toolingId}-0`
-  const hasBlank = arr.some(x => String(x.id) === blankId)
-  if (!hasBlank) {
-    arr.push({
-      id: blankId,
-      tooling_id: toolingId,
-      part_drawing_number: '',
-      part_name: '',
-      part_quantity: '',
-      material_id: '',
-      material_source_id: '',
-      part_category: '',
-      specifications: {},
-      weight: 0,
-      remarks: ''
-    })
+const ExpandedSubTables: React.FC<{
+  toolingId: string
+  parts: PartItem[]
+  childItems: ChildItem[]
+  parentProject: string
+  parentUnit: string
+  parentApplicant: string
+  partColumns: any[]
+  childColumns: any[]
+  selectedRowKeys: string[]
+  setSelectedRowKeys: (keys: string[] | ((prev: string[]) => string[])) => void
+  onAddPart: () => void
+  onAddChildItem: () => void
+}> = React.memo(({
+  toolingId,
+  parts,
+  childItems,
+  parentProject,
+  parentUnit,
+  parentApplicant,
+  partColumns,
+  childColumns,
+  selectedRowKeys,
+  setSelectedRowKeys,
+  onAddPart,
+  onAddChildItem
+}) => {
+  const isPartReady = (rec: PartItem): boolean => {
+    const nameOk = !!String(rec.part_name || '').trim()
+    const q = rec.part_quantity
+    const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
+    const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
+    const projectOk = !!String(parentProject).trim()
+    const prodUnitOk = !!String(parentUnit).trim()
+    const applicantOk = !!String(parentApplicant).trim()
+    const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk
+    return ready
   }
-  return arr
-}
-
-// 确保空白标准件行
-const ensureBlankChildItems = (items: ChildItem[], toolingId: string) => {
-  const arr = [...items]
-  const blankId = `blank-${toolingId}-0`
-  const hasBlank = arr.some(x => String(x.id) === blankId)
-  if (!hasBlank) {
-    arr.push({
-      id: blankId,
-      tooling_id: toolingId,
-      name: '',
-      model: '',
-      quantity: null,
-      unit: '',
-      required_date: '',
-      remark: ''
-    })
+  const isChildReady = (rec: ChildItem): boolean => {
+    const nameOk = !!String(rec.name || '').trim()
+    const modelOk = !!String(rec.model || '').trim()
+    const qtyOk = Number(rec.quantity || 0) > 0
+    const unitOk = !!String(rec.unit || '').trim()
+    const demandDateOk = !!String(rec.required_date || '').trim()
+    const projectOk = !!String(parentProject).trim()
+    const prodUnitOk = !!String(parentUnit).trim()
+    const applicantOk = !!String(parentApplicant).trim()
+    return nameOk && modelOk && qtyOk && unitOk && demandDateOk && projectOk && prodUnitOk && applicantOk
   }
-  return arr
-}
+  return (
+    <div style={{ padding: '16px 24px', background: '#fafafa' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
+        </div>
+        <Table
+          rowKey="id"
+          columns={partColumns}
+          dataSource={parts}
+          pagination={false}
+          bordered={false}
+          size="small"
+          onRow={(rec: any) => ({ className: isPartReady(rec) ? 'text-blue-600' : undefined })}
+          rowSelection={{
+            selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5)),
+            onChange: (keys) => {
+              const prefixed = (keys as string[])
+                .map(k => 'part-' + k)
+                // Remove filter for blank rows to allow deletion
+              setSelectedRowKeys(prev => {
+                const others = prev.filter(k => {
+                  if (!k.startsWith('part-')) return true
+                  return !parts.some(p => ('part-' + p.id) === k)
+                })
+                return Array.from(new Set([...others, ...prefixed]))
+              })
+            },
+            columnWidth: 40,
+            getCheckboxProps: (rec: any) => ({ 
+              // Enable checkbox for blank rows to allow deletion
+              disabled: false 
+            }),
+            checkStrictly: true,
+            preserveSelectedRowKeys: true
+          }}
+        />
+      </div>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
+        </div>
+        <Table
+          rowKey="id"
+          columns={childColumns}
+          dataSource={childItems}
+          pagination={false}
+          bordered={false}
+          size="small"
+          onRow={(rec: any) => ({ className: isChildReady(rec) ? 'text-blue-600' : undefined })}
+          rowSelection={{
+            selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
+            onChange: (keys) => {
+              const prefixed = (keys as string[])
+                .map(k => 'child-' + k)
+                // Remove filter for blank rows
+              setSelectedRowKeys(prev => {
+                const others = prev.filter(k => {
+                  if (!k.startsWith('child-')) return true
+                  return !childItems.some(p => ('child-' + p.id) === k)
+                })
+                return Array.from(new Set([...others, ...prefixed]))
+              })
+            },
+            columnWidth: 40,
+            getCheckboxProps: (rec: any) => ({ 
+              // Enable checkbox for blank rows
+              disabled: false 
+            }),
+            checkStrictly: true,
+            preserveSelectedRowKeys: true
+          }}
+        />
+      </div>
+    </div>
+  )
+})
 
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
@@ -138,6 +244,12 @@ const ToolingInfoPage: React.FC = () => {
   } = useToolingMeta()
 
   const { user } = useAuthStore()
+  const [blankPartDisabledMap, setBlankPartDisabledMap] = useState<Record<string, boolean>>({})
+  const [blankChildDisabledMap, setBlankChildDisabledMap] = useState<Record<string, boolean>>({})
+  const blankPartDisabledMapRef = useRef(blankPartDisabledMap)
+  const blankChildDisabledMapRef = useRef(blankChildDisabledMap)
+  useEffect(() => { blankPartDisabledMapRef.current = blankPartDisabledMap }, [blankPartDisabledMap])
+  useEffect(() => { blankChildDisabledMapRef.current = blankChildDisabledMap }, [blankChildDisabledMap])
   const [extraRows, setExtraRows] = useState(2)
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
@@ -197,8 +309,82 @@ const ToolingInfoPage: React.FC = () => {
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
+    console.log('[partsMap] updated, keys:', Object.keys(partsMap), 'total items:', Object.values(partsMap).reduce((sum, list) => sum + list.length, 0), 'timestamp:', Date.now())
     partsMapRef.current = partsMap
   }, [partsMap])
+  
+  const dataRef = useRef(data)
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
+  
+  const materialsRef = useRef(materials)
+  useEffect(() => {
+    materialsRef.current = materials
+  }, [materials])
+  
+  const materialSourcesRef = useRef(materialSources)
+  useEffect(() => {
+    materialSourcesRef.current = materialSources
+  }, [materialSources])
+  
+  const partTypesRef = useRef(partTypes)
+  useEffect(() => {
+    partTypesRef.current = partTypes
+  }, [partTypes])
+  
+  const childItemsMapRef = useRef(childItemsMap)
+  useEffect(() => {
+    childItemsMapRef.current = childItemsMap
+  }, [childItemsMap])
+  
+  const fetchPartsDataRef = useRef(fetchPartsData)
+  useEffect(() => {
+    fetchPartsDataRef.current = fetchPartsData
+  }, [fetchPartsData])
+  
+  const fetchChildItemsDataRef = useRef(fetchChildItemsData)
+  useEffect(() => {
+    fetchChildItemsDataRef.current = fetchChildItemsData
+  }, [fetchChildItemsData])
+  
+  const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
+  useEffect(() => {
+    setExpandedChildKeysRef.current = setExpandedChildKeys
+  }, [setExpandedChildKeys])
+  
+  const selectedRowKeysRef = useRef(selectedRowKeys)
+  useEffect(() => {
+    selectedRowKeysRef.current = selectedRowKeys
+  }, [selectedRowKeys])
+  
+  const stableExpandedRowKeys = useMemo(() => expandedRowKeys, [expandedRowKeys])
+  const stableExpandedChildKeys = useMemo(() => expandedChildKeys, [expandedChildKeys])
+
+  useEffect(() => {
+    const parentKeys = selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
+    const existingChildKeys = selectedRowKeys.filter(k => k.startsWith('part-') || k.startsWith('child-'))
+    const derivedChildKeys: string[] = []
+    parentKeys.forEach(pid => {
+      const parts = (partsMap[String(pid)] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+      derivedChildKeys.push(...parts.map(p => 'part-' + p.id))
+      const childItems = (childItemsMap[String(pid)] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+      derivedChildKeys.push(...childItems.map(c => 'child-' + c.id))
+    })
+    const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
+    const diff = next.length !== selectedRowKeys.length || next.some(k => !selectedRowKeys.includes(k))
+    if (diff) setSelectedRowKeys(next)
+  }, [partsMap, childItemsMap, selectedRowKeys])
+  
+  // 防抖保存空白行的定时器
+  const partSaveTimersRef = useRef<Record<string, NodeJS.Timeout>>({})
+  // 子表防抖保存定时器
+  const childSaveTimersRef = useRef<Record<string, NodeJS.Timeout>>({})
+  // 零件保存锁，防止并发保存
+  const partSaveLockRef = useRef<Set<string>>(new Set())
+  // 缓存 columns，避免重复创建
+  const partColumnsCacheRef = useRef<Map<string, any>>(new Map())
+  const childColumnsCacheRef = useRef<Map<string, any>>(new Map())
 
   useEffect(() => {
     const keys = new Set<string>()
@@ -211,7 +397,7 @@ const ToolingInfoPage: React.FC = () => {
       })
     } catch {}
 
-    const batch = Array.from(keys).slice(0, 2000)
+    const batch = Array.from(keys).slice(0, 400)
     if (batch.length === 0) return
 
     let cancelled = false
@@ -227,10 +413,14 @@ const ToolingInfoPage: React.FC = () => {
       processDoneFetchRef.current.lastFetchTime = now
       
       const pairs: Array<[string, any]> = []
-      for (const k of batch) {
+      const chunkSize = 20
+      for (let i = 0; i < batch.length; i += chunkSize) {
         if (cancelled) break
-        const v = await getProcessDone(k)
-        if (v) pairs.push([k, v])
+        const slice = batch.slice(i, i + chunkSize)
+        const results = await Promise.all(slice.map(k => getProcessDone(k)))
+        results.forEach((v, idx) => {
+          if (!cancelled && v) pairs.push([slice[idx], v])
+        })
       }
       if (cancelled) return
       if (pairs.length === 0) return
@@ -408,12 +598,52 @@ const ToolingInfoPage: React.FC = () => {
     const list = materials.length > 0 ? materials.map(m => m.name) : ['']
     return Array.from(new Set(list))
   }, [materials])
-
+  
+  const materialOptionsRef = useRef(materialOptions)
+  useEffect(() => {
+    materialOptionsRef.current = materialOptions
+  }, [materialOptions])
+  
+  const materialSourceNameMapRef = useRef(materialSourceNameMap)
+  useEffect(() => {
+    materialSourceNameMapRef.current = materialSourceNameMap
+  }, [materialSourceNameMap])
+  
+  const materialSourceOptionsRef = useRef(materialSourceOptions)
+  useEffect(() => {
+    materialSourceOptionsRef.current = materialSourceOptions
+  }, [materialSourceOptions])
+  
+  const partTypeOptionsRef = useRef(partTypeOptions)
+  useEffect(() => {
+    partTypeOptionsRef.current = partTypeOptions
+  }, [partTypeOptions])
+  
+  const workHoursDataRef = useRef(workHoursData)
+  useEffect(() => {
+    workHoursDataRef.current = workHoursData
+  }, [workHoursData])
+  
   const {
     generateCuttingOrders,
     generatePurchaseOrders,
     calculatePartWeight
   } = useToolingOperations()
+  
+  const calculatePartWeightRef = useRef(calculatePartWeight)
+  useEffect(() => {
+    calculatePartWeightRef.current = calculatePartWeight
+  }, [calculatePartWeight])
+  
+  const getApplicableMaterialPriceRef = useRef(getApplicableMaterialPrice)
+  useEffect(() => {
+    getApplicableMaterialPriceRef.current = getApplicableMaterialPrice
+  }, [getApplicableMaterialPrice])
+  
+  const calculateTotalPriceRef = useRef(calculateTotalPrice)
+  useEffect(() => {
+    calculateTotalPriceRef.current = calculateTotalPrice
+  }, [calculateTotalPrice])
 
   // 空白行数据
   const ensureBlankToolings = (list: RowItem[]) => {
@@ -498,7 +728,7 @@ const ToolingInfoPage: React.FC = () => {
   }
 
   // 保存工装数据
-  const handleSave = async (id: string, key: keyof RowItem, value: string) => {
+  const handleSave = useCallback(async (id: string, key: keyof RowItem, value: string) => {
     try {
       // 重复盘存编号即时校验与提示
       if (key === 'inventory_number') {
@@ -678,45 +908,73 @@ const ToolingInfoPage: React.FC = () => {
         await fetchToolingData()
       })
     }
-  }
+  }, [data, user, shouldAutoFillRecorder, updateAllPartsInventoryNumbers, createTooling, saveToolingData, fetchToolingData, runWithPreservedScroll])
 
   // 保存零件数据
   const handlePartSave = useCallback(async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
+    console.log('[handlePartSave] called:', { toolingId, id, key, value }, 'timestamp:', Date.now())
+    const lockKey = `${toolingId}-${id}-${key}`
+    
+    if (partSaveLockRef.current.has(lockKey)) {
+      return
+    }
+    
+    let shouldProceed = true
+    
     try {
+      partSaveLockRef.current.add(lockKey)
+      
       // 零件盘存编号重复即时校验
       if (key === 'part_inventory_number') {
         const newInv = String(value || '').trim().toUpperCase()
         if (newInv) {
           // 前缀必须与父表盘存编号一致
-          const parent = data.find(d => d.id === toolingId)
+          const parent = dataRef.current.find(d => d.id === toolingId)
           const parentInv = String(parent?.inventory_number || '').trim().toUpperCase()
           if (parentInv && !newInv.startsWith(parentInv)) {
-            message.error(`零件盘存编号必须以父表盘存编号“${parentInv}”作为前缀`)
-            return
+            message.error(`零件盘存编号必须以父表盘存编号"${parentInv}"作为前缀`)
+            shouldProceed = false
           }
           // 本地已加载数据去重
-          const localDup = Object.values(partsMapRef.current).some((list: any) =>
-            (list || []).some((p: any) => String(p.part_inventory_number || '').trim().toUpperCase() === newInv && p.id !== id)
-          )
-          if (localDup) {
-            message.error(`零件盘存编号“${newInv}”已存在，不能重复`)
-            return
+          if (shouldProceed) {
+            const localDup = Object.values(partsMapRef.current).some((list: any) =>
+              (list || []).some((p: any) => String(p.part_inventory_number || '').trim().toUpperCase() === newInv && p.id !== id)
+            )
+            if (localDup) {
+              message.error(`零件盘存编号"${newInv}"已存在，不能重复`)
+              shouldProceed = false
+            }
           }
           // 远端数据去重（快速检索）
-          try {
-            const resp = await fetch(`/api/tooling/parts/inventory-list?page=1&pageSize=1&search=${encodeURIComponent(newInv)}`, { cache: 'no-store' })
-            const result = await resp.json().catch(() => ({ items: [] }))
-            const items = Array.isArray(result?.items) ? result.items : []
-            const hit = items.find((it: any) => String(it.part_inventory_number || '').trim().toUpperCase() === newInv)
-            if (hit && String(hit.id) !== String(id)) {
-              message.error(`零件盘存编号“${newInv}”已存在，不能重复`)
-              return
-            }
-          } catch {}
-          value = newInv
+          if (shouldProceed) {
+            try {
+              const resp = await fetch(`/api/tooling/parts/inventory-list?page=1&pageSize=1&search=${encodeURIComponent(newInv)}`, { cache: 'no-store' })
+              const result = await resp.json().catch(() => ({ items: [] }))
+              const items = Array.isArray(result?.items) ? result.items : []
+              const hit = items.find((it: any) => String(it.part_inventory_number || '').trim().toUpperCase() === newInv)
+              if (hit && String(hit.id) !== String(id)) {
+                message.error(`零件盘存编号"${newInv}"已存在，不能重复`)
+                shouldProceed = false
+              }
+            } catch {}
+          }
+          if (shouldProceed) {
+            value = newInv
+          }
         }
       }
+      
+      if (!shouldProceed) {
+        return
+      }
+      
       let updatedPartData: PartItem | null = null
+      
+      // 检查是否需要添加空白行
+      const currentList = partsMapRef.current[toolingId] || []
+      const blankId = `blank-${toolingId}-0`
+      const hasBlank = currentList.some(x => String(x.id) === blankId)
+      const needsBlank = !hasBlank && !id.startsWith('blank-')
       
       setPartsMap(prev => {
         const list = prev[toolingId] || []
@@ -741,133 +999,211 @@ const ToolingInfoPage: React.FC = () => {
           })
         }
         
-        return { ...prev, [toolingId]: ensureBlankParts(toolingId, updated) }
+        // 非空白行编辑不再主动补充空白行，避免状态长度在普通编辑时增长
+        return { ...prev, [toolingId]: updated }
       })
       
-      // 如果有更新的零件数据，保存到后端
+      // 如果有更新的零件数据，按单字段最小载荷保存到后端
       if (!id.startsWith('blank-')) {
+        const list = partsMapRef.current[toolingId] || []
+        const current = list.find(r => r.id === id) as any
         let payload: any = {}
-        if (updatedPartData) {
-          payload = {
-            part_inventory_number: updatedPartData.part_inventory_number,
-            part_drawing_number: updatedPartData.part_drawing_number,
-            part_name: updatedPartData.part_name,
-            part_quantity: (updatedPartData.part_quantity === '' || updatedPartData.part_quantity === null || typeof updatedPartData.part_quantity === 'undefined')
-              ? null
-              : Number(updatedPartData.part_quantity),
-            material_id: updatedPartData.material_id,
-            material_source_id: updatedPartData.material_source_id,
-            part_category: updatedPartData.part_category,
-            specifications: updatedPartData.specifications,
-            remarks: updatedPartData.remarks,
-            weight: updatedPartData.weight
+        switch (key) {
+          case 'part_inventory_number': {
+            const s = String(value || '').trim().toUpperCase()
+            payload.part_inventory_number = s || null
+            break
           }
-        } else {
-          // 最小保存载荷：保存本次变更的字段，并在需要时联动重量
-          payload = { [key]: key === 'part_quantity' ? (Number(value) || null) : value }
-          if (key === 'specifications' || key === 'material_id' || key === 'part_category') {
-            const list = partsMapRef.current[toolingId] || []
-            const current = list.find(r => r.id === id) as any
-            const nextRow = { ...(current || {}), [key]: value }
-            const newWeight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
-            payload.weight = newWeight
+          case 'part_drawing_number': {
+            const s = String(value || '').trim()
+            payload.part_drawing_number = s || null
+            break
           }
+          case 'part_name': {
+            const s = String(value || '').trim()
+            payload.part_name = s || null
+            break
+          }
+          case 'part_quantity': {
+            const n = Number(value)
+            payload.part_quantity = (!value || Number.isNaN(n) || n <= 0) ? null : n
+            break
+          }
+          case 'material_id': {
+            const s = String(value ?? '').trim()
+            payload.material_id = s ? s : null
+            break
+          }
+          case 'material_source_id': {
+            const num = value === null || value === undefined || String(value).trim() === '' ? null : Number(value)
+            payload.material_source_id = (typeof num === 'number' && !Number.isNaN(num)) ? num : null
+            break
+          }
+          case 'part_category': {
+            const s = String(value ?? '').trim()
+            payload.part_category = s || null
+            break
+          }
+          case 'specifications': {
+            payload.specifications = value || {}
+            break
+          }
+          case 'remarks': {
+            const s = String(value ?? '').trim()
+            payload.remarks = s || null
+            break
+          }
+          case 'weight': {
+            const w = typeof value === 'number' ? value : Number(value)
+            payload.weight = Number.isNaN(w) ? null : w
+            break
+          }
+          default: {
+            payload[key as string] = value
+          }
+        }
+
+        // 规格、材质或料型更新需要联动重量
+        if (key === 'specifications' || key === 'material_id' || key === 'part_category') {
+          const nextRow = { ...(current || {}), [key]: value }
+          const newWeight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
+          payload.weight = newWeight
         }
 
         const success = await savePartData(id, payload)
         if (success) {
-          // 成功后依赖本地乐观状态，避免立即刷新导致计算抖动
+          // 保存成功，本地状态已通过 setPartsMap 更新（乐观更新），无需重新拉取
         } else {
           // 保存失败，回滚为服务端数据
           // 移除 fetchPartsData 调用，避免重复请求导致卡死
-          return
+          // 继续执行，让锁能正确释放
         }
       }
       
-      // 如果是空白行，创建新记录
+      // 如果是空白行，使用防抖机制创建新记录
       if (id.startsWith('blank-')) {
-        const list = partsMapRef.current[toolingId] || []
-        const existing = list.find(x => x.id === id) || { 
-          id, 
-          tooling_id: toolingId, 
-          part_drawing_number: '', 
-          part_name: '', 
-          part_quantity: '', 
-          material_id: '', 
-          material_source_id: '', 
-          part_category: '', 
-          specifications: {}, 
-          weight: 0, 
-          remarks: '' 
-        }
-        const nextRow = { ...existing, [key]: value }
-        const qtyHas = (() => {
-          const q = nextRow.part_quantity
-          if (q === null || typeof q === 'undefined') return false
-          const n = Number(q)
-          return !isNaN(n) && n > 0
-        })()
-        const hasAny = (nextRow.part_drawing_number || '').trim() !== '' || (nextRow.part_name || '').trim() !== '' || qtyHas
-        if (!hasAny) return
+        const timerKey = `${toolingId}-${id}`
         
-        const weight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
-        
-        const postData: any = { 
-          part_drawing_number: nextRow.part_drawing_number || '', 
-          part_name: nextRow.part_name || '',
-          source: '自备',
-          specifications: nextRow.specifications || {},
-          weight: weight,
-          remarks: nextRow.remarks || '',
-          part_inventory_number: nextRow.part_inventory_number || ''
+        // 清除之前的定时器
+        if (partSaveTimersRef.current[timerKey]) {
+          clearTimeout(partSaveTimersRef.current[timerKey])
         }
         
-        if (nextRow.material_id && nextRow.material_id.trim() !== '') {
-          postData.material_id = nextRow.material_id
-        }
-        if (nextRow.part_category && nextRow.part_category.trim() !== '') {
-          postData.part_category = nextRow.part_category
-        }
-        if (nextRow.part_quantity && String(nextRow.part_quantity).trim() !== '') {
-          postData.part_quantity = nextRow.part_quantity
-        }
-        if (nextRow.material_source_id && nextRow.material_source_id.toString().trim() !== '') {
-          postData.material_source_id = nextRow.material_source_id
-        }
-        
-        const created = await createPart(toolingId, postData)
-        if (created) {
-          setPartsMap(prev => {
-            const l = prev[toolingId] || []
-            const nl = l.map(r => r.id === id ? { 
-              ...r, 
-              ...created, 
-              id: created.id,
-              part_drawing_number: created.part_drawing_number ?? r.part_drawing_number ?? '',
-              part_name: created.part_name ?? r.part_name ?? '',
-              part_quantity: created.part_quantity ?? r.part_quantity ?? '',
-              material_id: created.material_id ?? r.material_id ?? '',
-              material_source_id: created.material_source_id ?? r.material_source_id ?? '',
-              part_category: created.part_category ?? r.part_category ?? '',
-              specifications: created.specifications ?? r.specifications ?? {},
-              weight: created.weight ?? r.weight ?? 0,
-              remarks: created.remarks ?? r.remarks ?? '',
-              part_inventory_number: created.part_inventory_number ?? r.part_inventory_number ?? ''
-            } : r)
-            return { ...prev, [toolingId]: ensureBlankParts(toolingId, nl) }
-          })
-          // 移除不必要的 fetchPartsData 调用，避免重复查询导致卡死
-        }
+        // 设置新的定时器，延迟300毫秒后创建记录
+        partSaveTimersRef.current[timerKey] = setTimeout(async () => {
+          try {
+            const list = partsMapRef.current[toolingId] || []
+            const existing = list.find(r => r.id === id) || { 
+              id, 
+              tooling_id: toolingId, 
+              part_drawing_number: '', 
+              part_name: '', 
+              part_quantity: '', 
+              material_id: '', 
+              material_source_id: '', 
+              part_category: '', 
+              specifications: {}, 
+              weight: 0, 
+              remarks: '' 
+            }
+            const nextRow = { ...existing, [key]: value }
+            const qtyHas = (() => {
+              const q = nextRow.part_quantity
+              if (q === null || typeof q === 'undefined' || q === '') return false
+              const n = Number(q)
+              return !isNaN(n) && n > 0
+            })()
+            const anyHas = (
+              (nextRow.part_inventory_number || '').trim() !== '' ||
+              (nextRow.part_drawing_number || '').trim() !== '' ||
+              (nextRow.part_name || '').trim() !== '' ||
+              qtyHas ||
+              (nextRow.material_id || '').toString().trim() !== '' ||
+              (nextRow.material_source_id ?? '').toString().trim() !== '' ||
+              (nextRow.part_category || '').trim() !== '' ||
+              (nextRow.remarks || '').trim() !== '' ||
+              (nextRow.specifications && Object.keys(nextRow.specifications).length > 0)
+            )
+            if (!anyHas) return
+            
+            const weight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
+            
+            const postData: any = { 
+              part_drawing_number: nextRow.part_drawing_number || '', 
+              part_name: nextRow.part_name || '',
+              source: '自备',
+              specifications: nextRow.specifications || {},
+              weight: weight,
+              remarks: nextRow.remarks || ''
+            }
+            
+            // 只有在盘存编号不为空时才添加该字段
+            if (nextRow.part_inventory_number && nextRow.part_inventory_number.trim() !== '') {
+              postData.part_inventory_number = nextRow.part_inventory_number.trim()
+            }
+            
+            if (nextRow.material_id && nextRow.material_id.trim() !== '') {
+              postData.material_id = nextRow.material_id
+            }
+            if (nextRow.part_category && nextRow.part_category.trim() !== '') {
+              postData.part_category = nextRow.part_category
+            }
+            if (nextRow.part_quantity && String(nextRow.part_quantity).trim() !== '') {
+              postData.part_quantity = nextRow.part_quantity
+            }
+            if (nextRow.material_source_id && nextRow.material_source_id.toString().trim() !== '') {
+              postData.material_source_id = nextRow.material_source_id
+            }
+            
+            const created = await createPart(toolingId, postData)
+            if (created) {
+              setPartsMap(prev => {
+                const l = prev[toolingId] || []
+                const nl = l.map(r => r.id === id ? { 
+                  ...r, 
+                  ...created, 
+                  id: created.id,
+                  part_drawing_number: created.part_drawing_number ?? r.part_drawing_number ?? '',
+                  part_name: created.part_name ?? r.part_name ?? '',
+                  part_quantity: created.part_quantity ?? r.part_quantity ?? '',
+                  material_id: created.material_id ?? r.material_id ?? '',
+                  material_source_id: created.material_source_id ?? r.material_source_id ?? '',
+                  part_category: created.part_category ?? r.part_category ?? '',
+                  specifications: created.specifications ?? r.specifications ?? {},
+                  weight: created.weight ?? r.weight ?? 0,
+                  remarks: created.remarks ?? r.remarks ?? '',
+                  part_inventory_number: created.part_inventory_number ?? r.part_inventory_number ?? ''
+                } : r)
+                return { ...prev, [toolingId]: nl }
+              })
+              setTimeout(() => { fetchPartsData(toolingId) }, 200)
+            }
+          } finally {
+            delete partSaveTimersRef.current[timerKey]
+          }
+        }, 300) // 延迟300毫秒后创建记录
       }
     } catch (error) {
       console.error('保存零件数据错误:', error)
       message.error('保存零件数据失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
+    } finally {
+      partSaveLockRef.current.delete(lockKey)
     }
-  }, [data, partTypes, materials, savePartData, createPart])
+  }, [partTypes, materials, savePartData, createPart])
+
 
   const handlePartBatchSave = useCallback(async (toolingId: string, id: string, updates: Partial<PartItem>) => {
+    console.log('[handlePartBatchSave] called:', { toolingId, id, updates }, 'timestamp:', Date.now())
+    const lockKey = `${toolingId}-${id}-batch`
+    
+    if (partSaveLockRef.current.has(lockKey)) {
+      return
+    }
+    
     try {
+      partSaveLockRef.current.add(lockKey)
+      
       let updatedPartData: PartItem | null = null
       
       setPartsMap(prev => {
@@ -892,7 +1228,7 @@ const ToolingInfoPage: React.FC = () => {
           })
         }
         
-        return { ...prev, [toolingId]: ensureBlankParts(toolingId, updated) }
+        return { ...prev, [toolingId]: updated }
       })
       
       if (!id.startsWith('blank-') && updatedPartData) {
@@ -913,33 +1249,36 @@ const ToolingInfoPage: React.FC = () => {
         }
         
         const success = await savePartData(id, payload)
-        if (!success) {
-          // 移除 fetchPartsData 调用，避免重复请求导致卡死
+        if (success) {
+          setTimeout(() => { fetchPartsData(toolingId) }, 200)
         }
       }
     } catch (error) {
       console.error('批量保存失败:', error)
       message.error('保存失败')
       // 移除 fetchPartsData 调用，避免重复请求导致卡死
+    } finally {
+      partSaveLockRef.current.delete(lockKey)
     }
   }, [partTypes, materials, savePartData])
 
   // 保存标准件数据
   const handleChildItemSave = useCallback(async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
     try {
+      // 立即更新本地状态，让用户看到输入
       let nextItem: ChildItem | null = null
       setChildItemsMap(prev => {
         const list = prev[toolingId] || []
         let updated = list.map(item => {
           if (item.id !== id) return item
-          const v = key === 'quantity' ? (String(value).trim() === '' ? null : Number(value)) : value
+          const v = key === 'quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value
           const row = { ...item, [key]: v }
           nextItem = row
           return row
         })
-        // 空白行在输入后补充新的空白行
+        // 空白行在输入后不再本地补充，由数据Hook统一处理
         if (id.startsWith('blank-')) {
-          updated = ensureBlankChildItems(updated, toolingId)
+          // 保持updated原样，随后由fetchChildItemsData统一补充空白行
         }
         return { ...prev, [toolingId]: updated }
       })
@@ -955,31 +1294,48 @@ const ToolingInfoPage: React.FC = () => {
       if (!hasAny) return
 
       if (id.startsWith('blank-')) {
-        const postData: any = { tooling_id: toolingId }
-        if (nextItem.name && String(nextItem.name).trim() !== '') postData.name = String(nextItem.name).trim()
-        if (nextItem.model && String(nextItem.model).trim() !== '') postData.model = String(nextItem.model).trim()
-        if (typeof nextItem.quantity === 'number' && nextItem.quantity > 0) postData.quantity = nextItem.quantity
-        if (nextItem.unit && String(nextItem.unit).trim() !== '') postData.unit = String(nextItem.unit).trim()
-        if (nextItem.required_date && String(nextItem.required_date).trim() !== '') postData.required_date = String(nextItem.required_date).trim()
-
-        const created = await createChildItem(toolingId, postData)
-        if (created) {
-          setChildItemsMap(prev => {
-            const list = prev[toolingId] || []
-            const updated = list.map(item => item.id === id ? { ...item, ...created, id: created.id } : item)
-            return { ...prev, [toolingId]: ensureBlankChildItems(updated, toolingId) }
-          })
-        } else {
-          message.error('创建标准件失败')
+        // 空白行使用防抖机制
+        const timerKey = `child-${toolingId}-${id}`
+        
+        // 清除之前的定时器
+        if (childSaveTimersRef.current[timerKey]) {
+          clearTimeout(childSaveTimersRef.current[timerKey])
         }
+        
+        // 设置新的定时器，延迟1秒后创建记录
+        childSaveTimersRef.current[timerKey] = setTimeout(async () => {
+          try {
+            const postData: any = { tooling_id: toolingId }
+            if (nextItem!.name && String(nextItem!.name).trim() !== '') postData.name = String(nextItem!.name).trim()
+            if (nextItem!.model && String(nextItem!.model).trim() !== '') postData.model = String(nextItem!.model).trim()
+            if (typeof nextItem!.quantity === 'number' && nextItem!.quantity > 0) postData.quantity = nextItem!.quantity
+            if (nextItem!.unit && String(nextItem!.unit).trim() !== '') postData.unit = String(nextItem!.unit).trim()
+            if (nextItem!.required_date && String(nextItem!.required_date).trim() !== '') postData.required_date = String(nextItem!.required_date).trim()
+
+            const created = await createChildItem(toolingId, postData)
+            if (created) {
+              setChildItemsMap(prev => {
+                const list = prev[toolingId] || []
+                const updated = list.map(item => item.id === id ? { ...item, ...created, id: created.id } : item)
+                return { ...prev, [toolingId]: updated }
+              })
+              // 保存成功，无需重新拉取
+            } else {
+              message.error('创建标准件失败')
+            }
+          } finally {
+            delete childSaveTimersRef.current[timerKey]
+          }
+        }, 1000) // 延迟1秒后创建记录
       } else {
+        // 已有记录直接保存（允许清空为 null，保持与父表一致行为）
         const updateData: any = {}
-        const v = key === 'quantity' ? (typeof value === 'number' ? value : Number(value)) : value
         if (key === 'quantity') {
-          if (v && Number(v) > 0) updateData.quantity = Number(v)
+          const num = typeof value === 'number' ? value : Number(value)
+          updateData.quantity = (value === '' || value === null || isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
         } else if (key === 'name' || key === 'model' || key === 'unit' || key === 'required_date') {
-          if (String(v || '').trim() !== '') updateData[key] = String(v).trim()
-          else updateData[key] = ''
+          const txt = String(value ?? '').trim()
+          updateData[key] = txt !== '' ? txt : null
         }
 
         const response = await fetch(`/api/tooling/child-items/${id}`, {
@@ -989,6 +1345,8 @@ const ToolingInfoPage: React.FC = () => {
         })
         if (!response.ok) {
           message.error('保存标准件数据失败')
+        } else {
+          // 保存成功，无需重新拉取
         }
       }
     } catch (error) {
@@ -997,44 +1355,104 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [createChildItem])
 
+  const handleDeletePart = useCallback(async (toolingId: string, id: string) => {
+    try {
+      if (String(id || '').startsWith('blank-')) {
+        setPartsMap(prev => {
+          const list = prev[toolingId] || []
+          const updated = list.filter(item => item.id !== id)
+          return { ...prev, [toolingId]: updated }
+        })
+        setBlankPartDisabledMap(prev => ({ ...prev, [toolingId]: true }))
+        setSelectedRowKeys(prev => prev.filter(k => k !== ('part-' + id)))
+        return
+      }
+      const resp = await fetch(`/api/tooling/parts/${id}`, { method: 'DELETE' })
+      if (resp.ok) {
+        // 关键修复：立即清空该工装的缓存，强制重新获取最新数据
+        setPartsMap(prev => {
+          const updated = (prev[toolingId] || []).filter(item => item.id !== id)
+          return { ...prev, [toolingId]: updated }
+        })
+        setSelectedRowKeys(prev => prev.filter(k => k !== ('part-' + id)))
+        message.success('已删除零件')
+        // 本地状态已更新，无需重新拉取
+      } else {
+        message.error('删除零件失败')
+      }
+    } catch {
+      message.error('删除零件失败')
+    }
+  }, [fetchPartsData])
+
+  const handlePartSaveRef = useRef(handlePartSave)
+  useEffect(() => {
+    handlePartSaveRef.current = handlePartSave
+  }, [handlePartSave])
+  
+  const handlePartBatchSaveRef = useRef(handlePartBatchSave)
+  useEffect(() => {
+    handlePartBatchSaveRef.current = handlePartBatchSave
+  }, [handlePartBatchSave])
+  
+  const handleDeletePartRef = useRef(handleDeletePart)
+  useEffect(() => {
+    handleDeletePartRef.current = handleDeletePart
+  }, [handleDeletePart])
+
   const handleDeleteChildItem = useCallback(async (toolingId: string, id: string) => {
     try {
       if (String(id || '').startsWith('blank-')) {
         setChildItemsMap(prev => {
           const list = prev[toolingId] || []
           const updated = list.filter(item => item.id !== id)
-          return { ...prev, [toolingId]: ensureBlankChildItems(updated as any, toolingId) }
+          return { ...prev, [toolingId]: updated }
         })
+        setBlankChildDisabledMap(prev => ({ ...prev, [toolingId]: true }))
+        setSelectedRowKeys(prev => prev.filter(k => k !== ('child-' + id)))
         return
       }
       const resp = await fetch(`/api/tooling/child-items/${id}`, { method: 'DELETE' })
       if (resp.ok) {
+        // 关键修复：立即清空该工装的标准件缓存，强制重新获取最新数据
         setChildItemsMap(prev => {
-          const list = prev[toolingId] || []
-          const updated = list.filter(item => item.id !== id)
-          return { ...prev, [toolingId]: ensureBlankChildItems(updated as any, toolingId) }
+          const updated = (prev[toolingId] || []).filter(item => item.id !== id)
+          return { ...prev, [toolingId]: updated }
         })
+        setSelectedRowKeys(prev => prev.filter(k => k !== ('child-' + id)))
         message.success('已删除标准件')
+        // 本地状态已更新，无需重新拉取
       } else {
         message.error('删除标准件失败')
       }
     } catch {
       message.error('删除标准件失败')
     }
-  }, [])
+  }, [fetchChildItemsData])
 
-  const createPartColumns = (toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
+  const handleChildItemSaveRef = useRef(handleChildItemSave)
+  useEffect(() => {
+    handleChildItemSaveRef.current = handleChildItemSave
+  }, [handleChildItemSave])
+  
+  const handleDeleteChildItemRef = useRef(handleDeleteChildItem)
+  useEffect(() => {
+    handleDeleteChildItemRef.current = handleDeleteChildItem
+  }, [handleDeleteChildItem])
+
+  const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string, parentReceivedDate: string) => {
     return [
       {
         title: '盘存编号',
         dataIndex: 'part_inventory_number',
-        width: 160,
+        width: 140,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
             value={text || ''}
             record={rec as any}
             dataIndex={'part_inventory_number' as any}
-            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_inventory_number', v)}
+            onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'part_inventory_number', v)}
           />
         )
       },
@@ -1042,12 +1460,13 @@ const ToolingInfoPage: React.FC = () => {
         title: '图号',
         dataIndex: 'part_drawing_number',
         width: 180,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
             value={text || ''}
             record={rec as any}
             dataIndex={'part_drawing_number' as any}
-            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_drawing_number', v)}
+            onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'part_drawing_number', v)}
           />
         )
       },
@@ -1055,12 +1474,13 @@ const ToolingInfoPage: React.FC = () => {
         title: '零件名称',
         dataIndex: 'part_name',
         width: 180,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
             value={text || ''}
             record={rec as any}
             dataIndex={'part_name' as any}
-            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_name', v)}
+            onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'part_name', v)}
           />
         )
       },
@@ -1068,12 +1488,13 @@ const ToolingInfoPage: React.FC = () => {
         title: '数量',
         dataIndex: 'part_quantity',
         width: 80,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
             value={text as any}
             record={rec as any}
             dataIndex={'part_quantity' as any}
-            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_quantity', v)}
+            onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'part_quantity', v)}
           />
         )
       },
@@ -1081,15 +1502,16 @@ const ToolingInfoPage: React.FC = () => {
         title: '材质',
         dataIndex: 'material_id',
         width: 160,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
-            value={materials.find(m => m.id === text)?.name || ''}
+            value={materialsRef.current.find(m => m.id === text)?.name || ''}
             record={rec as any}
             dataIndex={'material_id' as any}
-            options={materialOptions}
+            options={materialOptionsRef.current}
             onSave={(_pid, _k, v) => {
-              const selectedMaterial = materials.find(m => m.name === v)
-              handlePartSave(toolingId, rec.id, 'material_id', selectedMaterial?.id || '')
+              const selectedMaterial = materialsRef.current.find(m => m.name === v)
+              handlePartSaveRef.current(toolingId, rec.id, 'material_id', selectedMaterial?.id || '')
             }}
           />
         )
@@ -1098,21 +1520,22 @@ const ToolingInfoPage: React.FC = () => {
         title: '材料来源',
         dataIndex: 'material_source_id',
         width: 160,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
-            value={materialSourceNameMap[String(text)] || (rec as any)?.material_source?.name || ''}
+            value={materialSourceNameMapRef.current[String(text)] || (rec as any)?.material_source?.name || ''}
             record={rec as any}
             dataIndex={'material_source_id' as any}
-            options={materialSourceOptions}
+            options={materialSourceOptionsRef.current}
             onSave={(_pid, _k, v) => {
-              const selectedSource = materialSources.find(ms => ms.name === v)
-              const oldSource = materialSourceNameMap[String(rec.material_source_id)] || 
+              const selectedSource = materialSourcesRef.current.find(ms => ms.name === v)
+              const oldSource = materialSourceNameMapRef.current[String(rec.material_source_id)] || 
                                (rec as any)?.material_source?.name || 
-                               materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+                               materialSourcesRef.current.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
               const newSource = v
               
               if (rec.id.startsWith('blank-')) {
-                 handlePartSave(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
+                 handlePartSaveRef.current(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
                  return
               }
 
@@ -1126,7 +1549,7 @@ const ToolingInfoPage: React.FC = () => {
                  updates.remarks = ''
               }
               
-              handlePartBatchSave(toolingId, rec.id, updates)
+              handlePartBatchSaveRef.current(toolingId, rec.id, updates)
             }}
           />
         )
@@ -1135,13 +1558,14 @@ const ToolingInfoPage: React.FC = () => {
         title: '料型',
         dataIndex: 'part_category',
         width: 160,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
             value={text || ''}
             record={rec as any}
             dataIndex={'part_category' as any}
-            options={partTypeOptions}
-            onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'part_category', v)}
+            options={partTypeOptionsRef.current}
+            onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'part_category', v)}
           />
         )
       },
@@ -1149,12 +1573,13 @@ const ToolingInfoPage: React.FC = () => {
         title: '规格',
         dataIndex: 'specifications',
         width: 200,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <SpecificationsInput
             specs={rec.specifications || {}}
             partType={rec.part_category}
-            partTypes={partTypes}
-            onSave={(v) => handlePartSave(toolingId, rec.id, 'specifications', v)}
+            partTypes={partTypesRef.current}
+            onSave={(v) => handlePartSaveRef.current(toolingId, rec.id, 'specifications', v)}
           />
         )
       },
@@ -1162,8 +1587,9 @@ const ToolingInfoPage: React.FC = () => {
         title: '备注',
         dataIndex: 'remarks',
         width: 160,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => {
-          const materialSource = materialSourceNameMap[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
+          const materialSource = materialSourceNameMapRef.current[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
           
           if (materialSource === '外购') {
             return (
@@ -1171,7 +1597,7 @@ const ToolingInfoPage: React.FC = () => {
                 value={text || ''}
                 record={rec as any}
                 dataIndex={'remarks' as any}
-                onSave={(pid, _k, v) => handlePartSave(toolingId, pid, 'remarks', v)}
+                onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'remarks', v)}
               />
             )
           }
@@ -1184,7 +1610,7 @@ const ToolingInfoPage: React.FC = () => {
             <input
               type="checkbox"
               checked={text === '需调质'}
-              onChange={(e) => handlePartSave(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
+              onChange={(e) => handlePartSaveRef.current(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
               style={{ cursor: 'pointer' }}
             />
           )
@@ -1196,8 +1622,10 @@ const ToolingInfoPage: React.FC = () => {
         width: 100,
         render: (text: number, rec: PartItem) => {
           const w = rec.weight
-          const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
-          return <span style={{ color: '#999' }}>{weight.toFixed(3)}</span>
+          const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
+          const qty = Number(rec.part_quantity) || 0
+          const totalWeight = unitWeight * qty
+          return <span style={{ color: '#999' }}>{totalWeight.toFixed(3)}</span>
         }
       },
       {
@@ -1206,10 +1634,13 @@ const ToolingInfoPage: React.FC = () => {
         width: 100,
         render: (text: number, rec: PartItem) => {
           const w = rec.weight
-          const weight = w && w > 0 ? w : calculatePartWeight(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypes, materials)
-          const material = materials.find(m => m.id === rec.material_id)
-          const unitPrice = getApplicableMaterialPrice(material, rec.specifications || {})
-          const total = calculateTotalPrice(weight, unitPrice, rec.part_quantity)
+          const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
+          const qty = Number(rec.part_quantity) || 0
+          const totalWeight = unitWeight * qty
+          
+          const material = materialsRef.current.find(m => m.id === rec.material_id)
+          const unitPrice = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
+          const total = calculateTotalPriceRef.current(totalWeight, unitPrice)
           return <span style={{ color: '#999' }}>{total.toFixed(2)}</span>
         }
       },
@@ -1225,7 +1656,7 @@ const ToolingInfoPage: React.FC = () => {
           const projectOk = !!String(parentProject).trim()
           const prodUnitOk = !!String(parentUnit).trim()
           const applicantOk = !!String(parentApplicant).trim()
-          const msName = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
+          const msName = materialSourcesRef.current.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
           const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
           const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
           const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
@@ -1244,7 +1675,7 @@ const ToolingInfoPage: React.FC = () => {
             currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
           }
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const completedSet = new Set<string>((workHoursData[inventoryNo] || []).map(x => x.trim().toLowerCase()))
+          const completedSet = new Set<string>((workHoursDataRef.current[inventoryNo] || []).map(x => x.trim().toLowerCase()))
           const display = (val: string | undefined) => {
             const route = String(val || '')
             if (!route) return <span style={{ color: '#999' }}>-</span>
@@ -1301,11 +1732,12 @@ const ToolingInfoPage: React.FC = () => {
             />
           )
         }
-      }
+      },
+      
     ]
-  }
+  }, [])
 
-  const createChildColumns = (toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
+  const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
       {
         title: '序号',
@@ -1326,7 +1758,7 @@ const ToolingInfoPage: React.FC = () => {
             value={text || ''}
             record={rec as any}
             dataIndex={'name' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'name', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'name', v)}
           />
         )
       },
@@ -1339,7 +1771,7 @@ const ToolingInfoPage: React.FC = () => {
             value={text || ''}
             record={rec as any}
             dataIndex={'model' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'model', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'model', v)}
           />
         )
       },
@@ -1352,7 +1784,7 @@ const ToolingInfoPage: React.FC = () => {
             value={text as any}
             record={rec as any}
             dataIndex={'quantity' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'quantity', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'quantity', v)}
           />
         )
       },
@@ -1365,7 +1797,7 @@ const ToolingInfoPage: React.FC = () => {
             value={text || ''}
             record={rec as any}
             dataIndex={'unit' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'unit', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'unit', v)}
           />
         )
       },
@@ -1378,7 +1810,7 @@ const ToolingInfoPage: React.FC = () => {
             value={text || ''}
             record={rec as any}
             dataIndex={'required_date' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'required_date', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'required_date', v)}
           />
         )
       },
@@ -1408,30 +1840,94 @@ const ToolingInfoPage: React.FC = () => {
             value={text || ''}
             record={rec as any}
             dataIndex={'remark' as any}
-            onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'remark', v)}
+            onSave={(pid, _k, v) => handleChildItemSaveRef.current(toolingId, pid, 'remark', v)}
           />
         )
       },
-      {
-        title: '操作',
-        dataIndex: '__action',
-        width: 80,
-        render: (_text: any, rec: ChildItem) => (
-          <Button
-            danger
-            size="small"
-            disabled={!String(rec.id || '').startsWith('blank-')}
-            onClick={() => handleDeleteChildItem(toolingId, rec.id)}
-          >
-            删除
-          </Button>
-        )
-      }
+      
     ]
-  }
+  }, [])
 
-  const partColumnsMemo = useMemo(() => createPartColumns('', '', '', ''), [materials, materialOptions, materialSourceNameMap, materialSources, materialSourceOptions, partTypeOptions, partTypes, handlePartSave, handlePartBatchSave, calculatePartWeight, getApplicableMaterialPrice, calculateTotalPrice, workHoursData])
-  const childColumnsMemo = useMemo(() => createChildColumns('', '', '', ''), [handleChildItemSave, handleDeleteChildItem])
+  const expandedRowRender = useCallback((record: any) => {
+    const toolingId = record.id as string
+    const parent = data.find(d => d.id === toolingId) as any
+    const parentProject = parent?.project_name || ''
+    const parentUnit = parent?.production_unit || ''
+    const parentApplicant = parent?.recorder || ''
+    const parentReceivedDate = parent?.received_date || ''
+    
+    // 获取当前数据，不再自动添加空白行
+    const partsList = partsMap[toolingId] || []
+    const childList = childItemsMap[toolingId] || []
+
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${parentReceivedDate}`
+    let cols = partColumnsCacheRef.current.get(cacheKey)
+    if (!cols) {
+      cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant, parentReceivedDate)
+      partColumnsCacheRef.current.set(cacheKey, cols)
+    }
+
+    const childCacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}`
+    let childCols = childColumnsCacheRef.current.get(childCacheKey)
+    if (!childCols) {
+      childCols = createChildColumns(toolingId, parentProject, parentUnit, parentApplicant)
+      childColumnsCacheRef.current.set(childCacheKey, childCols)
+    }
+
+    // 手动添加零件行
+    const handleAddPart = () => {
+      const newPart = {
+        id: `blank-${toolingId}-${Date.now()}`,
+        tooling_id: toolingId,
+        part_drawing_number: '',
+        part_name: '',
+        part_quantity: '',
+        material_id: '',
+        material_source_id: '',
+        part_category: '',
+        specifications: {},
+        weight: 0,
+        remarks: ''
+      }
+      setPartsMap(prev => ({
+        ...prev,
+        [toolingId]: [...(prev[toolingId] || []), newPart]
+      }))
+    }
+
+    // 手动添加标准件行
+    const handleAddChildItem = () => {
+      const newChild = {
+        id: `blank-${toolingId}-${Date.now()}`,
+        tooling_id: toolingId,
+        name: '',
+        model: '',
+        quantity: '',
+        remarks: ''
+      }
+      setChildItemsMap(prev => ({
+        ...prev,
+        [toolingId]: [...(prev[toolingId] || []), newChild]
+      }))
+    }
+
+    return (
+      <ExpandedSubTables
+        toolingId={toolingId}
+        parts={partsList as any}
+        childItems={childList as any}
+        parentProject={parentProject}
+        parentUnit={parentUnit}
+        parentApplicant={parentApplicant}
+        partColumns={cols}
+        childColumns={childCols}
+        selectedRowKeys={selectedRowKeys}
+        setSelectedRowKeys={setSelectedRowKeys}
+        onAddPart={handleAddPart}
+        onAddChildItem={handleAddChildItem}
+      />
+    )
+  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
@@ -1443,6 +1939,11 @@ const ToolingInfoPage: React.FC = () => {
     return () => {
       window.removeEventListener('temporary_plans_updated', handler)
       window.removeEventListener('status_updated', handler)
+      // 清理所有定时器
+      Object.values(partSaveTimersRef.current).forEach(timer => clearTimeout(timer))
+      Object.values(childSaveTimersRef.current).forEach(timer => clearTimeout(timer))
+      partSaveTimersRef.current = {}
+      childSaveTimersRef.current = {}
     }
   }, [])
 
@@ -1750,7 +2251,7 @@ const ToolingInfoPage: React.FC = () => {
     </th>
   )
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: '序号',
       dataIndex: '__seq',
@@ -1901,7 +2402,7 @@ const ToolingInfoPage: React.FC = () => {
         <span className="text-gray-600">{text || '-'}</span>
       )
     }
-  ]
+  ], [handleSave, data, fetchPartsData, fetchChildItemsData])
 
   // 导出工装信息为Excel
   const handleExport = async () => {
@@ -1913,10 +2414,26 @@ const ToolingInfoPage: React.FC = () => {
       const parentIds = data.filter(item => !String(item.id || '').startsWith('blank-')).map(i => String(i.id))
       const needPartsFetch = parentIds.filter(id => !partsMap[id] || partsMap[id].length === 0)
       const needChildFetch = parentIds.filter(id => !childItemsMap[id] || childItemsMap[id].length === 0)
-      await Promise.all([
-        ...needPartsFetch.map(id => fetchPartsData(id)),
-        ...needChildFetch.map(id => fetchChildItemsData(id))
-      ])
+      const chunk = (arr: string[], size: number) => {
+        const res: string[][] = []
+        for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size))
+        return res
+      }
+      const size = getBatchSize()
+      const perf: { ts: number; size: number; parts: Array<{ len: number; ms: number }>; child: Array<{ len: number; ms: number }>; totalMs: number } = { ts: Date.now(), size, parts: [], child: [], totalMs: 0 }
+      const t0 = Date.now()
+      for (const group of chunk(needPartsFetch, size)) {
+        const s = Date.now()
+        await Promise.all(group.map(id => fetchPartsData(id)))
+        perf.parts.push({ len: group.length, ms: Date.now() - s })
+      }
+      for (const group of chunk(needChildFetch, size)) {
+        const s = Date.now()
+        await Promise.all(group.map(id => fetchChildItemsData(id)))
+        perf.child.push({ len: group.length, ms: Date.now() - s })
+      }
+      perf.totalMs = Date.now() - t0
+      try { safeLocalStorage.setItem('parts_fetch_perf', JSON.stringify(perf)) } catch {}
 
       // 创建工作簿
       const wb = XLSX.utils.book_new()
@@ -3531,54 +4048,20 @@ const ToolingInfoPage: React.FC = () => {
           scroll={{ y: 600 }}
           locale={{ emptyText: '' }}
           rowSelection={{
-            selectedRowKeys,
+            selectedRowKeys: selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
             onChange: (keys) => {
-              const newKeys = keys as string[]
-              
-              // 处理单个行选择
-              const changedKeys = newKeys.filter(k => !selectedRowKeys.includes(k))
-              const removedKeys = selectedRowKeys.filter(k => !newKeys.includes(k))
-              
-              // 处理父级行选择
-              if (changedKeys.length > 0) {
-                const parentKey = changedKeys.find(k => !k.startsWith('part-') && !k.startsWith('child-'))
-                if (parentKey) {
-                  const parentRecord = data.find(d => d.id === parentKey)
-                  if (parentRecord) {
-                    // 选择父级及其子项
-                    const parts = partsMap[parentKey] || []
-                    const childItems = childItemsMap[parentKey] || []
-                    
-                    const childKeys = [
-                      ...parts.map(p => 'part-' + p.id),
-                      ...childItems.map(c => 'child-' + c.id)
-                    ]
-                    
-                    setSelectedRowKeys(prev => Array.from(new Set([...prev, parentKey, ...childKeys])))
-                    return
-                  }
-                }
-              }
-              
-              // 处理父级行取消选择
-              if (removedKeys.length > 0) {
-                const parentKey = removedKeys.find(k => !k.startsWith('part-') && !k.startsWith('child-'))
-                if (parentKey) {
-                  const parts = partsMap[parentKey] || []
-                  const childItems = childItemsMap[parentKey] || []
-                  
-                  const childKeys = [
-                    ...parts.map(p => 'part-' + p.id),
-                    ...childItems.map(c => 'child-' + c.id)
-                  ]
-                  
-                  // 取消选择父级及其子项
-                  setSelectedRowKeys(prev => prev.filter(k => k !== parentKey && !childKeys.includes(k)))
-                  return
-                }
-              }
-              
-              setSelectedRowKeys(newKeys)
+              const parentKeys = (keys as (string | number)[]).map(k => String(k))
+              const childKeys: string[] = []
+              parentKeys.forEach(pid => {
+                const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+                childKeys.push(...parts.map(p => 'part-' + p.id))
+                const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+                childKeys.push(...childItems.map(c => 'child-' + c.id))
+              })
+              setSelectedRowKeys(prev => {
+                const prevChild = prev.filter(k => k.startsWith('part-') || k.startsWith('child-'))
+                return Array.from(new Set([...prevChild, ...parentKeys, ...childKeys]))
+              })
             },
             onSelectAll: (selected) => {
               const currentList = ensureBlankToolings(visibleData).filter(r => !String(r.id || '').startsWith('blank-'))
@@ -3588,9 +4071,9 @@ const ToolingInfoPage: React.FC = () => {
                 currentList.forEach(parent => {
                   const pid = String(parent.id)
                   allKeys.push(pid)
-                  const parts = partsMap[pid] || []
+                  const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
                   allKeys.push(...parts.map(p => 'part-' + p.id))
-                  const childItems = childItemsMap[pid] || []
+                  const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
                   allKeys.push(...childItems.map(c => 'child-' + c.id))
                 })
                 setSelectedRowKeys(prev => Array.from(new Set([...prev, ...allKeys])))
@@ -3600,20 +4083,21 @@ const ToolingInfoPage: React.FC = () => {
                 currentList.forEach(parent => {
                   const pid = String(parent.id)
                   removeSet.add(pid)
-                  const parts = partsMap[pid] || []
+                  const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
                   parts.forEach(p => removeSet.add('part-' + p.id))
-                  const childItems = childItemsMap[pid] || []
+                  const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
                   childItems.forEach(c => removeSet.add('child-' + c.id))
                 })
                 setSelectedRowKeys(prev => prev.filter(k => !removeSet.has(k)))
               }
             },
             columnWidth: 40,
-            getCheckboxProps: (record: any) => ({ disabled: String(record?.id || '').startsWith('blank-') })
+            getCheckboxProps: (record: any) => ({ disabled: String(record?.id || '').startsWith('blank-') }),
+            checkStrictly: true
           }}
           expandIconColumnIndex={-1}
           expandable={{
-            expandedRowKeys,
+            expandedRowKeys: stableExpandedRowKeys,
             rowExpandable: (record: any) => !String(record.id || '').startsWith('blank-'),
             onExpand: (expanded, record: any) => {
               const id = record.id as string
@@ -3626,225 +4110,7 @@ const ToolingInfoPage: React.FC = () => {
             expandRowByClick: false,
             indentSize: 0,
             expandIcon: () => null,
-            expandedRowRender: (record: any) => {
-              const toolingId = record.id as string
-              
-              // 零件信息表格
-              const partsContent = (() => {
-                const list = partsMap[toolingId] || []
-                const parent = data.find(d => d.id === toolingId) as any
-                const parentProject = parent?.project_name || ''
-                const parentUnit = parent?.production_unit || ''
-                const parentApplicant = parent?.recorder || ''
-
-                const cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
-                const isPartReady = (rec: PartItem): boolean => {
-                  const nameOk = !!String(rec.part_name || '').trim()
-                  const q = rec.part_quantity
-                  const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
-                  const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
-                  const projectOk = !!String(parentProject).trim()
-                  const prodUnitOk = !!String(parentUnit).trim()
-                  const applicantOk = !!String(parentApplicant).trim()
-                  const msName = materialSources.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
-                  const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
-                  const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
-                  return nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
-                }
-                
-                return (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#1890ff' }}>零件信息</div>
-                    <Table
-                      rowKey="id"
-                      columns={cols as any}
-                    dataSource={list as any}
-                      pagination={false}
-                    bordered={false}
-                    onRow={(rec: any) => ({
-                      className: isPartReady(rec) ? 'text-blue-600' : undefined
-                    })}
-                    rowSelection={{
-                        selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5)),
-                        onChange: (keys) => {
-                          const prefixed = (keys as string[]).map(k => 'part-' + k)
-                          setSelectedRowKeys(prev => {
-                            const others = prev.filter(k => {
-                              if (!k.startsWith('part-')) return true
-                              return !list.some((p: any) => ('part-' + p.id) === k)
-                            })
-                            const merged = Array.from(new Set([...others, ...prefixed]))
-                            return merged
-                          })
-                        },
-                        columnWidth: 40,
-                        getCheckboxProps: (rec: any) => ({ disabled: String(rec.id || '').startsWith('blank-') }),
-                        checkStrictly: true
-                      }}
-                    />
-                  </div>
-                )
-              })()
-
-              // 标准件信息表格
-              const childContent = (() => {
-                const childList = childItemsMap[toolingId] || []
-                const parent = data.find(d => d.id === toolingId) as any
-                const parentProject = parent?.project_name || ''
-                const parentUnit = parent?.production_unit || ''
-                const parentApplicant = parent?.recorder || ''
-
-                const isChildReady = (rec: ChildItem): boolean => {
-                  const nameOk = !!String(rec.name || '').trim()
-                  const modelOk = !!String(rec.model || '').trim()
-                  const qtyOk = Number(rec.quantity || 0) > 0
-                  const unitOk = !!String(rec.unit || '').trim()
-                  const demandDateOk = !!String(rec.required_date || '').trim()
-                  const projectOk = !!String(parentProject).trim()
-                  const prodUnitOk = !!String(parentUnit).trim()
-                  const applicantOk = !!String(parentApplicant).trim()
-                  return nameOk && modelOk && qtyOk && unitOk && demandDateOk && projectOk && prodUnitOk && applicantOk
-                }
-
-                const childCols = [
-                  {
-                    title: '序号',
-                    dataIndex: '__seq',
-                    width: 60,
-                    render: (_text: any, _record: ChildItem, index: number) => (
-                      <span style={{ display: 'inline-block', width: '100%', textAlign: 'center', color: '#888' }}>
-                        {index + 1}
-                      </span>
-                    )
-                  },
-                  {
-                    title: '名称',
-                    dataIndex: 'name',
-                    width: 180,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'name' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'name', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '型号',
-                    dataIndex: 'model',
-                    width: 150,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'model' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'model', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '数量',
-                    dataIndex: 'quantity',
-                    width: 80,
-                    render: (text: number, rec: ChildItem) => (
-                      <EditableCell
-                        value={text as any}
-                        record={rec as any}
-                        dataIndex={'quantity' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'quantity', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '单位',
-                    dataIndex: 'unit',
-                    width: 80,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'unit' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'unit', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '需求日期',
-                    dataIndex: 'required_date',
-                    width: 160,
-                    render: (text: string, rec: ChildItem) => (
-                      <EditableCell
-                        value={text || ''}
-                        record={rec as any}
-                        dataIndex={'required_date' as any}
-                        onSave={(pid, _k, v) => handleChildItemSave(toolingId, pid, 'required_date', v)}
-                      />
-                    )
-                  },
-                  {
-                    title: '状态',
-                    dataIndex: '__status',
-                    width: 120,
-                    render: (_t: any, rec: ChildItem) => {
-                      const statusKey = `status_child_${rec.id}`
-                      let derived = safeLocalStorage.getItem(statusKey) || ''
-                      try {
-                        const plans = JSON.parse(safeLocalStorage.getItem('temporary_plans') || '[]')
-                        const hit = plans.flatMap((g: any) => g.items || []).find((it: any) => it.child_item_id === rec.id)
-                        if (hit) {
-                          if (hit.arrival_date) derived = '已到货'
-                          else if (hit.purchaser && String(hit.purchaser).trim()) derived = '采购中'
-                          else derived = '审批中'
-                        }
-                      } catch {}
-                      return <span style={{ color: '#1890ff' }}>{derived || '-'}</span>
-                    }
-                  }
-                ]
-
-                return (
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#52c41a' }}>标准件信息</div>
-                    <Table
-                      rowKey="id"
-                      columns={childCols as any}
-                      dataSource={childList as any}
-                      pagination={false}
-                    bordered={false}
-                    size="small"
-                      onRow={(rec: any) => ({
-                        className: isChildReady(rec) ? 'text-blue-600' : undefined
-                      })}
-                    rowSelection={{
-                        selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
-                        onChange: (keys) => {
-                          const prefixed = (keys as string[]).map(k => 'child-' + k)
-                          setSelectedRowKeys(prev => {
-                            const others = prev.filter(k => {
-                              if (!k.startsWith('child-')) return true
-                              return !childList.some(p => ('child-' + p.id) === k)
-                            })
-                            const merged = Array.from(new Set([...others, ...prefixed]))
-                            return merged
-                          })
-                        },
-                        columnWidth: 40,
-                        getCheckboxProps: (rec: any) => ({ disabled: String(rec.id || '').startsWith('blank-') }),
-                        checkStrictly: true
-                      }}
-                    />
-                  </div>
-                )
-              })()
-
-              return (
-                <div style={{ padding: '16px 24px', background: '#fafafa' }}>
-                  {partsContent}
-                  {childContent}
-                </div>
-              )
-            }
+            expandedRowRender
           }}
         />
       </div>

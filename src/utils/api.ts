@@ -4,13 +4,13 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
-    '/api/auth/',
     '/api/options/', 
     '/api/materials', 
     '/api/part-types',
     '/api/tooling',
     '/api/tooling/devices', 
-    '/api/tooling/fixed-inventory-options'
+    '/api/tooling/fixed-inventory-options',
+    '/api/auth'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -39,6 +39,10 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const base = normalizeBase(rawBase)
   const abs = (() => {
     if (cleanUrl.startsWith('/')) {
+      // 在本地或非 GitHub Pages 环境下，直接使用相对路径以走 Vite 代理到本地后端
+      const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
+      if (!isGhPages && isLocal) return cleanUrl
+      // 在 GitHub Pages 等静态环境下，转向 Supabase Functions
       return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
     }
     return cleanUrl
@@ -114,29 +118,23 @@ export function installApiInterceptor() {
             if (v != null) headers.set(String(k), String(v))
           }
         }
-        if (!headers.get('apikey')) headers.set('apikey', anon)
-        if (!headers.get('authorization')) headers.set('authorization', `Bearer ${anon}`)
+        headers.set('apikey', anon)
+        headers.set('authorization', `Bearer ${anon}`)
+        console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
         const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
         const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
         let urlStr = cleanUrl
 
-        if (/\.supabase\.co\/rest\/v1\/users\?/.test(urlStr) && !/([?&])apikey=/.test(urlStr)) {
+        if (!/([?&])apikey=/.test(urlStr)) {
           const u = new URL(urlStr)
           u.searchParams.set('apikey', anon)
           urlStr = u.toString()
         }
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
-        if (!/([?&])apikey=/.test(urlStr)) {
-          const u = new URL(urlStr)
-          u.searchParams.set('apikey', anon)
-          urlStr = u.toString()
-        }
-        if (/\/rest\/v1\/users\?/.test(urlStr) && method === 'GET') {
-          // Remove recursive interception: let the request pass through to originalFetch
-          // This prevents infinite loops when handleClientSideApi calls supabase.from('users')
-          return await originalFetch(urlStr as any, patchedInit)
+        if (/\/rest\/v1\/users(\?|$)/.test(urlStr)) {
+          return jsonResponse({ success: false, error: 'users 表不开放前端访问' }, 403)
         }
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
@@ -264,178 +262,87 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
     // 如果Supabase可用，优先从Supabase获取数据
       if (supabase) {
 
-      if (path === '/api/auth/login' && method === 'POST') {
-        const body = await readBody()
-        const rawPhone = String(body.phone || '')
-        const phone = rawPhone.trim()
-        const password = String(body.password || '').trim()
-        
-        let userRow: any = null
-        
-        try {
-          // 1. Try complex query with joins
-          const { data: complexData, error: complexError } = await supabase
+      // Tooling users basic
+      if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
+        return jsonResponse({ success: true, items: [] })
+      }
+
+      if (path.startsWith('/api/auth')) {
+        if (method === 'POST' && path === '/api/auth/login') {
+          const body = await readBody()
+          const phone = String(body.phone || '').trim()
+          const password = String(body.password || '')
+          if (!phone || !password) return jsonResponse({ success: false, error: '手机号和密码不能为空' }, 400)
+          const { data: user, error } = await supabase
             .from('users')
-            .select('*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))')
+            .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
             .eq('phone', phone)
-            .maybeSingle()
-          
-          if (complexError) {
-            console.warn('API: Complex query error, trying fallback', complexError)
+            .single()
+          if (error || !user) return jsonResponse({ success: false, error: '用户不存在' }, 401)
+          const ok = await bcrypt.compare(password, String((user as any).password_hash || ''))
+          if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
+          if (String((user as any).status) !== 'active') return jsonResponse({ success: false, error: '账户未激活或已被禁用' }, 401)
+          const { password_hash, ...safeUser } = (user as any)
+          return jsonResponse({ success: true, user: safeUser })
+        }
+        if (method === 'POST' && path === '/api/auth/register') {
+          const body = await readBody()
+          const phone = String(body.phone || '').trim()
+          const realName = String(body.realName || '').trim()
+          const idCard = String(body.idCard || '').trim()
+          const companyId = String(body.companyId || '').trim()
+          const roleId = String(body.roleId || '').trim()
+          const password = String(body.password || '')
+          const workshopId = body.workshopId ? String(body.workshopId) : null
+          const teamId = body.teamId ? String(body.teamId) : null
+          if (!phone || !realName || !idCard || !companyId || !roleId || !password) {
+            return jsonResponse({ success: false, error: '所有字段都是必填的' }, 400)
           }
-
-          if (complexData) {
-            userRow = complexData
-          } else {
-             // 2. Fallback: Simple query if complex failed or returned nothing (though maybeSingle returns null, not error on empty)
-             // If complexData is null, it means user not found OR RLS blocked it. 
-             // Let's try simple query to be sure.
-             const { data: simpleData, error: simpleError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('phone', phone)
-                .maybeSingle()
-             
-             if (simpleData) {
-                userRow = simpleData
-             } else if (simpleError) {
-                console.error('API: Simple query error', simpleError)
-             }
-          }
-        } catch (e: any) {
-          console.error('API: Exception', e)
-          return jsonResponse({ success: false, error: '登录异常' }, 500)
-        }
-
-        if (!userRow) {
-            console.warn('API: User not found for phone:', phone)
-            return jsonResponse({ success: false, error: '用户不存在' }, 401)
-        }
-        
-        try {
-            const ok = await bcrypt.compare(password, String((userRow as any).password_hash || ''))
-            if (!ok) return jsonResponse({ success: false, error: '密码错误' }, 401)
-            if (String((userRow as any).status) !== 'active') return jsonResponse({ success: false, error: '账户未激活或已被禁用' }, 401)
-            const { password_hash, ...safeUser } = (userRow as any)
-            return jsonResponse({ success: true, user: safeUser })
-        } catch (e) {
-            console.error('API: Password check error', e)
-            return jsonResponse({ success: false, error: '密码验证出错' }, 500)
-        }
-      }
-
-      if (path === '/api/auth/me' && method === 'GET') {
-        const qs = getQuery(cleanUrl)
-        const userId = String(qs.get('userId') || '')
-        if (!userId) return jsonResponse({ success: false, error: '缺少userId' }, 400)
-        let userRow: any = null
-        let error: any = null
-        try {
-          const res = await withTimeout(
-            supabase
-              .from('users')
-              .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
-              .eq('id', userId)
-              .single(),
-            8000
-          )
-          userRow = (res as any).data
-          error = (res as any).error
-        } catch (e: any) {
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '获取用户失败') }, 500)
-        }
-        if (error || !userRow) return jsonResponse({ success: false, error: '用户不存在' }, 404)
-        const { password_hash, ...safeUser } = (userRow as any)
-        return jsonResponse({ success: true, user: safeUser })
-      }
-
-      if (path === '/api/auth/register' && method === 'POST') {
-        const body = await readBody()
-        const phone = String(body.phone || '').trim()
-        const password = String(body.password || '')
-        const realName = String(body.realName || body.real_name || '').trim()
-        const idCard = String(body.idCard || body.id_card || '').trim()
-        const companyId = String(body.companyId || body.company_id || '').trim()
-        const roleId = String(body.roleId || body.role_id || '').trim()
-        const workshopId = String(body.workshopId || body.workshop_id || '').trim()
-        const teamId = String(body.teamId || body.team_id || '').trim()
-
-        if (!phone || !password || !realName || !idCard) {
-          return jsonResponse({ success: false, error: '缺少必要信息' }, 400)
-        }
-        if (password.length < 6) {
-          return jsonResponse({ success: false, error: '密码至少6位' }, 400)
-        }
-
-        try {
-          const exists = await withTimeout(
-            supabase.from('users').select('id').eq('phone', phone).limit(1),
-            30000
-          )
-          const has = Array.isArray((exists as any).data) && (exists as any).data.length > 0
-          if (has) return jsonResponse({ success: false, error: '手机号已注册' }, 409)
-        } catch (e: any) {
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '注册失败') }, 500)
-        }
-
-        try {
-          const password_hash = await bcrypt.hash(password, 10)
-          const payload: any = {
+          const { data: existingPhone } = await supabase.from('users').select('id').eq('phone', phone).single()
+          if (existingPhone) return jsonResponse({ success: false, error: '手机号已被注册' }, 400)
+          const { data: existingIdCard } = await supabase.from('users').select('id').eq('id_card', idCard).single()
+          if (existingIdCard) return jsonResponse({ success: false, error: '身份证号已被注册' }, 400)
+          const passwordHash = await bcrypt.hash(password, 10)
+          const { error } = await supabase.from('users').insert({
             phone,
             real_name: realName,
             id_card: idCard,
-            company_id: companyId || null,
-            role_id: roleId || null,
-            workshop_id: workshopId || null,
-            team_id: teamId || null,
-            status: 'pending',
-            password_hash
-          }
-          const { error } = await withTimeout(supabase.from('users').insert(payload), 30000)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            company_id: companyId,
+            role_id: roleId,
+            workshop_id: workshopId,
+            team_id: teamId,
+            password_hash: passwordHash,
+            status: 'pending'
+          })
+          if (error) return jsonResponse({ success: false, error: '注册失败' }, 500)
           return jsonResponse({ success: true, message: '注册成功，请等待管理员审核' })
-        } catch (e: any) {
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '注册失败') }, 500)
         }
-      }
-
-      if (path === '/api/auth/reset-password' && method === 'POST') {
-        const body = await readBody()
-        const idCard = String(body.idCard || body.id_card || '').trim()
-        const newPassword = String(body.newPassword || body.password || '').trim()
-        if (!idCard || !newPassword) return jsonResponse({ success: false, error: '缺少必要信息' }, 400)
-        if (newPassword.length < 6) return jsonResponse({ success: false, error: '密码至少6位' }, 400)
-
-        let userRow: any = null
-        let error: any = null
-        try {
-          const res = await withTimeout(
-            supabase.from('users').select('id,status').eq('id_card', idCard).single(),
-            30000
-          )
-          userRow = (res as any).data
-          error = (res as any).error
-        } catch (e: any) {
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '重置失败') }, 500)
-        }
-        if (error || !userRow?.id) return jsonResponse({ success: false, error: '未找到对应用户' }, 404)
-
-        try {
-          const password_hash = await bcrypt.hash(newPassword, 10)
-          const { error: upErr } = await withTimeout(
-            supabase.from('users').update({ password_hash }).eq('id', userRow.id),
-            30000
-          )
-          if (upErr) return jsonResponse({ success: false, error: upErr.message }, 500)
+        if (method === 'POST' && path === '/api/auth/reset-password') {
+          const body = await readBody()
+          const idCard = String(body.idCard || '').trim()
+          const newPassword = String(body.newPassword || '')
+          if (!idCard || !newPassword) return jsonResponse({ success: false, error: '身份证号和新密码不能为空' }, 400)
+          const { data: user, error } = await supabase.from('users').select('id').eq('id_card', idCard).single()
+          if (error || !user) return jsonResponse({ success: false, error: '用户不存在' }, 404)
+          const passwordHash = await bcrypt.hash(newPassword, 10)
+          const { error: updateError } = await supabase.from('users').update({ password_hash: passwordHash }).eq('id', (user as any).id)
+          if (updateError) return jsonResponse({ success: false, error: '密码重置失败' }, 500)
           return jsonResponse({ success: true, message: '密码重置成功' })
-        } catch (e: any) {
-          if (String(e?.message || '') === 'TIMEOUT') return jsonResponse({ success: false, error: '请求超时，请检查网络或稍后重试' }, 504)
-          return jsonResponse({ success: false, error: String(e?.message || '重置失败') }, 500)
         }
+        if (method === 'GET' && path.startsWith('/api/auth/me')) {
+          const qs = getQuery(url)
+          const userId = String(qs.get('userId') || '').trim()
+          if (!userId) return jsonResponse({ success: false, error: '缺少用户ID' }, 400)
+          const { data: user, error } = await supabase
+            .from('users')
+            .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
+            .eq('id', userId)
+            .single()
+          if (error || !user) return jsonResponse({ success: false, error: '用户不存在' }, 404)
+          const { password_hash, ...safeUser } = (user as any)
+          return jsonResponse({ success: true, user: safeUser })
+        }
+        return null
       }
 
       // ---- Production units CRUD ----
@@ -786,7 +693,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       if (method === 'POST' && path === '/api/tooling') {
         const body = await readBody()
         const { data, error } = await supabase
-          .from('tooling')
+          .from('tooling_info')
           .insert({
             inventory_number: body.inventory_number || '',
             production_unit: body.production_unit || '',
@@ -811,7 +718,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         if (!toolingId) return jsonResponse({ success: false, error: 'Invalid tooling ID' }, 400)
         const body = await readBody()
         const { data, error } = await supabase
-          .from('tooling')
+          .from('tooling_info')
           .update(body)
           .eq('id', toolingId)
           .select('*')
@@ -820,14 +727,26 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true, data })
       }
       
-      // Batch delete tooling
+      // Batch delete tooling (cascade children)
       if (method === 'POST' && path === '/api/tooling/batch-delete') {
         const body = await readBody()
         const { ids } = body
         if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
-        
+
+        const { error: partsErr } = await supabase
+          .from('parts_info')
+          .delete()
+          .in('tooling_id', ids)
+        if (partsErr) return jsonResponse({ success: false, error: partsErr.message }, 500)
+
+        const { error: childErr } = await supabase
+          .from('child_items')
+          .delete()
+          .in('tooling_id', ids)
+        if (childErr) return jsonResponse({ success: false, error: childErr.message }, 500)
+
         const { error } = await supabase
-          .from('tooling')
+          .from('tooling_info')
           .delete()
           .in('id', ids)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -841,7 +760,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         if (!ids || !Array.isArray(ids)) return jsonResponse({ success: false, error: 'Invalid IDs' }, 400)
         
         const { error } = await supabase
-          .from('parts')
+          .from('parts_info')
           .delete()
           .in('id', ids)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -875,23 +794,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         // 兼容字段名
         const items = (data || []).map((x: any) => ({ id: x.id, recorder: x.recorder }))
         return jsonResponse({ data: items })
-      }
-
-      // Tooling users basic
-      if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
-        const { data, error } = await supabase.from('users').select('id,real_name,phone,workshop,team,aux_coeff,proc_coeff,capability_coeff')
-        if (error) return jsonResponse({ success: false, error: error.message })
-        const items = (data || []).map((u: any) => ({
-          id: String(u.id ?? u.uuid ?? ''),
-          real_name: String(u.real_name ?? ''),
-          phone: String(u.phone ?? ''),
-          workshop: String(u.workshop ?? ''),
-          team: String(u.team ?? ''),
-          aux_coeff: Number(u.aux_coeff ?? 1),
-          proc_coeff: Number(u.proc_coeff ?? 1),
-          capability_coeff: Number(u.capability_coeff ?? 1)
-        }))
-        return jsonResponse({ success: true, items })
       }
 
       // Tooling parts by toolingId
@@ -937,6 +839,43 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true, data })
       }
 
+      // Parts update/delete by id
+      const partIdMatch = path.match(/^\/api\/tooling\/parts\/([^\/]+)$/)
+      if (partIdMatch && method === 'PUT') {
+        const id = partIdMatch[1]
+        const body = await readBody()
+        const payload: any = {}
+        if (Object.prototype.hasOwnProperty.call(body, 'part_inventory_number')) payload.part_inventory_number = String(body.part_inventory_number ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'part_drawing_number')) payload.part_drawing_number = String(body.part_drawing_number ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'part_name')) payload.part_name = String(body.part_name ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'part_quantity')) {
+          const num = typeof body.part_quantity === 'number' ? body.part_quantity : Number(body.part_quantity)
+          payload.part_quantity = (body.part_quantity === '' || body.part_quantity === null || Number.isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'material_id')) payload.material_id = body.material_id ?? null
+        if (Object.prototype.hasOwnProperty.call(body, 'material_source_id')) {
+          const ms = body.material_source_id
+          const msNum = ms === null || ms === undefined || String(ms).trim() === '' ? null : Number(ms)
+          payload.material_source_id = typeof msNum === 'number' && !Number.isNaN(msNum) ? msNum : null
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'part_category')) payload.part_category = String(body.part_category ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'specifications')) payload.specifications = body.specifications ?? {}
+        if (Object.prototype.hasOwnProperty.call(body, 'remarks')) payload.remarks = String(body.remarks ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'weight')) {
+          const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
+          payload.weight = Number.isNaN(w) ? null : w
+        }
+        const { error } = await supabase.from('parts_info').update(payload).eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+      if (partIdMatch && method === 'DELETE') {
+        const id = partIdMatch[1]
+        const { error } = await supabase.from('parts_info').delete().eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+
       // Child items by toolingId
       const childMatch = path.match(/^\/api\/tooling\/([^\/]+)\/child-items$/)
       if (method === 'GET' && childMatch) {
@@ -962,6 +901,33 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const { data, error } = await supabase.from('child_items').insert(payload).select('*').single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true, data })
+      }
+
+      // Child items update/delete by id
+      const childIdMatch = path.match(/^\/api\/tooling\/child-items\/([^\/]+)$/)
+      if (childIdMatch && method === 'PUT') {
+        const id = childIdMatch[1]
+        const body = await readBody()
+        const payload: any = {}
+        if (Object.prototype.hasOwnProperty.call(body, 'name')) payload.name = String(body.name ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'model')) payload.model = String(body.model ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'quantity')) {
+          const num = typeof body.quantity === 'number' ? body.quantity : Number(body.quantity)
+          payload.quantity = (body.quantity === '' || body.quantity === null || Number.isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'unit')) payload.unit = String(body.unit ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'required_date')) payload.required_date = String(body.required_date ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'remark')) payload.remark = String(body.remark ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'type')) payload.type = String(body.type ?? '') || null
+        const { error } = await supabase.from('child_items').update(payload).eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+      if (childIdMatch && method === 'DELETE') {
+        const id = childIdMatch[1]
+        const { error } = await supabase.from('child_items').delete().eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
       }
 
       // Work hours

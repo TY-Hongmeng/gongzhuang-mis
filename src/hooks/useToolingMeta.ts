@@ -37,8 +37,22 @@ export const useToolingMeta = () => {
       setToolingCategories(categoryNames)
       
       const mats = getItems(materialsRes)
-        .map((x: any) => ({id: x.id, name: x.name, density: x.density}))
+        .map((x: any) => ({id: x.id, name: x.name, density: x.density, prices: []}))
         .filter((x: any) => x.name)
+      
+      // 并行获取所有材料的价格信息
+      await Promise.all(mats.map(async (mat: any) => {
+        try {
+          const pricesRes = await fetch(`/api/materials/${mat.id}/prices`)
+          if (pricesRes.ok) {
+            const pricesJson = await pricesRes.json()
+            mat.prices = pricesJson.data || []
+          }
+        } catch (e) {
+          console.error(`Failed to fetch prices for material ${mat.id}`, e)
+        }
+      }))
+
       setMaterials(mats)
       
       const pts = getItems(partTypesRes)
