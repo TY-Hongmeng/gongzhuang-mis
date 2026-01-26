@@ -123,6 +123,7 @@ export function installApiInterceptor() {
         }
         headers.set('apikey', anon)
         headers.set('authorization', `Bearer ${anon}`)
+        headers.set('Authorization', `Bearer ${anon}`)
         console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
         const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
         const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
@@ -136,9 +137,6 @@ export function installApiInterceptor() {
         }
         urlStr = urlStr.replace('/rest/v1/tooling?', '/rest/v1/tooling_info?')
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
-        if (/\/rest\/v1\/users(\?|$)/.test(urlStr)) {
-          return jsonResponse({ success: false, error: 'users 表不开放前端访问' }, 403)
-        }
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
