@@ -9,7 +9,7 @@ export interface BackupData {
 }
 
 export class DataBackupManager {
-  private static readonly BACKUP_VERSION = 'V1.0.8'
+  private static readonly BACKUP_VERSION = 'V1.0.9'
 
   static createBackup(tooling: any[], parts: any[], childItems: any[]): BackupData {
     return {
