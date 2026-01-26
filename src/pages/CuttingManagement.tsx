@@ -367,20 +367,18 @@ const CuttingManagement: React.FC = () => {
         
         // 对数据进行分组（包含编制信息）
         console.log('开始分组处理...');
-        // 技术员仅显示同技术组人员（使用本地映射，避免异步setState导致首次过滤失效）
+        // 技术员仅显示同技术组人员；当无法识别技术组或未分配时不过滤
         if (isTechnician) {
           const myTeamLocal = String(localNameToTeam[String(user?.real_name || '')] || '').trim()
           if (myTeamLocal) {
             items = items.filter((order: any) => {
               const rawResp = String(responsiblePersonMap[order.tooling_id] || '').trim()
-              if (!rawResp || rawResp === '未分配') return false
               const byIdName = localIdToName[rawResp]
               const name = String(byIdName || rawResp).trim()
               const team = String(localNameToTeam[name] || '').trim()
-              return !!team && team === myTeamLocal
+              if (!team) return true
+              return team === myTeamLocal
             })
-          } else {
-            items = []
           }
         }
         const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap);
