@@ -28,7 +28,7 @@ async function testCuttingOrdersAPI() {
         part_name: '测试零件',
         specifications: '100x200x300',
         part_quantity: 10,
-        heat_treatment: false,
+        remarks: '',
         material_source: '火切',
         created_date: new Date().toISOString(),
         tooling_id: '00000000-0000-0000-0000-000000000000',

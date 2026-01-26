@@ -68,8 +68,8 @@ const testSimpleFix = async () => {
         part_quantity: 1,
         part_category: '板料',
         specifications: {},
-        weight: 0,
-        heat_treatment: false
+      weight: 0,
+      remarks: ''
         // 注意：没有包含空的material_id和material_source_id
       })
     });

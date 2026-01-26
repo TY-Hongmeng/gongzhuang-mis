@@ -51,7 +51,7 @@ export const useToolingOperations = () => {
           specifications: part.specifications_text || '无规格',
           part_quantity: parseInt(String(part.part_quantity || 0), 10),
           total_weight: totalWeight,
-          heat_treatment: part.remarks === '需调质',
+          remarks: (typeof part.remarks === 'string' && part.remarks.trim()) ? String(part.remarks).trim() : '',
           material_source: materialSourceName,
           created_date: new Date().toISOString(),
           tooling_id: part.tooling_id || null,

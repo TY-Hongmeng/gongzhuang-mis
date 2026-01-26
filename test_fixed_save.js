@@ -64,7 +64,7 @@ const testFixedSaveFunction = async () => {
       part_category: '板料',
       specifications: {},
       weight: 0,
-      heat_treatment: false
+      remarks: ''
       // 注意：没有包含 material_id 和 material_source_id
     };
     
@@ -106,7 +106,7 @@ const testFixedSaveFunction = async () => {
       part_category: '板料',
       specifications: {},
       weight: 1.5,
-      heat_treatment: false
+      remarks: ''
     };
     
     const updateWithMaterialResponse = await fetch(`http://localhost:3020/api/tooling/parts/${part.id}`, {

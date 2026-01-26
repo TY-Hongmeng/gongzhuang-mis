@@ -55,7 +55,7 @@ const testFrontendDataLoading = async () => {
         part_category: x.part_category || '',
         specifications: x.specifications || {},
         weight: x.weight || 0,
-        heat_treatment: x.heat_treatment || false
+        remarks: x.remarks || ''
       };
     });
     
