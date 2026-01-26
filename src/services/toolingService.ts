@@ -308,12 +308,25 @@ export const batchDeleteToolingChildItems = async (ids: string[]) => {
 // 生成下料单
 export const generateCuttingOrders = async (orders: any[]) => {
   try {
+    const normalized = Array.isArray(orders) ? orders.map((raw: any) => {
+      const o: any = { ...raw }
+      if (typeof o.remarks === 'string' && o.remarks.trim()) {
+        o.remarks = String(o.remarks).trim()
+      } else if (o.heat_treatment) {
+        o.remarks = '需调质'
+      }
+      if ('heat_treatment' in o) {
+        delete o.heat_treatment
+      }
+      return o
+    }) : []
+
     if (supabase) {
-      const { error } = await supabase.from('cutting_orders').insert(orders)
+      const { error } = await supabase.from('cutting_orders').insert(normalized)
       if (error) throw error
       return { success: true }
     }
-    const response = await fetch('/api/cutting-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
+    const response = await fetch('/api/cutting-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: normalized }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
   } catch (error) {

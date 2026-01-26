@@ -21,7 +21,7 @@ interface CuttingOrder {
   specifications: string;
   part_quantity: number;
   total_weight?: number | string;
-  heat_treatment: boolean;
+  remarks?: string;
   material_source: string;
   created_date: string;
   tooling_id: string;
@@ -591,15 +591,18 @@ const CuttingManagement: React.FC = () => {
     },
     {
       title: '调质',
-      dataIndex: 'heat_treatment',
-      key: 'heat_treatment',
+      dataIndex: 'remarks',
+      key: 'remarks',
       width: 80,
       align: 'center',
-      render: (heat_treatment: boolean) => (
-        <Tag color={heat_treatment ? 'green' : 'default'}>
-          {heat_treatment ? '是' : '否'}
-        </Tag>
-      )
+      render: (remarks: string | undefined) => {
+        const isHeat = typeof remarks === 'string' && remarks.includes('需调质')
+        return (
+          <Tag color={isHeat ? 'green' : 'default'}>
+            {isHeat ? '是' : '否'}
+          </Tag>
+        )
+      }
     }
   ];
 
@@ -641,7 +644,7 @@ const CuttingManagement: React.FC = () => {
         o.specifications,
         o.part_quantity,
         Number.isFinite(weightNum) ? Number(weightNum.toFixed(3)) : '',
-        o.heat_treatment ? '是' : '否'
+        (typeof o.remarks === 'string' && o.remarks.includes('需调质')) ? '是' : '否'
       ])
     })
     const ws = XLSX.utils.aoa_to_sheet(aoa)
