@@ -5,7 +5,7 @@ import { installApiInterceptor } from './utils/api'
 import './index.css'
 
 installApiInterceptor()
-console.log('App Version: v1.1.6')
+console.log('App Version: v1.1.8')
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

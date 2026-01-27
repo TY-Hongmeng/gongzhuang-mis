@@ -13,3 +13,5 @@ dist/
 # Coverage
 coverage/
 
+# Windows reserved name artifact
+NUL

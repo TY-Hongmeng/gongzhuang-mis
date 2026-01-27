@@ -963,11 +963,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
+        const startTime = Date.now()
         let q = supabase.from('cutting_orders').select('*')
+        q = q.eq('is_deleted', false)
         q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error } = await q
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })
+        const items = data || []
+        return jsonResponse({ success: true, items, total: items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
       }
 
       // Cutting orders create
