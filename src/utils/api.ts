@@ -97,14 +97,10 @@ export function installApiInterceptor() {
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
-      // Intercept Supabase Functions only in非GitHub Pages环境，GitHub Pages直接请求 Functions
       if (/functions\.supabase\.co\/functions\/v1\/api\//.test(cleanUrl)) {
-        const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-        if (!isGhPages) {
-          const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
-          const path = m ? m[1] : ''
-          if (path) return await fetchWithFallback(path, init)
-        }
+        const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
+        const path = m ? m[1] : ''
+        if (path) return await fetchWithFallback(path, init)
       }
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
@@ -1041,6 +1037,48 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const { data, error } = await q
         if (error) return jsonResponse({ data: [] })
         return jsonResponse({ data: data || [] })
+      }
+
+      if (method === 'POST' && path === '/api/purchase-orders') {
+        const body = await readBody()
+        const rows = Array.isArray(body?.orders) ? body.orders : []
+        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少采购单数据' }, 400)
+        const nowIso = new Date().toISOString()
+        const normalized = rows.map((raw: any) => ({
+          inventory_number: String(raw.inventory_number || '').trim(),
+          project_name: String(raw.project_name || '').trim(),
+          part_name: String(raw.part_name || '').trim(),
+          part_quantity: Number(raw.part_quantity || 0),
+          unit: String(raw.unit || '').trim(),
+          model: raw.model ?? null,
+          supplier: raw.supplier ?? null,
+          required_date: raw.demand_date || raw.required_date || null,
+          remark: raw.remark ?? null,
+          weight: raw.weight ?? null,
+          total_price: raw.total_price ?? null,
+          tooling_id: raw.tooling_id || null,
+          child_item_id: raw.child_item_id || null,
+          part_id: raw.part_id || null,
+          status: String(raw.status || 'pending'),
+          created_date: raw.created_date || nowIso,
+          updated_date: nowIso
+        })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
+        const withPartId = normalized.filter((r: any) => r.part_id)
+        const withChildId = normalized.filter((r: any) => r.child_item_id && !r.part_id)
+        const others = normalized.filter((r: any) => !r.part_id && !r.child_item_id)
+        if (withPartId.length) {
+          const { error } = await supabase.from('purchase_orders').upsert(withPartId, { onConflict: 'part_id' })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        }
+        if (withChildId.length) {
+          const { error } = await supabase.from('purchase_orders').upsert(withChildId, { onConflict: 'child_item_id' })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        }
+        if (others.length) {
+          const { error } = await supabase.from('purchase_orders').insert(others)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        }
+        return jsonResponse({ success: true })
       }
 
       // Workshops & teams (organization data)
