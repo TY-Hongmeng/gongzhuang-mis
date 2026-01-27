@@ -964,31 +964,69 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
         const startTime = Date.now()
-        let q = supabase.from('cutting_orders').select('*')
+        const selectCols = [
+          'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','part_id'
+        ].join(',')
+        let q = supabase.from('cutting_orders').select(selectCols)
         q = q.eq('is_deleted', false)
         q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error } = await q
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })
-        const items = data || []
+        let items = (data || []) as any[]
+        const missingProj = items.filter(r => !r.project_name || r.project_name === '未命名项目')
+        if (missingProj.length > 0) {
+          const ids = Array.from(new Set(missingProj.map(r => r.tooling_id).filter(Boolean)))
+          if (ids.length) {
+            const { data: tinfo } = await supabase.from('tooling_info').select('id, project_name').in('id', ids)
+            const map = new Map<string, string>()
+            ;(tinfo || []).forEach(t => map.set(String((t as any).id), String((t as any).project_name || '')))
+            items = items.map(r => ({
+              ...r,
+              project_name: (r.project_name && r.project_name !== '未命名项目') ? r.project_name : (map.get(String(r.tooling_id)) || r.project_name || '')
+            }))
+          }
+        }
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
       }
 
-      // Cutting orders create
+      // Cutting orders create (optimize & normalize)
       if (method === 'POST' && path === '/api/cutting-orders') {
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
-        const { error } = await supabase.from('cutting_orders').insert(rows)
+        const nowIso = new Date().toISOString()
+        const normalized = rows.map((raw: any) => {
+          const payload: any = {
+            inventory_number: String(raw.inventory_number || '').trim(),
+            project_name: String(raw.project_name || '').trim(),
+            part_drawing_number: String(raw.part_drawing_number || ''),
+            part_name: String(raw.part_name || '').trim(),
+            specifications: raw.specifications ?? '',
+            part_quantity: Number(raw.part_quantity || 0),
+            material_source: String(raw.material_source || '').trim() || '锯切',
+            created_date: raw.created_date || nowIso,
+            material: raw.material || '',
+            total_weight: raw.total_weight ?? null,
+            tooling_id: raw.tooling_id || null,
+            part_id: raw.part_id || null,
+            tooling_info_id: raw.tooling_id || null,
+            is_deleted: false,
+          }
+          if (typeof raw.remarks === 'string' && raw.remarks.trim()) payload.remarks = String(raw.remarks).trim()
+          else if (raw.heat_treatment) payload.remarks = '需调质'
+          return payload
+        }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
+        const { error } = await supabase.from('cutting_orders').upsert(normalized, { onConflict: 'inventory_number' })
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
       }
 
-      // Cutting orders batch delete
+      // Cutting orders batch delete -> soft delete for speed
       if (method === 'POST' && path === '/api/cutting-orders/batch-delete') {
         const body = await readBody()
         const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
         if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
-        const { error } = await supabase.from('cutting_orders').delete().in('id', ids)
+        const { error } = await supabase.from('cutting_orders').update({ is_deleted: true, updated_date: new Date().toISOString() }).in('id', ids)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
       }
