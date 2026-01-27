@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Table, Button, message, DatePicker, Select, Popconfirm, Card, Row, Col, Space, Tag, Input, Divider, Typography } from 'antd';
 import { DeleteOutlined, ReloadOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx'
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -34,6 +34,7 @@ interface CuttingOrder {
 
 const CuttingManagement: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuthStore()
   const [userTeamsMap, setUserTeamsMap] = useState<Record<string, string>>({})
   const [idToNameMap, setIdToNameMap] = useState<Record<string, string>>({})
@@ -60,6 +61,7 @@ const CuttingManagement: React.FC = () => {
   });
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
+  const locationKeyRef = useRef(location.key);
 
   // 自动排序函数 - 根据规格进行智能排序
   const sortOrdersBySpecifications = (orders: CuttingOrder[]) => {
@@ -445,6 +447,14 @@ const CuttingManagement: React.FC = () => {
     if (isInitialMount.current) {
       fetchCuttingOrders(1, 10000);  // 获取所有数据
       isInitialMount.current = false;
+      locationKeyRef.current = location.key;
+      return;
+    }
+    
+    // 路由变化时刷新数据（例如从ToolingInfo导航过来）
+    if (location.key !== locationKeyRef.current) {
+      fetchCuttingOrders(1, 10000);  // 获取所有数据
+      locationKeyRef.current = location.key;
       return;
     }
     
@@ -462,7 +472,7 @@ const CuttingManagement: React.FC = () => {
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [filters, pagination.pageSize]);
+  }, [filters, pagination.pageSize, location.key]);
 
   const handleDelete = async (id: string) => {
     try {
