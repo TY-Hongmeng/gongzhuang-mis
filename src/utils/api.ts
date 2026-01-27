@@ -39,13 +39,18 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     return out
   }
   const base = normalizeBase(rawBase)
+  const makeFnUrl = (b: string, p: string): string => {
+    const bb = (b || '').replace(/\/$/, '')
+    const pp = p.startsWith('/') ? p : `/${p}`
+    if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
+    return bb + pp
+  }
   const abs = (() => {
     if (cleanUrl.startsWith('/')) {
       // 在本地或非 GitHub Pages 环境下，直接使用相对路径以走 Vite 代理到本地后端
       const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
       if (!isGhPages && isLocal) return cleanUrl
-      // 在 GitHub Pages 等静态环境下，转向 Supabase Functions
-      return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
+      return base ? makeFnUrl(base, cleanUrl) : window.location.origin + cleanUrl
     }
     return cleanUrl
   })()
@@ -1001,7 +1006,13 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return out
         }
         const base = normalizeBase(rawBase)
-        const resp = await fetch(`${base}/api/cutting-orders`, {
+        const makeFnUrl = (b: string, p: string): string => {
+          const bb = (b || '').replace(/\/$/, '')
+          const pp = p.startsWith('/') ? p : `/${p}`
+          if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
+          return bb + pp
+        }
+        const resp = await fetch(makeFnUrl(base, '/api/cutting-orders'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orders: rows })
@@ -1048,7 +1059,13 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return out
         }
         const base = normalizeBase(rawBase)
-        const resp = await fetch(`${base}/api/purchase-orders`, {
+        const makeFnUrl = (b: string, p: string): string => {
+          const bb = (b || '').replace(/\/$/, '')
+          const pp = p.startsWith('/') ? p : `/${p}`
+          if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
+          return bb + pp
+        }
+        const resp = await fetch(makeFnUrl(base, '/api/purchase-orders'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orders: rows })
