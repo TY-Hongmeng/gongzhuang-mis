@@ -136,6 +136,10 @@ export async function supabaseQuery(
       }
     })
   }
+  // 默认软删除过滤：cutting_orders 默认只查询未删除记录
+  if (table === 'cutting_orders' && !(options.filters && 'is_deleted' in options.filters)) {
+    query = query.eq('is_deleted', false)
+  }
   
   // 添加排序
   if (options.orderBy) {
