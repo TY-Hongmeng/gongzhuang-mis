@@ -192,9 +192,83 @@ serve(async (req) => {
     const body = await json(req)
     const rows = Array.isArray(body.orders) ? body.orders : []
     if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: corsHeaders })
-    const { error } = await supabase.from("purchase_orders").insert(rows)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
-    return Response.json({ success: true }, { headers: baseHeaders })
+    const nowIso = new Date().toISOString()
+    const normalized = rows.map((raw: any) => ({
+      inventory_number: String(raw.inventory_number || '').trim(),
+      project_name: String(raw.project_name || '').trim(),
+      part_name: String(raw.part_name || '').trim(),
+      part_quantity: Number(raw.part_quantity || 0),
+      unit: String(raw.unit || '').trim(),
+      model: raw.model ?? null,
+      supplier: raw.supplier ?? null,
+      required_date: raw.required_date || null,
+      remark: raw.remark ?? null,
+      weight: raw.weight ?? null,
+      total_price: raw.total_price ?? null,
+      created_date: raw.created_date || nowIso,
+      updated_date: nowIso,
+      tooling_id: raw.tooling_id || null,
+      child_item_id: raw.child_item_id || null,
+      part_id: raw.part_id || null,
+      status: String(raw.status || 'pending')
+    })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
+    let inserted = 0, updated = 0, skipped = 0
+    for (const po of normalized) {
+      let existing: any = null
+      if (po.part_id) {
+        const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('part_id', po.part_id).limit(1)
+        existing = Array.isArray(data) && data[0] ? data[0] : null
+      } else if (po.child_item_id) {
+        const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('child_item_id', po.child_item_id).limit(1)
+        existing = Array.isArray(data) && data[0] ? data[0] : null
+      } else if (po.tooling_id && po.part_name) {
+        const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('tooling_id', po.tooling_id).eq('part_name', po.part_name).is('part_id', null).limit(1)
+        existing = Array.isArray(data) && data[0] ? data[0] : null
+      } else if (po.inventory_number) {
+        const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('inventory_number', po.inventory_number).limit(1)
+        existing = Array.isArray(data) && data[0] ? data[0] : null
+      }
+      if (existing && existing.id) {
+        const hasChanges = (
+          String(existing.inventory_number || '') !== String(po.inventory_number || '') ||
+          String(existing.project_name || '') !== String(po.project_name || '') ||
+          String(existing.part_name || '') !== String(po.part_name || '') ||
+          Number(existing.part_quantity || 0) !== Number(po.part_quantity || 0) ||
+          String(existing.unit || '') !== String(po.unit || '') ||
+          String(existing.model || '') !== String(po.model || '') ||
+          String(existing.supplier || '') !== String(po.supplier || '') ||
+          String(existing.required_date || '') !== String(po.required_date || '') ||
+          String(existing.remark || '') !== String(po.remark || '') ||
+          Number(existing.weight ?? 0) !== Number(po.weight ?? 0) ||
+          Number(existing.total_price ?? 0) !== Number(po.total_price ?? 0)
+        )
+        if (hasChanges) {
+          const { error } = await supabase.from('purchase_orders').update({
+            inventory_number: po.inventory_number,
+            project_name: po.project_name,
+            part_name: po.part_name,
+            part_quantity: po.part_quantity,
+            unit: po.unit,
+            model: po.model,
+            supplier: po.supplier,
+            required_date: po.required_date,
+            remark: po.remark,
+            updated_date: nowIso,
+            weight: po.weight,
+            total_price: po.total_price
+          }).eq('id', existing.id)
+          if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+          updated++
+        } else {
+          skipped++
+        }
+      } else {
+        const { error } = await supabase.from('purchase_orders').insert(po)
+        if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+        inserted++
+      }
+    }
+    return Response.json({ success: true, stats: { inserted, updated, skipped } }, { headers: baseHeaders })
   }
 
   // Purchase Orders - batch delete
