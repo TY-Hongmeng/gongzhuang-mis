@@ -1063,22 +1063,49 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           created_date: raw.created_date || nowIso,
           updated_date: nowIso
         })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
-        const withPartId = normalized.filter((r: any) => r.part_id)
-        const withChildId = normalized.filter((r: any) => r.child_item_id && !r.part_id)
-        const others = normalized.filter((r: any) => !r.part_id && !r.child_item_id)
-        if (withPartId.length) {
-          const { error } = await supabase.from('purchase_orders').upsert(withPartId, { onConflict: 'part_id' })
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+
+        let inserted = 0, updated = 0, skipped = 0
+        for (const po of normalized) {
+          try {
+            let existing: any = null
+            if (po.part_id) {
+              const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('part_id', po.part_id).limit(1)
+              existing = Array.isArray(data) && data[0] ? data[0] : null
+            } else if (po.child_item_id) {
+              const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('child_item_id', po.child_item_id).limit(1)
+              existing = Array.isArray(data) && data[0] ? data[0] : null
+            }
+            if (existing && existing.id) {
+              const hasChanges = (
+                String(existing.inventory_number || '') !== String(po.inventory_number || '') ||
+                String(existing.project_name || '') !== String(po.project_name || '') ||
+                String(existing.part_name || '') !== String(po.part_name || '') ||
+                Number(existing.part_quantity || 0) !== Number(po.part_quantity || 0) ||
+                String(existing.unit || '') !== String(po.unit || '') ||
+                String(existing.model || '') !== String(po.model || '') ||
+                String(existing.supplier || '') !== String(po.supplier || '') ||
+                String(existing.required_date || '') !== String(po.required_date || '') ||
+                String(existing.remark || '') !== String(po.remark || '') ||
+                Number(existing.weight ?? 0) !== Number(po.weight ?? 0) ||
+                Number(existing.total_price ?? 0) !== Number(po.total_price ?? 0)
+              )
+              if (hasChanges) {
+                const { error } = await supabase.from('purchase_orders').update({ ...po, updated_date: nowIso }).eq('id', existing.id)
+                if (error) return jsonResponse({ success: false, error: error.message }, 500)
+                updated++
+              } else {
+                skipped++
+              }
+            } else {
+              const { error } = await supabase.from('purchase_orders').insert(po)
+              if (error) return jsonResponse({ success: false, error: error.message }, 500)
+              inserted++
+            }
+          } catch (e: any) {
+            return jsonResponse({ success: false, error: e?.message || '插入失败' }, 500)
+          }
         }
-        if (withChildId.length) {
-          const { error } = await supabase.from('purchase_orders').upsert(withChildId, { onConflict: 'child_item_id' })
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        }
-        if (others.length) {
-          const { error } = await supabase.from('purchase_orders').insert(others)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        }
-        return jsonResponse({ success: true })
+        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
       }
 
       // Workshops & teams (organization data)
