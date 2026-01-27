@@ -265,20 +265,31 @@ const CuttingManagement: React.FC = () => {
       params.append('pageSize', pageSize.toString());
       
       if (filters.material_source) {
-        params.append('material_source', filters.material_source);
+        params.append('status', filters.material_source);
       }
       if (filters.dateRange && filters.dateRange.length === 2) {
-        params.append('start_date', dayjs(filters.dateRange[0]).format('YYYY-MM-DD'));
-        params.append('end_date', dayjs(filters.dateRange[1]).format('YYYY-MM-DD'));
+        params.append('startDate', dayjs(filters.dateRange[0]).format('YYYY-MM-DD'));
+        params.append('endDate', dayjs(filters.dateRange[1]).format('YYYY-MM-DD'));
       }
       if (filters.search) {
-        params.append('search', filters.search);
+        params.append('keyword', filters.search);
       }
 
       const url = `/api/cutting-orders?${params.toString()}&_ts=${Date.now()}`;
       console.log('Requesting URL:', url);
       const response = await fetch(url);
-      const result = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      let result;
+      try {
+        result = await response.json();
+        console.log('Response data:', result);
+      } catch (jsonError) {
+        console.error('JSON parsing error:', jsonError);
+        console.error('Response text:', await response.text());
+        throw new Error('解析响应数据失败');
+      }
 
       if (result.success) {
         console.log('=== API数据接收完成 ===');
