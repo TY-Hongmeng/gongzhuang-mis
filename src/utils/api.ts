@@ -1035,73 +1035,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: data || [] })
       }
 
+      // 重要：创建采购单需要服务端权限，客户端不处理POST
       if (method === 'POST' && path === '/api/purchase-orders') {
-        const body = await readBody()
-        const rows = Array.isArray(body?.orders) ? body.orders : []
-        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少采购单数据' }, 400)
-        const nowIso = new Date().toISOString()
-        const normalized = rows.map((raw: any) => ({
-          inventory_number: String(raw.inventory_number || '').trim(),
-          project_name: String(raw.project_name || '').trim(),
-          part_name: String(raw.part_name || '').trim(),
-          part_quantity: Number(raw.part_quantity || 0),
-          unit: String(raw.unit || '').trim(),
-          model: raw.model ?? null,
-          supplier: raw.supplier ?? null,
-          required_date: raw.demand_date || raw.required_date || null,
-          remark: raw.remark ?? null,
-          weight: raw.weight ?? null,
-          total_price: raw.total_price ?? null,
-          tooling_id: raw.tooling_id || null,
-          child_item_id: raw.child_item_id || null,
-          part_id: raw.part_id || null,
-          status: String(raw.status || 'pending'),
-          created_date: raw.created_date || nowIso,
-          updated_date: nowIso
-        })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
-
-        let inserted = 0, updated = 0, skipped = 0
-        for (const po of normalized) {
-          try {
-            let existing: any = null
-            if (po.part_id) {
-              const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('part_id', po.part_id).limit(1)
-              existing = Array.isArray(data) && data[0] ? data[0] : null
-            } else if (po.child_item_id) {
-              const { data } = await supabase.from('purchase_orders').select('id,inventory_number,project_name,part_name,part_quantity,unit,model,supplier,required_date,remark,weight,total_price').eq('child_item_id', po.child_item_id).limit(1)
-              existing = Array.isArray(data) && data[0] ? data[0] : null
-            }
-            if (existing && existing.id) {
-              const hasChanges = (
-                String(existing.inventory_number || '') !== String(po.inventory_number || '') ||
-                String(existing.project_name || '') !== String(po.project_name || '') ||
-                String(existing.part_name || '') !== String(po.part_name || '') ||
-                Number(existing.part_quantity || 0) !== Number(po.part_quantity || 0) ||
-                String(existing.unit || '') !== String(po.unit || '') ||
-                String(existing.model || '') !== String(po.model || '') ||
-                String(existing.supplier || '') !== String(po.supplier || '') ||
-                String(existing.required_date || '') !== String(po.required_date || '') ||
-                String(existing.remark || '') !== String(po.remark || '') ||
-                Number(existing.weight ?? 0) !== Number(po.weight ?? 0) ||
-                Number(existing.total_price ?? 0) !== Number(po.total_price ?? 0)
-              )
-              if (hasChanges) {
-                const { error } = await supabase.from('purchase_orders').update({ ...po, updated_date: nowIso }).eq('id', existing.id)
-                if (error) return jsonResponse({ success: false, error: error.message }, 500)
-                updated++
-              } else {
-                skipped++
-              }
-            } else {
-              const { error } = await supabase.from('purchase_orders').insert(po)
-              if (error) return jsonResponse({ success: false, error: error.message }, 500)
-              inserted++
-            }
-          } catch (e: any) {
-            return jsonResponse({ success: false, error: e?.message || '插入失败' }, 500)
-          }
-        }
-        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
+        return null
       }
 
       // Workshops & teams (organization data)
