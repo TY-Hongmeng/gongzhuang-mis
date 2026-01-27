@@ -990,54 +990,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
-        const nowIso = new Date().toISOString()
-        const normalized = rows.map((raw: any) => {
-          const payload: any = {
-            inventory_number: String(raw.inventory_number || '').trim(),
-            project_name: String(raw.project_name || '').trim(),
-            part_drawing_number: String(raw.part_drawing_number || ''),
-            part_name: String(raw.part_name || '').trim(),
-            specifications: raw.specifications ?? '',
-            part_quantity: Number(raw.part_quantity || 0),
-            material_source: String(raw.material_source || '').trim() || '锯切',
-            created_date: raw.created_date || nowIso,
-            material: raw.material || '',
-            total_weight: raw.total_weight ?? null,
-            tooling_id: raw.tooling_id || null,
-            part_id: raw.part_id || null,
-            tooling_info_id: raw.tooling_id || null,
-            is_deleted: false,
-          }
-          if (typeof raw.remarks === 'string' && raw.remarks.trim()) payload.remarks = String(raw.remarks).trim()
-          else if (raw.heat_treatment) payload.remarks = '需调质'
-          return payload
-        }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
-        let stats = { inserted: 0, updated: 0, skipped: 0 }
-        let needFallback = false
-        for (const payload of normalized) {
-          const inv = String(payload.inventory_number)
-          const { data: existing, error: exErr } = await supabase
-            .from('cutting_orders')
-            .select('id')
-            .eq('inventory_number', inv)
-            .limit(1)
-          if (exErr) { needFallback = true; break }
-          const has = Array.isArray(existing) && existing.length > 0
-          if (has) {
-            const id = (existing as any)[0].id
-            const { error: upErr } = await supabase
-              .from('cutting_orders')
-              .update({ ...payload, updated_date: nowIso })
-              .eq('id', id)
-            if (upErr) { needFallback = true; break }
-            stats.updated++
-          } else {
-            const { error: inErr } = await supabase.from('cutting_orders').insert(payload)
-            if (inErr) { needFallback = true; break }
-            stats.inserted++
-          }
-        }
-        if (!needFallback) return jsonResponse({ success: true, stats })
+        // 统一转发到 Functions，避免前端 REST 写入导致的 401/RLS 与控制台噪音
         const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
         const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
         const normalizeBase = (b: string): string => {
@@ -1051,7 +1004,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const resp = await fetch(`${base}/api/cutting-orders`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orders: normalized })
+          body: JSON.stringify({ orders: rows })
         })
         if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
         const js = await resp.json()
@@ -1084,81 +1037,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少采购单数据' }, 400)
-        const nowIso = new Date().toISOString()
-        const normalized = rows.map((raw: any) => ({
-          inventory_number: String(raw.inventory_number || '').trim(),
-          project_name: String(raw.project_name || '').trim(),
-          part_name: String(raw.part_name || '').trim(),
-          part_quantity: Number(raw.part_quantity || 0),
-          unit: String(raw.unit || '').trim(),
-          model: raw.model ?? null,
-          supplier: raw.supplier ?? null,
-          required_date: raw.demand_date || raw.required_date || null,
-          remark: raw.remark ?? null,
-          weight: raw.weight ?? null,
-          total_price: raw.total_price ?? null,
-          tooling_id: raw.tooling_id || null,
-          child_item_id: raw.child_item_id || null,
-          part_id: raw.part_id || null,
-          status: String(raw.status || 'pending'),
-          created_date: raw.created_date || nowIso,
-          updated_date: nowIso
-        })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
-
-        let stats = { inserted: 0, updated: 0, skipped: 0 }
-        let needFallback = false
-        for (const payload of normalized) {
-          if (payload.part_id) {
-            const { data: existing, error: exErr } = await supabase
-              .from('purchase_orders')
-              .select('id')
-              .eq('part_id', payload.part_id)
-              .limit(1)
-            if (exErr) { needFallback = true; break }
-            const has = Array.isArray(existing) && existing.length > 0
-            if (has) {
-              const id = (existing as any)[0].id
-              const { error: upErr } = await supabase
-                .from('purchase_orders')
-                .update({ ...payload, updated_date: nowIso })
-                .eq('id', id)
-              if (upErr) { needFallback = true; break }
-              stats.updated++
-            } else {
-              const { error: inErr } = await supabase.from('purchase_orders').insert(payload)
-              if (inErr) { needFallback = true; break }
-              stats.inserted++
-            }
-            continue
-          }
-          if (payload.child_item_id) {
-            const { data: existing, error: exErr } = await supabase
-              .from('purchase_orders')
-              .select('id')
-              .eq('child_item_id', payload.child_item_id)
-              .limit(1)
-            if (exErr) { needFallback = true; break }
-            const has = Array.isArray(existing) && existing.length > 0
-            if (has) {
-              const id = (existing as any)[0].id
-              const { error: upErr } = await supabase
-                .from('purchase_orders')
-                .update({ ...payload, updated_date: nowIso })
-                .eq('id', id)
-              if (upErr) { needFallback = true; break }
-              stats.updated++
-            } else {
-              const { error: inErr } = await supabase.from('purchase_orders').insert(payload)
-              if (inErr) { needFallback = true; break }
-              stats.inserted++
-            }
-            continue
-          }
-          const { error: inErr } = await supabase.from('purchase_orders').insert(payload)
-          if (inErr) { needFallback = true; break }
-          stats.inserted++
-        }
-        if (!needFallback) return jsonResponse({ success: true, stats })
+        // 统一转发到 Functions，避免前端 REST 写入导致的 401/RLS 与控制台噪音
         const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
         const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
         const normalizeBase = (b: string): string => {
@@ -1172,7 +1051,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const resp = await fetch(`${base}/api/purchase-orders`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orders: normalized })
+          body: JSON.stringify({ orders: rows })
         })
         if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
         const js = await resp.json()
