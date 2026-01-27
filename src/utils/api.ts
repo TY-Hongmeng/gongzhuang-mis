@@ -89,18 +89,34 @@ export function installApiInterceptor() {
       let u = typeof input === 'string' ? input : String((input as any)?.url || '')
       const cleanUrl = u.replace(/[`]/g, '').trim()
       if (cleanUrl.startsWith('/api')) {
-        return await fetchWithFallback(cleanUrl, init)
+        const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
+        const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
+        const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
+        const normalizeBase = (b: string): string => {
+          if (!b) return ''
+          let out = b.replace(/\/$/, '')
+          if (/functions\.supabase\.co$/.test(out)) {
+            out += '/functions/v1'
+          } else if (/functions\.supabase\.co\/functions\/v1(\/)?$/.test(out)) {
+            out = out.replace(/\/$/, '')
+          }
+          return out
+        }
+        const base = normalizeBase(rawBase)
+        const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
+        const abs = (!isGhPages && isLocal) ? cleanUrl : (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
+        return await originalFetch(abs as any, init)
       }
       // Also intercept absolute calls to GitHub Pages domain
       if (/github\.io\/.+\/api\//.test(cleanUrl)) {
         const m = cleanUrl.match(/github\.io\/.+?(\/api\/.*)$/)
         const path = m ? m[1] : ''
-        if (path) return await fetchWithFallback(path, init)
+        if (path) return await originalFetch(path as any, init)
       }
       if (/functions\.supabase\.co\/functions\/v1\/api\//.test(cleanUrl)) {
         const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
         const path = m ? m[1] : ''
-        if (path) return await fetchWithFallback(path, init)
+        if (path) return await originalFetch(path as any, init)
       }
       // Inject API key for Supabase REST (avoid 400 No API key) and respect user auth
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
