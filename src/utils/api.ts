@@ -985,7 +985,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
       }
 
-      // Cutting orders create (optimize & normalize)
+      // Cutting orders create (manual check-update/insert, avoid upsert conflict requirement)
       if (method === 'POST' && path === '/api/cutting-orders') {
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
@@ -1012,9 +1012,31 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           else if (raw.heat_treatment) payload.remarks = '需调质'
           return payload
         }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
-        const { error } = await supabase.from('cutting_orders').upsert(normalized, { onConflict: 'inventory_number' })
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        return jsonResponse({ success: true })
+
+        try {
+          for (const payload of normalized) {
+            const inv = String(payload.inventory_number)
+            const { data: existing } = await supabase
+              .from('cutting_orders')
+              .select('id')
+              .eq('inventory_number', inv)
+              .limit(1)
+            const has = Array.isArray(existing) && existing.length > 0
+            if (has) {
+              const id = (existing as any)[0].id
+              await supabase
+                .from('cutting_orders')
+                .update({ ...payload, updated_date: nowIso })
+                .eq('id', id)
+            } else {
+              await supabase.from('cutting_orders').insert(payload)
+            }
+          }
+          return jsonResponse({ success: true })
+        } catch (e: any) {
+          const msg = String(e?.message || '创建下料单失败')
+          return jsonResponse({ success: false, error: msg }, 500)
+        }
       }
 
       // Cutting orders batch delete -> soft delete for speed
@@ -1063,22 +1085,52 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           created_date: raw.created_date || nowIso,
           updated_date: nowIso
         })).filter((p: any) => p.inventory_number && p.project_name && p.part_name && p.part_quantity > 0 && p.unit)
-        const withPartId = normalized.filter((r: any) => r.part_id)
-        const withChildId = normalized.filter((r: any) => r.child_item_id && !r.part_id)
-        const others = normalized.filter((r: any) => !r.part_id && !r.child_item_id)
-        if (withPartId.length) {
-          const { error } = await supabase.from('purchase_orders').upsert(withPartId, { onConflict: 'part_id' })
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+
+        try {
+          for (const payload of normalized) {
+            if (payload.part_id) {
+              const { data: existing } = await supabase
+                .from('purchase_orders')
+                .select('id')
+                .eq('part_id', payload.part_id)
+                .limit(1)
+              const has = Array.isArray(existing) && existing.length > 0
+              if (has) {
+                const id = (existing as any)[0].id
+                await supabase
+                  .from('purchase_orders')
+                  .update({ ...payload, updated_date: nowIso })
+                  .eq('id', id)
+              } else {
+                await supabase.from('purchase_orders').insert(payload)
+              }
+              continue
+            }
+            if (payload.child_item_id) {
+              const { data: existing } = await supabase
+                .from('purchase_orders')
+                .select('id')
+                .eq('child_item_id', payload.child_item_id)
+                .limit(1)
+              const has = Array.isArray(existing) && existing.length > 0
+              if (has) {
+                const id = (existing as any)[0].id
+                await supabase
+                  .from('purchase_orders')
+                  .update({ ...payload, updated_date: nowIso })
+                  .eq('id', id)
+              } else {
+                await supabase.from('purchase_orders').insert(payload)
+              }
+              continue
+            }
+            await supabase.from('purchase_orders').insert(payload)
+          }
+          return jsonResponse({ success: true })
+        } catch (e: any) {
+          const msg = String(e?.message || '创建采购单失败')
+          return jsonResponse({ success: false, error: msg }, 500)
         }
-        if (withChildId.length) {
-          const { error } = await supabase.from('purchase_orders').upsert(withChildId, { onConflict: 'child_item_id' })
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        }
-        if (others.length) {
-          const { error } = await supabase.from('purchase_orders').insert(others)
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-        }
-        return jsonResponse({ success: true })
       }
 
       // Workshops & teams (organization data)
