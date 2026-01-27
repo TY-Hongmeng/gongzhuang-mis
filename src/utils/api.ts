@@ -102,7 +102,7 @@ export function installApiInterceptor() {
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
-      // Inject anon key for Supabase REST (avoid 400 No API key)
+      // Inject API key for Supabase REST (avoid 400 No API key) and respect user auth
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
         const baseReq = input instanceof Request ? input : null
@@ -120,8 +120,16 @@ export function installApiInterceptor() {
           }
         }
         headers.set('apikey', anon)
-        headers.set('authorization', `Bearer ${anon}`)
-        headers.set('Authorization', `Bearer ${anon}`)
+        const hasAuthHeader = headers.has('Authorization') || headers.has('authorization')
+        if (!hasAuthHeader) {
+          try {
+            const { data } = await (await import('../lib/supabase')).supabase.auth.getSession()
+            const token = data?.session?.access_token
+            if (token) headers.set('Authorization', `Bearer ${token}`)
+          } catch {
+            // no-op: keep request without Authorization to use anon role
+          }
+        }
         console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
         const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
         const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
@@ -138,14 +146,8 @@ export function installApiInterceptor() {
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
-          // 直接调用REST API获取设备数据
           try {
-            const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
-              headers: {
-                'apikey': anon,
-                'Authorization': `Bearer ${anon}`
-              }
-            })
+            const response = await originalFetch(urlStr.replace(/\?.*/, ''), { headers })
             const data = await response.json()
             return jsonResponse({ data: data || [] })
           } catch (e) {
@@ -154,14 +156,8 @@ export function installApiInterceptor() {
         }
         if (/\/rest\/v1\/fixed_inventory_options\?/.test(urlStr)) {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
-          // 直接调用REST API获取固定库存选项数据
           try {
-            const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
-              headers: {
-                'apikey': anon,
-                'Authorization': `Bearer ${anon}`
-              }
-            })
+            const response = await originalFetch(urlStr.replace(/\?.*/, ''), { headers })
             const data = await response.json()
             return jsonResponse({ data: data || [] })
           } catch (e) {
