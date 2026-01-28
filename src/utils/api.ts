@@ -59,7 +59,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
       const u = new URL(abs, window.location.origin)
-      const fallback = `http://localhost:3003${u.pathname}${u.search}`
+      const p = u.pathname.replace(/^\/functions\/v1\/api/, '/api')
+      const fallback = `http://localhost:3003${p}${u.search}`
       return await fetch(fallback, init)
     }
     if (res.status === 404 && cleanUrl.startsWith('/')) {
@@ -80,7 +81,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       throw new Error('Network error')
     }
     const u = new URL(abs, window.location.origin)
-    const fallback = `http://localhost:3003${u.pathname}${u.search}`
+    const p = u.pathname.replace(/^\/functions\/v1\/api/, '/api')
+    const fallback = `http://localhost:3003${p}${u.search}`
     return await fetch(fallback, init)
   }
 }
@@ -964,12 +966,31 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
+        const status = qs.get('status') || ''
+        const startDate = qs.get('startDate') || ''
+        const endDate = qs.get('endDate') || ''
+        const keyword = qs.get('keyword') || ''
         const startTime = Date.now()
         const selectCols = [
           'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','part_id'
         ].join(',')
         let q = supabase.from('cutting_orders').select(selectCols)
         q = q.eq('is_deleted', false)
+        
+        // 应用筛选条件
+        if (status) {
+          q = q.eq('material_source', status)
+        }
+        if (startDate) {
+          q = q.gte('created_date', startDate)
+        }
+        if (endDate) {
+          q = q.lte('created_date', endDate)
+        }
+        if (keyword) {
+          q = q.or(`inventory_number.ilike.%${keyword}%,project_name.ilike.%${keyword}%,part_drawing_number.ilike.%${keyword}%,part_name.ilike.%${keyword}%`)
+        }
+        
         q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error } = await q
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })

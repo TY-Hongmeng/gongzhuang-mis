@@ -277,18 +277,45 @@ const CuttingManagement: React.FC = () => {
 
       const url = `/api/cutting-orders?${params.toString()}&_ts=${Date.now()}`;
       console.log('Requesting URL:', url);
-      const response = await fetch(url);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      let response;
+      try {
+        response = await fetch(url);
+        console.log('Response status:', response.status);
+        console.log('Response status text:', response.statusText);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError);
+        message.error('网络请求失败，请检查网络连接');
+        setData([]);
+        setGroupedData({});
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: pageSize,
+          total: 0
+        }));
+        return;
+      }
       
       let result;
       try {
-        result = await response.json();
+        const responseText = await response.text();
+        console.log('Response text:', responseText);
+        result = JSON.parse(responseText);
         console.log('Response data:', result);
       } catch (jsonError) {
         console.error('JSON parsing error:', jsonError);
-        console.error('Response text:', await response.text());
-        throw new Error('解析响应数据失败');
+        message.error('解析响应数据失败');
+        setData([]);
+        setGroupedData({});
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: pageSize,
+          total: 0
+        }));
+        return;
       }
 
       if (result.success) {
