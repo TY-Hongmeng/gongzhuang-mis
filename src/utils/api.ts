@@ -39,18 +39,13 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     return out
   }
   const base = normalizeBase(rawBase)
-  const makeFnUrl = (b: string, p: string): string => {
-    const bb = (b || '').replace(/\/$/, '')
-    const pp = p.startsWith('/') ? p : `/${p}`
-    if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
-    return bb + pp
-  }
   const abs = (() => {
     if (cleanUrl.startsWith('/')) {
       // 在本地或非 GitHub Pages 环境下，直接使用相对路径以走 Vite 代理到本地后端
       const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
       if (!isGhPages && isLocal) return cleanUrl
-      return base ? makeFnUrl(base, cleanUrl) : window.location.origin + cleanUrl
+      // 在 GitHub Pages 等静态环境下，转向 Supabase Functions
+      return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
     }
     return cleanUrl
   })()
@@ -59,8 +54,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
       const u = new URL(abs, window.location.origin)
-      const p = u.pathname.replace(/^\/functions\/v1\/api/, '/api')
-      const fallback = `http://localhost:3003${p}${u.search}`
+      const fallback = `http://localhost:3003${u.pathname}${u.search}`
       return await fetch(fallback, init)
     }
     if (res.status === 404 && cleanUrl.startsWith('/')) {
@@ -81,8 +75,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       throw new Error('Network error')
     }
     const u = new URL(abs, window.location.origin)
-    const p = u.pathname.replace(/^\/functions\/v1\/api/, '/api')
-    const fallback = `http://localhost:3003${p}${u.search}`
+    const fallback = `http://localhost:3003${u.pathname}${u.search}`
     return await fetch(fallback, init)
   }
 }
@@ -92,20 +85,6 @@ export function installApiInterceptor() {
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     try {
-      const baseReq = input instanceof Request ? input : null
-      const hasBypass = (() => {
-        try {
-          const h = (init as any)?.headers
-          if (h instanceof Headers) return h.has('x-bypass-interceptor')
-          if (Array.isArray(h)) return h.some(([k]) => String(k).toLowerCase() === 'x-bypass-interceptor')
-          if (h && typeof h === 'object') return Object.keys(h).some(k => String(k).toLowerCase() === 'x-bypass-interceptor')
-          if (baseReq) return baseReq.headers?.has?.('x-bypass-interceptor')
-          return false
-        } catch { return false }
-      })()
-      if (hasBypass) {
-        return await originalFetch(input as any, init)
-      }
       // 清理URL中的反引号和空格
       let u = typeof input === 'string' ? input : String((input as any)?.url || '')
       const cleanUrl = u.replace(/[`]/g, '').trim()
@@ -118,14 +97,19 @@ export function installApiInterceptor() {
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
+      // Intercept Supabase Functions only in非GitHub Pages环境，GitHub Pages直接请求 Functions
       if (/functions\.supabase\.co\/functions\/v1\/api\//.test(cleanUrl)) {
-        const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
-        const path = m ? m[1] : ''
-        if (path) return await fetchWithFallback(path, init)
+        const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
+        if (!isGhPages) {
+          const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
+          const path = m ? m[1] : ''
+          if (path) return await fetchWithFallback(path, init)
+        }
       }
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
+        const baseReq = input instanceof Request ? input : null
         const headers = new Headers(baseReq?.headers || undefined)
         const h = (init as any)?.headers
         if (h instanceof Headers) {
@@ -979,31 +963,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
-        const status = qs.get('status') || ''
-        const startDate = qs.get('startDate') || ''
-        const endDate = qs.get('endDate') || ''
-        const keyword = qs.get('keyword') || ''
         const startTime = Date.now()
         const selectCols = [
           'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','part_id'
         ].join(',')
         let q = supabase.from('cutting_orders').select(selectCols)
         q = q.eq('is_deleted', false)
-        
-        // 应用筛选条件
-        if (status) {
-          q = q.eq('material_source', status)
-        }
-        if (startDate) {
-          q = q.gte('created_date', startDate)
-        }
-        if (endDate) {
-          q = q.lte('created_date', endDate)
-        }
-        if (keyword) {
-          q = q.or(`inventory_number.ilike.%${keyword}%,project_name.ilike.%${keyword}%,part_drawing_number.ilike.%${keyword}%,part_name.ilike.%${keyword}%`)
-        }
-        
         q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error } = await q
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })
@@ -1024,36 +989,73 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
       }
 
-      // Cutting orders create (manual check-update/insert, avoid upsert conflict requirement)
+      // Cutting orders create (optimize & normalize, no upsert)
       if (method === 'POST' && path === '/api/cutting-orders') {
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
-        // 统一转发到 Functions，避免前端 REST 写入导致的 401/RLS 与控制台噪音
-        const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
-        const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
-        const normalizeBase = (b: string): string => {
-          if (!b) return ''
-          let out = b.replace(/\/$/, '')
-          if (/functions\.supabase\.co$/.test(out)) out += '/functions/v1'
-          else if (/functions\.supabase\.co\/functions\/v1(\/)?$/.test(out)) out = out.replace(/\/$/, '')
-          return out
+        const nowIso = new Date().toISOString()
+        const normalized = rows.map((raw: any) => {
+          const payload: any = {
+            inventory_number: String(raw.inventory_number || '').trim(),
+            project_name: String(raw.project_name || '').trim(),
+            part_drawing_number: String(raw.part_drawing_number || ''),
+            part_name: String(raw.part_name || '').trim(),
+            specifications: raw.specifications ?? '',
+            part_quantity: Number(raw.part_quantity || 0),
+            material_source: String(raw.material_source || '').trim() || '锯切',
+            created_date: raw.created_date || nowIso,
+            material: raw.material || '',
+            total_weight: raw.total_weight ?? null,
+            tooling_id: raw.tooling_id || null,
+            part_id: raw.part_id || null,
+            tooling_info_id: raw.tooling_id || null,
+            is_deleted: false,
+          }
+          if (typeof raw.remarks === 'string' && raw.remarks.trim()) payload.remarks = String(raw.remarks).trim()
+          else if (raw.heat_treatment) payload.remarks = '需调质'
+          return payload
+        }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
+
+        const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
+        const { data: existing } = await supabase
+          .from('cutting_orders')
+          .select('id, inventory_number')
+          .in('inventory_number', invs)
+          .eq('is_deleted', false)
+        const existingSet = new Set<string>((existing || []).map((e: any) => String(e.inventory_number)))
+        const toInsert = normalized.filter((p: any) => !existingSet.has(String(p.inventory_number)))
+        const toUpdate = normalized.filter((p: any) => existingSet.has(String(p.inventory_number)))
+
+        let inserted = 0
+        let updated = 0
+        if (toInsert.length) {
+          const { error: insErr } = await supabase.from('cutting_orders').insert(toInsert)
+          if (insErr) return jsonResponse({ success: false, error: insErr.message }, 500)
+          inserted = toInsert.length
         }
-        const base = normalizeBase(rawBase)
-        const makeFnUrl = (b: string, p: string): string => {
-          const bb = (b || '').replace(/\/$/, '')
-          const pp = p.startsWith('/') ? p : `/${p}`
-          if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
-          return bb + pp
+        for (const row of toUpdate) {
+          const { error: updErr } = await supabase.from('cutting_orders').update({
+            project_name: row.project_name,
+            part_drawing_number: row.part_drawing_number,
+            part_name: row.part_name,
+            specifications: row.specifications,
+            part_quantity: row.part_quantity,
+            material_source: row.material_source,
+            material: row.material,
+            total_weight: row.total_weight,
+            tooling_id: row.tooling_id,
+            part_id: row.part_id,
+            tooling_info_id: row.tooling_info_id,
+            is_deleted: false,
+            updated_date: nowIso,
+            remarks: row.remarks || null
+          }).eq('inventory_number', row.inventory_number)
+          if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
+          updated++
         }
-        const resp = await fetch(makeFnUrl(base, '/api/cutting-orders'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-bypass-interceptor': '1' },
-          body: JSON.stringify({ orders: rows })
-        })
-        if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
-        const js = await resp.json()
-        return jsonResponse(js)
+        const skipped = rows.length - inserted - updated
+        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
       }
 
       // Cutting orders batch delete -> soft delete for speed
@@ -1078,35 +1080,70 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: data || [] })
       }
 
+      // Purchase orders create (client fallback)
       if (method === 'POST' && path === '/api/purchase-orders') {
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
-        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少采购单数据' }, 400)
-        // 统一转发到 Functions，避免前端 REST 写入导致的 401/RLS 与控制台噪音
-        const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
-        const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
-        const normalizeBase = (b: string): string => {
-          if (!b) return ''
-          let out = b.replace(/\/$/, '')
-          if (/functions\.supabase\.co$/.test(out)) out += '/functions/v1'
-          else if (/functions\.supabase\.co\/functions\/v1(\/)?$/.test(out)) out = out.replace(/\/$/, '')
-          return out
+        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+        const nowIso = new Date().toISOString()
+        const normalized = rows.map((raw: any) => ({
+          inventory_number: String(raw.inventory_number || '').trim(),
+          project_name: String(raw.project_name || '').trim() || '未命名项目',
+          part_name: String(raw.part_name || '').trim(),
+          part_quantity: Number(raw.part_quantity || 0),
+          unit: String(raw.unit || '件').trim() || '件',
+          model: String(raw.model || ''),
+          supplier: String(raw.supplier || ''),
+          required_date: String(raw.required_date || ''),
+          remark: String(raw.remark || ''),
+          created_date: raw.created_date || nowIso,
+          tooling_id: raw.tooling_id || null,
+          part_id: raw.part_id || null,
+          child_item_id: raw.child_item_id || null,
+          status: String(raw.status || 'pending'),
+          weight: Number(raw.weight || 0) || null,
+          total_price: Number(raw.total_price || 0) || null
+        })).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0 && p.unit)
+
+        const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
+        const { data: existing } = await supabase
+          .from('purchase_orders')
+          .select('id, inventory_number')
+          .in('inventory_number', invs)
+        const existingSet = new Set<string>((existing || []).map((e: any) => String(e.inventory_number)))
+        const toInsert = normalized.filter((p: any) => !existingSet.has(String(p.inventory_number)))
+        const toUpdate = normalized.filter((p: any) => existingSet.has(String(p.inventory_number)))
+
+        let inserted = 0
+        let updated = 0
+        if (toInsert.length) {
+          const { error: insErr } = await supabase.from('purchase_orders').insert(toInsert)
+          if (insErr) return jsonResponse({ success: false, error: insErr.message }, 500)
+          inserted = toInsert.length
         }
-        const base = normalizeBase(rawBase)
-        const makeFnUrl = (b: string, p: string): string => {
-          const bb = (b || '').replace(/\/$/, '')
-          const pp = p.startsWith('/') ? p : `/${p}`
-          if (/\/functions\/v1\/api$/.test(bb)) return bb + pp.replace(/^\/api/, '')
-          return bb + pp
+        for (const row of toUpdate) {
+          const { error: updErr } = await supabase.from('purchase_orders').update({
+            project_name: row.project_name,
+            part_name: row.part_name,
+            part_quantity: row.part_quantity,
+            unit: row.unit,
+            model: row.model,
+            supplier: row.supplier,
+            required_date: row.required_date,
+            remark: row.remark,
+            updated_date: nowIso,
+            tooling_id: row.tooling_id,
+            part_id: row.part_id,
+            child_item_id: row.child_item_id,
+            status: row.status,
+            weight: row.weight,
+            total_price: row.total_price
+          }).eq('inventory_number', row.inventory_number)
+          if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
+          updated++
         }
-        const resp = await fetch(makeFnUrl(base, '/api/purchase-orders'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-bypass-interceptor': '1' },
-          body: JSON.stringify({ orders: rows })
-        })
-        if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
-        const js = await resp.json()
-        return jsonResponse(js)
+        const skipped = rows.length - inserted - updated
+        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
       }
 
       // Workshops & teams (organization data)

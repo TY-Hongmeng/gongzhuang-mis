@@ -239,13 +239,7 @@ export default function ManualPurchaseOrders() {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
     const backupIds = selectedBackupRowKeys.filter(id => !String(id).startsWith('blank-'))
     const total = manualIds.length + backupIds.length
-    
-    if (total === 0) {
-      if (selectedManualRowKeys.length > 0 || selectedBackupRowKeys.length > 0) {
-        message.warning('所选数据尚未保存，请等待保存完成或检查数据有效性');
-      }
-      return
-    }
+    if (total === 0) return
 
     const manualSelected = manualData.filter(r => manualIds.includes(r.id))
     const backupSelected = backupData.filter(r => backupIds.includes(r.id))
@@ -789,11 +783,6 @@ export default function ManualPurchaseOrders() {
               return ensureBlankRows(updated);
             });
             
-            // 如果该行被选中，更新选中状态中的ID
-            if (selectedManualRowKeys.includes(id)) {
-              setSelectedManualRowKeys(prev => prev.map(k => k === id ? created.id : k));
-            }
-            
             message.success('保存成功');
             // 创建完成后直接返回，避免后续本地更新重复执行
             return;
@@ -1055,11 +1044,6 @@ export default function ManualPurchaseOrders() {
               if (idx >= 0) setBackupPos(String(firstResult.data.id), idx);
               return ensureBackupBlankRows(updated);
             });
-            
-            // 如果该行被选中，更新选中状态中的ID
-            if (selectedBackupRowKeys.includes(id)) {
-              setSelectedBackupRowKeys(prev => prev.map(k => k === id ? firstResult.data.id : k));
-            }
             
             message.success('保存成功');
             

@@ -277,45 +277,18 @@ const CuttingManagement: React.FC = () => {
 
       const url = `/api/cutting-orders?${params.toString()}&_ts=${Date.now()}`;
       console.log('Requesting URL:', url);
-      
-      let response;
-      try {
-        response = await fetch(url);
-        console.log('Response status:', response.status);
-        console.log('Response status text:', response.statusText);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      } catch (fetchError) {
-        console.error('Fetch error:', fetchError);
-        message.error('网络请求失败，请检查网络连接');
-        setData([]);
-        setGroupedData({});
-        setPagination(prev => ({
-          ...prev,
-          current: page,
-          pageSize: pageSize,
-          total: 0
-        }));
-        return;
-      }
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       let result;
       try {
-        const responseText = await response.text();
-        console.log('Response text:', responseText);
-        result = JSON.parse(responseText);
+        result = await response.json();
         console.log('Response data:', result);
       } catch (jsonError) {
         console.error('JSON parsing error:', jsonError);
-        message.error('解析响应数据失败');
-        setData([]);
-        setGroupedData({});
-        setPagination(prev => ({
-          ...prev,
-          current: page,
-          pageSize: pageSize,
-          total: 0
-        }));
-        return;
+        console.error('Response text:', await response.text());
+        throw new Error('解析响应数据失败');
       }
 
       if (result.success) {

@@ -321,14 +321,11 @@ export const generateCuttingOrders = async (orders: any[]) => {
       return o
     }) : []
 
-    // 强制使用API代理转发到Functions，避免前端直接写入导致RLS/权限问题
-    /*
     if (supabase) {
       const { error } = await supabase.from('cutting_orders').insert(normalized)
       if (error) throw error
       return { success: true }
     }
-    */
     const response = await fetch('/api/cutting-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: normalized }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
@@ -341,14 +338,11 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    // 强制使用API代理转发到Functions，避免前端直接写入导致RLS/权限问题
-    /*
     if (supabase) {
       const { error } = await supabase.from('purchase_orders').insert(orders)
       if (error) throw error
       return { success: true }
     }
-    */
     const response = await fetch('/api/purchase-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
