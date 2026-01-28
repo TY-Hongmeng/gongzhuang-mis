@@ -195,7 +195,8 @@ export const useToolingOperations = () => {
             part_id: part.id,
             status: 'pending',
             weight: totalW || 0,
-            total_price: totalPrice || 0
+            total_price: totalPrice || 0,
+            applicant: part.applicant || ''
           })
         }
       })

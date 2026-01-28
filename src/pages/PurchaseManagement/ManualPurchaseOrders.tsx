@@ -180,6 +180,10 @@ export default function ManualPurchaseOrders() {
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [materials, setMaterials] = useState<{id: string, name: string, density?: number}[]>([]);
   const [hiddenTick, setHiddenTick] = useState(0)
+  const [manualAll, setManualAll] = useState<ManualPurchaseOrder[]>([])
+  const [backupAll, setBackupAll] = useState<BackupMaterial[]>([])
+  const [manualLimit, setManualLimit] = useState<number>(500)
+  const [backupLimit, setBackupLimit] = useState<number>(500)
   const setManualDataPreserveScroll = (updater: (prev: ManualPurchaseOrder[]) => ManualPurchaseOrder[]) => {
     const top = tableWrapRef.current?.scrollTop ?? 0;
     setManualData(prev => updater(prev));
@@ -234,6 +238,17 @@ export default function ManualPurchaseOrders() {
 
   const [partTypes, setPartTypes] = useState<{id: string, name: string, volume_formula?: string, input_format?: string}[]>([]);
   const [materialPrices, setMaterialPrices] = useState<Record<string, any[]>>({});
+  const ensureMaterialPriceLoaded = useCallback(async (materialId: string) => {
+    if (!materialId) return;
+    if (Array.isArray(materialPrices[materialId]) && materialPrices[materialId].length > 0) return;
+    try {
+      const resp = await fetch(`/api/materials/${materialId}/prices`);
+      if (!resp.ok) return;
+      const js = await resp.json();
+      const list = js?.data || [];
+      setMaterialPrices(prev => ({ ...prev, [materialId]: list }));
+    } catch {}
+  }, [materialPrices]);
 
   const handleGeneratePurchaseAll = async () => {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
@@ -406,17 +421,7 @@ export default function ManualPurchaseOrders() {
         const result = await response.json();
         if (result && result.data) {
           setMaterials(result.data);
-          
-          // 获取每个材料的价格信息
-          const pricesMap: Record<string, any[]> = {};
-          for (const material of result.data) {
-            const pricesRes = await fetch(`/api/materials/${material.id}/prices`);
-            if (pricesRes.ok) {
-              const pricesJson = await pricesRes.json();
-              pricesMap[material.id] = pricesJson.data || [];
-            }
-          }
-          setMaterialPrices(pricesMap);
+          setMaterialPrices({});
         }
       }
     } catch (error) {
@@ -462,40 +467,30 @@ export default function ManualPurchaseOrders() {
   // 获取手动输入的数据（使用独立的临时计划数据源）
   const fetchManualData = async () => {
     try {
-      console.log('=== 开始获取手动采购单数据 ===');
       const response = await fetch('/api/manual-plans');
-      console.log('获取数据响应状态:', response.ok);
       
       if (response.ok) {
         const result = await response.json();
-        console.log('获取数据结果:', result);
-        console.log('数据长度:', result?.data?.length || 0);
         
         if (result && result.data && Array.isArray(result.data)) {
-          const manualOrders = result.data.map((order: any, index: number) => {
-            console.log(`订单 ${index} 数据:`, order);
-            return {
-              ...order,
-              part_quantity: String(order.part_quantity || ''),
-              is_manual: true
-            };
-          });
-          
-          console.log('映射后的订单数据:', manualOrders);
+          const manualOrders = result.data.map((order: any) => ({
+            ...order,
+            part_quantity: String(order.part_quantity || ''),
+            is_manual: true
+          }));
           
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMap = getManualPos();
           const placed = applyPositions(manualOrders as any, posMap) as any[]
-          const dataWithBlanks = ensureBlankRows(placed as any);
-          console.log('包含空白行的最终数据:', dataWithBlanks);
+          setManualAll(placed as any)
+          const sliced = placed.slice(0, manualLimit)
+          const dataWithBlanks = ensureBlankRows(sliced as any);
           
           setManualData(dataWithBlanks);
         } else {
-          console.log('没有获取到有效的数据数组');
         }
       } else {
         const errorText = await response.text();
-        console.error('获取数据失败:', errorText);
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
           setManualData(ensureBlankRows([]));
           message.warning('手动采购单数据暂不可用（网络波动），稍后重试');
@@ -503,25 +498,19 @@ export default function ManualPurchaseOrders() {
         }
       }
     } catch (error) {
-      console.error('获取手动输入数据失败:', error);
     }
   };
 
   // 获取备用材料数据
   const fetchBackupData = async () => {
     try {
-      console.log('=== 开始获取备用材料数据 ===');
       const response = await fetch('/api/backup-materials');
-      console.log('获取备用材料响应状态:', response.ok);
       
       if (response.ok) {
         const result = await response.json();
-        console.log('获取备用材料结果:', result);
-        console.log('备用材料数据长度:', result?.data?.length || 0);
         
         if (result && result.data && Array.isArray(result.data)) {
-          const backupMaterials = result.data.map((material: any, index: number) => {
-            console.log(`备用材料 ${index} 数据:`, material);
+          const backupMaterials = result.data.map((material: any) => {
             // 如果后端不返回规格对象，则从规格文本解析，保证初始渲染即可显示
             const parsedSpecs = (material.specifications && Object.keys(material.specifications || {}).length > 0)
               ? material.specifications
@@ -540,21 +529,18 @@ export default function ManualPurchaseOrders() {
             };
           });
           
-          console.log('映射后的备用材料数据:', backupMaterials);
-          
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMapB = getBackupPos();
-          const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
-          const dataWithBlanks = ensureBackupBlankRows(placedB as any);
-          console.log('包含空白行的最终备用材料数据:', dataWithBlanks);
+            const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
+            setBackupAll(placedB as any)
+            const slicedB = placedB.slice(0, backupLimit)
+            const dataWithBlanks = ensureBackupBlankRows(slicedB as any);
           
           setBackupData(dataWithBlanks);
         } else {
-          console.log('没有获取到有效的备用材料数据数组');
         }
       } else {
         const errorText = await response.text();
-        console.error('获取备用材料数据失败:', errorText);
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
           setBackupData(ensureBackupBlankRows([]));
           message.warning('备用材料数据暂不可用（网络波动），稍后重试');
@@ -562,64 +548,69 @@ export default function ManualPurchaseOrders() {
         }
       }
     } catch (error) {
-      console.error('获取备用材料数据失败:', error);
     }
   };
 
   // 确保空白行函数 - 与工装系统保持一致
   const ensureBlankRows = (items: ManualPurchaseOrder[]) => {
-    const arr = [...items];
     const blankIds = ['blank-manual-0', 'blank-manual-1'];
-    const hasBlank = (id: string) => arr.some(x => String(x.id) === id);
-    blankIds.forEach((bid) => {
-      if (!hasBlank(bid)) {
-        arr.push({
-          id: bid,
-          part_name: '',
-          model: '',
-          part_quantity: '',
-          unit: '',
-          project_name: '',
-          production_unit: '',
-          created_date: new Date().toISOString().split('T')[0],
-          demand_date: '',
-          applicant: '',
-          is_manual: true
-        });
-      }
-    })
+    const missingBlanks = blankIds.filter(bid => !items.some(x => String(x.id) === bid));
+    
+    if (missingBlanks.length === 0) {
+      return items;
+    }
+
+    const arr = [...items];
+    missingBlanks.forEach((bid) => {
+      arr.push({
+        id: bid,
+        part_name: '',
+        model: '',
+        part_quantity: '',
+        unit: '',
+        project_name: '',
+        production_unit: '',
+        created_date: new Date().toISOString().split('T')[0],
+        demand_date: '',
+        applicant: '',
+        is_manual: true
+      });
+    });
     return arr;
   };
 
   // 确保备用材料空白行函数
   const ensureBackupBlankRows = (items: BackupMaterial[]) => {
-    const arr = [...items];
     const blankIds = ['blank-backup-0', 'blank-backup-1'];
-    const hasBlank = (id: string) => arr.some(x => String(x.id) === id);
-    blankIds.forEach((bid) => {
-      if (!hasBlank(bid)) {
-        arr.push({
-          id: bid,
-          material_name: '',
-          material: '',
-          material_type: '',
-          model: '',
-          specifications: {},
-          quantity: '',
-          unit: '',
-          project_name: '',
-          supplier: '',
-          price: '',
-          weight: 0,
-          unit_price: 0,
-          total_price: 0,
-          created_date: new Date().toISOString().split('T')[0],
-          demand_date: '',
-          applicant: '',
-          is_manual: true
-        });
-      }
-    })
+    const missingBlanks = blankIds.filter(bid => !items.some(x => String(x.id) === bid));
+    
+    if (missingBlanks.length === 0) {
+      return items;
+    }
+
+    const arr = [...items];
+    missingBlanks.forEach((bid) => {
+      arr.push({
+        id: bid,
+        material_name: '',
+        material: '',
+        material_type: '',
+        model: '',
+        specifications: {},
+        quantity: '',
+        unit: '',
+        project_name: '',
+        supplier: '',
+        price: '',
+        weight: 0,
+        unit_price: 0,
+        total_price: 0,
+        created_date: new Date().toISOString().split('T')[0],
+        demand_date: '',
+        applicant: '',
+        is_manual: true
+      });
+    });
     return arr;
   };
 
@@ -670,10 +661,6 @@ export default function ManualPurchaseOrders() {
 
   const handleManualSave = async (id: string, key: keyof ManualPurchaseOrder, value: string) => {
     try {
-      console.log('=== handleManualSave 被调用 ===');
-      console.log('记录ID:', id);
-      console.log('字段:', key);
-      console.log('新值:', value);
       
       // 如果是空白行，需要创建新记录
       if (id.startsWith('blank-')) {
@@ -704,7 +691,6 @@ export default function ManualPurchaseOrders() {
                                String(updatedRow.demand_date || '').trim());
         
         if (hasAnyContent) {
-          console.log('创建新手动采购单记录:', updatedRow);
           
           // 构建发送数据 - 严格按照验证规则
           const postData: any = {
@@ -741,7 +727,7 @@ export default function ManualPurchaseOrders() {
             }
           }
           
-          console.log('发送到API的手动采购单数据:', JSON.stringify(postData, null, 2));
+          
           
           try {
             const response = await fetch('/api/manual-plans', {
@@ -761,7 +747,6 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            console.log('API响应结果:', result);
             
             const createdList = Array.isArray(result?.data) ? result.data : [];
             const created = createdList[0];
@@ -800,7 +785,6 @@ export default function ManualPurchaseOrders() {
       } else {
         // 更新现有记录
         try {
-          console.log('更新现有手动采购单记录:', { id, key, value });
           
           // 更新时也要验证
           const currentRow = manualData.find(r => r.id === id);
@@ -876,10 +860,6 @@ export default function ManualPurchaseOrders() {
 
   const handleBackupSave = async (id: string, key: keyof BackupMaterial, value: string) => {
     try {
-      console.log('=== handleBackupSave 被调用 ===');
-      console.log('记录ID:', id);
-      console.log('字段:', key);
-      console.log('新值:', value);
       
       // 获取当前数据
       const currentRow = backupData.find(r => r.id === id);
@@ -901,9 +881,9 @@ export default function ManualPurchaseOrders() {
         const weight = calculatePartWeight(updatedRow.specifications || {}, materialId, updatedRow.material_type || '', partTypes, materials);
         const quantityNum = parseInt(updatedRow.quantity || '0') || 0;
         const totalWeight = quantityNum > 0 ? weight * quantityNum : 0;
-        // 获取材料价格 - 使用正确的变量名避免冲突
         const mat = materials.find(m => m.name === updatedRow.material)
         const materialIdForPrice = mat?.id || ''
+        await ensureMaterialPriceLoaded(materialIdForPrice);
         const prices = materialPrices[materialIdForPrice] || [];
         const applicablePrice = getApplicableMaterialPrice(prices, new Date().toISOString().split('T')[0]);
         const unitPrice = applicablePrice || 0;
@@ -931,7 +911,6 @@ export default function ManualPurchaseOrders() {
                                String(updatedRow.demand_date || '').trim());
         
         if (hasAnyContent) {
-          console.log('创建新备用材料记录:', updatedRow);
           
           // 构建发送数据 - 严格按照验证规则
           const postData: any = {
@@ -996,7 +975,7 @@ export default function ManualPurchaseOrders() {
             }
           }
           
-          console.log('发送到API的备用材料数据:', JSON.stringify(postData, null, 2));
+          
           
           try {
             const response = await fetch('/api/backup-materials', {
@@ -1016,7 +995,6 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            console.log('API响应结果:', result);
             
             const firstResult = result?.results?.[0];
             
@@ -1420,30 +1398,27 @@ export default function ManualPurchaseOrders() {
           partType={record.material_type}
           partTypes={partTypes}
           modelText={String(record.model || '')}
-          onSave={(newSpecs) => {
+          onSave={async (newSpecs) => {
             const currentMaterial = materials.find(m => m.name === record.material);
-              const materialId = currentMaterial?.id || '';
-              const weight = calculatePartWeight(newSpecs, materialId, record.material_type || '', partTypes, materials);
-              const qty = Number(record.quantity || 0);
-              const totalWeight = qty > 0 ? weight * qty : 0;
-              const mat2 = materials.find(m => m.name === record.material)
-              const materialIdForPrice2 = mat2?.id || ''
-              const prices = materialPrices[materialIdForPrice2] || [];
-              const unitPrice = getApplicableMaterialPrice(prices, new Date().toISOString().split('T')[0]) || 0;
-              const totalPrice = calculateTotalPrice(totalWeight, unitPrice);
-              const formatted = formatSpecificationsForProduction(newSpecs as any, record.material_type || '');
-              // 本地乐观更新：仅更新当前行，不插入空白行，避免行重排
-              setBackupDataPreserveScroll(prev => prev.map(r => r.id === record.id ? {
-                ...r,
-                specifications: newSpecs as any,
-                model: formatted,
-                weight: weight,
-                unit_price: unitPrice,
-                total_price: totalPrice
-              } : r))
-              // 规格对象仅用于前端计算与展示；持久化仅写入规格文本 model，避免并发多请求导致 ERR_ABORTED
-              handleBackupSave(record.id, 'model' as keyof BackupMaterial, formatted);
-            }}
+            const materialId = currentMaterial?.id || '';
+            const weight = calculatePartWeight(newSpecs, materialId, record.material_type || '', partTypes, materials);
+            const qty = Number(record.quantity || 0);
+            const totalWeight = qty > 0 ? weight * qty : 0;
+            await ensureMaterialPriceLoaded(materialId);
+            const prices = materialPrices[materialId] || [];
+            const unitPrice = getApplicableMaterialPrice(prices, new Date().toISOString().split('T')[0]) || 0;
+            const totalPrice = calculateTotalPrice(totalWeight, unitPrice);
+            const formatted = formatSpecificationsForProduction(newSpecs as any, record.material_type || '');
+            setBackupDataPreserveScroll(prev => prev.map(r => r.id === record.id ? {
+              ...r,
+              specifications: newSpecs as any,
+              model: formatted,
+              weight,
+              unit_price: unitPrice,
+              total_price: totalPrice
+            } : r))
+            handleBackupSave(record.id, 'model' as keyof BackupMaterial, formatted);
+          }}
           />
       )
     },
@@ -1505,19 +1480,9 @@ export default function ManualPurchaseOrders() {
       dataIndex: 'weight',
       width: 90,
       render: (_text: string, record: BackupMaterial) => {
-        const specsObj = (() => {
-          const s = record.specifications as any
-          if (s && typeof s === 'object' && Object.keys(s).length > 0) return s
-          const modelText = String(record.model || '')
-          return modelText ? parseProductionSpecifications(modelText, record.material_type || '') : {}
-        })()
-        const currentMaterial = materials.find(m => m.name === record.material)
-        const materialId = currentMaterial?.id || ''
-        const unitW = calculatePartWeight(specsObj, materialId, record.material_type || '', partTypes, materials)
-        const qty = Number(record.quantity || 0)
-        const totalW = qty > 0 && unitW > 0 ? unitW * qty : 0
+        const show = Number(record.weight || 0)
         return (
-          <span className="text-blue-600 font-medium">{totalW ? totalW.toFixed(3) : '-'}</span>
+          <span className="text-blue-600 font-medium">{show > 0 ? show.toFixed(3) : '-'}</span>
         )
       }
     },
@@ -1527,25 +1492,9 @@ export default function ManualPurchaseOrders() {
       dataIndex: 'total_price',
       width: 100,
       render: (_text: string, record: BackupMaterial) => {
-        const specsObj = (() => {
-          const s = record.specifications as any
-          if (s && typeof s === 'object' && Object.keys(s).length > 0) return s
-          const modelText = String(record.model || '')
-          return modelText ? parseProductionSpecifications(modelText, record.material_type || '') : {}
-        })()
-        const currentMaterial = materials.find(m => m.name === record.material)
-        const materialId = currentMaterial?.id || ''
-        const unitW = calculatePartWeight(specsObj, materialId, record.material_type || '', partTypes, materials)
-        const qty = Number(record.quantity || 0)
-        const totalWeight = (unitW || 0) * (qty || 0)
-        const mat3 = materials.find(m => m.name === record.material)
-        const materialIdForPrice3 = mat3?.id || ''
-        const prices = materialPrices[materialIdForPrice3] || []
-        const dateKey = (record.demand_date && /^\d{4}-\d{2}-\d{2}$/.test(String(record.demand_date))) ? String(record.demand_date) : new Date().toISOString().split('T')[0]
-        const unitPrice = getApplicableMaterialPrice(prices, dateKey) || 0
-        const totalPrice = calculateTotalPrice(totalWeight, unitPrice)
+        const show = Number(record.total_price || 0)
         return (
-          <span className="text-blue-600 font-medium">{totalPrice ? `¥${totalPrice.toFixed(2)}` : '-'}</span>
+          <span className="text-blue-600 font-medium">{show > 0 ? `¥${show.toFixed(2)}` : '-'}</span>
         )
       }
     },
@@ -1646,8 +1595,18 @@ export default function ManualPurchaseOrders() {
           }
         `}</style>
         
-        <div className="flex items-center justify-start mb-2">
+        <div className="flex items-center justify-between mb-2">
           <div style={{ fontWeight: 600, fontSize: 14 }}>标准件</div>
+          <Space>
+            <span style={{ color: '#666' }}>共 {manualAll.length} 条，当前显示 {Math.min(manualLimit, manualAll.length)} 条</span>
+            {manualAll.length > manualLimit && (
+              <Button size="small" onClick={() => {
+                const next = manualAll
+                setManualLimit(next.length)
+                setManualDataPreserveScroll(() => ensureBlankRows(next as any))
+              }}>显示全部</Button>
+            )}
+          </Space>
         </div>
 
         {/* 表格区域 - 使用工装信息系统的成熟样式 */}
@@ -1686,8 +1645,18 @@ export default function ManualPurchaseOrders() {
         {/* 备用材料表格 */}
         <div style={{ marginTop: '20px' }}>
           {/* 备用材料标题 */}
-          <div className="flex items-center justify-start mb-2">
+          <div className="flex items-center justify-between mb-2">
             <div style={{ fontWeight: 600, fontSize: 14 }}>备用料</div>
+            <Space>
+              <span style={{ color: '#666' }}>共 {backupAll.length} 条，当前显示 {Math.min(backupLimit, backupAll.length)} 条</span>
+              {backupAll.length > backupLimit && (
+                <Button size="small" onClick={() => {
+                  const next = backupAll
+                  setBackupLimit(next.length)
+                  setBackupDataPreserveScroll(() => ensureBackupBlankRows(next as any))
+                }}>显示全部</Button>
+              )}
+            </Space>
           </div>
 
           {/* 备用材料表格 */}
@@ -1696,7 +1665,7 @@ export default function ManualPurchaseOrders() {
             rowKey="id"
             rowSelection={backupRowSelection}
             columns={backupColumns}
-            dataSource={(() => {
+          dataSource={(() => {
               const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
               return backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
             })()}
