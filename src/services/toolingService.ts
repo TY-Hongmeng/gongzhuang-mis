@@ -338,11 +338,6 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    if (supabase) {
-      const { error } = await supabase.from('purchase_orders').insert(orders)
-      if (error) throw error
-      return { success: true }
-    }
     const response = await fetch('/api/purchase-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result

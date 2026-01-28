@@ -239,7 +239,7 @@ export default function ManualPurchaseOrders() {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
     const backupIds = selectedBackupRowKeys.filter(id => !String(id).startsWith('blank-'))
     const total = manualIds.length + backupIds.length
-    if (total === 0) return
+    if (total === 0) { message.warning('请选择需要生成的记录'); return }
 
     const manualSelected = manualData.filter(r => manualIds.includes(r.id))
     const backupSelected = backupData.filter(r => backupIds.includes(r.id))

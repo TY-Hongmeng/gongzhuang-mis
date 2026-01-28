@@ -267,7 +267,6 @@ export default function PurchaseOrdersList() {
     let arr = data
       .filter(item => !hiddenIds.includes(item.id) && !approvalHiddenIds.includes(item.id))
       .filter(item => sourceFilter === '全部' ? true : item.source === sourceFilter)
-    if (isTechnician && !teamsLoaded) return []
     if (isTechnician && myTeamName) {
       arr = arr.filter((item: any) => {
         const applicant = String(item.applicant || '')
@@ -276,7 +275,7 @@ export default function PurchaseOrdersList() {
       })
     }
     return arr
-  }, [data, hiddenIds, sourceFilter, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
+  }, [data, hiddenIds, approvalHiddenIds, sourceFilter, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
 
   const columns: ColumnsType<PurchaseOrder> = [
     {
@@ -380,38 +379,14 @@ export default function PurchaseOrdersList() {
           <Space>
             <Button onClick={() => {
               if (selectedRowKeys.length === 0) { message.warning('请选择要回退的采购单'); return }
-            try {
-                const existing: any[] = (() => { try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] } })()
+              try {
                 const selectedSet = new Set<string>(selectedRowKeys.map(String))
-                const selectedInvSet = new Set<string>(data.filter(d => selectedSet.has(String(d.id))).map(d => String(d.inventory_number || '')))
-                const nextPlans = existing.map(g => ({
-                  ...g,
-                  items: (g.items || []).filter((it: any) => !selectedSet.has(String(it.id)) && !selectedInvSet.has(String(it.inventory_number || '')))
-                })).filter(g => (g.items || []).length > 0)
-                localStorage.setItem('temporary_plans', JSON.stringify(nextPlans))
-                const hiddenArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_ids') || '[]') } catch { return [] } })()
-                const hidden = new Set<string>(Array.isArray(hiddenArr) ? hiddenArr : [])
-                selectedRowKeys.forEach(id => hidden.delete(String(id)))
-                const hiddenArrNext = Array.from(hidden)
-                localStorage.setItem('temporary_hidden_ids', JSON.stringify(hiddenArrNext))
-                // 取消手动/备份来源隐藏
-                const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
-                const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
-                const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
-                const hb = new Set<string>(Array.isArray(hbArr) ? hbArr : [])
                 data.filter(d => selectedSet.has(String(d.id))).forEach(item => {
-                  const inv = String(item.inventory_number || '')
-                  if (inv.startsWith('MANUAL-')) hm.delete(inv.slice(7))
-                  if (inv.startsWith('BACKUP-')) hb.delete(inv.slice(7))
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
                   if (pid) localStorage.setItem(`status_part_${pid}`, '审批中')
                   if (cid) localStorage.setItem(`status_child_${cid}`, '审批中')
                 })
-                localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
-                localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
-                window.dispatchEvent(new Event('temporary_plans_updated'))
-                window.dispatchEvent(new Event('status_updated'))
                 const apprHidden = new Set<string>(approvalHiddenIds)
                 selectedRowKeys.forEach(id => apprHidden.add(String(id)))
                 const apprArr = Array.from(apprHidden)
@@ -419,12 +394,9 @@ export default function PurchaseOrdersList() {
                 window.dispatchEvent(new Event('approval_updated'))
                 message.success('已回退所选采购单')
                 setSelectedRowKeys([])
-                // 刷新视图
-                setTimeout(() => setData(prev => [...prev]), 0)
-                setHiddenIds(hiddenArrNext)
                 setApprovalHiddenIds(apprArr)
+                setData(prev => prev.filter(item => !selectedSet.has(String(item.id))))
               } catch (e) {
-                console.error('回退失败:', e)
                 message.error('回退失败')
               }
             }}>回退</Button>
