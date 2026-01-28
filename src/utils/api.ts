@@ -92,6 +92,20 @@ export function installApiInterceptor() {
   const originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     try {
+      const baseReq = input instanceof Request ? input : null
+      const hasBypass = (() => {
+        try {
+          const h = (init as any)?.headers
+          if (h instanceof Headers) return h.has('x-bypass-interceptor')
+          if (Array.isArray(h)) return h.some(([k]) => String(k).toLowerCase() === 'x-bypass-interceptor')
+          if (h && typeof h === 'object') return Object.keys(h).some(k => String(k).toLowerCase() === 'x-bypass-interceptor')
+          if (baseReq) return baseReq.headers?.has?.('x-bypass-interceptor')
+          return false
+        } catch { return false }
+      })()
+      if (hasBypass) {
+        return await originalFetch(input as any, init)
+      }
       // 清理URL中的反引号和空格
       let u = typeof input === 'string' ? input : String((input as any)?.url || '')
       const cleanUrl = u.replace(/[`]/g, '').trim()
@@ -112,7 +126,6 @@ export function installApiInterceptor() {
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
-        const baseReq = input instanceof Request ? input : null
         const headers = new Headers(baseReq?.headers || undefined)
         const h = (init as any)?.headers
         if (h instanceof Headers) {
@@ -1035,7 +1048,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
         const resp = await fetch(makeFnUrl(base, '/api/cutting-orders'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bypass-interceptor': '1' },
           body: JSON.stringify({ orders: rows })
         })
         if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
@@ -1088,7 +1101,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
         const resp = await fetch(makeFnUrl(base, '/api/purchase-orders'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-bypass-interceptor': '1' },
           body: JSON.stringify({ orders: rows })
         })
         if (!resp.ok) return jsonResponse({ success: false, error: `服务器错误: ${resp.status}` }, resp.status)
