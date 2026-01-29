@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Card, Row, Col, Space, Input } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, ToolOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { InputRef } from 'antd';
 import { useAuthStore } from '../../stores/authStore';
@@ -444,25 +444,12 @@ export default function ManualPurchaseOrders() {
     }
   };
 
-  // 初始化时添加2行空白数据，与工装系统保持一致
+  // 初始化
   useEffect(() => {
     if (!isInitialized) {
-      const initialData: ManualPurchaseOrder[] = [];
-      const dataWithBlanks = ensureBlankRows(initialData);
-      setManualData(dataWithBlanks);
       setIsInitialized(true);
     }
-  }, [isInitialized, user?.real_name]);
-
-  // 确保始终有空白行 - 与工装系统保持一致
-  useEffect(() => {
-    if (isInitialized && manualData.length > 0) {
-      const blankRows = manualData.filter(row => String(row.id).startsWith('blank-'));
-      if (blankRows.length < 2) {
-        setManualData(prev => ensureBlankRows(prev));
-      }
-    }
-  }, [manualData, isInitialized]);
+  }, [isInitialized]);
 
   // 获取手动输入的数据（使用独立的临时计划数据源）
   const fetchManualData = async () => {
@@ -484,15 +471,14 @@ export default function ManualPurchaseOrders() {
           const placed = applyPositions(manualOrders as any, posMap) as any[]
           setManualAll(placed as any)
           const sliced = placed.slice(0, manualLimit)
-          const dataWithBlanks = ensureBlankRows(sliced as any);
           
-          setManualData(dataWithBlanks);
+          setManualData(sliced as any);
         } else {
         }
       } else {
         const errorText = await response.text();
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
-          setManualData(ensureBlankRows([]));
+          setManualData([]);
           message.warning('手动采购单数据暂不可用（网络波动），稍后重试');
           return;
         }
@@ -534,15 +520,14 @@ export default function ManualPurchaseOrders() {
             const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
             setBackupAll(placedB as any)
             const slicedB = placedB.slice(0, backupLimit)
-            const dataWithBlanks = ensureBackupBlankRows(slicedB as any);
           
-          setBackupData(dataWithBlanks);
+          setBackupData(slicedB as any);
         } else {
         }
       } else {
         const errorText = await response.text();
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
-          setBackupData(ensureBackupBlankRows([]));
+          setBackupData([]);
           message.warning('备用材料数据暂不可用（网络波动），稍后重试');
           return;
         }
@@ -551,67 +536,49 @@ export default function ManualPurchaseOrders() {
     }
   };
 
-  // 确保空白行函数 - 与工装系统保持一致
-  const ensureBlankRows = (items: ManualPurchaseOrder[]) => {
-    const blankIds = ['blank-manual-0', 'blank-manual-1'];
-    const missingBlanks = blankIds.filter(bid => !items.some(x => String(x.id) === bid));
-    
-    if (missingBlanks.length === 0) {
-      return items;
-    }
-
-    const arr = [...items];
-    missingBlanks.forEach((bid) => {
-      arr.push({
-        id: bid,
-        part_name: '',
-        model: '',
-        part_quantity: '',
-        unit: '',
-        project_name: '',
-        production_unit: '',
-        created_date: new Date().toISOString().split('T')[0],
-        demand_date: '',
-        applicant: '',
-        is_manual: true
-      });
-    });
-    return arr;
+  // 添加标准件
+  const handleAddManual = () => {
+    const newId = `blank-manual-${Date.now()}`;
+    const newRow: ManualPurchaseOrder = {
+      id: newId,
+      part_name: '',
+      model: '',
+      part_quantity: '',
+      unit: '',
+      project_name: '',
+      production_unit: '',
+      created_date: new Date().toISOString().split('T')[0],
+      demand_date: '',
+      applicant: user?.real_name || '',
+      is_manual: true
+    };
+    setManualDataPreserveScroll(prev => [...prev, newRow]);
   };
 
-  // 确保备用材料空白行函数
-  const ensureBackupBlankRows = (items: BackupMaterial[]) => {
-    const blankIds = ['blank-backup-0', 'blank-backup-1'];
-    const missingBlanks = blankIds.filter(bid => !items.some(x => String(x.id) === bid));
-    
-    if (missingBlanks.length === 0) {
-      return items;
-    }
-
-    const arr = [...items];
-    missingBlanks.forEach((bid) => {
-      arr.push({
-        id: bid,
-        material_name: '',
-        material: '',
-        material_type: '',
-        model: '',
-        specifications: {},
-        quantity: '',
-        unit: '',
-        project_name: '',
-        supplier: '',
-        price: '',
-        weight: 0,
-        unit_price: 0,
-        total_price: 0,
-        created_date: new Date().toISOString().split('T')[0],
-        demand_date: '',
-        applicant: '',
-        is_manual: true
-      });
-    });
-    return arr;
+  // 添加备用料
+  const handleAddBackup = () => {
+    const newId = `blank-backup-${Date.now()}`;
+    const newRow: BackupMaterial = {
+      id: newId,
+      material_name: '',
+      material: '',
+      material_type: '',
+      model: '',
+      specifications: {},
+      quantity: '',
+      unit: '',
+      project_name: '',
+      supplier: '',
+      price: '',
+      weight: 0,
+      unit_price: 0,
+      total_price: 0,
+      created_date: new Date().toISOString().split('T')[0],
+      demand_date: '',
+      applicant: user?.real_name || '',
+      is_manual: true
+    };
+    setBackupDataPreserveScroll(prev => [...prev, newRow]);
   };
 
   // 严格的字段验证函数
@@ -765,7 +732,7 @@ export default function ManualPurchaseOrders() {
               );
               const idx = prev.findIndex(r => r.id === id);
               if (idx >= 0) setManualPos(created.id, idx);
-              return ensureBlankRows(updated);
+              return updated;
             });
             
             message.success('保存成功');
@@ -1020,7 +987,7 @@ export default function ManualPurchaseOrders() {
               );
               const idx = prev.findIndex(r => r.id === id);
               if (idx >= 0) setBackupPos(String(firstResult.data.id), idx);
-              return ensureBackupBlankRows(updated);
+              return updated;
             });
             
             message.success('保存成功');
@@ -1596,14 +1563,17 @@ export default function ManualPurchaseOrders() {
         `}</style>
         
         <div className="flex items-center justify-between mb-2">
-          <div style={{ fontWeight: 600, fontSize: 14 }}>标准件</div>
+          <div className="flex items-center gap-2">
+            <div style={{ fontWeight: 600, fontSize: 14 }}>标准件</div>
+            <Button type="dashed" size="small" onClick={handleAddManual} icon={<ToolOutlined />}>添加标准件</Button>
+          </div>
           <Space>
             <span style={{ color: '#666' }}>共 {manualAll.length} 条，当前显示 {Math.min(manualLimit, manualAll.length)} 条</span>
             {manualAll.length > manualLimit && (
               <Button size="small" onClick={() => {
                 const next = manualAll
                 setManualLimit(next.length)
-                setManualDataPreserveScroll(() => ensureBlankRows(next as any))
+                setManualDataPreserveScroll(() => next as any)
               }}>显示全部</Button>
             )}
           </Space>
@@ -1646,14 +1616,17 @@ export default function ManualPurchaseOrders() {
         <div style={{ marginTop: '20px' }}>
           {/* 备用材料标题 */}
           <div className="flex items-center justify-between mb-2">
-            <div style={{ fontWeight: 600, fontSize: 14 }}>备用料</div>
+            <div className="flex items-center gap-2">
+              <div style={{ fontWeight: 600, fontSize: 14 }}>备用料</div>
+              <Button type="dashed" size="small" onClick={handleAddBackup} icon={<ToolOutlined />}>添加备用料</Button>
+            </div>
             <Space>
               <span style={{ color: '#666' }}>共 {backupAll.length} 条，当前显示 {Math.min(backupLimit, backupAll.length)} 条</span>
               {backupAll.length > backupLimit && (
                 <Button size="small" onClick={() => {
                   const next = backupAll
                   setBackupLimit(next.length)
-                  setBackupDataPreserveScroll(() => ensureBackupBlankRows(next as any))
+                  setBackupDataPreserveScroll(() => next as any)
                 }}>显示全部</Button>
               )}
             </Space>
