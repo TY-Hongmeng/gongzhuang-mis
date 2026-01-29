@@ -592,6 +592,42 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, items: data || [], total: count || 0, page, pageSize })
         }
+        if (method === 'POST' && path === '/api/purchase-orders') {
+          const body = await readBody()
+          const orders = Array.isArray(body.orders) ? body.orders : []
+          if (orders.length === 0) return jsonResponse({ success: false, error: '缺少订单数据' }, 400)
+          
+          let inserted = 0
+          let updated = 0 // In case we support upsert in future, but for now just insert
+          
+          // 批量插入
+          const toInsert = orders.map((o: any) => ({
+            inventory_number: String(o.inventory_number || ''),
+            project_name: String(o.project_name || ''),
+            part_name: String(o.part_name || ''),
+            part_quantity: Number(o.part_quantity || 0),
+            unit: String(o.unit || '件'),
+            model: String(o.model || ''),
+            supplier: String(o.supplier || ''),
+            required_date: o.required_date || null,
+            remark: String(o.remark || ''),
+            created_date: o.created_date || new Date().toISOString(),
+            tooling_id: o.tooling_id || null,
+            child_item_id: o.child_item_id || null,
+            part_id: o.part_id || null,
+            status: o.status || 'pending',
+            applicant: String(o.applicant || ''),
+            production_unit: String(o.production_unit || ''),
+            weight: Number(o.weight || 0),
+            total_price: Number(o.total_price || 0)
+          }))
+          
+          const { error } = await supabase.from('purchase_orders').insert(toInsert)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          
+          inserted = toInsert.length
+          return jsonResponse({ success: true, stats: { inserted, updated, skipped: 0 } })
+        }
         if (method === 'POST' && path === '/api/purchase-orders/batch-delete') {
           const body = await readBody()
           const ids: string[] = Array.isArray(body.ids) ? body.ids : []
