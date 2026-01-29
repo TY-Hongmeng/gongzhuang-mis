@@ -12,7 +12,9 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling/fixed-inventory-options',
     '/api/auth',
     '/api/cutting-orders',
-    '/api/purchase-orders'
+    '/api/purchase-orders',
+    '/api/backup-materials',
+    '/api/manual-plans'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -681,6 +683,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           }
           return jsonResponse({ data: data || [] })
         }
+        if (method === 'POST' && path === '/api/backup-materials/batch-delete') {
+          const body = await readBody()
+          const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
+          if (!ids.length) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+          const { error } = await supabase.from('backup_materials').delete().in('id', ids)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
         if (method === 'POST' && path === '/api/backup-materials') {
           const body = await readBody()
           const payload: any = {
@@ -753,6 +763,14 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             return jsonResponse({ data: [] })
           }
           return jsonResponse({ data: data || [] })
+        }
+        if (method === 'POST' && path === '/api/manual-plans/batch-delete') {
+          const body = await readBody()
+          const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
+          if (!ids.length) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+          const { error } = await supabase.from('manual_purchase_plans').delete().in('id', ids)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
         }
         if (method === 'POST' && path === '/api/manual-plans') {
           const body = await readBody()
