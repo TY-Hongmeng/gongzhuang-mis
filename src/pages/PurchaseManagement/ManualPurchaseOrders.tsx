@@ -372,6 +372,33 @@ export default function ManualPurchaseOrders() {
         if (stats.skipped > 0) messages.push(`跳过 ${stats.skipped} 条`)
         const messageText = messages.length > 0 ? messages.join('，') : `成功处理 ${validOrders.length} 条采购单`
         message.success(messageText)
+
+        // 成功后清理采购申请中的选中项（后台删除），保持页面数据一致
+        const tasks: Promise<Response>[] = []
+        if (manualIds.length > 0) {
+          tasks.push(fetch('/api/manual-plans/batch-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: manualIds })
+          }))
+        }
+        if (backupIds.length > 0) {
+          tasks.push(fetch('/api/backup-materials/batch-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: backupIds })
+          }))
+        }
+        if (tasks.length > 0) {
+          try { await Promise.all(tasks) } catch {}
+        }
+
+        // 前端立即移除选中项并重置选择，避免残留
+        setManualDataPreserveScroll(prev => prev.filter(item => !manualIds.includes(item.id)))
+        setBackupDataPreserveScroll(prev => prev.filter(item => !backupIds.includes(item.id)))
+        setSelectedManualRowKeys([])
+        setSelectedBackupRowKeys([])
+
         navigate('/purchase-management?tab=list')
       } else {
         message.error(result?.error || '生成采购单失败')
