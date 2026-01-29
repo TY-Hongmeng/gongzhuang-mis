@@ -655,6 +655,134 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: data || [] })
       }
 
+      // Suppliers options
+      if (method === 'GET' && path.startsWith('/api/options/suppliers')) {
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .order('created_at', { ascending: true })
+        if (error) {
+          console.error('Error fetching suppliers:', error)
+          return jsonResponse({ data: [] })
+        }
+        return jsonResponse({ data: data || [] })
+      }
+
+      // Backup materials CRUD
+      if (path.startsWith('/api/backup-materials')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase
+            .from('backup_materials')
+            .select('*')
+            .order('created_date', { ascending: false })
+          if (error) {
+            console.error('Error fetching backup_materials:', error)
+            return jsonResponse({ data: [] })
+          }
+          return jsonResponse({ data: data || [] })
+        }
+        if (method === 'POST' && path === '/api/backup-materials') {
+          const body = await readBody()
+          const payload: any = {
+            material_name: String(body.material_name || ''),
+            model: String(body.model || ''),
+            quantity: body.quantity == null || body.quantity === '' ? null : Number(body.quantity),
+            unit: String(body.unit || ''),
+            project_name: String(body.project_name || ''),
+            supplier: String(body.supplier || body.production_unit || ''),
+            price: body.price == null || body.price === '' ? null : Number(body.price),
+            demand_date: String(body.demand_date || '') || null,
+            created_date: String(body.created_date || '') || null,
+            applicant: String(body.applicant || ''),
+            is_manual: Boolean(body.is_manual ?? true),
+            material: String(body.material || ''),
+            material_type: String(body.material_type || '')
+          }
+          const { data, error } = await supabase
+            .from('backup_materials')
+            .insert(payload)
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
+        const bm = path.match(/^\/api\/backup-materials\/([^\/]+)$/)
+        if (bm && method === 'PUT') {
+          const id = bm[1]
+          const body = await readBody()
+          const updateData: any = {}
+          if (Object.prototype.hasOwnProperty.call(body, 'material_name')) updateData.material_name = String(body.material_name || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'model')) updateData.model = String(body.model || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'quantity')) updateData.quantity = body.quantity == null || body.quantity === '' ? null : Number(body.quantity)
+          if (Object.prototype.hasOwnProperty.call(body, 'unit')) updateData.unit = String(body.unit || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'project_name')) updateData.project_name = String(body.project_name || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'supplier') || Object.prototype.hasOwnProperty.call(body, 'production_unit')) {
+            updateData.supplier = String(body.supplier || body.production_unit || '')
+          }
+          if (Object.prototype.hasOwnProperty.call(body, 'price')) updateData.price = body.price == null || body.price === '' ? null : Number(body.price)
+          if (Object.prototype.hasOwnProperty.call(body, 'demand_date')) updateData.demand_date = String(body.demand_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'created_date')) updateData.created_date = String(body.created_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'applicant')) updateData.applicant = String(body.applicant || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'is_manual')) updateData.is_manual = Boolean(body.is_manual)
+          if (Object.prototype.hasOwnProperty.call(body, 'material')) updateData.material = String(body.material || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'material_type')) updateData.material_type = String(body.material_type || '')
+          const { error } = await supabase
+            .from('backup_materials')
+            .update(updateData)
+            .eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        if (bm && method === 'DELETE') {
+          const id = bm[1]
+          const { error } = await supabase.from('backup_materials').delete().eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // Manual purchase plans (临时计划)
+      if (path.startsWith('/api/manual-plans')) {
+        if (method === 'GET') {
+          const { data, error } = await supabase
+            .from('manual_purchase_plans')
+            .select('*')
+            .order('created_date', { ascending: false })
+          if (error) {
+            console.error('Error fetching manual_purchase_plans:', error)
+            return jsonResponse({ data: [] })
+          }
+          return jsonResponse({ data: data || [] })
+        }
+        if (method === 'POST' && path === '/api/manual-plans') {
+          const body = await readBody()
+          const payload: any = {
+            inventory_number: String(body.inventory_number || ''),
+            project_name: String(body.project_name || ''),
+            part_name: String(body.part_name || ''),
+            part_quantity: body.part_quantity == null || body.part_quantity === '' ? null : Number(body.part_quantity),
+            unit: String(body.unit || '件'),
+            model: String(body.model || ''),
+            supplier: String(body.supplier || body.production_unit || ''),
+            required_date: String(body.required_date || '') || null,
+            remark: String(body.remark || ''),
+            status: String(body.status || 'draft'),
+            created_date: String(body.created_date || '') || null,
+            updated_date: String(body.updated_date || '') || null,
+            production_unit: String(body.production_unit || ''),
+            demand_date: String(body.demand_date || '') || null,
+            applicant: String(body.applicant || '')
+          }
+          const { data, error } = await supabase
+            .from('manual_purchase_plans')
+            .insert(payload)
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
+      }
+
     }
 
 
