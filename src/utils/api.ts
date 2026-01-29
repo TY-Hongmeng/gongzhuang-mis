@@ -1285,10 +1285,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           total_price: Number(raw.total_price || 0) || null,
           production_unit: String(raw.production_unit || ''),
           demand_date: String(raw.demand_date || ''),
-          applicant: String(raw.applicant || ''),
-          source: (String(raw.inventory_number || '').startsWith('MANUAL-') || String(raw.inventory_number || '').startsWith('BACKUP-'))
-            ? '临时计划'
-            : ((raw.tooling_id || raw.part_id) ? '工装信息' : '未知来源')
+          applicant: String(raw.applicant || '')
         })).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0 && p.unit)
 
         const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
@@ -1326,8 +1323,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             total_price: row.total_price,
             production_unit: row.production_unit,
             demand_date: row.demand_date,
-            applicant: row.applicant,
-            source: row.source
+            applicant: row.applicant
           }).eq('inventory_number', row.inventory_number)
           if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
           updated++
