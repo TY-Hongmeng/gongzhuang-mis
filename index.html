@@ -32,22 +32,24 @@
       })();
     </script>
     <script type="module">
-      // 仅在开发环境执行一次性遮罩清理与 SW 注销（无自动重载/重连）
+      // 清理旧 Service Worker 与缓存（生产与开发环境均执行）
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations?.().then(regs => {
+            regs.forEach(r => r.unregister());
+          }).catch(() => {});
+          caches.keys().then(names => {
+            Promise.all(names.map(n => caches.delete(n)));
+          }).catch(() => {});
+        }
+      } catch {}
+      
+      // 开发环境移除错误遮罩
       if (import.meta.env?.DEV) {
         try {
           const nodes = document.querySelectorAll('vite-error-overlay, #vite-error-overlay, .vite-error-overlay');
           nodes.forEach((el) => el.remove());
         } catch {}
-
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations?.().then(regs => {
-            regs.forEach(r => r.unregister());
-          }).catch(() => {});
-          
-          caches.keys().then(names => {
-            Promise.all(names.map(n => caches.delete(n)));
-          }).catch(() => {});
-        }
       }
     </script>
   </head>
