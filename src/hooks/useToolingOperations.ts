@@ -2,9 +2,12 @@ import { useCallback } from 'react'
 import { message } from 'antd'
 import { generateInventoryNumber, canGenerateInventoryNumber, calculateVolume } from '../utils/toolingCalculations'
 import { calculateTotalPrice } from '../utils/priceCalculator'
+import { useAuthStore } from '../stores/authStore'
 
 // 工装业务逻辑Hook
 export const useToolingOperations = () => {
+  const { user } = useAuthStore()
+
   // 生成下料单
   const generateCuttingOrders = useCallback(async (selectedParts: any[], materials: any[], materialSources: any[], partTypes: any[] = []) => {
     try {
@@ -136,7 +139,8 @@ export const useToolingOperations = () => {
             created_date: new Date().toISOString(),
             tooling_id: item.tooling_id || null,
             child_item_id: item.id,
-            status: 'pending'
+            status: 'pending',
+            applicant: item.applicant || user?.real_name || ''
           })
         }
       })
@@ -196,7 +200,7 @@ export const useToolingOperations = () => {
             status: 'pending',
             weight: totalW || 0,
             total_price: totalPrice || 0,
-            applicant: part.applicant || '',
+            applicant: part.applicant || user?.real_name || '',
             production_unit: part.production_unit || ''
           })
         }
@@ -253,7 +257,7 @@ export const useToolingOperations = () => {
       message.error('生成采购单失败：' + error)
       return null
     }
-  }, [])
+  }, [user])
 
   // 计算零件重量
   const calculatePartWeight = useCallback((specifications: any, materialId: string, partType: string, partTypes: any[], materials: any[]) => {
