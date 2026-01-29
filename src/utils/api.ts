@@ -1,3 +1,4 @@
+let __originalFetch: any = null
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
@@ -13,7 +14,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/auth',
     '/api/cutting-orders',
     '/api/backup-materials',
-    '/api/manual-plans'
+    '/api/manual-plans',
+    '/api/purchase-orders'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -52,11 +54,12 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   })()
   
   try {
-    const res = await fetch(abs, init)
+    const doFetch = (__originalFetch || fetch)
+    const res = await doFetch(abs, init)
     if (!res.ok && res.status >= 500) {
       const u = new URL(abs, window.location.origin)
       const fallback = `http://localhost:3003${u.pathname}${u.search}`
-      return await fetch(fallback, init)
+      return await doFetch(fallback, init)
     }
     if (res.status === 404 && cleanUrl.startsWith('/')) {
       const handled = await handleClientSideApi(abs, init)
@@ -77,13 +80,14 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     const u = new URL(abs, window.location.origin)
     const fallback = `http://localhost:3003${u.pathname}${u.search}`
-    return await fetch(fallback, init)
+    return await doFetch(fallback, init)
   }
 }
 
 export function installApiInterceptor() {
   if (typeof window === 'undefined') return
   const originalFetch = window.fetch.bind(window)
+  __originalFetch = originalFetch
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     try {
       // 清理URL中的反引号和空格
@@ -91,6 +95,16 @@ export function installApiInterceptor() {
       const cleanUrl = u.replace(/[`]/g, '').trim()
       if (cleanUrl.startsWith('/api')) {
         return await fetchWithFallback(cleanUrl, init)
+      }
+      // Intercept any absolute URL containing '/api/' and route to client handler
+      if (/^https?:\/\//.test(cleanUrl) && /\/api\//.test(cleanUrl)) {
+        try {
+          const u2 = new URL(cleanUrl)
+          const path = u2.pathname + (u2.search || '')
+          if (path.startsWith('/api/')) {
+            return await fetchWithFallback(path, init)
+          }
+        } catch {}
       }
       // Also intercept absolute calls to GitHub Pages domain
       if (/github\.io\/(?:.+\/)?api\//.test(cleanUrl)) {
@@ -563,6 +577,28 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           const { error } = await supabase.from('materials').update({ unit_price: null }).eq('id', material_id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
+        }
+      }
+
+      // ---- Purchase Orders (client-side fallback) ----
+      if (path.startsWith('/api/purchase-orders')) {
+        if (method === 'GET' && path === '/api/purchase-orders') {
+          const qs = getQuery(url)
+          const page = Number(qs.get('page') || 1)
+          const pageSize = Number(qs.get('pageSize') || 100)
+          let q = supabase.from('purchase_orders').select('*', { count: 'exact' })
+          q = q.order('created_date', { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+          const { data, count, error } = await q
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [], total: count || 0, page, pageSize })
+        }
+        if (method === 'POST' && path === '/api/purchase-orders/batch-delete') {
+          const body = await readBody()
+          const ids: string[] = Array.isArray(body.ids) ? body.ids : []
+          if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ID列表' }, 400)
+          const { error } = await supabase.from('purchase_orders').delete().in('id', ids)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, deleted: ids.length })
         }
       }
 

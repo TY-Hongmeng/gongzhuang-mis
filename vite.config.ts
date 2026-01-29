@@ -30,6 +30,10 @@ export default defineConfig(({ mode }) => {
       }), 
       tsconfigPaths(),
     ],
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets'
+    },
     server: {
       port: 5182,
       host: 'localhost',
