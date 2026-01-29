@@ -727,7 +727,7 @@ export default function ManualPurchaseOrders() {
             const response = await fetch('/api/manual-plans', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orders: [postData] })
+              body: JSON.stringify(postData)
             });
             
             if (!response.ok) {
@@ -741,9 +741,7 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            
-            const createdList = Array.isArray(result?.data) ? result.data : [];
-            const created = createdList[0];
+            const created = (Array.isArray(result?.data) ? result.data?.[0] : result?.data) || null;
             if (!created || !created.id) {
               throw new Error('创建失败 - 缺少记录ID');
             }
@@ -975,7 +973,7 @@ export default function ManualPurchaseOrders() {
             const response = await fetch('/api/backup-materials', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ materials: [postData] })
+              body: JSON.stringify(postData)
             });
             
             if (!response.ok) {
@@ -989,14 +987,7 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            
-            const firstResult = result?.results?.[0];
-            
-            if (!firstResult?.success) {
-              throw new Error(firstResult?.error || '创建失败 - 数据验证错误');
-            }
-            
-            const created = firstResult?.data;
+            const created = (Array.isArray(result?.data) ? result.data?.[0] : result?.data) || null;
             
             if (!created?.id) {
               throw new Error('创建失败 - 缺少记录ID');
@@ -1006,14 +997,14 @@ export default function ManualPurchaseOrders() {
             setBackupDataPreserveScroll(prev => {
               const updated = prev.map(r => 
                 r.id === id ? { 
-                  ...firstResult.data, 
-                  quantity: String(firstResult.data.quantity || ''),
-                  price: String(firstResult.data.price || ''),
+                  ...created, 
+                  quantity: String(created.quantity || ''),
+                  price: String(created.price || ''),
                   is_manual: true
                 } : r
               );
               const idx = prev.findIndex(r => r.id === id);
-              if (idx >= 0) setBackupPos(String(firstResult.data.id), idx);
+              if (idx >= 0) setBackupPos(String(created.id), idx);
               return updated;
             });
             
