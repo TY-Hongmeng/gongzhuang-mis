@@ -118,7 +118,7 @@ export function installApiInterceptor() {
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
-      // Inject anon key for Supabase REST (avoid 400 No API key)
+      // Inject API key and user token for Supabase REST
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
         const anon = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
         const baseReq = input instanceof Request ? input : null
@@ -136,8 +136,12 @@ export function installApiInterceptor() {
           }
         }
         headers.set('apikey', anon)
-        headers.set('authorization', `Bearer ${anon}`)
-        headers.set('Authorization', `Bearer ${anon}`)
+        try {
+          const sessRes = await (supabase?.auth?.getSession?.() || Promise.resolve({ data: { session: null } }))
+          const session: any = (sessRes as any)?.data?.session || null
+          const token = session?.access_token || null
+          if (token) headers.set('Authorization', `Bearer ${token}`)
+        } catch {}
         console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
         const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
         const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
@@ -156,11 +160,11 @@ export function installApiInterceptor() {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取设备数据
           try {
+            const sessRes = await (supabase?.auth?.getSession?.() || Promise.resolve({ data: { session: null } }))
+            const session: any = (sessRes as any)?.data?.session || null
+            const token = session?.access_token || null
             const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
-              headers: {
-                'apikey': anon,
-                'Authorization': `Bearer ${anon}`
-              }
+              headers: token ? { 'apikey': anon, 'Authorization': `Bearer ${token}` } : { 'apikey': anon }
             })
             const data = await response.json()
             return jsonResponse({ data: data || [] })
@@ -172,11 +176,11 @@ export function installApiInterceptor() {
           if (method !== 'GET') return await fetch(urlStr, patchedInit)
           // 直接调用REST API获取固定库存选项数据
           try {
+            const sessRes = await (supabase?.auth?.getSession?.() || Promise.resolve({ data: { session: null } }))
+            const session: any = (sessRes as any)?.data?.session || null
+            const token = session?.access_token || null
             const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
-              headers: {
-                'apikey': anon,
-                'Authorization': `Bearer ${anon}`
-              }
+              headers: token ? { 'apikey': anon, 'Authorization': `Bearer ${token}` } : { 'apikey': anon }
             })
             const data = await response.json()
             return jsonResponse({ data: data || [] })
