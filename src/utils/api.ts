@@ -94,19 +94,16 @@ export function installApiInterceptor() {
         return await fetchWithFallback(cleanUrl, init)
       }
       // Also intercept absolute calls to GitHub Pages domain
-      if (/github\.io\/.+\/api\//.test(cleanUrl)) {
-        const m = cleanUrl.match(/github\.io\/.+?(\/api\/.*)$/)
+      if (/github\.io\/(?:.+\/)?api\//.test(cleanUrl)) {
+        const m = cleanUrl.match(/github\.io\/(?:.+?\/)?(\/api\/.*)$/)
         const path = m ? m[1] : ''
         if (path) return await fetchWithFallback(path, init)
       }
-      // Intercept Supabase Functions only in非GitHub Pages环境，GitHub Pages直接请求 Functions
+      // Intercept Supabase Functions requests and route to client handler regardless of environment
       if (/functions\.supabase\.co\/functions\/v1\/api\//.test(cleanUrl)) {
-        const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-        if (!isGhPages) {
-          const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
-          const path = m ? m[1] : ''
-          if (path) return await fetchWithFallback(path, init)
-        }
+        const m = cleanUrl.match(/functions\.supabase\.co\/functions\/v1(\/api\/[^?#]+)/)
+        const path = m ? m[1] : ''
+        if (path) return await fetchWithFallback(path, init)
       }
       // Inject anon key for Supabase REST (avoid 400 No API key)
       if (/\.supabase\.co\/rest\/v1\//.test(cleanUrl)) {
@@ -798,6 +795,33 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             .single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, data })
+        }
+        const mp = path.match(/^\/api\/manual-plans\/([^\/]+)$/)
+        if (mp && method === 'PUT') {
+          const id = mp[1]
+          const body = await readBody()
+          const updateData: any = {}
+          if (Object.prototype.hasOwnProperty.call(body, 'inventory_number')) updateData.inventory_number = String(body.inventory_number || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'project_name')) updateData.project_name = String(body.project_name || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'part_name')) updateData.part_name = String(body.part_name || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'part_quantity')) updateData.part_quantity = body.part_quantity == null || body.part_quantity === '' ? null : Number(body.part_quantity)
+          if (Object.prototype.hasOwnProperty.call(body, 'unit')) updateData.unit = String(body.unit || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'model')) updateData.model = String(body.model || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'supplier')) updateData.supplier = String(body.supplier || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'required_date')) updateData.required_date = String(body.required_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'remark')) updateData.remark = String(body.remark || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'status')) updateData.status = String(body.status || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'created_date')) updateData.created_date = String(body.created_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'updated_date')) updateData.updated_date = String(body.updated_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'production_unit')) updateData.production_unit = String(body.production_unit || '')
+          if (Object.prototype.hasOwnProperty.call(body, 'demand_date')) updateData.demand_date = String(body.demand_date || '') || null
+          if (Object.prototype.hasOwnProperty.call(body, 'applicant')) updateData.applicant = String(body.applicant || '')
+          const { error } = await supabase
+            .from('manual_purchase_plans')
+            .update(updateData)
+            .eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
         }
       }
 
