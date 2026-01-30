@@ -1265,22 +1265,27 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
-        const DEFAULT_FN = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
-        const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FN
-        const fnBase = /functions\.supabase\.co\/$/.test(rawBase)
-          ? rawBase + 'functions/v1'
-          : (/functions\.supabase\.co$/.test(rawBase) ? rawBase + '/functions/v1' : rawBase)
-        const url = `${fnBase}/api/purchase-orders`
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orders: rows })
-        })
-        const text = await resp.text()
-        let js: any = null
-        try { js = JSON.parse(text) } catch {}
-        if (!resp.ok) return jsonResponse(js || { success: false, error: text || '服务器错误' }, resp.status)
-        return jsonResponse(js || { success: true })
+        
+        // 使用固定的远程 Functions 地址
+        const FN_URL = 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1/api/purchase-orders'
+        
+        try {
+          const resp = await fetch(FN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orders: rows })
+          })
+          
+          const text = await resp.text()
+          let js: any = null
+          try { js = JSON.parse(text) } catch {}
+          
+          if (!resp.ok) return jsonResponse(js || { success: false, error: text || '服务器错误' }, resp.status)
+          return jsonResponse(js || { success: true })
+        } catch (err: any) {
+          console.error('Remote function call failed:', err)
+          return jsonResponse({ success: false, error: '调用远程服务失败: ' + (err.message || String(err)) }, 500)
+        }
       }
 
       // Workshops & teams (organization data)
