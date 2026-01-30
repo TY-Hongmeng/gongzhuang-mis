@@ -37,7 +37,8 @@ serve(async (req) => {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Origin": origin
     }
-    return new Response(null, { status: 204, headers })
+    // 返回200以兼容部分浏览器/代理对预检状态码的要求
+    return new Response(null, { status: 200, headers })
   }
   const url = new URL(req.url)
   const pathname = url.pathname
