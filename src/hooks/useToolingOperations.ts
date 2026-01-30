@@ -216,8 +216,7 @@ export const useToolingOperations = () => {
         return null
       }
 
-      const FN_URL = 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1/api/purchase-orders'
-      const response = await fetch(FN_URL, {
+      const response = await fetch('/api/purchase-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders: validOrders })

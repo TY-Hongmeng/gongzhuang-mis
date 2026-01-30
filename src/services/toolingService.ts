@@ -338,8 +338,7 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    const FN_URL = 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1/api/purchase-orders'
-    const response = await fetch(FN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
+    const response = await fetch('/api/purchase-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
   } catch (error) {
