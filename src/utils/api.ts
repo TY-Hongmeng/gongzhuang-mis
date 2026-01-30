@@ -1268,14 +1268,23 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1'
         const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
         const base = String(rawBase).replace(/\/$/, '')
-        const url = `${base}/api/purchase-orders`
+        const primaryUrl = `${base}/api/purchase-orders`
+        const altBase = base.replace(/\/functions\/v1$/, '')
+        const altUrl = `${altBase}/api/purchase-orders`
 
         try {
-          const resp = await fetch(url, {
+          let resp = await fetch(primaryUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ orders: rows })
           })
+          if (!resp.ok && resp.status === 404) {
+            resp = await fetch(altUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ orders: rows })
+            })
+          }
           const text = await resp.text()
           let js: any = null
           try { js = JSON.parse(text) } catch {}
