@@ -216,7 +216,13 @@ export const useToolingOperations = () => {
         return null
       }
 
-      const response = await fetch('/api/purchase-orders', {
+      const DEFAULT_FN = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
+      const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FN
+      const fnBase = /functions\.supabase\.co\/$/.test(rawBase)
+        ? rawBase + 'functions/v1'
+        : (/functions\.supabase\.co$/.test(rawBase) ? rawBase + '/functions/v1' : rawBase)
+      const url = `${fnBase}/api/purchase-orders`
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orders: validOrders })
