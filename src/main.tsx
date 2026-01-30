@@ -5,7 +5,7 @@ import { installApiInterceptor } from './utils/api'
 import './index.css'
 
 installApiInterceptor()
-console.log('App Version: v1.6.1')
+console.log('App Version: v1.6.2')
 if ('serviceWorker' in navigator) {
   try {
     navigator.serviceWorker.getRegistrations?.().then(regs => {

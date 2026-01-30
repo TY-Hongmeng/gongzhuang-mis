@@ -13,7 +13,16 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+let _supabase: any = null
+function getSupabase() {
+  if (_supabase) return _supabase
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    throw new Error("Missing Supabase environment variables")
+  }
+  _supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+  return _supabase
+}
 
 async function json(req: Request) {
   try {
@@ -39,21 +48,23 @@ serve(async (req) => {
     }
     return new Response(null, { status: 204, headers })
   }
-  const url = new URL(req.url)
-  const pathname = url.pathname
-  const path = pathname
-    .replace(/^\/functions\/v1\/api/, '')
-    .replace(/^\/api/, '')
-    .replace(/^\/?/, '/')
   const origin = req.headers.get('origin') || '*'
   const baseHeaders = { ...corsHeaders, "Access-Control-Allow-Origin": origin }
 
-  if (path === "/auth/login" && req.method === "POST") {
+  try {
+    const url = new URL(req.url)
+    const pathname = url.pathname
+    const path = pathname
+      .replace(/^\/functions\/v1\/api/, '')
+      .replace(/^\/api/, '')
+      .replace(/^\/?/, '/')
+
+    if (path === "/auth/login" && req.method === "POST") {
     const body = await json(req)
     const phone = String(body.phone || "")
     const password = String(body.password || "")
     const { default: bcrypt } = await import("npm:bcryptjs")
-    const { data: user, error } = await supabase
+    const { data: user, error } = await getSupabase()
       .from("users")
       .select(`*, companies(id,name), roles(id,name, role_permissions( permissions(id,name,module,code) ))`)
       .eq("phone", phone)
@@ -76,12 +87,12 @@ serve(async (req) => {
     const workshopId = body.workshopId || null
     const teamId = body.teamId || null
     const password = String(body.password || "")
-    const { data: existingPhone } = await supabase.from("users").select("id").eq("phone", phone).single()
+    const { data: existingPhone } = await getSupabase().from("users").select("id").eq("phone", phone).single()
     if (existingPhone) return Response.json({ error: "手机号已被注册" }, { status: 400, headers: baseHeaders })
-    const { data: existingId } = await supabase.from("users").select("id").eq("id_card", idCard).single()
+    const { data: existingId } = await getSupabase().from("users").select("id").eq("id_card", idCard).single()
     if (existingId) return Response.json({ error: "身份证号已被注册" }, { status: 400, headers: baseHeaders })
     const passwordHash = await bcrypt.hash(password, 10)
-    const { error } = await supabase.from("users").insert({ phone, real_name: realName, id_card: idCard, company_id: companyId, role_id: roleId, workshop_id: workshopId, team_id: teamId, password_hash: passwordHash, status: "pending" })
+    const { error } = await getSupabase().from("users").insert({ phone, real_name: realName, id_card: idCard, company_id: companyId, role_id: roleId, workshop_id: workshopId, team_id: teamId, password_hash: passwordHash, status: "pending" })
     if (error) return Response.json({ error: "注册失败" }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, message: "注册成功，请等待管理员审核" }, { headers: baseHeaders })
   }
@@ -90,10 +101,10 @@ serve(async (req) => {
     const body = await json(req)
     const idCard = String(body.idCard || "")
     const newPassword = String(body.newPassword || "")
-    const { data: user } = await supabase.from("users").select("id").eq("id_card", idCard).single()
+    const { data: user } = await getSupabase().from("users").select("id").eq("id_card", idCard).single()
     if (!user) return Response.json({ error: "用户不存在" }, { status: 404, headers: baseHeaders })
     const passwordHash = await bcrypt.hash(newPassword, 10)
-    const { error } = await supabase.from("users").update({ password_hash: passwordHash }).eq("id", user.id)
+    const { error } = await getSupabase().from("users").update({ password_hash: passwordHash }).eq("id", user.id)
     if (error) return Response.json({ error: "密码重置失败" }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, message: "密码重置成功" }, { headers: baseHeaders })
   }
@@ -108,14 +119,14 @@ serve(async (req) => {
       })
     })
     if (rows.length > 0) {
-      const { error } = await supabase.from("permissions").upsert(rows, { onConflict: "module,name" })
+      const { error } = await getSupabase().from("permissions").upsert(rows, { onConflict: "module,name" })
       if (error) return Response.json({ error: "同步权限失败" }, { status: 500, headers: baseHeaders })
     }
     return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   if (path === "/permissions" && req.method === "GET") {
-    const { data, error } = await supabase.from("permissions").select("*").order("module", { ascending: true })
+    const { data, error } = await getSupabase().from("permissions").select("*").order("module", { ascending: true })
     if (error) return Response.json({ success: false, error: "加载权限失败" }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
@@ -130,7 +141,7 @@ serve(async (req) => {
     const end_date = u.searchParams.get("end_date") || undefined
     const search = u.searchParams.get("search") || undefined
 
-    let q = supabase.from("cutting_orders").select("*", { count: "exact" })
+    let q = getSupabase().from("cutting_orders").select("*", { count: "exact" })
     if (material_source) q = q.eq("material_source", material_source)
     if (start_date && end_date) q = q.gte("created_date", start_date).lte("created_date", end_date)
     if (search) {
@@ -150,8 +161,8 @@ serve(async (req) => {
   if (path === "/cutting-orders" && req.method === "POST") {
     const body = await json(req)
     const rows = Array.isArray(body.orders) ? body.orders : []
-    if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: corsHeaders })
-    const { error } = await supabase.from("cutting_orders").insert(rows)
+    if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: baseHeaders })
+    const { error } = await getSupabase().from("cutting_orders").insert(rows)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
@@ -160,19 +171,19 @@ serve(async (req) => {
   const delCuttingMatch = path.match(/^\/cutting-orders\/(\w+)/)
   if (delCuttingMatch && req.method === "DELETE") {
     const id = delCuttingMatch[1]
-    const { error } = await supabase.from("cutting_orders").delete().eq("id", id)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    const { error } = await getSupabase().from("cutting_orders").delete().eq("id", id)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Cutting Orders - batch delete
   if (path === "/cutting-orders/batch-delete" && req.method === "POST") {
     const body = await json(req)
     const ids: string[] = Array.isArray(body.ids) ? body.ids : []
-    if (ids.length === 0) return Response.json({ success: false, error: "缺少ids" }, { status: 400, headers: corsHeaders })
-    const { error } = await supabase.from("cutting_orders").delete().in("id", ids)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (ids.length === 0) return Response.json({ success: false, error: "缺少ids" }, { status: 400, headers: baseHeaders })
+    const { error } = await getSupabase().from("cutting_orders").delete().in("id", ids)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Purchase Orders - list
@@ -180,7 +191,7 @@ serve(async (req) => {
     const u = new URL(req.url)
     const page = Number(u.searchParams.get("page") || 1)
     const pageSize = Number(u.searchParams.get("pageSize") || 100)
-    let q = supabase.from("purchase_orders").select("*", { count: "exact" })
+    let q = getSupabase().from("purchase_orders").select("*", { count: "exact" })
     q = q.order("created_date", { ascending: false }).range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
     const { data, count, error } = await q
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
@@ -191,8 +202,8 @@ serve(async (req) => {
   if (path === "/purchase-orders" && req.method === "POST") {
     const body = await json(req)
     const rows = Array.isArray(body.orders) ? body.orders : []
-    if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: corsHeaders })
-    const { error } = await supabase.from("purchase_orders").insert(rows)
+    if (rows.length === 0) return Response.json({ success: false, error: "缺少orders" }, { status: 400, headers: baseHeaders })
+    const { error } = await getSupabase().from("purchase_orders").insert(rows)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
@@ -201,48 +212,48 @@ serve(async (req) => {
   if (path === "/purchase-orders/batch-delete" && req.method === "POST") {
     const body = await json(req)
     const ids: string[] = Array.isArray(body.ids) ? body.ids : []
-    if (ids.length === 0) return Response.json({ success: false, error: "缺少ids" }, { status: 400, headers: corsHeaders })
-    const { error } = await supabase.from("purchase_orders").delete().in("id", ids)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true }, { headers: corsHeaders })
+    if (ids.length === 0) return Response.json({ success: false, error: "缺少ids" }, { status: 400, headers: baseHeaders })
+    const { error } = await getSupabase().from("purchase_orders").delete().in("id", ids)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   // Options and meta endpoints
   if (path === "/options/production-units" && req.method === "GET") {
-    const { data, error } = await supabase.from("production_units").select("*").order("name")
+    const { data, error } = await getSupabase().from("production_units").select("*").order("name")
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/options/tooling-categories" && req.method === "GET") {
-    const { data, error } = await supabase.from("tooling_categories").select("*").order("name")
+    const { data, error } = await getSupabase().from("tooling_categories").select("*").order("name")
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/materials" && req.method === "GET") {
-    const { data, error } = await supabase.from("materials").select("*").order("name")
+    const { data, error } = await getSupabase().from("materials").select("*").order("name")
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/part-types" && req.method === "GET") {
-    const { data, error } = await supabase.from("part_types").select("*").order("name")
+    const { data, error } = await getSupabase().from("part_types").select("*").order("name")
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/options/material-sources" && req.method === "GET") {
-    const { data, error } = await supabase.from("material_sources").select("*").order("name")
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    const { data, error } = await getSupabase().from("material_sources").select("*").order("name")
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
 
   if (path === "/tooling/devices" && req.method === "GET") {
-    const { data, error } = await supabase.from("devices").select("*").order("created_at", { ascending: true })
+    const { data, error } = await getSupabase().from("devices").select("*").order("created_at", { ascending: true })
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/tooling/devices" && req.method === "POST") {
     const body = await json(req)
     const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
-    const { data, error } = await supabase.from("devices").insert(payload).select("*").single()
+    const { data, error } = await getSupabase().from("devices").insert(payload).select("*").single()
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, item: data }, { headers: baseHeaders })
   }
@@ -250,14 +261,14 @@ serve(async (req) => {
     const body = await json(req)
     const id = String(body.id || "")
     const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
-    const { error } = await supabase.from("devices").update(payload).eq("id", id)
+    const { error } = await getSupabase().from("devices").update(payload).eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (path === "/tooling/devices/delete" && req.method === "POST") {
     const body = await json(req)
     const id = String(body.id || "")
-    const { error } = await supabase.from("devices").delete().eq("id", id)
+    const { error } = await getSupabase().from("devices").delete().eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
@@ -266,26 +277,26 @@ serve(async (req) => {
     const id = devMatch[1]
     const body = await json(req)
     const payload = { device_no: String(body.device_no || ""), device_name: String(body.device_name || ""), max_aux_minutes: body.max_aux_minutes ?? null }
-    const { error } = await supabase.from("devices").update(payload).eq("id", id)
+    const { error } = await getSupabase().from("devices").update(payload).eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (devMatch && req.method === "DELETE") {
     const id = devMatch[1]
-    const { error } = await supabase.from("devices").delete().eq("id", id)
+    const { error } = await getSupabase().from("devices").delete().eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
 
   if (path === "/tooling/fixed-inventory-options" && req.method === "GET") {
-    const { data, error } = await supabase.from("fixed_inventory_options").select("*").order("created_at", { ascending: true })
+    const { data, error } = await getSupabase().from("fixed_inventory_options").select("*").order("created_at", { ascending: true })
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
   if (path === "/tooling/fixed-inventory-options" && req.method === "POST") {
     const body = await json(req)
     const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
-    const { data, error } = await supabase.from("fixed_inventory_options").insert(payload).select("*").single()
+    const { data, error } = await getSupabase().from("fixed_inventory_options").insert(payload).select("*").single()
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true, item: data }, { headers: baseHeaders })
   }
@@ -293,14 +304,14 @@ serve(async (req) => {
     const body = await json(req)
     const id = String(body.id || "")
     const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
-    const { error } = await supabase.from("fixed_inventory_options").update(payload).eq("id", id)
+    const { error } = await getSupabase().from("fixed_inventory_options").update(payload).eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (path === "/tooling/fixed-inventory-options/delete" && req.method === "POST") {
     const body = await json(req)
     const id = String(body.id || "")
-    const { error } = await supabase.from("fixed_inventory_options").delete().eq("id", id)
+    const { error } = await getSupabase().from("fixed_inventory_options").delete().eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
@@ -309,13 +320,13 @@ serve(async (req) => {
     const id = fioMatch[1]
     const body = await json(req)
     const payload = { option_value: String(body.option_value || ""), option_label: String(body.option_label || ""), is_active: Boolean(body.is_active ?? true) }
-    const { error } = await supabase.from("fixed_inventory_options").update(payload).eq("id", id)
+    const { error } = await getSupabase().from("fixed_inventory_options").update(payload).eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
   if (fioMatch && req.method === "DELETE") {
     const id = fioMatch[1]
-    const { error } = await supabase.from("fixed_inventory_options").delete().eq("id", id)
+    const { error } = await getSupabase().from("fixed_inventory_options").delete().eq("id", id)
     if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
     return Response.json({ success: true }, { headers: baseHeaders })
   }
@@ -324,11 +335,15 @@ serve(async (req) => {
   if (path.startsWith("/tooling/batch") && req.method === "GET") {
     const u = new URL(req.url)
     const ids = u.searchParams.getAll("ids")
-    if (ids.length === 0) return Response.json({ success: true, items: [] }, { headers: corsHeaders })
-    const { data, error } = await supabase.from("tooling_info").select("id,responsible_person_id,recorder").in("id", ids)
-    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
-    return Response.json({ success: true, items: data || [] }, { headers: corsHeaders })
+    if (ids.length === 0) return Response.json({ success: true, items: [] }, { headers: baseHeaders })
+    const { data, error } = await getSupabase().from("tooling_info").select("id,responsible_person_id,recorder").in("id", ids)
+    if (error) return Response.json({ success: false, error: error.message }, { status: 500, headers: baseHeaders })
+    return Response.json({ success: true, items: data || [] }, { headers: baseHeaders })
   }
 
-  return new Response("Not Found", { status: 404, headers: corsHeaders })
+  return new Response("Not Found", { status: 404, headers: baseHeaders })
+  } catch (err: any) {
+    console.error("API Error:", err)
+    return Response.json({ error: err.message || "Internal Server Error" }, { status: 500, headers: baseHeaders })
+  }
 })
