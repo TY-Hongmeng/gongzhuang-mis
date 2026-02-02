@@ -386,7 +386,8 @@ export const rollbackPurchaseOrders = async (orders: any[]) => {
     const { data: { session } } = await supabase.auth.getSession()
     
     // 尝试从localStorage恢复token (针对supabase client可能丢失session的情况)
-    if (!session?.access_token) {
+    let accessToken = session?.access_token;
+    if (!accessToken) {
        try {
         const keyPattern = /^sb-.*-auth-token$/;
         for (let i = 0; i < localStorage.length; i++) {
@@ -396,10 +397,7 @@ export const rollbackPurchaseOrders = async (orders: any[]) => {
             if (item) {
               const parsed = JSON.parse(item);
               if (parsed.access_token) {
-                 // 手动设置 session (虽然 supabase client 主要是自动的，但这里我们可能需要手动 insert)
-                 // 注意：直接使用 supabase.from().insert() 会使用内部 session。
-                 // 如果内部 session 丢失，我们需要 setSession。
-                 await supabase.auth.setSession(parsed);
+                 accessToken = parsed.access_token;
                  break;
               }
             }
@@ -410,68 +408,25 @@ export const rollbackPurchaseOrders = async (orders: any[]) => {
       }
     }
 
-    const manualRestores: any[] = []
-    const backupRestores: any[] = []
-    const idsToDelete: string[] = []
-
-    // 辅助函数：解析 model 文本 "材质 (规格)"
-    const parseModel = (modelText: string) => {
-        if (!modelText) return { material: '', specs: '' }
-        const match = modelText.match(/^(.*?) \((.*?)\)$/)
-        if (match) return { material: match[1], specs: match[2] }
-        return { material: modelText, specs: modelText } // 如果格式不匹配，保留原值
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    for (const item of orders) {
-      // 必须有ID才能删除
-      if (!item.id) continue;
-      idsToDelete.push(item.id)
+    const response = await fetch('/api/purchase-orders/rollback', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ orders })
+    });
 
-      if (item.inventory_number?.startsWith('MANUAL-')) {
-        // 恢复到 manual_plans
-        manualRestores.push({
-          part_name: item.part_name,
-          model: item.model,
-          part_quantity: item.part_quantity,
-          unit: item.unit,
-          project_name: item.project_name,
-          production_unit: item.production_unit,
-          demand_date: item.demand_date,
-          applicant: item.applicant,
-          created_date: new Date().toISOString().split('T')[0]
-        })
-      } else if (item.inventory_number?.startsWith('BACKUP-')) {
-        // 恢复到 backup_materials
-        const { material, specs } = parseModel(item.model || '')
-        backupRestores.push({
-          material_name: item.part_name, 
-          material: material,
-          model: specs, // 将规格放入 model 字段 (因为原始 model 字段可能就是规格)
-          quantity: item.part_quantity,
-          unit: item.unit,
-          project_name: item.project_name,
-          production_unit: item.production_unit,
-          demand_date: item.demand_date,
-          applicant: item.applicant,
-          supplier: item.supplier,
-          total_price: item.total_price,
-          created_date: new Date().toISOString().split('T')[0]
-        })
-      }
-      // 工装信息的条目不需要恢复（源数据未删除），只需从 purchase_orders 删除
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`回退失败: ${response.status} - ${errorText}`);
     }
 
-    if (manualRestores.length > 0) {
-      const { error } = await supabase.from('manual_plans').insert(manualRestores)
-      if (error) throw error
-    }
-    if (backupRestores.length > 0) {
-      const { error } = await supabase.from('backup_materials').insert(backupRestores)
-      if (error) throw error
-    }
-    if (idsToDelete.length > 0) {
-      const { error } = await supabase.from('purchase_orders').delete().in('id', idsToDelete)
-      if (error) throw error
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || '回退失败');
     }
 
     return { success: true }

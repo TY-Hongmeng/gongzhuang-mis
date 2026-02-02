@@ -951,6 +951,100 @@ router.post('/batch-delete', async (req, res) => {
   }
 });
 
+// POST /api/purchase-orders/rollback
+// 回退采购单（恢复到来源表并删除采购单）
+router.post('/rollback', async (req, res) => {
+  try {
+    const { orders } = req.body;
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ success: false, error: '请选择要回退的采购单' });
+    }
+
+    console.log(`[PurchaseOrders] Rolling back ${orders.length} orders...`);
+
+    const manualRestores: any[] = [];
+    const backupRestores: any[] = [];
+    const idsToDelete: string[] = [];
+
+    // 辅助函数：解析 model 文本 "材质 (规格)"
+    const parseModel = (modelText: string) => {
+        if (!modelText) return { material: '', specs: '' };
+        const match = modelText.match(/^(.*?) \((.*?)\)$/);
+        if (match) return { material: match[1], specs: match[2] };
+        return { material: modelText, specs: modelText }; // 如果格式不匹配，保留原值
+    };
+
+    for (const item of orders) {
+      // 必须有ID才能删除
+      if (!item.id) continue;
+      idsToDelete.push(item.id);
+
+      if (item.inventory_number?.startsWith('MANUAL-')) {
+        // 恢复到 manual_purchase_plans (注意表名是 manual_purchase_plans)
+        manualRestores.push({
+          part_name: item.part_name,
+          model: item.model,
+          part_quantity: item.part_quantity,
+          unit: item.unit,
+          project_name: item.project_name,
+          production_unit: item.production_unit,
+          demand_date: item.demand_date,
+          applicant: item.applicant,
+          created_date: new Date().toISOString().split('T')[0]
+        });
+      } else if (item.inventory_number?.startsWith('BACKUP-')) {
+        // 恢复到 backup_materials
+        const { material, specs } = parseModel(item.model || '');
+        backupRestores.push({
+          material_name: item.part_name, 
+          material: material,
+          model: specs, // 将规格放入 model 字段 (因为原始 model 字段可能就是规格)
+          quantity: item.part_quantity,
+          unit: item.unit,
+          project_name: item.project_name,
+          // 备用料的 supplier 字段可能被映射到了 production_unit 显示，回退时需还原
+          supplier: item.supplier || item.production_unit,
+          demand_date: item.demand_date,
+          applicant: item.applicant,
+          total_price: item.total_price,
+          created_date: new Date().toISOString().split('T')[0]
+        });
+      }
+      // 工装信息的条目不需要恢复（源数据未删除），只需从 purchase_orders 删除
+    }
+
+    // 执行数据库操作 (使用 supabase 客户端，因为它已经在后端配置好)
+    if (manualRestores.length > 0) {
+      const { error } = await supabase.from('manual_purchase_plans').insert(manualRestores);
+      if (error) {
+        console.error('Rollback manual_purchase_plans error:', error);
+        throw new Error('恢复手动计划失败: ' + error.message);
+      }
+    }
+    
+    if (backupRestores.length > 0) {
+      const { error } = await supabase.from('backup_materials').insert(backupRestores);
+      if (error) {
+         console.error('Rollback backup_materials error:', error);
+         throw new Error('恢复备用材料失败: ' + error.message);
+      }
+    }
+    
+    if (idsToDelete.length > 0) {
+      const { error } = await supabase.from('purchase_orders').delete().in('id', idsToDelete);
+      if (error) {
+        console.error('Delete purchase_orders error:', error);
+        throw new Error('删除采购单失败: ' + error.message);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('Rollback route error:', err);
+    res.status(500).json({ success: false, error: err.message || '回退失败' });
+  }
+});
+
 
 // POST /api/purchase-orders/manual
 // 临时计划
