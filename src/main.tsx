@@ -5,7 +5,7 @@ import { installApiInterceptor } from './utils/api'
 import './index.css'
 
 installApiInterceptor()
-console.log('App Version: v1.7.12')
+console.log(`App version: v1.7.13 (Build Time: ${new Date().toISOString()}) - Fixed purchase order creation by using backend implementation`)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

@@ -12,7 +12,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling/fixed-inventory-options',
     '/api/auth',
     '/api/cutting-orders',
-    '/api/purchase-orders',
+    // '/api/purchase-orders', // Removed to use backend implementation
     '/api/backup-materials',
     '/api/manual-plans'
   ]
@@ -1246,107 +1246,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true })
       }
 
-      // Purchase orders list
-      if (method === 'GET' && path === '/api/purchase-orders') {
-        const qs = getQuery(cleanUrl)
-        const page = Number(qs.get('page') || 1)
-        const pageSize = Number(qs.get('pageSize') || 1000)
-        let q = supabase.from('purchase_orders').select('*')
-        q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        const { data, error } = await q
-        if (error) return jsonResponse({ data: [] })
-        const rows = (data || []) as any[]
-        const items = rows.map((r: any) => {
-          const inv = String(r.inventory_number || '')
-          const src = r.source || (
-            inv.startsWith('MANUAL-') || inv.startsWith('BACKUP-')
-              ? '临时计划'
-              : ((r.tooling_id || r.part_id) ? '工装信息' : '未知来源')
-          )
-          return { ...r, source: src }
-        })
-        return jsonResponse({ data: items })
-      }
+      // Purchase orders API handled by backend (removed client-side fallback)
 
-      // Purchase orders create -> direct DB access (restored)
-      if (method === 'POST' && path === '/api/purchase-orders') {
-        const body = await readBody()
-        const rows = Array.isArray(body?.orders) ? body.orders : []
-        if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
-        
-        // Ensure we have a valid session to avoid RLS errors
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          console.warn('No active session found for purchase order creation')
-        }
-
-        const nowIso = new Date().toISOString()
-        const normalized = rows.map((raw: any) => {
-           return {
-             inventory_number: String(raw.inventory_number || '').trim(),
-             project_name: String(raw.project_name || '').trim(),
-             part_name: String(raw.part_name || '').trim(),
-             part_quantity: Number(raw.part_quantity || 0),
-             unit: String(raw.unit || '件'),
-             model: String(raw.model || ''),
-             supplier: String(raw.supplier || ''),
-             required_date: raw.required_date || null,
-             remark: String(raw.remark || ''),
-             created_date: raw.created_date || nowIso,
-             tooling_id: raw.tooling_id || null, // Ensure empty string becomes null
-             part_id: raw.part_id || null, // Ensure empty string becomes null
-             status: raw.status || 'pending',
-             weight: Number(raw.weight || 0),
-             total_price: Number(raw.total_price || 0),
-             applicant: String(raw.applicant || ''),
-             production_unit: String(raw.production_unit || '')
-           }
-        }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
-
-        const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
-        const { data: existing } = await supabase
-          .from('purchase_orders')
-          .select('id, inventory_number')
-          .in('inventory_number', invs)
-        
-        const existingSet = new Set<string>((existing || []).map((e: any) => String(e.inventory_number)))
-        const toInsert = normalized.filter((p: any) => !existingSet.has(String(p.inventory_number)))
-        const toUpdate = normalized.filter((p: any) => existingSet.has(String(p.inventory_number)))
-
-        let inserted = 0
-        let updated = 0
-        
-        if (toInsert.length) {
-            const { error: insErr } = await supabase.from('purchase_orders').insert(toInsert)
-            if (insErr) return jsonResponse({ success: false, error: insErr.message }, 500)
-            inserted = toInsert.length
-        }
-        
-        for (const row of toUpdate) {
-             const { error: updErr } = await supabase.from('purchase_orders').update({
-                 project_name: row.project_name,
-                 part_name: row.part_name,
-                 part_quantity: row.part_quantity,
-                 unit: row.unit,
-                 model: row.model,
-                 supplier: row.supplier,
-                 required_date: row.required_date,
-                 remark: row.remark,
-                 tooling_id: row.tooling_id,
-                 part_id: row.part_id,
-                 status: row.status,
-                 weight: row.weight,
-                 total_price: row.total_price,
-                 applicant: row.applicant,
-                 production_unit: row.production_unit
-             }).eq('inventory_number', row.inventory_number)
-             if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
-             updated++
-        }
-        
-        const skipped = rows.length - inserted - updated
-        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
-      }
 
       // Workshops & teams (organization data)
       if (method === 'GET' && path === '/api/tooling/org/workshops') {
