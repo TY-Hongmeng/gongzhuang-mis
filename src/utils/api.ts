@@ -90,6 +90,15 @@ export function installApiInterceptor() {
       // 清理URL中的反引号和空格
       let u = typeof input === 'string' ? input : String((input as any)?.url || '')
       const cleanUrl = u.replace(/[`]/g, '').trim()
+
+      // 1. 本地环境检测：如果是本地 localhost 且请求 /api/ 开头，直接放行，走 Vite 代理到本地 Express 后端
+      // 这能解决开发端 401 RLS 问题，因为本地后端有服务端权限
+      const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
+      if (isLocal && cleanUrl.startsWith('/api/')) {
+        return await originalFetch(input, init)
+      }
+
+      // 2. 网页端环境（GitHub Pages 等）：拦截 API 请求并用 handleClientSideApi 模拟后端
       if (cleanUrl.startsWith('/api')) {
         return await fetchWithFallback(cleanUrl, init)
       }
@@ -1259,72 +1268,41 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ data: items })
       }
 
+      // Purchase orders create -> forward to remote Supabase Functions to bypass RLS (for GitHub Pages)
       if (method === 'POST' && path === '/api/purchase-orders') {
         const body = await readBody()
         const rows = Array.isArray(body?.orders) ? body.orders : []
         if (rows.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
 
-        const nowIso = new Date().toISOString()
-        const normalized = rows.map((raw: any) => ({
-          inventory_number: String(raw.inventory_number || '').trim(),
-          project_name: String(raw.project_name || '').trim(),
-          part_name: String(raw.part_name || '').trim(),
-          part_quantity: Number(raw.part_quantity || 0),
-          unit: String(raw.unit || '件'),
-          model: String(raw.model || ''),
-          supplier: String(raw.supplier || ''),
-          required_date: raw.required_date || null,
-          remark: String(raw.remark || ''),
-          created_date: raw.created_date || nowIso,
-          tooling_id: raw.tooling_id || null,
-          part_id: raw.part_id || null,
-          status: raw.status || 'pending',
-          weight: Number(raw.weight || 0),
-          total_price: Number(raw.total_price || 0),
-          applicant: String(raw.applicant || ''),
-          production_unit: String(raw.production_unit || '')
-        })).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
+        const fnName = (import.meta as any)?.env?.VITE_FUNCTION_NAME || 'api'
+        const baseV1 = 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1'
+        const baseRaw = (import.meta as any)?.env?.VITE_API_URL || baseV1
+        const base = String(baseRaw).replace(/\/$/, '')
+        const candidates = [
+          `${base}/${fnName}/purchase-orders`,
+          `${base}/api/purchase-orders`,
+          `${base.replace(/\/functions\/v1$/, '')}/${fnName}/purchase-orders`,
+          `${base.replace(/\/functions\/v1$/, '')}/api/purchase-orders`
+        ]
 
-        const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
-        const { data: existing } = await supabase
-          .from('purchase_orders')
-          .select('id, inventory_number')
-          .in('inventory_number', invs)
-
-        const existingSet = new Set<string>((existing || []).map((e: any) => String(e.inventory_number)))
-        const toInsert = normalized.filter((p: any) => !existingSet.has(String(p.inventory_number)))
-        const toUpdate = normalized.filter((p: any) => existingSet.has(String(p.inventory_number)))
-
-        let inserted = 0
-        let updated = 0
-        if (toInsert.length) {
-          const { error: insErr } = await supabase.from('purchase_orders').insert(toInsert)
-          if (insErr) return jsonResponse({ success: false, error: insErr.message }, 500)
-          inserted = toInsert.length
+        for (const url of candidates) {
+          try {
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ orders: rows })
+            })
+            const text = await resp.text()
+            let js: any = null
+            try { js = JSON.parse(text) } catch {}
+            if (resp.ok) return jsonResponse(js || { success: true })
+            if (resp.status === 404) continue
+            return jsonResponse(js || { success: false, error: text || '服务器错误' }, resp.status)
+          } catch (_) {
+            continue
+          }
         }
-        for (const row of toUpdate) {
-          const { error: updErr } = await supabase.from('purchase_orders').update({
-            project_name: row.project_name,
-            part_name: row.part_name,
-            part_quantity: row.part_quantity,
-            unit: row.unit,
-            model: row.model,
-            supplier: row.supplier,
-            required_date: row.required_date,
-            remark: row.remark,
-            tooling_id: row.tooling_id,
-            part_id: row.part_id,
-            status: row.status,
-            weight: row.weight,
-            total_price: row.total_price,
-            applicant: row.applicant,
-            production_unit: row.production_unit
-          }).eq('inventory_number', row.inventory_number)
-          if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
-          updated++
-        }
-        const skipped = rows.length - inserted - updated
-        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
+        return jsonResponse({ success: false, error: '远程服务不可用或未部署，请检查 Supabase Functions' }, 502)
       }
 
       // Workshops & teams (organization data)
