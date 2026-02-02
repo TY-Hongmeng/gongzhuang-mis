@@ -396,27 +396,39 @@ export default function PurchaseOrdersList() {
             onChange={(val) => setSourceFilter(val as any)}
           />
           <Space>
-            <Button onClick={() => {
+            <Button onClick={async () => {
               if (selectedRowKeys.length === 0) { message.warning('请选择要回退的采购单'); return }
               try {
                 const selectedSet = new Set<string>(selectedRowKeys.map(String))
-                data.filter(d => selectedSet.has(String(d.id))).forEach(item => {
+                const selectedItems = data.filter(d => selectedSet.has(String(d.id)))
+                
+                // 调用回退服务（恢复数据并删除采购单）
+                await rollbackPurchaseOrders(selectedItems)
+
+                // 保持工装信息的状态更新逻辑
+                selectedItems.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
                   if (pid) localStorage.setItem(`status_part_${pid}`, '审批中')
                   if (cid) localStorage.setItem(`status_child_${cid}`, '审批中')
                 })
+                
                 const apprHidden = new Set<string>(approvalHiddenIds)
                 selectedRowKeys.forEach(id => apprHidden.add(String(id)))
                 const apprArr = Array.from(apprHidden)
                 localStorage.setItem('approval_hidden_ids', JSON.stringify(apprArr))
+                
+                // 通知其他页面刷新
                 window.dispatchEvent(new Event('approval_updated'))
+                window.dispatchEvent(new Event('status_updated')) // 触发 ManualPurchaseOrders 重新加载
+                
                 message.success('已回退所选采购单')
                 setSelectedRowKeys([])
                 setApprovalHiddenIds(apprArr)
-                setData(prev => prev.filter(item => !selectedSet.has(String(item.id))))
+                // 重新获取数据以反映删除
+                fetchPurchaseOrders()
               } catch (e) {
-                message.error('回退失败')
+                message.error('回退失败: ' + (e as Error).message)
               }
             }}>回退</Button>
             <Button onClick={() => {

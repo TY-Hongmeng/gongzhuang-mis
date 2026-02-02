@@ -1506,8 +1506,16 @@ export default function ManualPurchaseOrders() {
     fetchManualData();
     fetchBackupData();
     const handler = () => setHiddenTick(v => v + 1)
+    const statusHandler = () => {
+      fetchManualData();
+      fetchBackupData();
+    };
     window.addEventListener('temporary_plans_updated', handler)
-    return () => window.removeEventListener('temporary_plans_updated', handler)
+    window.addEventListener('status_updated', statusHandler)
+    return () => {
+      window.removeEventListener('temporary_plans_updated', handler)
+      window.removeEventListener('status_updated', statusHandler)
+    }
   }, []);
 
   return (
