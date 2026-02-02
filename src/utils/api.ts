@@ -1368,7 +1368,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
             ...item,
             production_unit,
             applicant: recorder, // Map recorder to applicant if needed or keep separate
-            demand_date: item.demand_date || item.required_date // Fallback
+            demand_date: item.demand_date || item.required_date, // Fallback
+            source: (item.tooling_id || item.child_item_id || item.part_id) ? '工装信息' : '临时计划'
           }
         })
 
@@ -1438,11 +1439,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              applicant: order.applicant || order.recorder || session?.user?.id || null, // Prefer session user ID if applicant missing
              weight: order.weight ?? null,
             total_price: order.total_price ?? null,
-            source: order.source || null,
             created_date: order.created_date || new Date().toISOString()
           }
-           
-           if (order.inventory_number) {
+            
+          if (order.inventory_number) {
              payload.inventory_number = order.inventory_number
              // Check existence - use maybeSingle to avoid 406
              const { data: existing, error: findError } = await supabase

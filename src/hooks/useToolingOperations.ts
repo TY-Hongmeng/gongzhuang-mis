@@ -136,8 +136,7 @@ export const useToolingOperations = () => {
             created_date: new Date().toISOString(),
             tooling_id: item.tooling_id || null,
             child_item_id: item.id,
-            status: 'pending',
-            source: '工装信息'
+            status: 'pending'
           })
         }
       })
@@ -198,9 +197,8 @@ export const useToolingOperations = () => {
             weight: totalW || 0,
             total_price: totalPrice || 0,
             applicant: part.applicant || '',
-            production_unit: part.production_unit || '',
-            source: '工装信息'
-          })
+          production_unit: part.production_unit || ''
+        })
         }
       })
 
