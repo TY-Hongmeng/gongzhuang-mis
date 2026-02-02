@@ -339,10 +339,38 @@ export const generateCuttingOrders = async (orders: any[]) => {
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
+    
+    // Fallback: Try to find token in localStorage if session is missing
+    let accessToken = session?.access_token;
+    if (!accessToken) {
+      try {
+        const keyPattern = /^sb-.*-auth-token$/;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && keyPattern.test(key)) {
+            const item = localStorage.getItem(key);
+            if (item) {
+              const parsed = JSON.parse(item);
+              if (parsed.access_token) {
+                accessToken = parsed.access_token;
+                console.log('[toolingService] Recovered token from localStorage');
+                break;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[toolingService] Failed to check localStorage for token', e);
+      }
     }
+
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    } else {
+      console.warn('[toolingService] No access token found');
+    }
+
     const response = await fetch('/api/purchase-orders', { method: 'POST', headers, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
