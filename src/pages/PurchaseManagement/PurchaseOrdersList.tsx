@@ -8,6 +8,7 @@ import { Segmented } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../lib/supabase';
 
 const { Title } = Typography;
 
@@ -113,7 +114,16 @@ export default function PurchaseOrdersList() {
       params.append('page', '1');
       params.append('pageSize', '10000'); // 设置一个大数字来获取所有数据
 
-      const response = await fetchWithFallback(`/api/purchase-orders?${params.toString()}`);
+      // 获取当前会话并设置 Authorization 头
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetchWithFallback(`/api/purchase-orders?${params.toString()}`, {
+        headers
+      });
       
       // 检查响应状态和内容类型（500 且 fetch failed 时进行容错）
       if (!response.ok) {

@@ -338,7 +338,12 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    const response = await fetch('/api/purchase-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders }) })
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    const response = await fetch('/api/purchase-orders', { method: 'POST', headers, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
     const result = await response.json(); return result
   } catch (error) {

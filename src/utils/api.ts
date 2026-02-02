@@ -1322,21 +1322,35 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
 
       if (method === 'POST' && path === '/api/purchase-orders') {
-        const body = await readBody()
-        const orders = Array.isArray(body?.orders) ? body.orders : []
-        if (orders.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+         const body = await readBody()
+         const orders = Array.isArray(body?.orders) ? body.orders : []
+         if (orders.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+ 
+         // Verify Authentication
+         // Use token from headers if available, otherwise check current session
+         let session = null
+         if (authToken && authToken.startsWith('Bearer ')) {
+             const token = authToken.split(' ')[1]
+             const { data } = await supabase.auth.getUser(token)
+             if (data.user) {
+                 session = { user: data.user }
+             }
+         }
+         
+         if (!session) {
+            const { data } = await supabase.auth.getSession()
+            session = data.session
+         }
 
-        // Verify Authentication
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-            console.warn('[PurchaseOrders] No active session found during create')
-            // return jsonResponse({ success: false, error: '未登录或会话已过期' }, 401)
-            // Attempt to proceed anonymously if allowed, but log warning
-        } else {
-            // console.log('[PurchaseOrders] Active session found for user:', session.user.id)
-        }
-
-        let inserted = 0
+         if (!session) {
+             console.warn('[PurchaseOrders] No active session found during create')
+             // return jsonResponse({ success: false, error: '未登录或会话已过期' }, 401)
+             // Attempt to proceed anonymously if allowed, but log warning
+         } else {
+             // console.log('[PurchaseOrders] Active session found for user:', session.user.id)
+         }
+ 
+         let inserted = 0
         let updated = 0
         let skipped = 0
         const results = []
