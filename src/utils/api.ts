@@ -1326,6 +1326,16 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const orders = Array.isArray(body?.orders) ? body.orders : []
         if (orders.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
 
+        // Verify Authentication
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+            console.warn('[PurchaseOrders] No active session found during create')
+            // return jsonResponse({ success: false, error: '未登录或会话已过期' }, 401)
+            // Attempt to proceed anonymously if allowed, but log warning
+        } else {
+            // console.log('[PurchaseOrders] Active session found for user:', session.user.id)
+        }
+
         let inserted = 0
         let updated = 0
         let skipped = 0
@@ -1353,7 +1363,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              part_id: order.part_id || null,
              production_unit: order.production_unit || null,
              demand_date: order.demand_date || null,
-             applicant: order.applicant || order.recorder || null,
+             applicant: order.applicant || order.recorder || session?.user?.id || null, // Prefer session user ID if applicant missing
              weight: order.weight ?? null,
              total_price: order.total_price ?? null,
              created_date: order.created_date || new Date().toISOString()
@@ -1361,12 +1371,12 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
            
            if (order.inventory_number) {
              payload.inventory_number = order.inventory_number
-             // Check existence
-             const { data: existing } = await supabase
+             // Check existence - use maybeSingle to avoid 406
+             const { data: existing, error: findError } = await supabase
                .from('purchase_orders')
                .select('id, status')
                .eq('inventory_number', order.inventory_number)
-               .single()
+               .maybeSingle()
              
              if (existing) {
                // Update if exists
@@ -1380,6 +1390,8 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
                  if (!error) {
                    updated++
                    results.push({ ...existing, ...payload })
+                 } else {
+                    console.error('Update failed:', error)
                  }
                } else {
                  skipped++
@@ -1387,10 +1399,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
                }
                continue
              }
-           } else {
-             // Generate inventory number if missing?
-             // Usually frontend provides it. If not, maybe skip or let DB default?
-             // Assuming frontend provides it or it's not needed for uniqueness if missing
            }
 
            const { data: newOrder, error } = await supabase
@@ -1404,6 +1412,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              results.push(newOrder)
            } else {
              console.error('Insert purchase order failed:', error)
+             // If RLS error, we might need to fallback or return error
+             if (error.code === '42501') {
+                 return jsonResponse({ success: false, error: '权限不足：无法创建采购单 (RLS)', details: error }, 403)
+             }
            }
         }
 
