@@ -1445,7 +1445,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           if (order.inventory_number) {
              payload.inventory_number = order.inventory_number
              // Check existence - use maybeSingle to avoid 406
-             const { data: existing, error: findError } = await supabase
+             const { data: existing, error: findError } = await scopedClient
                .from('purchase_orders')
                .select('id, status')
                .eq('inventory_number', order.inventory_number)
@@ -1456,7 +1456,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
                // Only update if not completed/cancelled? Or always update?
                // Backend logic was: update if status is pending/draft
                if (existing.status !== 'completed' && existing.status !== 'cancelled') {
-                 const { error } = await supabase
+                 const { error } = await scopedClient
                    .from('purchase_orders')
                    .update({ ...payload, updated_date: new Date().toISOString() })
                    .eq('id', existing.id)
@@ -1474,7 +1474,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              }
            }
 
-           const { data: newOrder, error } = await supabase
+           const { data: newOrder, error } = await scopedClient
              .from('purchase_orders')
              .insert(payload)
              .select()
