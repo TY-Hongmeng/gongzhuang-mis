@@ -245,11 +245,20 @@ export default function PurchaseOrdersList() {
     window.addEventListener('storage', handler)
     window.addEventListener('storage', handler2)
     window.addEventListener('approval_updated', handler2)
+    
+    // 监听状态更新事件（如生成采购单后）
+    const statusHandler = () => {
+      console.log('收到 status_updated 事件，刷新采购单列表')
+      fetchPurchaseOrders()
+    }
+    window.addEventListener('status_updated', statusHandler)
+
     return () => {
       window.removeEventListener('temporary_plans_updated', handler)
       window.removeEventListener('storage', handler)
       window.removeEventListener('storage', handler2)
       window.removeEventListener('approval_updated', handler2)
+      window.removeEventListener('status_updated', statusHandler)
     }
   }, [])
 

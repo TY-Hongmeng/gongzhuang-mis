@@ -567,8 +567,15 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       return
     }
 
+    // 注入当前用户作为申请人，确保技术员能看到自己生成的订单
+    const currentUser = user?.real_name || ''
+    const itemsToProcess = [...selectedItems, ...selectedParts].map(item => ({
+      ...item,
+      applicant: item.applicant || currentUser
+    }))
+
     try {
-      const result = await generatePurchaseOrders([...selectedItems, ...selectedParts], materials, materialSources, partTypes)
+      const result = await generatePurchaseOrders(itemsToProcess, materials, materialSources, partTypes)
       if (result) {
         message.success('采购单生成成功')
       } else {

@@ -136,7 +136,8 @@ export const useToolingOperations = () => {
             created_date: new Date().toISOString(),
             tooling_id: item.tooling_id || null,
             child_item_id: item.id,
-            status: 'pending'
+            status: 'pending',
+            source: '工装信息'
           })
         }
       })
@@ -197,7 +198,8 @@ export const useToolingOperations = () => {
             weight: totalW || 0,
             total_price: totalPrice || 0,
             applicant: part.applicant || '',
-            production_unit: part.production_unit || ''
+            production_unit: part.production_unit || '',
+            source: '工装信息'
           })
         }
       })
@@ -238,6 +240,33 @@ export const useToolingOperations = () => {
         
         const messageText = messages.length > 0 ? messages.join('，') : `成功处理 ${validOrders.length} 条采购单`
         message.success(messageText)
+        
+        // 关键修复：从隐藏列表（临时计划/审批）中移除已更新/新增的订单ID，确保它们在列表中重新显示
+        const processedItems = result.items || []
+        if (processedItems.length > 0) {
+          try {
+            const idsToShow = new Set(processedItems.map((item: any) => String(item.id)))
+            
+            // 清理临时计划隐藏列表
+            const tempHidden = JSON.parse(localStorage.getItem('temporary_hidden_ids') || '[]')
+            const newTempHidden = tempHidden.filter((id: string) => !idsToShow.has(String(id)))
+            if (newTempHidden.length !== tempHidden.length) {
+              localStorage.setItem('temporary_hidden_ids', JSON.stringify(newTempHidden))
+              window.dispatchEvent(new Event('temporary_plans_updated'))
+            }
+
+            // 清理审批隐藏列表
+            const approvalHidden = JSON.parse(localStorage.getItem('approval_hidden_ids') || '[]')
+            const newApprovalHidden = approvalHidden.filter((id: string) => !idsToShow.has(String(id)))
+            if (newApprovalHidden.length !== approvalHidden.length) {
+              localStorage.setItem('approval_hidden_ids', JSON.stringify(newApprovalHidden))
+              window.dispatchEvent(new Event('approval_updated'))
+            }
+          } catch (e) {
+            console.error('Failed to clear hidden IDs:', e)
+          }
+        }
+
         // 状态：提计划（写入并广播）
         purchaseOrders.forEach(o => {
           if (o.part_id) localStorage.setItem(`status_part_${o.part_id}`, '提计划')

@@ -12,7 +12,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling/fixed-inventory-options',
     '/api/auth',
     '/api/cutting-orders',
-    // '/api/purchase-orders', // Removed to use backend implementation
+    '/api/purchase-orders',
     '/api/backup-materials',
     '/api/manual-plans'
   ]
@@ -251,6 +251,41 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       path = apiPathMatch[1]
     }
 
+    // Extract Auth Token
+    let authToken = ''
+    if (init?.headers) {
+      if (init.headers instanceof Headers) {
+        authToken = init.headers.get('Authorization') || init.headers.get('authorization') || ''
+      } else if (Array.isArray(init.headers)) {
+        const found = init.headers.find(([k]) => k.toLowerCase() === 'authorization')
+        if (found) authToken = found[1]
+      } else {
+        const h = init.headers as Record<string, string>
+        authToken = h['Authorization'] || h['authorization'] || ''
+      }
+    }
+
+    // Initialize scoped client
+    const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
+    const supabaseKey = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
+    
+    let scopedClient = supabase
+    if (authToken && authToken.startsWith('Bearer ')) {
+       scopedClient = createClient(supabaseUrl, supabaseKey, {
+         global: {
+           headers: {
+             'Authorization': authToken,
+             'apikey': supabaseKey
+           }
+         },
+         auth: {
+           persistSession: false,
+           autoRefreshToken: false,
+           detectSessionInUrl: false
+         }
+       })
+    }
+
     const method = (init?.method || 'GET').toUpperCase()
     if (method === 'OPTIONS') {
       return jsonResponse({ success: true })
@@ -275,7 +310,28 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Tooling users basic
       if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
-        return jsonResponse({ success: true, items: [] })
+        try {
+          // Fetch users and teams separately to avoid join issues if FK not configured
+          const [usersRes, teamsRes] = await Promise.all([
+            supabase.from('users').select('real_name, team_id'),
+            supabase.from('teams').select('id, name')
+          ])
+          
+          const teamsMap = new Map<string, string>()
+          if (teamsRes.data) {
+            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), String(t.name)))
+          }
+
+          const items = (usersRes.data || []).map((u: any) => ({
+            real_name: u.real_name,
+            team: u.team_id ? (teamsMap.get(String(u.team_id)) || '') : ''
+          }))
+          
+          return jsonResponse({ success: true, items })
+        } catch (e) {
+          console.error('Error fetching users/basic:', e)
+          return jsonResponse({ success: true, items: [] })
+        }
       }
 
       if (path.startsWith('/api/auth')) {
@@ -1249,6 +1305,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
       // Purchase orders API handled by client-side fallback
       if (method === 'GET' && path === '/api/purchase-orders') {
+        console.log('[API] GET /api/purchase-orders called')
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 20)
@@ -1286,7 +1343,9 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const to = from + pageSize - 1
         query = query.range(from, to)
 
+        console.log('[API] Executing purchase orders query with auth:', !!authToken)
         const { data, error, count } = await query
+        console.log('[API] Purchase orders query result:', { count, dataLength: data?.length, error })
         
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
 
@@ -1378,9 +1437,10 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              demand_date: order.demand_date || null,
              applicant: order.applicant || order.recorder || session?.user?.id || null, // Prefer session user ID if applicant missing
              weight: order.weight ?? null,
-             total_price: order.total_price ?? null,
-             created_date: order.created_date || new Date().toISOString()
-           }
+            total_price: order.total_price ?? null,
+            source: order.source || null,
+            created_date: order.created_date || new Date().toISOString()
+          }
            
            if (order.inventory_number) {
              payload.inventory_number = order.inventory_number
@@ -1432,7 +1492,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
            }
         }
 
-        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
+        return jsonResponse({ success: true, stats: { inserted, updated, skipped }, items: results })
       }
 
       if (method === 'POST' && path === '/api/purchase-orders/batch-delete') {
