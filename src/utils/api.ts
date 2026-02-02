@@ -194,6 +194,7 @@ export function installApiInterceptor() {
 
 // ---------- Client-side API fallback (Supabase direct) ----------
 import { supabase } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 
 function jsonResponse(data: any, status = 200) {
@@ -1258,7 +1259,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         const sortField = qs.get('sortField') || 'created_date'
         const sortOrder = (qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
 
-        let query = supabase
+        let query = scopedClient
           .from('purchase_orders')
           .select(`*, 
             tooling_info(
