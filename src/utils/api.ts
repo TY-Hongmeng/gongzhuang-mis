@@ -1332,7 +1332,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
          let session = null
          if (authToken && authToken.startsWith('Bearer ')) {
              const token = authToken.split(' ')[1]
-             const { data } = await supabase.auth.getUser(token)
+             const { data } = await scopedClient.auth.getUser(token)
              if (data.user) {
                  session = { user: data.user }
              }
@@ -1345,8 +1345,6 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
 
          if (!session) {
              console.warn('[PurchaseOrders] No active session found during create')
-             // return jsonResponse({ success: false, error: '未登录或会话已过期' }, 401)
-             // Attempt to proceed anonymously if allowed, but log warning
          } else {
              // console.log('[PurchaseOrders] Active session found for user:', session.user.id)
          }
