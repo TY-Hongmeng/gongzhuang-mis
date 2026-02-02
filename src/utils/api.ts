@@ -1246,7 +1246,183 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         return jsonResponse({ success: true })
       }
 
-      // Purchase orders API handled by backend (removed client-side fallback)
+      // Purchase orders API handled by client-side fallback
+      if (method === 'GET' && path === '/api/purchase-orders') {
+        const qs = getQuery(cleanUrl)
+        const page = Number(qs.get('page') || 1)
+        const pageSize = Number(qs.get('pageSize') || 20)
+        const status = qs.get('status')
+        const start_date = qs.get('start_date')
+        const end_date = qs.get('end_date')
+        const search = qs.get('search')
+        const sortField = qs.get('sortField') || 'created_date'
+        const sortOrder = (qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
+
+        let query = supabase
+          .from('purchase_orders')
+          .select(`*, 
+            tooling_info(
+              production_unit,
+              recorder
+            )`, { count: 'planned' })
+
+        // Search
+        if (search && search.trim()) {
+          const keyword = `%${search.trim()}%`
+          query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},part_name.ilike.${keyword},supplier.ilike.${keyword}`)
+        }
+
+        // Filters
+        if (status) query = query.eq('status', status)
+        if (start_date) query = query.gte('created_date', start_date)
+        if (end_date) query = query.lte('created_date', end_date)
+
+        // Sort
+        query = query.order(sortField, { ascending: sortOrder })
+
+        // Pagination
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
+        query = query.range(from, to)
+
+        const { data, error, count } = await query
+        
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+
+        // Process data to match backend format
+        const items = (data || []).map((item: any) => {
+          // Extract tooling_info
+          let production_unit = item.production_unit
+          let recorder = item.applicant
+
+          if (item.tooling_info) {
+             // Handle array or object (Supabase returns array for 1:N but we expect 1:1 here usually)
+             const info = Array.isArray(item.tooling_info) ? item.tooling_info[0] : item.tooling_info
+             if (info) {
+               if (!production_unit) production_unit = info.production_unit
+               if (!recorder) recorder = info.recorder
+             }
+          }
+
+          return {
+            ...item,
+            production_unit,
+            applicant: recorder, // Map recorder to applicant if needed or keep separate
+            demand_date: item.demand_date || item.required_date // Fallback
+          }
+        })
+
+        return jsonResponse({ 
+          success: true, 
+          items, 
+          total: count || 0, 
+          page, 
+          pageSize 
+        })
+      }
+
+      if (method === 'POST' && path === '/api/purchase-orders') {
+        const body = await readBody()
+        const orders = Array.isArray(body?.orders) ? body.orders : []
+        if (orders.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+
+        let inserted = 0
+        let updated = 0
+        let skipped = 0
+        const results = []
+
+        for (const order of orders) {
+           // Basic validation
+           if (!order.part_name || !order.part_quantity) {
+             skipped++
+             continue
+           }
+
+           const payload: any = {
+             project_name: order.project_name || '',
+             part_name: order.part_name || '',
+             part_quantity: Number(order.part_quantity),
+             unit: order.unit || '件',
+             model: order.model || null,
+             supplier: order.supplier || null,
+             required_date: order.required_date || null,
+             remark: order.remark || null,
+             status: order.status || 'pending',
+             tooling_id: order.tooling_id || null,
+             child_item_id: order.child_item_id || null,
+             part_id: order.part_id || null,
+             production_unit: order.production_unit || null,
+             demand_date: order.demand_date || null,
+             applicant: order.applicant || order.recorder || null,
+             weight: order.weight ?? null,
+             total_price: order.total_price ?? null,
+             created_date: order.created_date || new Date().toISOString()
+           }
+           
+           if (order.inventory_number) {
+             payload.inventory_number = order.inventory_number
+             // Check existence
+             const { data: existing } = await supabase
+               .from('purchase_orders')
+               .select('id, status')
+               .eq('inventory_number', order.inventory_number)
+               .single()
+             
+             if (existing) {
+               // Update if exists
+               // Only update if not completed/cancelled? Or always update?
+               // Backend logic was: update if status is pending/draft
+               if (existing.status !== 'completed' && existing.status !== 'cancelled') {
+                 const { error } = await supabase
+                   .from('purchase_orders')
+                   .update({ ...payload, updated_date: new Date().toISOString() })
+                   .eq('id', existing.id)
+                 if (!error) {
+                   updated++
+                   results.push({ ...existing, ...payload })
+                 }
+               } else {
+                 skipped++
+                 results.push(existing)
+               }
+               continue
+             }
+           } else {
+             // Generate inventory number if missing?
+             // Usually frontend provides it. If not, maybe skip or let DB default?
+             // Assuming frontend provides it or it's not needed for uniqueness if missing
+           }
+
+           const { data: newOrder, error } = await supabase
+             .from('purchase_orders')
+             .insert(payload)
+             .select()
+             .single()
+           
+           if (!error) {
+             inserted++
+             results.push(newOrder)
+           } else {
+             console.error('Insert purchase order failed:', error)
+           }
+        }
+
+        return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
+      }
+
+      if (method === 'POST' && path === '/api/purchase-orders/batch-delete') {
+        const body = await readBody()
+        const ids = Array.isArray(body?.ids) ? body.ids : []
+        if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+        
+        const { error } = await supabase
+          .from('purchase_orders')
+          .delete()
+          .in('id', ids)
+          
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
 
 
       // Workshops & teams (organization data)
