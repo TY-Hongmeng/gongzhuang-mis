@@ -980,8 +980,10 @@ router.post('/rollback', async (req, res) => {
       idsToDelete.push(item.id);
 
       if (item.inventory_number?.startsWith('MANUAL-')) {
+        const originalId = item.inventory_number.slice(7);
         // 恢复到 manual_purchase_plans (注意表名是 manual_purchase_plans)
         manualRestores.push({
+          id: originalId, // 尝试恢复原始 ID 以保持位置映射
           part_name: item.part_name,
           model: item.model,
           part_quantity: item.part_quantity,
@@ -994,9 +996,11 @@ router.post('/rollback', async (req, res) => {
           status: 'draft'
         });
       } else if (item.inventory_number?.startsWith('BACKUP-')) {
+        const originalId = item.inventory_number.slice(7);
         // 恢复到 backup_materials
         const { material, specs } = parseModel(item.model || '');
         backupRestores.push({
+          id: originalId, // 尝试恢复原始 ID 以保持位置映射
           material_name: item.part_name, 
           material: material,
           model: specs, // 将规格放入 model 字段 (因为原始 model 字段可能就是规格)

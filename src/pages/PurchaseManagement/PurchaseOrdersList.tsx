@@ -422,7 +422,22 @@ export default function PurchaseOrdersList() {
                 // 调用回退服务（恢复数据并删除采购单）
                 await rollbackPurchaseOrders(selectedItems)
 
-                // 保持工装信息的状态更新逻辑
+                // 1. 清理采购申请页面的隐藏 ID 列表 (这是关键！)
+                const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
+                const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
+                let hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
+                let hb = new Set<string>(Array.isArray(hbArr) ? hbArr : [])
+                
+                selectedItems.forEach(item => {
+                  const inv = String(item.inventory_number || '')
+                  if (inv.startsWith('MANUAL-')) hm.delete(inv.slice(7))
+                  if (inv.startsWith('BACKUP-')) hb.delete(inv.slice(7))
+                })
+                
+                localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
+                localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
+
+                // 2. 保持工装信息的状态更新逻辑
                 selectedItems.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
