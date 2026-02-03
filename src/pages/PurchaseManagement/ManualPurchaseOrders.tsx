@@ -387,7 +387,7 @@ export default function ManualPurchaseOrders() {
                   const item = localStorage.getItem(key);
                   if (item) {
                     const parsed = JSON.parse(item);
-                    accessToken = parsed.access_token || parsed.session?.access_token || '';
+                    accessToken = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token) || '';
                     if (accessToken) break;
                   }
                 }

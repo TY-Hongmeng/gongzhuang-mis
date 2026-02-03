@@ -280,7 +280,36 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
       }
     }
 
-    // Initialize scoped client
+    // Auto-recover token if missing from headers to fix RLS 401/42501 errors
+    if (!authToken) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          authToken = `Bearer ${session.access_token}`
+        } else {
+          // Fallback to localStorage for Supabase v2
+          const keyPattern = /^sb-.*-auth-token$/;
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && keyPattern.test(key)) {
+              const item = localStorage.getItem(key);
+              if (item) {
+                const parsed = JSON.parse(item);
+                const token = parsed.access_token || parsed.session?.access_token;
+                if (token) {
+                  authToken = `Bearer ${token}`;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[API Interceptor] Failed to recover token automatically', e)
+      }
+    }
+
+    // Initialize scoped client with token for RLS
     const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
     const supabaseKey = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
     
@@ -1508,6 +1537,31 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         }
 
         return jsonResponse({ success: true, stats: { inserted, updated, skipped }, items: results })
+      }
+
+      // Purchase orders rollback
+      if (method === 'POST' && path === '/api/purchase-orders/rollback') {
+        const body = await readBody()
+        const orders = Array.isArray(body?.orders) ? body.orders : []
+        if (orders.length === 0) return jsonResponse({ success: false, error: '缺少orders' }, 400)
+
+        try {
+          console.log(`[PurchaseOrders] Rolling back ${orders.length} orders...`)
+          
+          const ids = orders.map(o => o.id).filter(Boolean)
+          if (ids.length > 0) {
+            const { error: delError } = await scopedClient
+              .from('purchase_orders')
+              .delete()
+              .in('id', ids)
+            if (delError) throw delError
+          }
+          
+          return jsonResponse({ success: true })
+        } catch (err) {
+          console.error('[PurchaseOrders] Rollback failed:', err)
+          return jsonResponse({ success: false, error: (err as Error).message }, 500)
+        }
       }
 
       if (method === 'POST' && path === '/api/purchase-orders/batch-delete') {
