@@ -531,9 +531,19 @@ export default function ManualPurchaseOrders() {
       fetchBackupData();
     };
     
+    // 强制刷新处理
+    const handleForceRefresh = () => {
+      console.log('ManualPurchaseOrders received force_refresh event');
+      setRefreshKey(prev => prev + 1);
+      fetchManualData();
+      fetchBackupData();
+    };
+
     window.addEventListener('status_updated', handleStatusUpdate);
+    window.addEventListener('force_refresh', handleForceRefresh);
     return () => {
       window.removeEventListener('status_updated', handleStatusUpdate);
+      window.removeEventListener('force_refresh', handleForceRefresh);
     };
   }, []);
 
@@ -553,6 +563,12 @@ export default function ManualPurchaseOrders() {
           }));
           
           setManualAll(manualOrders);
+
+          // 打印调试日志，检查数据完整性
+          console.log('[ManualPurchaseOrders] fetchManualData:', {
+            total: manualOrders.length,
+            sample: manualOrders.slice(0, 3)
+          });
           
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMap = getManualPos();
@@ -1695,7 +1711,18 @@ export default function ManualPurchaseOrders() {
             const hiddenManualIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey; 
-            return manualData.filter(r => !hiddenManualIds.includes(String(r.id)))
+            
+            const filtered = manualData.filter(r => !hiddenManualIds.includes(String(r.id)))
+            
+            // 调试日志：检查过滤结果
+            console.log('[ManualPurchaseOrders] Table filter (Manual):', {
+              before: manualData.length,
+              after: filtered.length,
+              hiddenCount: hiddenManualIds.length,
+              hiddenIds: hiddenManualIds
+            });
+            
+            return filtered
           })()}
           pagination={false}
           bordered={false}
@@ -1750,7 +1777,14 @@ export default function ManualPurchaseOrders() {
             const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey;
-            return backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
+            const filtered = backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
+            console.log('[ManualPurchaseOrders] Table filter (Backup):', {
+              before: backupData.length,
+              after: filtered.length,
+              hiddenCount: hiddenBackupIds.length,
+              hiddenIds: hiddenBackupIds
+            });
+            return filtered
           })()}
             pagination={false}
             bordered={false}
