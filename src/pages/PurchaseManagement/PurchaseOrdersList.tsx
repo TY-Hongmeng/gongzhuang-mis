@@ -435,16 +435,16 @@ export default function PurchaseOrdersList() {
                 });
 
                 selectedItems.forEach(item => {
-                  const inv = String(item.inventory_number || '')
+                  const inv = String(item.inventory_number || '').trim()
                   if (inv.startsWith('MANUAL-')) {
-                    const originalId = inv.slice(7)
+                    const originalId = inv.slice(7).trim()
                     if (hm.has(originalId)) {
                       hm.delete(originalId)
                       console.log('[PurchaseOrdersList] Cleaned up manual ID:', originalId);
                     }
                   }
                   if (inv.startsWith('BACKUP-')) {
-                    const originalId = inv.slice(7)
+                    const originalId = inv.slice(7).trim()
                     if (hb.has(originalId)) {
                       hb.delete(originalId)
                       console.log('[PurchaseOrdersList] Cleaned up backup ID:', originalId);
