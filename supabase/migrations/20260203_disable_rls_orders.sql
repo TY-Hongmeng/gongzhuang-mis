@@ -1,27 +1,23 @@
--- 彻底禁用采购单和下料单的 RLS 策略
--- 解决 42501 权限不足错误，特别是在没有 Supabase Auth Session 的情况下
+-- Disable RLS for critical tables to allow GitHub Pages (No Backend) version to work
+-- Run this in your Supabase SQL Editor
 
--- 禁用 RLS
 ALTER TABLE purchase_orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE cutting_orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE manual_purchase_plans DISABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_materials DISABLE ROW LEVEL SECURITY;
+ALTER TABLE tooling_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE parts_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE child_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE work_hours DISABLE ROW LEVEL SECURITY;
 
--- 允许所有用户访问
-GRANT ALL PRIVILEGES ON purchase_orders TO authenticated;
-GRANT ALL PRIVILEGES ON purchase_orders TO anon;
-GRANT ALL PRIVILEGES ON cutting_orders TO authenticated;
-GRANT ALL PRIVILEGES ON cutting_orders TO anon;
-
--- 如果需要删除旧策略（可选）
-DROP POLICY IF EXISTS "任何人可查看采购单" ON purchase_orders;
-DROP POLICY IF EXISTS "认证用户可创建采购单" ON purchase_orders;
-DROP POLICY IF EXISTS "认证用户可更新采购单" ON purchase_orders;
-DROP POLICY IF EXISTS "认证用户可删除采购单" ON purchase_orders;
-
-DROP POLICY IF EXISTS "任何人可查看下料单" ON cutting_orders;
-DROP POLICY IF EXISTS "认证用户可创建下料单" ON cutting_orders;
-DROP POLICY IF EXISTS "认证用户可更新下料单" ON cutting_orders;
-DROP POLICY IF EXISTS "认证用户可删除下料单" ON cutting_orders;
-
--- 确保序列权限
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon;
+-- Alternatively, add permissive policies (less secure but keeps RLS on)
+/*
+CREATE POLICY "Allow all for purchase_orders" ON purchase_orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for cutting_orders" ON cutting_orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for manual_purchase_plans" ON manual_purchase_plans FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for backup_materials" ON backup_materials FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for tooling_info" ON tooling_info FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for parts_info" ON parts_info FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for child_items" ON child_items FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for work_hours" ON work_hours FOR ALL USING (true) WITH CHECK (true);
+*/

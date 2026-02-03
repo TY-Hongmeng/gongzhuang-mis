@@ -290,7 +290,19 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     // 清理URL中的反引号和空格
     const cleanUrl = url.replace(/[`]/g, '').trim()
     
-    // 无论是否有Supabase实例，都尝试处理请求
+    // 统一的本地环境检测
+    const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+    const isGhPages = /github\.io/i.test(host)
+    const isLocal = (
+      /localhost|127\.0\.0\.1|::1/i.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^10\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+      (/:[0-9]+$/.test(host) && !isGhPages) ||
+      (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
+    )
+    const isDev = (import.meta as any).env?.DEV === true
+
     let path = cleanUrl
     
     // 如果是完整URL，提取路径部分
