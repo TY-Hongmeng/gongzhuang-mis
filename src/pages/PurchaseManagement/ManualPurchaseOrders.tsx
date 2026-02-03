@@ -478,6 +478,20 @@ export default function ManualPurchaseOrders() {
     }
   }, [isInitialized]);
 
+  // 监听状态更新事件
+  useEffect(() => {
+    const handleStatusUpdate = () => {
+      console.log('ManualPurchaseOrders received status_updated event, refreshing data...');
+      fetchManualData();
+      fetchBackupData();
+    };
+    
+    window.addEventListener('status_updated', handleStatusUpdate);
+    return () => {
+      window.removeEventListener('status_updated', handleStatusUpdate);
+    };
+  }, []);
+
   // 获取手动输入的数据（使用独立的临时计划数据源）
   const fetchManualData = async () => {
     try {

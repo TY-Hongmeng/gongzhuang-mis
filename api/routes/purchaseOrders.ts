@@ -990,7 +990,8 @@ router.post('/rollback', async (req, res) => {
           production_unit: item.production_unit,
           demand_date: item.demand_date,
           applicant: item.applicant,
-          created_date: new Date().toISOString().split('T')[0]
+          created_date: new Date().toISOString().split('T')[0],
+          status: 'draft'
         });
       } else if (item.inventory_number?.startsWith('BACKUP-')) {
         // 恢复到 backup_materials
@@ -1006,8 +1007,11 @@ router.post('/rollback', async (req, res) => {
           supplier: item.supplier || item.production_unit,
           demand_date: item.demand_date,
           applicant: item.applicant,
+          weight: item.weight,
           total_price: item.total_price,
-          created_date: new Date().toISOString().split('T')[0]
+          unit_price: (item.total_price && item.part_quantity) ? (Number(item.total_price) / Number(item.part_quantity)) : 0,
+          created_date: new Date().toISOString().split('T')[0],
+          is_manual: true
         });
       }
       // 工装信息的条目不需要恢复（源数据未删除），只需从 purchase_orders 删除
