@@ -552,10 +552,11 @@ export default function ManualPurchaseOrders() {
             is_manual: true
           }));
           
+          setManualAll(manualOrders);
+          
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMap = getManualPos();
           const placed = applyPositions(manualOrders as any, posMap) as any[]
-          setManualAll(placed as any)
           const sliced = placed.slice(0, manualLimit)
           
           setManualData(sliced as any);
@@ -601,10 +602,11 @@ export default function ManualPurchaseOrders() {
             };
           });
           
+          setBackupAll(backupMaterials);
+          
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMapB = getBackupPos();
             const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
-            setBackupAll(placedB as any)
             const slicedB = placedB.slice(0, backupLimit)
           
           setBackupData(slicedB as any);
