@@ -90,7 +90,14 @@ export function installApiInterceptor() {
 
       // 1. 本地环境检测：如果是本地 localhost 且请求 /api/ 开头，直接放行，走 Vite 代理到本地 Express 后端
       // 这能解决开发端 401 RLS 问题，因为本地后端有服务端权限
-      const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
+      // 增强的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
+      const isLocal = typeof window !== 'undefined' && (
+        /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+        /^192\.168\./.test(String(window.location?.host || '')) ||
+        /^10\./.test(String(window.location?.host || '')) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+      )
+      
       if (isLocal && cleanUrl.startsWith('/api/')) {
         return await originalFetch(input, init)
       }
