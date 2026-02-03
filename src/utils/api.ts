@@ -11,7 +11,10 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling/devices', 
     '/api/tooling/fixed-inventory-options',
     '/api/auth',
-    '/api/cutting-orders'
+    '/api/cutting-orders',
+    '/api/purchase-orders',
+    '/api/backup-materials',
+    '/api/manual-plans'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   

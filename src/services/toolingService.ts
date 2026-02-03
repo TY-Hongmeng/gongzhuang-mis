@@ -344,7 +344,9 @@ export const generatePurchaseOrders = async (orders: any[]) => {
     let accessToken = session?.access_token;
     if (!accessToken) {
       try {
+        console.log('[toolingService] Session missing, checking localStorage...');
         const keyPattern = /^sb-.*-auth-token$/;
+        let found = false;
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && keyPattern.test(key)) {
@@ -353,11 +355,15 @@ export const generatePurchaseOrders = async (orders: any[]) => {
               const parsed = JSON.parse(item);
               if (parsed.access_token) {
                 accessToken = parsed.access_token;
-                console.log('[toolingService] Recovered token from localStorage');
+                console.log('[toolingService] Recovered token from localStorage key:', key);
+                found = true;
                 break;
               }
             }
           }
+        }
+        if (!found) {
+             console.warn('[toolingService] No matching token found in localStorage. Keys:', Object.keys(localStorage));
         }
       } catch (e) {
         console.warn('[toolingService] Failed to check localStorage for token', e);

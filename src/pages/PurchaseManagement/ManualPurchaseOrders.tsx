@@ -374,18 +374,24 @@ export default function ManualPurchaseOrders() {
         message.success(messageText)
 
         // 成功后清理采购申请中的选中项（后台删除），保持页面数据一致
+        const { data: { session } } = await import('../../lib/supabase').then(m => m.supabase.auth.getSession())
+        const headers: HeadersInit = { 'Content-Type': 'application/json' }
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+
         const tasks: Promise<Response>[] = []
         if (manualIds.length > 0) {
           tasks.push(fetch('/api/manual-plans/batch-delete', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ ids: manualIds })
           }))
         }
         if (backupIds.length > 0) {
           tasks.push(fetch('/api/backup-materials/batch-delete', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ ids: backupIds })
           }))
         }
