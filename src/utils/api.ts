@@ -135,8 +135,20 @@ export function installApiInterceptor() {
       if (cleanUrl.startsWith('/api/')) {
         // 在本地环境或开发模式下，强制优先走本地后端
         if ((isLocal || isDev) && !isGhPages) {
-          console.log(`[API Interceptor] Local/Dev env detected (host: ${host}), routing ${cleanUrl} to backend.`)
-          return await originalFetch(input, init)
+          try {
+            console.log(`[API Interceptor] Local/Dev env detected (host: ${host}), routing ${cleanUrl} to backend.`)
+            const res = await originalFetch(input, init)
+            // 如果后端返回 502/504，说明代理目标（后端服务）可能未启动
+            if (res.status === 502 || res.status === 504) {
+              console.warn(`[API Interceptor] Backend gateway error (${res.status}) for ${cleanUrl}, falling back to client-side Supabase.`)
+              return await fetchWithFallback(cleanUrl, init)
+            }
+            return res
+          } catch (err) {
+            // 捕获 ERR_CONNECTION_REFUSED 等网络错误，并自动回退到客户端直接连接 Supabase
+            console.warn(`[API Interceptor] Backend connection failed for ${cleanUrl}, falling back to client-side Supabase. Error:`, err)
+            return await fetchWithFallback(cleanUrl, init)
+          }
         }
       }
 
