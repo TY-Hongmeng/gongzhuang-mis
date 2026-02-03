@@ -381,6 +381,7 @@ export default function ManualPurchaseOrders() {
             
             if (!accessToken) {
               const keyPattern = /^sb-.*-auth-token$/;
+              let found = false;
               for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key && keyPattern.test(key)) {
@@ -388,8 +389,21 @@ export default function ManualPurchaseOrders() {
                   if (item) {
                     const parsed = JSON.parse(item);
                     accessToken = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token) || '';
-                    if (accessToken) break;
+                    if (accessToken) {
+                      found = true;
+                      break;
+                    }
                   }
+                }
+              }
+
+              if (!found) {
+                const authStorage = localStorage.getItem('auth-storage');
+                if (authStorage) {
+                  try {
+                    const parsed = JSON.parse(authStorage);
+                    accessToken = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken || '';
+                  } catch (e) {}
                 }
               }
             }

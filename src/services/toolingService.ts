@@ -353,8 +353,7 @@ export const generatePurchaseOrders = async (orders: any[]) => {
             const item = localStorage.getItem(key);
             if (item) {
               const parsed = JSON.parse(item);
-              // Supabase v2 uses session object in storage
-              const token = parsed.access_token || parsed.session?.access_token;
+              const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
               if (token) {
                 accessToken = token;
                 console.log('[toolingService] Recovered token from localStorage key:', key);
@@ -364,6 +363,23 @@ export const generatePurchaseOrders = async (orders: any[]) => {
             }
           }
         }
+
+        if (!found) {
+          // Fallback to auth-storage
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            try {
+              const parsed = JSON.parse(authStorage);
+              const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
+              if (token) {
+                accessToken = token;
+                console.log('[toolingService] Recovered token from auth-storage');
+                found = true;
+              }
+            } catch (e) {}
+          }
+        }
+
         if (!found) {
              console.warn('[toolingService] No matching token found in localStorage. Keys:', Object.keys(localStorage));
         }
@@ -398,18 +414,33 @@ export const rollbackPurchaseOrders = async (orders: any[]) => {
     if (!accessToken) {
        try {
         const keyPattern = /^sb-.*-auth-token$/;
+        let found = false;
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && keyPattern.test(key)) {
             const item = localStorage.getItem(key);
             if (item) {
               const parsed = JSON.parse(item);
-              const token = parsed.access_token || parsed.session?.access_token;
+              const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
               if (token) {
                  accessToken = token;
+                 found = true;
                  break;
               }
             }
+          }
+        }
+
+        if (!found) {
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            try {
+              const parsed = JSON.parse(authStorage);
+              const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
+              if (token) {
+                accessToken = token;
+              }
+            } catch (e) {}
           }
         }
       } catch (e) {

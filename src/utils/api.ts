@@ -287,7 +287,7 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
         if (session?.access_token) {
           authToken = `Bearer ${session.access_token}`
         } else {
-          // Fallback to localStorage for Supabase v2
+          // Fallback 1: Standard Supabase v2 key
           const keyPattern = /^sb-.*-auth-token$/;
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -295,10 +295,49 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
               const item = localStorage.getItem(key);
               if (item) {
                 const parsed = JSON.parse(item);
-                const token = parsed.access_token || parsed.session?.access_token;
+                const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
                 if (token) {
                   authToken = `Bearer ${token}`;
                   break;
+                }
+              }
+            }
+          }
+
+          // Fallback 2: Check auth-storage (zustand store)
+          if (!authToken) {
+            const authStorage = localStorage.getItem('auth-storage');
+            if (authStorage) {
+              try {
+                const parsed = JSON.parse(authStorage);
+                const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
+                if (token) {
+                  authToken = `Bearer ${token}`;
+                  console.log('[API Interceptor] Recovered token from auth-storage');
+                }
+              } catch (e) {}
+            }
+          }
+
+          // Fallback 3: Check common token keys
+          if (!authToken) {
+            const commonKeys = ['token', 'accessToken', 'access_token', 'supabase.auth.token'];
+            for (const key of commonKeys) {
+              const val = localStorage.getItem(key);
+              if (val) {
+                // Check if it looks like a JWT or a JSON with a token
+                if (val.startsWith('ey') && val.split('.').length === 3) {
+                  authToken = `Bearer ${val}`;
+                  break;
+                } else {
+                  try {
+                    const parsed = JSON.parse(val);
+                    const token = parsed.access_token || parsed.token || parsed.accessToken;
+                    if (token) {
+                      authToken = `Bearer ${token}`;
+                      break;
+                    }
+                  } catch (e) {}
                 }
               }
             }
@@ -1529,10 +1568,19 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              results.push(newOrder)
            } else {
              console.error('Insert purchase order failed:', error)
-             // If RLS error, we might need to fallback or return error
+             // 针对 RLS 错误提供更详细的提示
              if (error.code === '42501') {
-                 return jsonResponse({ success: false, error: '权限不足：无法创建采购单 (RLS)', details: error }, 403)
+                 return jsonResponse({ 
+                   success: false, 
+                   error: '权限不足：无法创建采购单 (RLS)', 
+                   details: {
+                     code: '42501',
+                     message: 'new row violates row-level security policy for table "purchase_orders"',
+                     hint: '请检查数据库 purchase_orders 表的 RLS 策略。如果需要临时解决，请在 Supabase SQL Editor 执行: ALTER TABLE purchase_orders DISABLE ROW LEVEL SECURITY;'
+                   } 
+                 }, 403)
              }
+             return jsonResponse({ success: false, error: error.message, details: error }, 500)
            }
         }
 
