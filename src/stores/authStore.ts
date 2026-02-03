@@ -50,6 +50,7 @@ interface RegisterData {
 
 interface AuthState {
   user: User | null
+  token: string | null
   isLoading: boolean
   isAuthenticated: boolean
   login: (phone: string, password: string) => Promise<{ success: boolean; message?: string }>
@@ -64,6 +65,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       isLoading: false,
       isAuthenticated: false,
 
@@ -90,7 +92,12 @@ export const useAuthStore = create<AuthState>()(
             const data = await response.json();
             console.log('AuthStore: Login response OK', data)
             if (data.success) {
-              set({ user: data.user, isAuthenticated: true, isLoading: false });
+              set({ 
+                user: data.user, 
+                token: data.token || data.accessToken || data.access_token || null,
+                isAuthenticated: true, 
+                isLoading: false 
+              });
               return { success: true, message: '登录成功' };
             } else {
               set({ isLoading: false });
@@ -210,7 +217,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, token: null, isAuthenticated: false });
+        // 同时清理 Supabase 会话
+        if (supabase) {
+          supabase.auth.signOut().catch(e => console.warn('Supabase signout error:', e));
+        }
       },
 
       checkAuth: async () => {

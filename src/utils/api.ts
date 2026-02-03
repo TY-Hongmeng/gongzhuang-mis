@@ -19,11 +19,20 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
   // 优先调用客户端API处理所有API路径，无论是否在GitHub Pages环境中
+  // 增强的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
+  const isLocal = typeof window !== 'undefined' && (
+    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+    /^192\.168\./.test(String(window.location?.host || '')) ||
+    /^10\./.test(String(window.location?.host || '')) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+  )
+
+  // 如果是本地环境且不是在 GitHub Pages 上，优先走本地后端
   if (cleanUrl.startsWith('/') && isApiPath) {
-    // 使用相对路径调用客户端API处理，避免使用外部函数URL
-    // 确保传递给handleClientSideApi的URL格式一致，都是相对路径，没有空格
-    const handled = await handleClientSideApi(cleanUrl, init)
-    if (handled) return handled
+    if (!isLocal || isGhPages) {
+      const handled = await handleClientSideApi(cleanUrl, init)
+      if (handled) return handled
+    }
   }
   
   // 下面的代码只处理其他类型的请求
