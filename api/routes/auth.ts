@@ -57,10 +57,15 @@ router.post('/login', async (req, res) => {
     const { password_hash, ...userWithoutPassword } = user;
 
     // 返回用户信息和 anon key 作为 token（如果前端需要使用 Supabase 客户端）
+    const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+    if (!anonKey) {
+      console.warn('[Auth] No Supabase anon key found in environment variables!');
+    }
+
     res.json({
       success: true,
       user: userWithoutPassword,
-      token: process.env.VITE_SUPABASE_ANON_KEY || ''
+      token: anonKey
     });
   } catch (error) {
     console.error('Login error:', error);

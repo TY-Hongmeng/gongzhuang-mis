@@ -2,15 +2,16 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
   
-  const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
-  // 统一的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
-  const isLocal = typeof window !== 'undefined' && (
-    /localhost|127\.0\.0\.1|::1/i.test(String(window.location?.host || '')) ||
-    /^192\.168\./.test(String(window.location?.host || '')) ||
-    /^10\./.test(String(window.location?.host || '')) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || '')) ||
-    // 如果 host 包含端口号但不是 github.io，通常也是本地开发环境
-    (/:[0-9]+$/.test(String(window.location?.host || '')) && !/github\.io/i.test(String(window.location?.host || '')))
+  const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+  const isGhPages = /github\.io/i.test(host)
+  // 统一的本地环境检测
+  const isLocal = (
+    /localhost|127\.0\.0\.1|::1/i.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^10\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    (/:[0-9]+$/.test(host) && !isGhPages) ||
+    (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
   )
 
   // 所有API路径都直接使用客户端API处理，不经过外部API
@@ -116,19 +117,27 @@ export function installApiInterceptor() {
       const cleanUrl = u.replace(/[`]/g, '').trim()
 
       // 1. 本地环境检测：如果是本地 localhost 且请求 /api/ 开头，直接放行，走 Vite 代理到本地 Express 后端
-      // 这能解决开发端 401 RLS 问题，因为本地后端有服务端权限
-      // 使用 fetchWithFallback 中定义的 isLocal 和 isDev
       const isDev = (import.meta as any).env?.DEV === true
-      const isLocal = typeof window !== 'undefined' && (
-        /localhost|127\.0\.0\.1|::1/i.test(String(window.location?.host || '')) ||
-        /^192\.168\./.test(String(window.location?.host || '')) ||
-        /^10\./.test(String(window.location?.host || '')) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || '')) ||
-        (/:[0-9]+$/.test(String(window.location?.host || '')) && !/github\.io/i.test(String(window.location?.host || '')))
+      const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+      const isGhPages = /github\.io/i.test(host)
+      
+      const isLocal = (
+        /localhost|127\.0\.0\.1|::1/i.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^10\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+        // 如果包含端口号且不是 github.io，极大概率是本地开发或局域网部署
+        (/:[0-9]+$/.test(host) && !isGhPages) ||
+        // 如果是纯 IP 地址且不是 github.io
+        (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
       )
       
-      if ((isLocal || isDev) && cleanUrl.startsWith('/api/')) {
-        return await originalFetch(input, init)
+      if (cleanUrl.startsWith('/api/')) {
+        // 在本地环境或开发模式下，强制优先走本地后端
+        if ((isLocal || isDev) && !isGhPages) {
+          console.log(`[API Interceptor] Local/Dev env detected (host: ${host}), routing ${cleanUrl} to backend.`)
+          return await originalFetch(input, init)
+        }
       }
 
       // 2. 网页端环境（GitHub Pages 等）：拦截 API 请求并用 handleClientSideApi 模拟后端
@@ -1588,13 +1597,18 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
              console.error('Insert purchase order failed:', error)
              // 针对 RLS 错误提供更详细的提示
              if (error.code === '42501') {
+                 // 如果是非 GitHub Pages 环境下的 RLS 错误，极有可能是因为没有 Token，
+                 // 此时如果是在本地或局域网环境，我们应该提示用户检查后端连接，或者直接报错引导其使用后端
+                 if (!isGhPages) {
+                    console.error('[API] RLS error detected on critical table. This usually means your token is missing or invalid. In local environment, requests should have been routed to the backend.')
+                 }
                  return jsonResponse({ 
                    success: false, 
                    error: '权限不足：无法创建采购单 (RLS)', 
                    details: {
                      code: '42501',
                      message: 'new row violates row-level security policy for table "purchase_orders"',
-                     hint: '请检查数据库 purchase_orders 表的 RLS 策略。如果需要临时解决，请在 Supabase SQL Editor 执行: ALTER TABLE purchase_orders DISABLE ROW LEVEL SECURITY;'
+                     hint: '请检查数据库 purchase_orders 表的 RLS 策略。如果是本地运行，请确保本地后端已启动并能正常连接数据库。如果需要彻底解决 RLS 限制，请在 Supabase SQL Editor 执行: ALTER TABLE purchase_orders DISABLE ROW LEVEL SECURITY;'
                    } 
                  }, 403)
              }
