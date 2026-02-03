@@ -783,7 +783,7 @@ export default function ManualPurchaseOrders() {
             const response = await fetch('/api/manual-plans', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(postData)
+              body: JSON.stringify({ orders: [postData] })
             });
             
             if (!response.ok) {
@@ -797,8 +797,16 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            const created = (Array.isArray(result?.data) ? result.data?.[0] : result?.data) || null;
+            // 兼容单个对象或数组返回
+            let created = null;
+            if (Array.isArray(result?.data)) {
+              created = result.data[0];
+            } else if (result?.data) {
+              created = result.data;
+            }
+            
             if (!created || !created.id) {
+              console.error('API返回数据格式异常:', result);
               throw new Error('创建失败 - 缺少记录ID');
             }
             
@@ -1029,7 +1037,7 @@ export default function ManualPurchaseOrders() {
             const response = await fetch('/api/backup-materials', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(postData)
+              body: JSON.stringify({ materials: [postData] })
             });
             
             if (!response.ok) {
@@ -1043,9 +1051,20 @@ export default function ManualPurchaseOrders() {
             }
             
             const result = await response.json();
-            const created = (Array.isArray(result?.data) ? result.data?.[0] : result?.data) || null;
+            // 兼容单个对象或数组返回，以及嵌套在 results 字段中的情况
+            let created = null;
+            if (Array.isArray(result?.data)) {
+              created = result.data[0];
+            } else if (result?.data) {
+              created = result.data;
+            } else if (Array.isArray(result?.results)) {
+              // 备用材料 API 返回结构包含 results 数组
+              const firstResult = result.results[0];
+              created = firstResult?.success ? firstResult.data : null;
+            }
             
             if (!created?.id) {
+              console.error('API返回数据格式异常:', result);
               throw new Error('创建失败 - 缺少记录ID');
             }
             

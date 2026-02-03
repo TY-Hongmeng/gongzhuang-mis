@@ -38,17 +38,17 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
     const isCriticalOrderPath = cleanUrl.startsWith('/api/purchase-orders') || cleanUrl.startsWith('/api/cutting-orders')
     
-    // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi 直接返回 null，
+    // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
     // 让 fetchWithFallback 继续执行并最终调用本地后端
     if ((isLocal || isDev) && isCriticalOrderPath && !isGhPages) {
       console.log(`[API] Critical path ${cleanUrl} detected in local environment, bypassing client-side handler to use backend.`)
-      return null
-    }
-
-    // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
-    if (isGhPages || (!isLocal && !isDev)) {
-      const handled = await handleClientSideApi(cleanUrl, init)
-      if (handled) return handled
+      // 不返回，继续向下执行
+    } else {
+      // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
+      if (isGhPages || (!isLocal && !isDev)) {
+        const handled = await handleClientSideApi(cleanUrl, init)
+        if (handled) return handled
+      }
     }
   }
   
@@ -141,13 +141,13 @@ export function installApiInterceptor() {
             // 如果后端返回 502/504，说明代理目标（后端服务）可能未启动
             if (res.status === 502 || res.status === 504) {
               console.warn(`[API Interceptor] Backend gateway error (${res.status}) for ${cleanUrl}, falling back to client-side Supabase.`)
-              return await fetchWithFallback(cleanUrl, init)
+              return await handleClientSideApi(cleanUrl, init)
             }
             return res
           } catch (err) {
             // 捕获 ERR_CONNECTION_REFUSED 等网络错误，并自动回退到客户端直接连接 Supabase
             console.warn(`[API Interceptor] Backend connection failed for ${cleanUrl}, falling back to client-side Supabase. Error:`, err)
-            return await fetchWithFallback(cleanUrl, init)
+            return await handleClientSideApi(cleanUrl, init)
           }
         }
       }
@@ -285,7 +285,7 @@ function getQuery(url: string): URLSearchParams {
   return u.searchParams
 }
 
-async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
+export async function handleClientSideApi(url: string, init?: RequestInit): Promise<Response | null> {
   try {
     // 清理URL中的反引号和空格
     const cleanUrl = url.replace(/[`]/g, '').trim()
@@ -1732,10 +1732,38 @@ async function handleClientSideApi(url: string, init?: RequestInit): Promise<Res
           return jsonResponse({ success: false, error: msg }, /TIMEOUT/.test(msg) ? 504 : 500)
         }
       }
+
+      // Tooling users basic (Fallback if not caught by earlier check)
+      if (method === 'GET' && path === '/api/tooling/users/basic') {
+        try {
+          // Fetch users and teams separately to avoid join issues if FK not configured
+          const [usersRes, teamsRes] = await Promise.all([
+            supabase.from('users').select('real_name, team_id'),
+            supabase.from('teams').select('id, name')
+          ])
+          
+          const teamsMap = new Map<string, string>()
+          if (teamsRes.data) {
+            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), String(t.name)))
+          }
+
+          const items = (usersRes.data || []).map((u: any) => ({
+            real_name: u.real_name,
+            team: u.team_id ? (teamsMap.get(String(u.team_id)) || '') : ''
+          }))
+          
+          return jsonResponse({ success: true, items })
+        } catch (e) {
+          console.error('Error fetching users/basic:', e)
+          return jsonResponse({ success: true, items: [] })
+        }
+      }
     }
-    return null
+    // Default fallback for unhandled paths - return 404 instead of null
+    console.warn(`[API] Path not handled in handleClientSideApi: ${method} ${path}`)
+    return jsonResponse({ success: false, error: `Path not handled: ${path}` }, 404)
   } catch (e: any) {
     console.error('Error in handleClientSideApi:', { error: e?.message || String(e), stack: e?.stack })
-    return null
+    return jsonResponse({ success: false, error: 'Internal Client API Error', details: e?.message }, 500)
   }
 }

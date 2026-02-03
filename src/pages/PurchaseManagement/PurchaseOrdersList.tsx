@@ -126,6 +126,12 @@ export default function PurchaseOrdersList() {
         headers
       });
       
+      if (!response) {
+        console.error('fetchWithFallback returned null for /api/purchase-orders');
+        setData([]);
+        return;
+      }
+      
       // 检查响应状态和内容类型（500 且 fetch failed 时进行容错）
       if (!response.ok) {
         const text = await response.text().catch(() => '');
@@ -193,6 +199,10 @@ export default function PurchaseOrdersList() {
         },
         body: JSON.stringify({ ids: selectedRowKeys }),
       });
+
+      if (!response) {
+        throw new Error('网络请求未响应');
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
