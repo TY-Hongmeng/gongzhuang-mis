@@ -5,10 +5,12 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
   // 统一的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
   const isLocal = typeof window !== 'undefined' && (
-    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+    /localhost|127\.0\.0\.1|::1/i.test(String(window.location?.host || '')) ||
     /^192\.168\./.test(String(window.location?.host || '')) ||
     /^10\./.test(String(window.location?.host || '')) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || '')) ||
+    // 如果 host 包含端口号但不是 github.io，通常也是本地开发环境
+    (/:[0-9]+$/.test(String(window.location?.host || '')) && !/github\.io/i.test(String(window.location?.host || '')))
   )
 
   // 所有API路径都直接使用客户端API处理，不经过外部API
@@ -28,8 +30,12 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
   // 如果是本地环境且不是在 GitHub Pages 上，优先走本地后端
+  // 注意：这里我们移除了对 isLocal 的严格依赖，如果是在开发模式下（import.meta.env.DEV），也应该优先走本地
+  const isDev = (import.meta as any).env?.DEV === true
+  
   if (cleanUrl.startsWith('/') && isApiPath) {
-    if (!isLocal || isGhPages) {
+    // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
+    if (isGhPages || (!isLocal && !isDev)) {
       const handled = await handleClientSideApi(cleanUrl, init)
       if (handled) return handled
     }
@@ -53,7 +59,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const abs = (() => {
     if (cleanUrl.startsWith('/')) {
       // 在本地或局域网环境下，直接使用相对路径以走 Vite 代理到本地后端
-      if (!isGhPages && isLocal) return cleanUrl
+      if (!isGhPages && (isLocal || isDev)) return cleanUrl
       // 在 GitHub Pages 等静态环境下，转向 Supabase Functions
       return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl
     }
@@ -101,15 +107,17 @@ export function installApiInterceptor() {
 
       // 1. 本地环境检测：如果是本地 localhost 且请求 /api/ 开头，直接放行，走 Vite 代理到本地 Express 后端
       // 这能解决开发端 401 RLS 问题，因为本地后端有服务端权限
-      // 增强的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
+      // 使用 fetchWithFallback 中定义的 isLocal 和 isDev
+      const isDev = (import.meta as any).env?.DEV === true
       const isLocal = typeof window !== 'undefined' && (
-        /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+        /localhost|127\.0\.0\.1|::1/i.test(String(window.location?.host || '')) ||
         /^192\.168\./.test(String(window.location?.host || '')) ||
         /^10\./.test(String(window.location?.host || '')) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || '')) ||
+        (/:[0-9]+$/.test(String(window.location?.host || '')) && !/github\.io/i.test(String(window.location?.host || '')))
       )
       
-      if (isLocal && cleanUrl.startsWith('/api/')) {
+      if ((isLocal || isDev) && cleanUrl.startsWith('/api/')) {
         return await originalFetch(input, init)
       }
 

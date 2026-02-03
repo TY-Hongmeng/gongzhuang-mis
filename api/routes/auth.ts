@@ -56,9 +56,11 @@ router.post('/login', async (req, res) => {
     // 移除密码哈希
     const { password_hash, ...userWithoutPassword } = user;
 
+    // 返回用户信息和 anon key 作为 token（如果前端需要使用 Supabase 客户端）
     res.json({
       success: true,
-      user: userWithoutPassword
+      user: userWithoutPassword,
+      token: process.env.VITE_SUPABASE_ANON_KEY || ''
     });
   } catch (error) {
     console.error('Login error:', error);
