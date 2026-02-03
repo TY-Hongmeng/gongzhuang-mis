@@ -2,6 +2,15 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
   
+  const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
+  // 统一的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
+  const isLocal = typeof window !== 'undefined' && (
+    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+    /^192\.168\./.test(String(window.location?.host || '')) ||
+    /^10\./.test(String(window.location?.host || '')) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+  )
+
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
     '/api/options/', 
@@ -18,15 +27,6 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
-  // 优先调用客户端API处理所有API路径，无论是否在GitHub Pages环境中
-  // 增强的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
-  const isLocal = typeof window !== 'undefined' && (
-    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
-    /^192\.168\./.test(String(window.location?.host || '')) ||
-    /^10\./.test(String(window.location?.host || '')) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
-  )
-
   // 如果是本地环境且不是在 GitHub Pages 上，优先走本地后端
   if (cleanUrl.startsWith('/') && isApiPath) {
     if (!isLocal || isGhPages) {
@@ -37,16 +37,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   
   // 下面的代码只处理其他类型的请求
   const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
-  const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
   
-  // 统一的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
-  const isLocal = typeof window !== 'undefined' && (
-    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
-    /^192\.168\./.test(String(window.location?.host || '')) ||
-    /^10\./.test(String(window.location?.host || '')) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
-  )
-
   const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
   const normalizeBase = (b: string): string => {
     if (!b) return ''
