@@ -29,6 +29,15 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 下面的代码只处理其他类型的请求
   const DEFAULT_FUNCTION_BASE = 'https://oltsiocyesbgezlrcxze.functions.supabase.co'
   const isGhPages = typeof window !== 'undefined' && /github\.io/i.test(String(window.location?.host || ''))
+  
+  // 统一的本地环境检测：包括 localhost, 127.0.0.1, 以及常见的局域网 IP 段
+  const isLocal = typeof window !== 'undefined' && (
+    /localhost|127\.0\.0\.1/i.test(String(window.location?.host || '')) ||
+    /^192\.168\./.test(String(window.location?.host || '')) ||
+    /^10\./.test(String(window.location?.host || '')) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(String(window.location?.host || ''))
+  )
+
   const rawBase = (import.meta as any)?.env?.VITE_API_URL || DEFAULT_FUNCTION_BASE
   const normalizeBase = (b: string): string => {
     if (!b) return ''
@@ -43,8 +52,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const base = normalizeBase(rawBase)
   const abs = (() => {
     if (cleanUrl.startsWith('/')) {
-      // 在本地或非 GitHub Pages 环境下，直接使用相对路径以走 Vite 代理到本地后端
-      const isLocal = typeof window !== 'undefined' && /localhost|127\.0\.0\.1/i.test(String(window.location?.host || ''))
+      // 在本地或局域网环境下，直接使用相对路径以走 Vite 代理到本地后端
       if (!isGhPages && isLocal) return cleanUrl
       // 在 GitHub Pages 等静态环境下，转向 Supabase Functions
       return (base ? base.replace(/\/$/, '') : window.location.origin) + cleanUrl

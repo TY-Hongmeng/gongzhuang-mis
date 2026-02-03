@@ -4,6 +4,7 @@ import { Table, Button, message, Row, Col, Space, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
+import { rollbackPurchaseOrders } from '../../services/toolingService';
 import { Segmented } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -397,10 +398,16 @@ export default function PurchaseOrdersList() {
           />
           <Space>
             <Button onClick={async () => {
+              console.log('[PurchaseOrdersList] Rollback button clicked');
               if (selectedRowKeys.length === 0) { message.warning('请选择要回退的采购单'); return }
               try {
                 const selectedSet = new Set<string>(selectedRowKeys.map(String))
                 const selectedItems = data.filter(d => selectedSet.has(String(d.id)))
+                
+                console.log('[PurchaseOrdersList] Calling rollbackPurchaseOrders with items:', selectedItems.length);
+                if (typeof rollbackPurchaseOrders !== 'function') {
+                  throw new Error('回退服务未正确加载，请尝试刷新页面');
+                }
                 
                 // 调用回退服务（恢复数据并删除采购单）
                 await rollbackPurchaseOrders(selectedItems)
