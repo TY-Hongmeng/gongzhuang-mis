@@ -34,6 +34,16 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isDev = (import.meta as any).env?.DEV === true
   
   if (cleanUrl.startsWith('/') && isApiPath) {
+    // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
+    const isCriticalOrderPath = cleanUrl.startsWith('/api/purchase-orders') || cleanUrl.startsWith('/api/cutting-orders')
+    
+    // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi 直接返回 null，
+    // 让 fetchWithFallback 继续执行并最终调用本地后端
+    if ((isLocal || isDev) && isCriticalOrderPath && !isGhPages) {
+      console.log(`[API] Critical path ${cleanUrl} detected in local environment, bypassing client-side handler to use backend.`)
+      return null
+    }
+
     // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
     if (isGhPages || (!isLocal && !isDev)) {
       const handled = await handleClientSideApi(cleanUrl, init)
