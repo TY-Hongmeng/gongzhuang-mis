@@ -520,10 +520,13 @@ export default function ManualPurchaseOrders() {
     }
   }, [isInitialized]);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   // 监听状态更新事件
   useEffect(() => {
     const handleStatusUpdate = () => {
       console.log('ManualPurchaseOrders received status_updated event, refreshing data...');
+      setRefreshKey(prev => prev + 1);
       fetchManualData();
       fetchBackupData();
     };
@@ -1688,6 +1691,8 @@ export default function ManualPurchaseOrders() {
           columns={manualColumns}
           dataSource={(() => {
             const hiddenManualIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
+            // 使用 refreshKey 确保数据过滤在状态更新后重新执行
+            void refreshKey; 
             return manualData.filter(r => !hiddenManualIds.includes(String(r.id)))
           })()}
           pagination={false}
@@ -1740,9 +1745,11 @@ export default function ManualPurchaseOrders() {
             rowSelection={backupRowSelection}
             columns={backupColumns}
           dataSource={(() => {
-              const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
-              return backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
-            })()}
+            const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
+            // 使用 refreshKey 确保数据过滤在状态更新后重新执行
+            void refreshKey;
+            return backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
+          })()}
             pagination={false}
             bordered={false}
             scroll={{ y: 'calc(100vh - 240px)' }}
