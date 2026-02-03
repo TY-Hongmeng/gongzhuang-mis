@@ -362,56 +362,78 @@ export default function ManualPurchaseOrders() {
       }
       const validOrders = orders
 
-    try {
-      const result = await postPurchaseOrders(validOrders)
-      if (result?.success) {
-        const stats = result.stats || {}
-        const messages: string[] = []
-        if (stats.updated > 0) messages.push(`更新 ${stats.updated} 条`)
-        if (stats.inserted > 0) messages.push(`新增 ${stats.inserted} 条`)
-        if (stats.skipped > 0) messages.push(`跳过 ${stats.skipped} 条`)
-        const messageText = messages.length > 0 ? messages.join('，') : `成功处理 ${validOrders.length} 条采购单`
-        message.success(messageText)
+      try {
+        const result = await postPurchaseOrders(validOrders)
+        if (result?.success) {
+          const stats = result.stats || {}
+          const messages: string[] = []
+          if (stats.updated > 0) messages.push(`更新 ${stats.updated} 条`)
+          if (stats.inserted > 0) messages.push(`新增 ${stats.inserted} 条`)
+          if (stats.skipped > 0) messages.push(`跳过 ${stats.skipped} 条`)
+          const messageText = messages.length > 0 ? messages.join('，') : `成功处理 ${validOrders.length} 条采购单`
+          message.success(messageText)
 
-        // 成功后清理采购申请中的选中项（后台删除），保持页面数据一致
-        const { data: { session } } = await import('../../lib/supabase').then(m => m.supabase.auth.getSession())
-        const headers: HeadersInit = { 'Content-Type': 'application/json' }
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
-        }
+          // 成功后清理采购申请中的选中项（后台删除），保持页面数据一致
+          let accessToken = '';
+          try {
+            const { data: { session } } = await import('../../lib/supabase').then(m => m.supabase.auth.getSession())
+            accessToken = session?.access_token || '';
+            
+            if (!accessToken) {
+              const keyPattern = /^sb-.*-auth-token$/;
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && keyPattern.test(key)) {
+                  const item = localStorage.getItem(key);
+                  if (item) {
+                    const parsed = JSON.parse(item);
+                    accessToken = parsed.access_token || parsed.session?.access_token || '';
+                    if (accessToken) break;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[ManualPurchaseOrders] Failed to get session for cleanup', e);
+          }
 
-        const tasks: Promise<Response>[] = []
-        if (manualIds.length > 0) {
-          tasks.push(fetch('/api/manual-plans/batch-delete', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ ids: manualIds })
-          }))
-        }
-        if (backupIds.length > 0) {
-          tasks.push(fetch('/api/backup-materials/batch-delete', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ ids: backupIds })
-          }))
-        }
-        if (tasks.length > 0) {
-          try { await Promise.all(tasks) } catch {}
-        }
+          const headers: HeadersInit = { 'Content-Type': 'application/json' }
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`
+          }
 
-        // 前端立即移除选中项并重置选择，避免残留
-        setManualDataPreserveScroll(prev => prev.filter(item => !manualIds.includes(item.id)))
-        setBackupDataPreserveScroll(prev => prev.filter(item => !backupIds.includes(item.id)))
-        setSelectedManualRowKeys([])
-        setSelectedBackupRowKeys([])
+          const tasks: Promise<Response>[] = []
+          if (manualIds.length > 0) {
+            tasks.push(fetch('/api/manual-plans/batch-delete', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ ids: manualIds })
+            }))
+          }
+          if (backupIds.length > 0) {
+            tasks.push(fetch('/api/backup-materials/batch-delete', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ ids: backupIds })
+            }))
+          }
+          if (tasks.length > 0) {
+            try { await Promise.all(tasks) } catch {}
+          }
 
-        navigate('/purchase-management?tab=list')
-      } else {
-        message.error(result?.error || '生成采购单失败')
+          // 前端立即移除选中项并重置选择，避免残留
+          setManualDataPreserveScroll(prev => prev.filter(item => !manualIds.includes(item.id)))
+          setBackupDataPreserveScroll(prev => prev.filter(item => !backupIds.includes(item.id)))
+          setSelectedManualRowKeys([])
+          setSelectedBackupRowKeys([])
+
+          navigate('/purchase-management?tab=list')
+        } else {
+          message.error(result?.error || '生成采购单失败')
+        }
+      } catch (err) {
+        message.error('生成采购单失败: ' + (err as Error).message)
       }
-    } catch (err) {
-      message.error('生成采购单失败: ' + (err as Error).message)
-    }
   }
 
   // 获取投产单位选项 - 与工装信息保持一致

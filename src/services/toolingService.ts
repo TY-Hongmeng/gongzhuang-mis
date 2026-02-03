@@ -353,8 +353,10 @@ export const generatePurchaseOrders = async (orders: any[]) => {
             const item = localStorage.getItem(key);
             if (item) {
               const parsed = JSON.parse(item);
-              if (parsed.access_token) {
-                accessToken = parsed.access_token;
+              // Supabase v2 uses session object in storage
+              const token = parsed.access_token || parsed.session?.access_token;
+              if (token) {
+                accessToken = token;
                 console.log('[toolingService] Recovered token from localStorage key:', key);
                 found = true;
                 break;
@@ -402,8 +404,9 @@ export const rollbackPurchaseOrders = async (orders: any[]) => {
             const item = localStorage.getItem(key);
             if (item) {
               const parsed = JSON.parse(item);
-              if (parsed.access_token) {
-                 accessToken = parsed.access_token;
+              const token = parsed.access_token || parsed.session?.access_token;
+              if (token) {
+                 accessToken = token;
                  break;
               }
             }

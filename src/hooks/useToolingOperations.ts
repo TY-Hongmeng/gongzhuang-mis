@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { message } from 'antd'
 import { generateInventoryNumber, canGenerateInventoryNumber, calculateVolume } from '../utils/toolingCalculations'
 import { calculateTotalPrice } from '../utils/priceCalculator'
+import { supabase } from '../lib/supabase'
 
 // 工装业务逻辑Hook
 export const useToolingOperations = () => {
@@ -68,9 +69,40 @@ export const useToolingOperations = () => {
         return true
       })
 
+      // 获取当前会话Token用于鉴权，解决401/42501错误
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      
+      let accessToken = session?.access_token;
+      if (!accessToken) {
+        try {
+          const keyPattern = /^sb-.*-auth-token$/;
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && keyPattern.test(key)) {
+              const item = localStorage.getItem(key);
+              if (item) {
+                const parsed = JSON.parse(item);
+                const token = parsed.access_token || parsed.session?.access_token;
+                if (token) {
+                  accessToken = token;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[useToolingOperations] Failed to recover token from localStorage', e);
+        }
+      }
+
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch('/api/cutting-orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ orders: deduped })
       })
 
@@ -216,9 +248,40 @@ export const useToolingOperations = () => {
         return null
       }
 
+      // 获取当前会话Token用于鉴权，解决401/42501错误
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      
+      let accessToken = session?.access_token;
+      if (!accessToken) {
+        try {
+          const keyPattern = /^sb-.*-auth-token$/;
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && keyPattern.test(key)) {
+              const item = localStorage.getItem(key);
+              if (item) {
+                const parsed = JSON.parse(item);
+                const token = parsed.access_token || parsed.session?.access_token;
+                if (token) {
+                  accessToken = token;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[useToolingOperations] Failed to recover token from localStorage', e);
+        }
+      }
+
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch('/api/purchase-orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ orders: validOrders })
       })
 
