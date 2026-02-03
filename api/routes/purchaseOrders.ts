@@ -979,8 +979,12 @@ router.post('/rollback', async (req, res) => {
       if (!item.id) continue;
       idsToDelete.push(item.id);
 
-      if (item.inventory_number?.startsWith('MANUAL-')) {
-        const originalId = item.inventory_number.slice(7);
+      const inv = String(item.inventory_number || '').trim();
+      console.log(`[Rollback] Processing item: inv=${inv}, id=${item.id}`);
+
+      if (inv.toUpperCase().startsWith('MANUAL-')) {
+        const originalId = inv.slice(7).trim();
+        console.log(`[Rollback] Detected Manual record, originalId=${originalId}`);
         // 恢复到 manual_purchase_plans (注意表名是 manual_purchase_plans)
         manualRestores.push({
           id: originalId, // 尝试恢复原始 ID 以保持位置映射
@@ -992,11 +996,12 @@ router.post('/rollback', async (req, res) => {
           production_unit: item.production_unit,
           demand_date: item.demand_date,
           applicant: item.applicant,
-          created_date: new Date().toISOString().split('T')[0],
+          created_date: new Date().toISOString(),
           status: 'draft'
         });
-      } else if (item.inventory_number?.startsWith('BACKUP-')) {
-        const originalId = item.inventory_number.slice(7);
+      } else if (inv.toUpperCase().startsWith('BACKUP-')) {
+        const originalId = inv.slice(7).trim();
+        console.log(`[Rollback] Detected Backup record, originalId=${originalId}`);
         // 恢复到 backup_materials
         const { material, specs } = parseModel(item.model || '');
         backupRestores.push({
@@ -1014,7 +1019,7 @@ router.post('/rollback', async (req, res) => {
           weight: item.weight,
           total_price: item.total_price,
           unit_price: (item.total_price && item.part_quantity) ? (Number(item.total_price) / Number(item.part_quantity)) : 0,
-          created_date: new Date().toISOString().split('T')[0],
+          created_date: new Date().toISOString(),
           is_manual: true
         });
       }

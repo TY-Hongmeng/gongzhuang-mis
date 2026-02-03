@@ -539,13 +539,34 @@ export default function ManualPurchaseOrders() {
       fetchBackupData();
     };
 
+    // 监听 localStorage 变化 (处理跨标签页同步)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'temporary_hidden_manual_ids' || e.key === 'temporary_hidden_backup_ids') {
+        console.log('[ManualPurchaseOrders] LocalStorage changed, refreshing view');
+        setRefreshKey(prev => prev + 1);
+      }
+    };
+
     window.addEventListener('status_updated', handleStatusUpdate);
     window.addEventListener('force_refresh', handleForceRefresh);
+    window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('status_updated', handleStatusUpdate);
       window.removeEventListener('force_refresh', handleForceRefresh);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+  // 紧急刷新功能：清空隐藏列表并重新加载
+  const handleEmergencyRefresh = () => {
+    console.log('[ManualPurchaseOrders] Emergency refresh triggered');
+    localStorage.removeItem('temporary_hidden_manual_ids');
+    localStorage.removeItem('temporary_hidden_backup_ids');
+    setRefreshKey(prev => prev + 1);
+    fetchManualData();
+    fetchBackupData();
+    message.success('已刷新并清理隐藏列表');
+  };
 
   // 获取手动输入的数据（使用独立的临时计划数据源）
   const fetchManualData = async () => {
@@ -577,16 +598,22 @@ export default function ManualPurchaseOrders() {
           
           setManualData(sliced as any);
         } else {
+          setManualAll([]);
+          setManualData([]);
         }
       } else {
         const errorText = await response.text();
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
+          setManualAll([]);
           setManualData([]);
           message.warning('手动采购单数据暂不可用（网络波动），稍后重试');
           return;
         }
       }
     } catch (error) {
+      console.error('[ManualPurchaseOrders] fetchManualData failed:', error);
+      setManualAll([]);
+      setManualData([]);
     }
   };
 
@@ -622,21 +649,27 @@ export default function ManualPurchaseOrders() {
           
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMapB = getBackupPos();
-            const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
-            const slicedB = placedB.slice(0, backupLimit)
+          const placedB = applyPositions(backupMaterials as any, posMapB) as any[]
+          const slicedB = placedB.slice(0, backupLimit)
           
           setBackupData(slicedB as any);
         } else {
+          setBackupAll([]);
+          setBackupData([]);
         }
       } else {
         const errorText = await response.text();
         if (response.status === 500 && /fetch failed/i.test(errorText)) {
+          setBackupAll([]);
           setBackupData([]);
           message.warning('备用材料数据暂不可用（网络波动），稍后重试');
           return;
         }
       }
     } catch (error) {
+      console.error('[ManualPurchaseOrders] fetchBackupData failed:', error);
+      setBackupAll([]);
+      setBackupData([]);
     }
   };
 
@@ -1690,6 +1723,7 @@ export default function ManualPurchaseOrders() {
             <Button type="dashed" size="small" onClick={handleAddManual} icon={<ToolOutlined />}>添加标准件</Button>
           </div>
           <Space>
+            <Button size="small" icon={<ReloadOutlined />} onClick={handleEmergencyRefresh}>刷新</Button>
             <span style={{ color: '#666' }}>共 {manualAll.length} 条，当前显示 {Math.min(manualLimit, manualAll.length)} 条</span>
             {manualAll.length > manualLimit && (
               <Button size="small" onClick={() => {
@@ -1712,7 +1746,11 @@ export default function ManualPurchaseOrders() {
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey; 
             
-            const filtered = manualData.filter(r => !hiddenManualIds.includes(String(r.id)))
+            const filtered = manualData.filter(r => {
+              // 确保 ID 比较时类型一致，且去除可能的空白
+              const rid = String(r.id).trim();
+              return !hiddenManualIds.includes(rid);
+            })
             
             // 调试日志：检查过滤结果
             console.log('[ManualPurchaseOrders] Table filter (Manual):', {
@@ -1756,6 +1794,7 @@ export default function ManualPurchaseOrders() {
               <Button type="dashed" size="small" onClick={handleAddBackup} icon={<ToolOutlined />}>添加备用料</Button>
             </div>
             <Space>
+              <Button size="small" icon={<ReloadOutlined />} onClick={handleEmergencyRefresh}>刷新</Button>
               <span style={{ color: '#666' }}>共 {backupAll.length} 条，当前显示 {Math.min(backupLimit, backupAll.length)} 条</span>
               {backupAll.length > backupLimit && (
                 <Button size="small" onClick={() => {
@@ -1777,13 +1816,21 @@ export default function ManualPurchaseOrders() {
             const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey;
-            const filtered = backupData.filter(r => !hiddenBackupIds.includes(String(r.id)))
+            
+            const filtered = backupData.filter(r => {
+              // 确保 ID 比较时类型一致，且去除可能的空白
+              const rid = String(r.id).trim();
+              return !hiddenBackupIds.includes(rid);
+            })
+
+            // 调试日志
             console.log('[ManualPurchaseOrders] Table filter (Backup):', {
               before: backupData.length,
               after: filtered.length,
               hiddenCount: hiddenBackupIds.length,
               hiddenIds: hiddenBackupIds
             });
+
             return filtered
           })()}
             pagination={false}

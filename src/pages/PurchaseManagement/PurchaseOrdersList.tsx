@@ -475,7 +475,12 @@ export default function PurchaseOrdersList() {
                 
                 // 通知其他页面刷新
                 window.dispatchEvent(new Event('approval_updated'))
-                window.dispatchEvent(new Event('status_updated')) // 触发 ManualPurchaseOrders 重新加载
+                
+                // 增加一个小延迟，确保数据库写入完成后再通知其他页面刷新
+                setTimeout(() => {
+                  console.log('[PurchaseOrdersList] Dispatching status_updated event');
+                  window.dispatchEvent(new Event('status_updated')) // 触发 ManualPurchaseOrders 重新加载
+                }, 200);
                 
                 message.success('已回退所选采购单')
                 setSelectedRowKeys([])
