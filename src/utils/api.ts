@@ -1651,16 +1651,81 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
         try {
           console.log(`[PurchaseOrders] Rolling back ${orders.length} orders...`)
-          
-          const ids = orders.map(o => o.id).filter(Boolean)
-          if (ids.length > 0) {
+          const manualRestores: any[] = []
+          const backupRestores: any[] = []
+          const idsToDelete: string[] = []
+
+          const parseModel = (modelText: string) => {
+            if (!modelText) return { material: '', specs: '' }
+            const match = modelText.match(/^(.*?) \((.*?)\)$/)
+            if (match) return { material: match[1], specs: match[2] }
+            return { material: modelText, specs: modelText }
+          }
+
+          for (const item of orders) {
+            if (!item?.id) continue
+            idsToDelete.push(item.id)
+
+            const inv = String(item.inventory_number || '').trim()
+            if (inv.toUpperCase().startsWith('MANUAL-')) {
+              const originalId = inv.slice(7).trim()
+              manualRestores.push({
+                id: originalId,
+                part_name: item.part_name,
+                model: item.model,
+                part_quantity: item.part_quantity,
+                unit: item.unit,
+                project_name: item.project_name,
+                production_unit: item.production_unit,
+                demand_date: item.demand_date,
+                applicant: item.applicant,
+                created_date: new Date().toISOString(),
+                status: 'draft'
+              })
+            } else if (inv.toUpperCase().startsWith('BACKUP-')) {
+              const originalId = inv.slice(7).trim()
+              const { material, specs } = parseModel(item.model || '')
+              backupRestores.push({
+                id: originalId,
+                material_name: item.part_name,
+                material: material,
+                model: specs,
+                quantity: item.part_quantity,
+                unit: item.unit,
+                project_name: item.project_name,
+                supplier: item.supplier || item.production_unit,
+                demand_date: item.demand_date,
+                applicant: item.applicant,
+                weight: item.weight,
+                total_price: item.total_price,
+                unit_price: (item.total_price && item.part_quantity) ? (Number(item.total_price) / Number(item.part_quantity)) : 0,
+                created_date: new Date().toISOString(),
+                is_manual: true
+              })
+            }
+          }
+
+          if (manualRestores.length > 0) {
+            console.log(`[PurchaseOrders] Restoring manual records: ${manualRestores.length}`)
+            const { error: mError } = await scopedClient.from('manual_purchase_plans').insert(manualRestores)
+            if (mError) throw mError
+          }
+
+          if (backupRestores.length > 0) {
+            console.log(`[PurchaseOrders] Restoring backup records: ${backupRestores.length}`)
+            const { error: bError } = await scopedClient.from('backup_materials').insert(backupRestores)
+            if (bError) throw bError
+          }
+
+          if (idsToDelete.length > 0) {
+            console.log(`[PurchaseOrders] Deleting purchase_orders: ${idsToDelete.length}`)
             const { error: delError } = await scopedClient
               .from('purchase_orders')
               .delete()
-              .in('id', ids)
+              .in('id', idsToDelete)
             if (delError) throw delError
           }
-          
+
           return jsonResponse({ success: true })
         } catch (err) {
           console.error('[PurchaseOrders] Rollback failed:', err)
