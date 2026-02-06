@@ -26,7 +26,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/cutting-orders',
     '/api/purchase-orders',
     '/api/backup-materials',
-    '/api/manual-plans'
+    '/api/manual-plans',
+    '/api/users'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -546,6 +547,30 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         return null
       }
 
+      // ---- Users / Roles / Companies ----
+      if (path.startsWith('/api/users')) {
+        // GET /api/users/roles
+        if (method === 'GET' && path === '/api/users/roles') {
+          const { data, error } = await supabase.from('roles').select('*').order('created_at', { ascending: true })
+          return jsonResponse({ success: true, roles: error ? [] : data })
+        }
+        // GET /api/users/companies
+        if (method === 'GET' && path === '/api/users/companies') {
+          const { data, error } = await supabase.from('companies').select('*').order('created_at', { ascending: true })
+          return jsonResponse({ success: true, companies: error ? [] : data })
+        }
+        // GET /api/users
+        if (method === 'GET' && path === '/api/users') {
+          const { data, error } = await supabase.from('users').select(`
+            *,
+            company:companies(id, name),
+            role:roles(id, name),
+            workshop:workshops(id, name),
+            team:teams(id, name)
+          `).order('created_at', { ascending: false })
+          return jsonResponse({ success: true, users: error ? [] : data })
+        }
+      }
       // ---- Production units CRUD ----
       if (path.startsWith('/api/options/production-units')) {
         if (method === 'GET') {
