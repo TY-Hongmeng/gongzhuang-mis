@@ -1363,6 +1363,54 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, totals, data: items })
       }
 
+      // Work hours create
+      if (method === 'POST' && path === '/api/tooling/work-hours') {
+        const body = await readBody()
+        const required = ['part_inventory_number']
+        for (const k of required) {
+          if (!body[k]) return jsonResponse({ success: false, error: `缺少必填字段: ${k}` }, 400)
+        }
+        const payload: any = {
+          part_inventory_number: String(body.part_inventory_number || ''),
+          part_drawing_number: String(body.part_drawing_number || ''),
+          hours: Number(body.hours || 0),
+          aux_hours: Number(body.aux_hours || 0),
+          proc_hours: Number(body.proc_hours || 0),
+          aux_start_time: String(body.aux_start_time || ''),
+          aux_end_time: String(body.aux_end_time || ''),
+          work_date: String(body.work_date || ''),
+          shift_date: String(body.shift_date || ''),
+          process_name: String(body.process_name || ''),
+          operator: String(body.operator || ''),
+          completed_quantity: Number(body.completed_quantity || 0),
+          device_no: String(body.device_no || ''),
+          shift: String(body.shift || '')
+        }
+        try {
+          const { data, error } = await supabase.from('work_hours').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '提交失败' }, 500)
+        }
+      }
+
+      // Work hours delete
+      {
+        const m = path.match(/^\/api\/tooling\/work-hours\/([^\/]+)$/)
+        if (m && method === 'DELETE') {
+          const id = m[1]
+          if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
+          try {
+            const { error } = await supabase.from('work_hours').delete().eq('id', id)
+            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            return jsonResponse({ success: true })
+          } catch (e: any) {
+            return jsonResponse({ success: false, error: e?.message || '删除失败' }, 500)
+          }
+        }
+      }
+
       // Cutting orders list
       if (method === 'GET' && path === '/api/cutting-orders') {
         const qs = getQuery(cleanUrl)
