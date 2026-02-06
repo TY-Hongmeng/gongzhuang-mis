@@ -178,7 +178,7 @@ const WorkHours: React.FC = () => {
       const json = await resp.json()
       if (json?.success) {
         // 处理数据，只保留需要的属性，避免循环引用
-        const opts = (json.items || []).map((it: any) => ({
+        const invOpts = (json.items || []).map((it: any) => ({
           value: String(it.part_inventory_number || ''),
           label: String(it.part_inventory_number || ''),
           // 只保留需要的meta属性，避免循环引用
@@ -189,8 +189,54 @@ const WorkHours: React.FC = () => {
           },
           type: 'inventory'
         }))
-        setInvOptions([...fixedInvOptions, ...opts])
+
+        // 关键修复：从维修选项管理获取盘存编号
+        let maintenanceOpts: any[] = []
+        try {
+          const respM = await fetch(`/api/options/maintenance-options`)
+          if (respM.ok) {
+            const jsonM = await respM.json()
+            if (jsonM?.success || jsonM?.data) {
+              const mData = jsonM.data || jsonM.items || []
+              maintenanceOpts = mData.map((mo: any) => ({
+                value: String(mo.inventory_number || ''),
+                label: String(mo.inventory_number || ''),
+                type: 'maintenance',
+                meta: {
+                  part_name: String(mo.name || ''),
+                  part_drawing_number: '-',
+                  process_route: ''
+                }
+              }))
+            }
+          }
+        } catch (e) {
+          console.warn('获取维修选项失败', e)
+        }
+
+        // 过滤维修选项
+        if (q) {
+          const lowerQ = q.toLowerCase()
+          maintenanceOpts = maintenanceOpts.filter(opt => 
+            String(opt.value).toLowerCase().includes(lowerQ) || 
+            String(opt.meta.part_name).toLowerCase().includes(lowerQ)
+          )
+        }
+
+        // 合并盘存编号和维修选项，去重（优先保留盘存编号）
+        const combined = [...invOpts];
+        const invValues = new Set(invOpts.map((o:any) => o.value));
+        maintenanceOpts.forEach(mo => {
+          if (!invValues.has(mo.value)) {
+            combined.push(mo);
+          }
+        });
+
+        setInvOptions([...fixedInvOptions, ...combined])
       }
+    } catch (e: any) {
+      console.error('Fetch inventory failed', e)
+      message.error(e?.message || '获取盘存编号失败')
     } finally {
       setLoadingInv(false)
     }
