@@ -325,27 +325,33 @@ const WorkHours: React.FC = () => {
   }
 
   const fetchDevices = async () => {
-    const r = await fetch('/api/tooling/devices')
+    const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+    const isGhPages = /github\.io/i.test(host)
+    const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
+    const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
+    const url = isGhPages ? `${restBase}/devices?select=*&order=device_no.asc` : '/api/tooling/devices'
+    const r = await fetch(url)
     if (!r.ok) {
       throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
     }
     const j = await r.json()
-    const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
+    const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []))
     if (deviceItems.length > 0 || j?.success) {
-      const uniqueDevices = new Map();
+      const uniqueDevices = new Map<string, any>()
       deviceItems.forEach((d: any) => {
-        const val = String(d.device_no || '');
-        if (val && !uniqueDevices.has(val)) {
+        const val = String(d.device_no || '')
+        if (!val) return
+        if (!uniqueDevices.has(val)) {
           uniqueDevices.set(val, {
             value: val,
             label: `${val}-${String(d.device_name || '')}`,
-            meta: {
-              device_name: String(d.device_name || '')
-            }
-          });
+            meta: { device_name: String(d.device_name || '') }
+          })
         }
-      });
-      setDeviceOptions(Array.from(uniqueDevices.values()))
+      })
+      const list = Array.from(uniqueDevices.values())
+      list.sort((a, b) => String(a.value).localeCompare(String(b.value), 'zh-Hans-CN', { numeric: true }))
+      setDeviceOptions(list)
     }
   }
 
