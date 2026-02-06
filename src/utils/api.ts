@@ -861,10 +861,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const { data, error } = await supabase.from('devices').select('*').order('created_at', { ascending: true })
         if (error) {
           console.error('Error fetching devices:', error)
-          return jsonResponse({ data: [] })
+          return jsonResponse({ success: true, items: [], data: [] })
         }
         console.log('devices result:', { data })
-        return jsonResponse({ data: data || [] })
+        return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
       // Fixed inventory options
       if (method === 'GET' && path.startsWith('/api/tooling/fixed-inventory-options')) {
@@ -1325,6 +1325,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const { error } = await supabase.from('child_items').delete().eq('id', id)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
+      }
+
+      // Maintenance options (client-side fallback)
+      if (method === 'GET' && path === '/api/options/maintenance-options') {
+        try {
+          const { data, error } = await supabase.from('maintenance_options').select('*').order('inventory_number')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data: data || [] })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message }, 500)
+        }
       }
 
       // Work hours

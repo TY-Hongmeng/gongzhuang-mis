@@ -176,12 +176,11 @@ const WorkHours: React.FC = () => {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
       const json = await resp.json()
-      if (json?.success) {
-        // 处理数据，只保留需要的属性，避免循环引用
-        const invOpts = (json.items || []).map((it: any) => ({
+      const invItems = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+      if (invItems.length > 0 || json?.success) {
+        const invOpts = invItems.map((it: any) => ({
           value: String(it.part_inventory_number || ''),
           label: String(it.part_inventory_number || ''),
-          // 只保留需要的meta属性，避免循环引用
           meta: {
             part_name: String(it.part_name || ''),
             part_drawing_number: String(it.part_drawing_number || ''),
@@ -193,22 +192,23 @@ const WorkHours: React.FC = () => {
         // 关键修复：从维修选项管理获取盘存编号
         let maintenanceOpts: any[] = []
         try {
-          const respM = await fetch(`/api/options/maintenance-options`)
+          const respM = await fetch(`/api/tooling/fixed-inventory-options`)
           if (respM.ok) {
             const jsonM = await respM.json()
-            if (jsonM?.success || jsonM?.data) {
-              const mData = jsonM.data || jsonM.items || []
-              maintenanceOpts = mData.map((mo: any) => ({
-                value: String(mo.inventory_number || ''),
-                label: String(mo.inventory_number || ''),
+            const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
+            maintenanceOpts = mData
+              .filter((mo: any) => mo?.is_active !== false)
+              .map((mo: any) => ({
+                value: String(mo.option_value ?? mo.inventory_number ?? ''),
+                label: String(mo.option_value ?? mo.inventory_number ?? ''),
                 type: 'maintenance',
                 meta: {
-                  part_name: String(mo.name || ''),
+                  part_name: String(mo.option_label ?? mo.name ?? ''),
                   part_drawing_number: '-',
                   process_route: ''
                 }
               }))
-            }
+              .filter((mo: any) => !!mo.value)
           }
         } catch (e) {
           console.warn('获取维修选项失败', e)
@@ -289,8 +289,9 @@ const WorkHours: React.FC = () => {
       throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
     }
     const j = await r.json()
-    if (j?.success) {
-      const opts = (j.items || []).filter((x: any) => x.is_active).map((x: any) => ({ value: x.option_value, label: x.option_value, meta: null, type: 'fixed' }))
+    const fixedItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
+    if (fixedItems.length > 0 || j?.success) {
+      const opts = fixedItems.filter((x: any) => x.is_active !== false).map((x: any) => ({ value: x.option_value, label: x.option_value, meta: null, type: 'fixed' }))
       setFixedInvOptions(opts)
       // merge into current inventory list
       setInvOptions((prev) => [...opts, ...prev.filter((p: any) => p.type === 'inventory')])
@@ -303,17 +304,16 @@ const WorkHours: React.FC = () => {
       throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
     }
     const j = await r.json()
-    if (j?.success) {
-        // 处理数据，只保留需要的属性，避免循环引用
-        setDeviceOptions((j.items || []).map((d: any) => ({
-          value: String(d.device_no || ''),
-          label: `${String(d.device_no || '')}-${String(d.device_name || '')}`,
-          // 只保留需要的meta属性，避免循环引用
-          meta: {
-            device_name: String(d.device_name || '')
-          }
-        })))
-      }
+    const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
+    if (deviceItems.length > 0 || j?.success) {
+      setDeviceOptions(deviceItems.map((d: any) => ({
+        value: String(d.device_no || ''),
+        label: `${String(d.device_no || '')}-${String(d.device_name || '')}`,
+        meta: {
+          device_name: String(d.device_name || '')
+        }
+      })))
+    }
   }
 
   const handleRefresh = async () => {
