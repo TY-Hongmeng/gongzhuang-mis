@@ -64,16 +64,18 @@ const Users: React.FC = () => {
   }, [])
 
   const loadUsers = async () => {
-    setLoading(true)
     try {
+      setLoading(true)
       const r = await fetch('/api/users')
       const j = await r.json()
-      if (!r.ok || !j?.success) {
+      if (!r.ok || j?.success !== true) {
         message.error('加载用户列表失败')
         return
       }
-      setUsers(j.items || [])
-    } catch {
+      // 后端返回 { success: true, users: [...] }
+      const list = j.users || j.items || []
+      setUsers(list)
+    } catch (error) {
       message.error('加载用户列表失败')
     } finally {
       setLoading(false)
@@ -88,7 +90,8 @@ const Users: React.FC = () => {
         console.error('加载公司列表失败')
         return
       }
-      const list = j.items || []
+      // 后端返回 { success: true, companies: [...] }
+      const list = j.companies || j.items || []
       setCompanies(list)
       const cmap: Record<string,string> = {}
       list.forEach((c: any) => { if (c?.id) cmap[c.id] = c.name })
@@ -106,7 +109,8 @@ const Users: React.FC = () => {
         console.error('加载角色列表失败')
         return
       }
-      const list = j.items || []
+      // 后端返回 { success: true, roles: [...] }
+      const list = j.roles || j.items || []
       setRoles(list)
       const rmap: Record<string,string> = {}
       list.forEach((r: any) => { if (r?.id) rmap[r.id] = r.name })
