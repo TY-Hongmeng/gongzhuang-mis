@@ -232,7 +232,7 @@ const WorkHours: React.FC = () => {
           }
         });
 
-        setInvOptions([...fixedInvOptions, ...combined])
+        setInvOptions(combined)
       }
     } catch (e: any) {
       console.error('Fetch inventory failed', e)
@@ -306,13 +306,20 @@ const WorkHours: React.FC = () => {
     const j = await r.json()
     const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
     if (deviceItems.length > 0 || j?.success) {
-      setDeviceOptions(deviceItems.map((d: any) => ({
-        value: String(d.device_no || ''),
-        label: `${String(d.device_no || '')}-${String(d.device_name || '')}`,
-        meta: {
-          device_name: String(d.device_name || '')
+      const uniqueDevices = new Map();
+      deviceItems.forEach((d: any) => {
+        const val = String(d.device_no || '');
+        if (val && !uniqueDevices.has(val)) {
+          uniqueDevices.set(val, {
+            value: val,
+            label: `${val}-${String(d.device_name || '')}`,
+            meta: {
+              device_name: String(d.device_name || '')
+            }
+          });
         }
-      })))
+      });
+      setDeviceOptions(Array.from(uniqueDevices.values()))
     }
   }
 
