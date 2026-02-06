@@ -189,14 +189,13 @@ const WorkHours: React.FC = () => {
           type: 'inventory'
         }))
 
-        // 关键修复：从维修选项管理获取盘存编号
         let maintenanceOpts: any[] = []
         try {
           const respM = await fetch(`/api/tooling/fixed-inventory-options`)
           if (respM.ok) {
             const jsonM = await respM.json()
             const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
-            maintenanceOpts = mData
+            const a = mData
               .filter((mo: any) => mo?.is_active !== false)
               .map((mo: any) => ({
                 value: String(mo.option_value ?? mo.inventory_number ?? ''),
@@ -209,10 +208,30 @@ const WorkHours: React.FC = () => {
                 }
               }))
               .filter((mo: any) => !!mo.value)
+            maintenanceOpts = [...maintenanceOpts, ...a]
           }
-        } catch (e) {
-          console.warn('获取维修选项失败', e)
-        }
+        } catch {}
+        try {
+          const respMO = await fetch(`/api/options/maintenance-options`)
+          if (respMO.ok) {
+            const jsonMO = await respMO.json()
+            const m2 = Array.isArray(jsonMO?.items) ? jsonMO.items : (Array.isArray(jsonMO?.data) ? jsonMO.data : [])
+            const b = m2
+              .filter((x: any) => x?.is_active !== false)
+              .map((x: any) => ({
+                value: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
+                label: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
+                type: 'maintenance',
+                meta: {
+                  part_name: String(x.option_label ?? x.name ?? ''),
+                  part_drawing_number: '-',
+                  process_route: ''
+                }
+              }))
+              .filter((x: any) => !!x.value)
+            maintenanceOpts = [...maintenanceOpts, ...b]
+          }
+        } catch {}
 
         // 过滤维修选项
         if (q) {
@@ -246,7 +265,7 @@ const WorkHours: React.FC = () => {
     setSelectedInv(val)
     const meta = option?.meta
     setSelectedInfo({ name: meta?.part_name || '', drawing: meta?.part_drawing_number || '' })
-    const isFixed = option?.type === 'fixed'
+    const isFixed = option?.type === 'fixed' || option?.type === 'maintenance'
     setUseManualProcess(!!isFixed)
     if (isFixed) {
       setProcessOptions([])
@@ -262,6 +281,7 @@ const WorkHours: React.FC = () => {
     fetchRecent()
     fetchFixedOptions()
     fetchPartNameMap()
+    fetchInventory('')
   }, [])
 
   // 获取零件名称映射
@@ -293,8 +313,6 @@ const WorkHours: React.FC = () => {
     if (fixedItems.length > 0 || j?.success) {
       const opts = fixedItems.filter((x: any) => x.is_active !== false).map((x: any) => ({ value: x.option_value, label: x.option_value, meta: null, type: 'fixed' }))
       setFixedInvOptions(opts)
-      // merge into current inventory list
-      setInvOptions((prev) => [...opts, ...prev.filter((p: any) => p.type === 'inventory')])
     }
   }
 
