@@ -474,4 +474,20 @@ router.delete('/suppliers/:id', async (req, res) => {
   }
 });
 
+// 获取维修选项
+router.get('/maintenance-options', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('maintenance_options')
+      .select('*')
+      .order('inventory_number');
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('获取维修选项失败:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

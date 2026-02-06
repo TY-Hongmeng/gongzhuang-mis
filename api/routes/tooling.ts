@@ -97,6 +97,38 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 获取设备列表
+router.get('/devices', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('devices')
+      .select('*')
+      .order('device_no');
+
+    if (error) throw error;
+    res.json({ success: true, items: data });
+  } catch (error) {
+    console.error('获取设备列表失败:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 获取固定库存选项
+router.get('/fixed-inventory-options', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('fixed_inventory_options')
+      .select('*')
+      .order('option_value');
+
+    if (error) throw error;
+    res.json({ success: true, items: data });
+  } catch (error) {
+    console.error('获取固定库存选项失败:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 删除单个工装信息
 router.delete('/:id', async (req, res) => {
   try {
