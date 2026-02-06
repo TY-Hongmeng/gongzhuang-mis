@@ -196,28 +196,17 @@ const WorkHours: React.FC = () => {
         const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
         if (isGhPages) {
           try {
-            const [r1, r2] = await Promise.all([
-              fetch(`${restBase}/fixed_inventory_options?select=*`),
-              fetch(`${restBase}/maintenance_options?select=*`)
-            ])
+            const r1 = await fetch(`${restBase}/fixed_inventory_options?select=*`)
             const d1 = r1.ok ? await r1.json() : []
-            const d2 = r2.ok ? await r2.json() : []
             const arr1 = Array.isArray(d1?.data) ? d1.data : (Array.isArray(d1) ? d1 : [])
-            const arr2 = Array.isArray(d2?.data) ? d2.data : (Array.isArray(d2) ? d2 : [])
             const a = arr1.filter((x:any)=>x?.is_active!==false).map((mo:any)=>({
               label: String(mo.option_value ?? mo.inventory_number ?? ''),
               value: String(mo.option_value ?? mo.inventory_number ?? ''),
               type: 'maintenance',
               meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
             })).filter((x:any)=>!!x.value)
-            const b = arr2.filter((x:any)=>x?.is_active!==false).map((x:any)=>({
-              label: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
-              value: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
-              type: 'maintenance',
-              meta: { part_name: String(x.option_label ?? x.name ?? ''), part_drawing_number: '-', process_route: '' }
-            })).filter((x:any)=>!!x.value)
             const ensurePrefix = (s: string) => s.startsWith('维修-') ? s : `维修-${s}`
-            maintenanceOpts = [...a, ...b].map((it:any)=>({
+            maintenanceOpts = a.map((it:any)=>({
               ...it,
               label: ensurePrefix(String(it.label || '')),
               value: ensurePrefix(String(it.value || ''))
@@ -245,27 +234,7 @@ const WorkHours: React.FC = () => {
               }))
             }
           } catch {}
-          try {
-            const respMO = await fetch(`/api/options/maintenance-options`)
-            if (respMO.ok) {
-              const jsonMO = await respMO.json()
-              const m2 = Array.isArray(jsonMO?.items) ? jsonMO.items : (Array.isArray(jsonMO?.data) ? jsonMO.data : [])
-              const b = m2
-                .filter((x: any) => x?.is_active !== false)
-                .map((x: any) => ({
-                  label: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
-                  value: String(x.option_value ?? x.name ?? x.inventory_number ?? ''),
-                  type: 'maintenance',
-                  meta: { part_name: String(x.option_label ?? x.name ?? ''), part_drawing_number: '-', process_route: '' }
-                }))
-                .filter((x: any) => !!x.value)
-              maintenanceOpts = [...maintenanceOpts, ...b].map((it:any)=>({
-                ...it,
-                label: it.label.startsWith('维修-') ? it.label : `维修-${it.label}`,
-                value: it.value.startsWith('维修-') ? it.value : `维修-${it.value}`
-              }))
-            }
-          } catch {}
+          // 不再调用 maintenance_options，统一用 fixed_inventory_options
         }
 
         // 过滤维修选项
