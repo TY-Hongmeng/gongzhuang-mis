@@ -1201,6 +1201,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .from('parts_info')
           .select('*')
           .eq('tooling_id', toolingId)
+          .order('created_at', { ascending: true })
         if (error) return jsonResponse({ success: true, items: [], data: [] })
         return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
@@ -1296,6 +1297,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .from('child_items')
           .select('*')
           .eq('tooling_id', toolingId)
+          .order('created_at', { ascending: true })
         if (error) return jsonResponse({ success: true, items: [], data: [] })
         return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
