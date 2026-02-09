@@ -1338,6 +1338,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // Work hours aggregates
+      if (method === 'GET' && path === '/api/tooling/work-hours/aggregates') {
+        const qs = getQuery(cleanUrl)
+        const invsParam = (qs.get('invs') || '').trim()
+        const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
+        if (invs.length === 0) return jsonResponse({ success: true, data: {} })
+        try {
+          let q = supabase.from('work_hours').select('part_inventory_number,process_name')
+          q = q.in('part_inventory_number', invs)
+          const { data, error } = await q
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const map: Record<string, string[]> = {}
+          ;(data || []).forEach((r: any) => {
+            const inv = String(r.part_inventory_number || '').trim().toUpperCase()
+            const name = String(r.process_name || '').trim()
+            if (!inv || !name) return
+            const norm = name.trim().toLowerCase()
+            const arr = map[inv] || []
+            if (!arr.some(x => String(x).trim().toLowerCase() === norm)) arr.push(name)
+            map[inv] = arr
+          })
+          return jsonResponse({ success: true, data: map })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
+        }
+      }
+
       // Work hours
       if (method === 'GET' && path === '/api/tooling/work-hours') {
         const qs = getQuery(cleanUrl)

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -256,6 +256,9 @@ const ToolingInfoPage: React.FC = () => {
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
   const [statusTick, setStatusTick] = useState(0)
+  const ROUTE_BUCKET_PREFIX = 'process_routes_bucket:'
+  const ROUTE_BUCKET_SLICE = 4
+  const bucketKeyForInv = (inv: string) => ROUTE_BUCKET_PREFIX + String(inv || '').trim().toUpperCase().slice(0, ROUTE_BUCKET_SLICE)
   const [processRoutes, setProcessRoutes] = useState<Record<string, string>>(() => {
     try {
       const MAX_CACHE_CHARS = 900_000
@@ -368,6 +371,31 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     setExpandedChildKeysRef.current = setExpandedChildKeys
   }, [setExpandedChildKeys])
+
+  useEffect(() => {
+    const invs = new Set<string>()
+    ensureBlankToolings(data).forEach(d => {
+      const inv = String(d.inventory_number || '').trim().toUpperCase()
+      if (inv) invs.add(inv)
+    })
+    Object.values(partsMap).forEach(list => (list || []).forEach(p => {
+      const inv = String(p.part_inventory_number || '').trim().toUpperCase()
+      if (inv) invs.add(inv)
+    }))
+    const buckets = Array.from(new Set(Array.from(invs).map(bucketKeyForInv)))
+    const merged: Record<string, string> = {}
+    buckets.forEach(k => {
+      try {
+        const s = safeLocalStorage.getItem(k)
+        if (!s) return
+        const obj = JSON.parse(s)
+        Object.entries(obj || {}).forEach(([kk, vv]) => {
+          if (typeof vv === 'string') merged[kk] = String(vv)
+        })
+      } catch {}
+    })
+    if (Object.keys(merged).length > 0) setProcessRoutes(prev => ({ ...prev, ...merged }))
+  }, [data, partsMap])
   
   const selectedRowKeysRef = useRef(selectedRowKeys)
   useEffect(() => {
@@ -536,8 +564,9 @@ const ToolingInfoPage: React.FC = () => {
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
     try {
-      const qs = invs && invs.length ? `?invs=${encodeURIComponent(invs.join(','))}` : '?page=1&pageSize=200'
-      const response = await fetch(`/api/tooling/work-hours${qs}`, { cache: 'no-store' })
+      const hasInvs = invs && invs.length
+      const url = hasInvs ? `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}` : '/api/tooling/work-hours?page=1&pageSize=200'
+      const response = await fetch(url, { cache: 'no-store' })
       if (!response.ok) {
         console.error('获取工时数据失败，HTTP状态:', response.status)
         throw new Error('获取工时数据失败')
@@ -560,24 +589,20 @@ const ToolingInfoPage: React.FC = () => {
       }
       
       // 提取工时数据
-      const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-      
-      // 处理工时数据，按零件盘存编号分组，记录已完成的工序
-      const hoursByInventoryNo: Record<string, string[]> = {}
-      rawItems.forEach(item => {
-        const inventoryNo = String(item.part_inventory_number || '').trim().toUpperCase()
-        const processName = String(item.process_name || '').trim()
-        if (inventoryNo && processName) {
-          if (!hoursByInventoryNo[inventoryNo]) {
-            hoursByInventoryNo[inventoryNo] = []
-          }
-          // 确保工序名称唯一，避免重复
-          const normalizedProcessName = processName.trim().toLowerCase()
-          if (!hoursByInventoryNo[inventoryNo].some(p => p.toLowerCase() === normalizedProcessName)) {
-            hoursByInventoryNo[inventoryNo].push(processName)
-          }
-        }
-      })
+      const hoursByInventoryNo: Record<string, string[]> = hasInvs ? (result?.data || {}) : (() => {
+        const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+        const map: Record<string, string[]> = {}
+        rawItems.forEach((item: any) => {
+          const inventoryNo = String(item.part_inventory_number || '').trim().toUpperCase()
+          const processName = String(item.process_name || '').trim()
+          if (!inventoryNo || !processName) return
+          const norm = processName.trim().toLowerCase()
+          const arr = map[inventoryNo] || []
+          if (!arr.some(p => String(p).trim().toLowerCase() === norm)) arr.push(processName)
+          map[inventoryNo] = arr
+        })
+        return map
+      })()
       
       setWorkHoursData(hoursByInventoryNo)
       console.log('成功获取工时数据:', hoursByInventoryNo)
@@ -1792,24 +1817,16 @@ const ToolingInfoPage: React.FC = () => {
                       [String(rec.part_inventory_number).trim().toUpperCase()]: value
                     }
                     try {
-                      const MAX_CACHE_CHARS = 900_000
-                      const SEGMENT_PREFIX = 'process_routes_map:'
-                      const SEGMENT_SIZE = 300_000
-                      const json = JSON.stringify(newProcessRoutes)
-                      for (let i = 0; i < 10; i++) safeLocalStorage.removeItem(SEGMENT_PREFIX + i)
-                      if (json.length <= MAX_CACHE_CHARS) {
-                        safeLocalStorage.setItem('process_routes_map', json)
-                      } else {
-                        // 分段写入
-                        safeLocalStorage.removeItem('process_routes_map')
-                        let idx = 0
-                        for (let pos = 0; pos < json.length && idx < 10; pos += SEGMENT_SIZE) {
-                          const chunk = json.slice(pos, pos + SEGMENT_SIZE)
-                          safeLocalStorage.setItem(SEGMENT_PREFIX + idx, chunk)
-                          idx++
-                        }
-                        message.warning('工艺路线缓存过大，已分段写入本地缓存（最多10段）')
-                      }
+                      const invKey = String(rec.part_inventory_number).trim().toUpperCase()
+                      const bucketKey = bucketKeyForInv(invKey)
+                      let obj: Record<string, string> = {}
+                      try {
+                        const s = safeLocalStorage.getItem(bucketKey)
+                        if (s) obj = JSON.parse(s) || {}
+                      } catch {}
+                      obj[invKey] = value
+                      const json = JSON.stringify(obj)
+                      safeLocalStorage.setItem(bucketKey, json)
                     } catch {
                       message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
                     }
@@ -2293,21 +2310,18 @@ const ToolingInfoPage: React.FC = () => {
         }
 
         try {
-          const SEGMENT_PREFIX = 'process_routes_map:'
-          const SEGMENT_SIZE = 300_000
-          for (let i = 0; i < 10; i++) safeLocalStorage.removeItem(SEGMENT_PREFIX + i)
-          if (persistJson.length <= MAX_CACHE_CHARS) {
-            safeLocalStorage.setItem('process_routes_map', persistJson)
-          } else {
-            safeLocalStorage.removeItem('process_routes_map')
-            let idx = 0
-            for (let pos = 0; pos < persistJson.length && idx < 10; pos += SEGMENT_SIZE) {
-              const chunk = persistJson.slice(pos, pos + SEGMENT_SIZE)
-              safeLocalStorage.setItem(SEGMENT_PREFIX + idx, chunk)
-              idx++
-            }
-            message.warning('工艺路线缓存过大，已分段写入本地缓存（最多10段）')
-          }
+          const grouped: Record<string, Record<string, string>> = {}
+          Object.entries(finalSafe).forEach(([k, v]) => {
+            if (typeof v !== 'string') return
+            const inv = k.startsWith('DRAWING:') ? 'DRAWING' : k
+            const bk = k.startsWith('DRAWING:') ? (ROUTE_BUCKET_PREFIX + 'DRAWING') : bucketKeyForInv(inv)
+            if (!grouped[bk]) grouped[bk] = {}
+            grouped[bk][k] = String(v)
+          })
+          Object.entries(grouped).forEach(([bk, obj]) => {
+            const json = JSON.stringify(obj)
+            safeLocalStorage.setItem(bk, json)
+          })
         } catch {
           message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
         }
