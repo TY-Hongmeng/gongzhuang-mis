@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -331,6 +331,9 @@ const ToolingInfoPage: React.FC = () => {
   } = useToolingData()
   const [selectedDataLoading, setSelectedDataLoading] = useState(false)
   const selectedParentIds = useMemo(() => selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')), [selectedRowKeys])
+  const hasSelectedParts = useMemo(() => selectedRowKeys.some(k => k.startsWith('part-')), [selectedRowKeys])
+  const hasSelectedChildItems = useMemo(() => selectedRowKeys.some(k => k.startsWith('child-')), [selectedRowKeys])
+  const hasSelectedParents = useMemo(() => selectedParentIds.length > 0, [selectedParentIds])
   useEffect(() => {
     let active = true
     const needFetch: string[] = []
@@ -3972,7 +3975,7 @@ const ToolingInfoPage: React.FC = () => {
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.xlsm" style={{ display: 'none' }} onChange={handleImportChange} />
           <Button
             type="primary"
-            disabled={selectedDataLoading || (selectedRowKeys.filter(k => k.startsWith('part-')).length === 0 && selectedParentIds.length === 0)}
+            disabled={selectedDataLoading || !hasSelectedParts}
             onClick={async () => {
               await handleExternalAction(async () => {
                 // 获取选中的零件ID
@@ -4011,7 +4014,7 @@ const ToolingInfoPage: React.FC = () => {
           <Button
             type="primary"
             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-            disabled={selectedDataLoading || (selectedRowKeys.filter(k => k.startsWith('part-')).length === 0 && selectedRowKeys.filter(k => k.startsWith('child-')).length === 0 && selectedParentIds.length === 0)}
+            disabled={selectedDataLoading || !(hasSelectedParts || hasSelectedChildItems || hasSelectedParents)}
             onClick={async () => {
               await handleExternalAction(async () => {
                 // 获取选中的父级、标准件、零件
