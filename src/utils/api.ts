@@ -763,7 +763,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const material_id = priceProxyList[1]
           const { data } = await supabase.from('materials').select('unit_price, created_at').eq('id', material_id).single()
           const items = data && data.unit_price != null ? [{ id: null, material_id, unit_price: data.unit_price, effective_start_date: (data.created_at || null), effective_end_date: null }] : []
-          return jsonResponse({ success: true, data: items })
+          return jsonResponse({ success: true, data: items, items })
         }
         const priceProxyCreate = path.match(/^\/api\/materials\/([^\/]+)\/prices$/)
         if (priceProxyCreate && method === 'POST') {
