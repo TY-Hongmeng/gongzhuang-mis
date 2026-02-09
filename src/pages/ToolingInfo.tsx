@@ -1,6 +1,6 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
-import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
+import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import { safeLocalStorage } from '../utils/safeStorage'
@@ -4080,19 +4080,21 @@ const ToolingInfoPage: React.FC = () => {
             生成采购单
           </Button>
           
-          <Button
-            danger
-            onClick={async () => {
+          <Popconfirm
+            title="确认批量删除？"
+            description={`将删除：工装 ${selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')).length}，零件 ${selectedRowKeys.filter(k => k.startsWith('part-')).length}，标准件 ${selectedRowKeys.filter(k => k.startsWith('child-')).length}（不可恢复）`}
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={async () => {
               await handleExternalAction(async () => {
                 const toolingIds = selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-'))
                 const partIds = selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5))
                 const childItemIds = selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6))
-                
                 if (toolingIds.length === 0 && partIds.length === 0 && childItemIds.length === 0) {
                   message.warning('请选择要删除的记录')
                   return
                 }
-                
                 const success = await batchDelete(toolingIds, partIds, childItemIds)
                 if (success) {
                   setSelectedRowKeys(prev => prev.filter(k => 
@@ -4100,8 +4102,6 @@ const ToolingInfoPage: React.FC = () => {
                     !(k.startsWith('part-') && partIds.includes(k.slice(5))) &&
                     !(k.startsWith('child-') && childItemIds.includes(k.slice(6)))
                   ))
-                  
-                  // 更新本地数据
                   setData(prev => prev.filter(r => !toolingIds.includes(r.id)))
                   setPartsMap(prev => {
                     const next = { ...prev }
@@ -4122,7 +4122,9 @@ const ToolingInfoPage: React.FC = () => {
                 }
               })
             }}
-          >批量删除</Button>
+          >
+            <Button danger>批量删除</Button>
+          </Popconfirm>
           <Button icon={<ReloadOutlined />} onClick={() => handleExternalAction(() => { fetchAllMeta(); fetchToolingData(); })}>刷新</Button>
           <Button icon={<LeftOutlined />} onClick={() => handleExternalAction(() => navigate('/dashboard'))}>返回</Button>
         </Space>
