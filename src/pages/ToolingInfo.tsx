@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -258,10 +258,22 @@ const ToolingInfoPage: React.FC = () => {
   const [statusTick, setStatusTick] = useState(0)
   const [processRoutes, setProcessRoutes] = useState<Record<string, string>>(() => {
     try {
-      // 关键修复：安全解析localStorage数据，确保没有循环引用
-      const stored = safeLocalStorage.getItem('process_routes_map') || '{}'
-      if (stored.length > 900_000) {
+      const MAX_CACHE_CHARS = 900_000
+      const SEGMENT_PREFIX = 'process_routes_map:'
+      // 读取分段缓存
+      let combined = ''
+      for (let i = 0; i < 10; i++) {
+        const seg = safeLocalStorage.getItem(SEGMENT_PREFIX + i)
+        if (!seg) break
+        combined += seg
+      }
+      // 主键优先，其次分段
+      let stored = safeLocalStorage.getItem('process_routes_map') || ''
+      if (!stored && combined) stored = combined
+      if (!stored) stored = '{}'
+      if (stored.length > MAX_CACHE_CHARS) {
         safeLocalStorage.removeItem('process_routes_map')
+        for (let i = 0; i < 10; i++) safeLocalStorage.removeItem(SEGMENT_PREFIX + i)
         return {}
       }
       const parsed = JSON.parse(stored)
@@ -276,6 +288,8 @@ const ToolingInfoPage: React.FC = () => {
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
   const fileInputRef = useRef<HTMLInputElement>(null)
   const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
+  const weightCacheRef = useRef<Map<string, any>>(new Map())
+  const priceCacheRef = useRef<Map<string, any>>(new Map())
   
   // 导入相关状态
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -1444,6 +1458,40 @@ const ToolingInfoPage: React.FC = () => {
   }, [handleDeleteChildItem])
 
   const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string, parentReceivedDate: string) => {
+    const WEIGHT_CACHE_LIMIT = 500
+    const PRICE_CACHE_LIMIT = 500
+    const getWeightCached = (rec: PartItem) => {
+      const key = `${rec.material_id}|${rec.part_category}|${JSON.stringify(rec.specifications||{})}|${rec.part_quantity}|${rec.weight||''}`
+      const cached = weightCacheRef.current.get(key)
+      if (cached) return cached
+      const w = rec.weight
+      const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
+      const qty = Number(rec.part_quantity) || 0
+      const totalWeight = unitWeight * qty
+      const val = { unitWeight, totalWeight }
+      weightCacheRef.current.set(key, val)
+      if (weightCacheRef.current.size > WEIGHT_CACHE_LIMIT) {
+        const k = weightCacheRef.current.keys().next().value
+        weightCacheRef.current.delete(k)
+      }
+      return val
+    }
+    const getPriceCached = (rec: PartItem) => {
+      const dep = getWeightCached(rec)
+      const material = materialsRef.current.find(m => m.id === rec.material_id)
+      const unitPrice = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
+      const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
+      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}`
+      const cached = priceCacheRef.current.get(key)
+      if (cached) return cached
+      const val = { total }
+      priceCacheRef.current.set(key, val)
+      if (priceCacheRef.current.size > PRICE_CACHE_LIMIT) {
+        const k = priceCacheRef.current.keys().next().value
+        priceCacheRef.current.delete(k)
+      }
+      return val
+    }
     return [
       {
         title: '盘存编号',
@@ -1624,11 +1672,8 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: 'weight',
         width: 100,
         render: (text: number, rec: PartItem) => {
-          const w = rec.weight
-          const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
-          const qty = Number(rec.part_quantity) || 0
-          const totalWeight = unitWeight * qty
-          return <span style={{ color: '#999' }}>{totalWeight.toFixed(3)}</span>
+          const dep = getWeightCached(rec)
+          return <span style={{ color: '#999' }}>{dep.totalWeight.toFixed(3)}</span>
         }
       },
       {
@@ -1636,14 +1681,7 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: 'total_price',
         width: 100,
         render: (text: number, rec: PartItem) => {
-          const w = rec.weight
-          const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
-          const qty = Number(rec.part_quantity) || 0
-          const totalWeight = unitWeight * qty
-          
-          const material = materialsRef.current.find(m => m.id === rec.material_id)
-          const unitPrice = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
-          const total = calculateTotalPriceRef.current(totalWeight, unitPrice)
+          const { total } = getPriceCached(rec)
           return <span style={{ color: '#999' }}>{total.toFixed(2)}</span>
         }
       },
@@ -1716,11 +1754,23 @@ const ToolingInfoPage: React.FC = () => {
                       [String(rec.part_inventory_number).trim().toUpperCase()]: value
                     }
                     try {
+                      const MAX_CACHE_CHARS = 900_000
+                      const SEGMENT_PREFIX = 'process_routes_map:'
+                      const SEGMENT_SIZE = 300_000
                       const json = JSON.stringify(newProcessRoutes)
-                      if (json.length <= 900_000) {
+                      for (let i = 0; i < 10; i++) safeLocalStorage.removeItem(SEGMENT_PREFIX + i)
+                      if (json.length <= MAX_CACHE_CHARS) {
                         safeLocalStorage.setItem('process_routes_map', json)
                       } else {
-                        message.warning('工艺路线缓存过大，已跳过写入本地缓存')
+                        // 分段写入
+                        safeLocalStorage.removeItem('process_routes_map')
+                        let idx = 0
+                        for (let pos = 0; pos < json.length && idx < 10; pos += SEGMENT_SIZE) {
+                          const chunk = json.slice(pos, pos + SEGMENT_SIZE)
+                          safeLocalStorage.setItem(SEGMENT_PREFIX + idx, chunk)
+                          idx++
+                        }
+                        message.warning('工艺路线缓存过大，已分段写入本地缓存（最多10段）')
                       }
                     } catch {
                       message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
@@ -2199,18 +2249,27 @@ const ToolingInfoPage: React.FC = () => {
         let persistJson = ''
         try {
           persistJson = JSON.stringify(finalSafe)
-          if (persistJson.length > MAX_CACHE_CHARS) {
-            persistValue = safeMapUpdates
-            persistJson = JSON.stringify(safeMapUpdates)
-            message.warning('工艺路线缓存过大，已只缓存本次导入映射（避免浏览器卡死）')
-          }
         } catch {
           persistValue = safeMapUpdates
           try { persistJson = JSON.stringify(safeMapUpdates) } catch { persistJson = '{}' }
         }
 
         try {
-          safeLocalStorage.setItem('process_routes_map', persistJson)
+          const SEGMENT_PREFIX = 'process_routes_map:'
+          const SEGMENT_SIZE = 300_000
+          for (let i = 0; i < 10; i++) safeLocalStorage.removeItem(SEGMENT_PREFIX + i)
+          if (persistJson.length <= MAX_CACHE_CHARS) {
+            safeLocalStorage.setItem('process_routes_map', persistJson)
+          } else {
+            safeLocalStorage.removeItem('process_routes_map')
+            let idx = 0
+            for (let pos = 0; pos < persistJson.length && idx < 10; pos += SEGMENT_SIZE) {
+              const chunk = persistJson.slice(pos, pos + SEGMENT_SIZE)
+              safeLocalStorage.setItem(SEGMENT_PREFIX + idx, chunk)
+              idx++
+            }
+            message.warning('工艺路线缓存过大，已分段写入本地缓存（最多10段）')
+          }
         } catch {
           message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
         }
