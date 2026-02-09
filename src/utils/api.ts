@@ -1242,22 +1242,37 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const id = partIdMatch[1]
         const body = await readBody()
         const payload: any = {}
-        if (Object.prototype.hasOwnProperty.call(body, 'part_inventory_number')) payload.part_inventory_number = String(body.part_inventory_number ?? '') || null
-        if (Object.prototype.hasOwnProperty.call(body, 'part_drawing_number')) payload.part_drawing_number = String(body.part_drawing_number ?? '') || null
-        if (Object.prototype.hasOwnProperty.call(body, 'part_name')) payload.part_name = String(body.part_name ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'part_inventory_number')) {
+          const s = body.part_inventory_number
+          payload.part_inventory_number = (s === null) ? null : String(s || '')
+          payload.inventory_number = payload.part_inventory_number
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'part_drawing_number')) {
+          const s = body.part_drawing_number
+          payload.part_drawing_number = (s === null) ? null : String(s || '')
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'part_name')) {
+          const s = body.part_name
+          payload.part_name = (s === null) ? null : String(s || '')
+        }
         if (Object.prototype.hasOwnProperty.call(body, 'part_quantity')) {
           const num = typeof body.part_quantity === 'number' ? body.part_quantity : Number(body.part_quantity)
           payload.part_quantity = (body.part_quantity === '' || body.part_quantity === null || Number.isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
         }
-        if (Object.prototype.hasOwnProperty.call(body, 'material_id')) payload.material_id = body.material_id ?? null
+        if (Object.prototype.hasOwnProperty.call(body, 'material_id')) payload.material_id = (body.material_id === null) ? null : body.material_id
         if (Object.prototype.hasOwnProperty.call(body, 'material_source_id')) {
           const ms = body.material_source_id
-          const msNum = ms === null || ms === undefined || String(ms).trim() === '' ? null : Number(ms)
-          payload.material_source_id = typeof msNum === 'number' && !Number.isNaN(msNum) ? msNum : null
+          payload.material_source_id = (ms === null) ? null : String(ms || '')
         }
-        if (Object.prototype.hasOwnProperty.call(body, 'part_category')) payload.part_category = String(body.part_category ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'part_category')) {
+          const s = body.part_category
+          payload.part_category = (s === null) ? null : String(s || '')
+        }
         if (Object.prototype.hasOwnProperty.call(body, 'specifications')) payload.specifications = body.specifications ?? {}
-        if (Object.prototype.hasOwnProperty.call(body, 'remarks')) payload.remarks = String(body.remarks ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'remarks')) {
+          const s = body.remarks
+          payload.remarks = (s === null) ? null : String(s || '')
+        }
         if (Object.prototype.hasOwnProperty.call(body, 'weight')) {
           const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
           payload.weight = Number.isNaN(w) ? null : w
