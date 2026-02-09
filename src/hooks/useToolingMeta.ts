@@ -37,7 +37,7 @@ export const useToolingMeta = () => {
       setToolingCategories(categoryNames)
       
       const mats = getItems(materialsRes)
-        .map((x: any) => ({id: x.id, name: x.name, density: x.density, prices: []}))
+        .map((x: any) => ({id: x.id, name: x.name, density: x.density, unit_price: x.unit_price ?? 0, prices: []}))
         .filter((x: any) => x.name)
       
       // 并行获取所有材料的价格信息
@@ -47,6 +47,9 @@ export const useToolingMeta = () => {
           if (pricesRes.ok) {
             const pricesJson = await pricesRes.json()
             mat.prices = pricesJson.data || []
+            if (Array.isArray(mat.prices) && mat.prices.length > 0 && mat.prices[0]?.unit_price != null) {
+              mat.unit_price = Number(mat.prices[0].unit_price)
+            }
           }
         } catch (e) {
           console.error(`Failed to fetch prices for material ${mat.id}`, e)

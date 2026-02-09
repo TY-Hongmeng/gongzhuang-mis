@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1546,7 +1546,8 @@ const ToolingInfoPage: React.FC = () => {
     const getPriceCached = (rec: PartItem) => {
       const dep = getWeightCached(rec)
       const material = materialsRef.current.find(m => m.id === rec.material_id)
-      const unitPrice = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
+      const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
+      const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
       const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
       const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}`
       const cached = priceCacheRef.current.get(key)
@@ -1619,7 +1620,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '材质',
         dataIndex: 'material_id',
-        width: 60,
+        width: 90,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1637,7 +1638,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '材料来源',
         dataIndex: 'material_source_id',
-        width: 60,
+        width: 90,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1675,7 +1676,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '料型',
         dataIndex: 'part_category',
-        width: 60,
+        width: 90,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1690,7 +1691,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '规格',
         dataIndex: 'specifications',
-        width: 80,
+        width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <SpecificationsInput
