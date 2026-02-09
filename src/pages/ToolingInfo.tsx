@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -329,33 +329,7 @@ const ToolingInfoPage: React.FC = () => {
     createChildItem,
     batchDelete
   } = useToolingData()
-  const [selectedDataLoading, setSelectedDataLoading] = useState(false)
   const selectedParentIds = useMemo(() => selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')), [selectedRowKeys])
-  const hasSelectedParts = useMemo(() => selectedRowKeys.some(k => k.startsWith('part-')), [selectedRowKeys])
-  const hasSelectedChildItems = useMemo(() => selectedRowKeys.some(k => k.startsWith('child-')), [selectedRowKeys])
-  const hasSelectedParents = useMemo(() => selectedParentIds.length > 0, [selectedParentIds])
-  useEffect(() => {
-    let active = true
-    const needFetch: string[] = []
-    selectedParentIds.forEach(pid => {
-      const tid = String(pid)
-      const needParts = !Array.isArray(partsMap[tid]) || partsMap[tid].length === 0
-      const needChild = !Array.isArray(childItemsMap[tid]) || childItemsMap[tid].length === 0
-      if (needParts || needChild) needFetch.push(tid)
-    })
-    if (needFetch.length > 0) {
-      setSelectedDataLoading(true)
-      const tasks: Promise<any>[] = []
-      needFetch.forEach(tid => {
-        if (!Array.isArray(partsMap[tid]) || partsMap[tid].length === 0) tasks.push(fetchPartsData(tid))
-        if (!Array.isArray(childItemsMap[tid]) || childItemsMap[tid].length === 0) tasks.push(fetchChildItemsData(tid))
-      })
-      Promise.all(tasks).finally(() => { if (active) setSelectedDataLoading(false) })
-    } else {
-      setSelectedDataLoading(false)
-    }
-    return () => { active = false }
-  }, [selectedParentIds, partsMap, childItemsMap, fetchPartsData, fetchChildItemsData])
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
@@ -3975,15 +3949,10 @@ const ToolingInfoPage: React.FC = () => {
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.xlsm" style={{ display: 'none' }} onChange={handleImportChange} />
           <Button
             type="primary"
-            disabled={selectedDataLoading || !hasSelectedParts}
             onClick={async () => {
               await handleExternalAction(async () => {
                 // 获取选中的零件ID
                 const partIds = selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5))
-                if (selectedDataLoading) {
-                  message.warning('正在加载所选父表的子数据，请稍后再试')
-                  return
-                }
                 if (partIds.length === 0) {
                   message.warning('请选择要生成下料单的零件')
                   return
@@ -4014,7 +3983,6 @@ const ToolingInfoPage: React.FC = () => {
           <Button
             type="primary"
             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-            disabled={selectedDataLoading || !(hasSelectedParts || hasSelectedChildItems || hasSelectedParents)}
             onClick={async () => {
               await handleExternalAction(async () => {
                 // 获取选中的父级、标准件、零件
