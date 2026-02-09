@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -293,6 +293,10 @@ const ToolingInfoPage: React.FC = () => {
   const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
+  useEffect(() => {
+    // 材料价格加载完成后清空价格缓存，避免早期0价缓存导致金额长期显示0.00
+    priceCacheRef.current.clear()
+  }, [materials])
   
   // 导入相关状态
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -1115,8 +1119,8 @@ const ToolingInfoPage: React.FC = () => {
             break
           }
           case 'material_source_id': {
-            const num = value === null || value === undefined || String(value).trim() === '' ? null : Number(value)
-            payload.material_source_id = (typeof num === 'number' && !Number.isNaN(num)) ? num : null
+            const s = String(value ?? '').trim()
+            payload.material_source_id = s || null
             break
           }
           case 'part_category': {
@@ -1615,7 +1619,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '材质',
         dataIndex: 'material_id',
-        width: 160,
+        width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1633,7 +1637,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '材料来源',
         dataIndex: 'material_source_id',
-        width: 160,
+        width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1671,7 +1675,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '料型',
         dataIndex: 'part_category',
-        width: 160,
+        width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
@@ -1686,7 +1690,7 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '规格',
         dataIndex: 'specifications',
-        width: 200,
+        width: 160,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <SpecificationsInput
