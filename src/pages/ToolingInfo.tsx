@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -534,10 +534,10 @@ const ToolingInfoPage: React.FC = () => {
   const [workHoursData, setWorkHoursData] = useState<Record<string, string[]>>({})
   
   // 获取工时数据，用于判断工艺路线是否已录入工时
-  const fetchWorkHoursData = useCallback(async () => {
+  const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
     try {
-      // 使用正确的API路径和合理的pageSize
-      const response = await fetch('/api/tooling/work-hours?page=1&pageSize=200', { cache: 'no-store' })
+      const qs = invs && invs.length ? `?invs=${encodeURIComponent(invs.join(','))}` : '?page=1&pageSize=200'
+      const response = await fetch(`/api/tooling/work-hours${qs}`, { cache: 'no-store' })
       if (!response.ok) {
         console.error('获取工时数据失败，HTTP状态:', response.status)
         throw new Error('获取工时数据失败')
@@ -592,6 +592,44 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     fetchWorkHoursData()
   }, [fetchWorkHoursData])
+
+  // 当展开/子表加载或筛选变更时，按当前页面相关盘存编号按需拉取工时数据（500ms 防抖）
+  useEffect(() => {
+    const now = Date.now()
+    const last = processDoneFetchRef.current.lastFetchTime || 0
+    if (now - last < 500) {
+      if (processDoneFetchRef.current.timer) clearTimeout(processDoneFetchRef.current.timer)
+      processDoneFetchRef.current.timer = setTimeout(() => {
+        const invsSet = new Set<string>()
+        ensureBlankToolings(data).forEach(d => {
+          const inv = String(d.inventory_number || '').trim().toUpperCase()
+          if (inv) invsSet.add(inv)
+        })
+        Object.values(partsMap).forEach(list => (list || []).forEach(p => {
+          const inv = String(p.part_inventory_number || '').trim().toUpperCase()
+          if (inv) invsSet.add(inv)
+        }))
+        fetchWorkHoursData(Array.from(invsSet))
+        processDoneFetchRef.current.lastFetchTime = Date.now()
+      }, 500)
+    } else {
+      const invsSet = new Set<string>()
+      ensureBlankToolings(data).forEach(d => {
+        const inv = String(d.inventory_number || '').trim().toUpperCase()
+        if (inv) invsSet.add(inv)
+      })
+      Object.values(partsMap).forEach(list => (list || []).forEach(p => {
+        const inv = String(p.part_inventory_number || '').trim().toUpperCase()
+        if (inv) invsSet.add(inv)
+      }))
+      fetchWorkHoursData(Array.from(invsSet))
+      processDoneFetchRef.current.lastFetchTime = Date.now()
+    }
+    return () => {
+      if (processDoneFetchRef.current.timer) clearTimeout(processDoneFetchRef.current.timer)
+      processDoneFetchRef.current.timer = null
+    }
+  }, [data, partsMap, expandedRowKeys, expandedChildKeys, filterSearch, filterUnit, filterCategory])
   
   // 导入文件输入框ref
   const importFileInputRef = useRef<HTMLInputElement>(null)

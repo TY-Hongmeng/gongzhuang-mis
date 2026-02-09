@@ -1341,6 +1341,30 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Work hours
       if (method === 'GET' && path === '/api/tooling/work-hours') {
         const qs = getQuery(cleanUrl)
+        const invsParam = (qs.get('invs') || '').trim()
+        if (invsParam) {
+          const invs = invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+          try {
+            let q = supabase.from('work_hours').select('*')
+            if (invs.length > 0) q = q.in('part_inventory_number', invs)
+            const { data, error } = await q
+            if (error) return jsonResponse({ success: true, items: [], total: 0, page: 1, pageSize: invs.length || 0, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
+            const items = data || []
+            const totals = (items as any[]).reduce(
+              (acc, r: any) => {
+                acc.total_hours += Number(r.hours || 0)
+                acc.aux_hours += Number(r.aux_hours || 0)
+                acc.proc_hours += Number(r.proc_hours || 0)
+                acc.completed_quantity += Number(r.completed_quantity || 0)
+                return acc
+              },
+              { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }
+            )
+            return jsonResponse({ success: true, items, total: items.length, page: 1, pageSize: invs.length || items.length, totals, data: items })
+          } catch (e: any) {
+            return jsonResponse({ success: false, error: e?.message || '查询失败' }, 500)
+          }
+        }
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 200)
         const order = qs.get('order') || 'work_date'
