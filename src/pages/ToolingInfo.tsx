@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -167,6 +167,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
+          scroll={{ y: 320 }}
           onRow={(rec: any) => ({ className: isPartReady(rec) ? 'text-blue-600' : undefined })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5)),
@@ -203,6 +204,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
+          scroll={{ y: 320 }}
           onRow={(rec: any) => ({ className: isChildReady(rec) ? 'text-blue-600' : undefined })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
@@ -385,6 +387,7 @@ const ToolingInfoPage: React.FC = () => {
   // 缓存 columns，避免重复创建
   const partColumnsCacheRef = useRef<Map<string, any>>(new Map())
   const childColumnsCacheRef = useRef<Map<string, any>>(new Map())
+  const MAX_COLUMN_CACHE = 50
 
   useEffect(() => {
     const keys = new Set<string>()
@@ -1865,6 +1868,10 @@ const ToolingInfoPage: React.FC = () => {
     if (!cols) {
       cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant, parentReceivedDate)
       partColumnsCacheRef.current.set(cacheKey, cols)
+      while (partColumnsCacheRef.current.size > MAX_COLUMN_CACHE) {
+        const k = partColumnsCacheRef.current.keys().next().value
+        partColumnsCacheRef.current.delete(k)
+      }
     }
 
     const childCacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}`
@@ -1872,6 +1879,10 @@ const ToolingInfoPage: React.FC = () => {
     if (!childCols) {
       childCols = createChildColumns(toolingId, parentProject, parentUnit, parentApplicant)
       childColumnsCacheRef.current.set(childCacheKey, childCols)
+      while (childColumnsCacheRef.current.size > MAX_COLUMN_CACHE) {
+        const k = childColumnsCacheRef.current.keys().next().value
+        childColumnsCacheRef.current.delete(k)
+      }
     }
 
     // 手动添加零件行
