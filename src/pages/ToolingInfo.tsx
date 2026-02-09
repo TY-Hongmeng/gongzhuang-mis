@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3984,31 +3984,44 @@ const ToolingInfoPage: React.FC = () => {
             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
             onClick={async () => {
               await handleExternalAction(async () => {
-                // 获取选中的标准件ID和零件ID
+                // 获取选中的父级、标准件、零件
+                const parentIds = selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-'))
                 const childItemIds = selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6))
                 const partIds = selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5))
                 
-                if (childItemIds.length === 0 && partIds.length === 0) {
-                  message.warning('请选择要生成采购单的标准件或材料来源为外购的零件')
-                  return
+                // 如果仅选择了父级，确保加载子数据（无需展开）
+                if (parentIds.length > 0) {
+                  const fetchTasks: Promise<any>[] = []
+                  parentIds.forEach(pid => {
+                    const tid = String(pid)
+                    if (!Array.isArray(partsMap[tid]) || partsMap[tid].length === 0) fetchTasks.push(fetchPartsData(tid))
+                    if (!Array.isArray(childItemsMap[tid]) || childItemsMap[tid].length === 0) fetchTasks.push(fetchChildItemsData(tid))
+                  })
+                  if (fetchTasks.length > 0) {
+                    try { await Promise.all(fetchTasks) } catch {}
+                  }
                 }
                 
                 // 收集选中的数据
                 const selectedItems: any[] = []
                 
                 // 添加标准件
-                Object.values(childItemsMap).forEach(childItems => {
-                  childItems.forEach(item => {
-                    if (childItemIds.includes(item.id)) {
-                      selectedItems.push({ 
-                        ...item, 
-                        type: 'childItem',
-                        project_name: (data.find(d => d.id === item.tooling_id)?.project_name || ''),
-                        applicant: (data.find(d => d.id === item.tooling_id)?.recorder || '')
-                      })
-                    }
-                  })
+                const pushChild = (item: any) => selectedItems.push({ 
+                  ...item, 
+                  type: 'childItem',
+                  project_name: (data.find(d => d.id === item.tooling_id)?.project_name || ''),
+                  applicant: (data.find(d => d.id === item.tooling_id)?.recorder || '')
                 })
+                if (childItemIds.length > 0) {
+                  Object.values(childItemsMap).forEach(childItems => {
+                    childItems.forEach(item => { if (childItemIds.includes(item.id)) pushChild(item) })
+                  })
+                } else if (parentIds.length > 0) {
+                  parentIds.forEach(pid => {
+                    const list = childItemsMap[pid] || []
+                    list.forEach(item => pushChild(item))
+                  })
+                }
                 
                 // 添加外购零件（严格筛选材料来源为“外购/采购/waigou”变体）
                 const normalize = (s: string) => {
@@ -4017,21 +4030,26 @@ const ToolingInfoPage: React.FC = () => {
                   if (t.includes('外购') || t.includes('waigou') || t.includes('采购')) return '外购'
                   return s
                 }
-                Object.values(partsMap).forEach(parts => {
-                  parts.forEach(part => {
-                    if (!partIds.includes(part.id)) return
-                    const ms = materialSources.find(ms => String(ms.id) === String(part.material_source_id))
-                    if (!ms || normalize(ms.name) !== '外购') return
-                    selectedItems.push({ 
-                      ...part, 
-                      type: 'part',
-                      project_name: (data.find(d => d.id === part.tooling_id)?.project_name || ''),
-                      production_unit: (data.find(d => d.id === part.tooling_id)?.production_unit || ''),
-                      specifications_text: formatSpecificationsForProduction(part.specifications, part.part_category),
-                      applicant: (data.find(d => d.id === part.tooling_id)?.recorder || '')
-                    })
+                const pushPartIfWaigou = (part: any) => {
+                  const ms = materialSources.find(ms => String(ms.id) === String(part.material_source_id))
+                  if (!ms || normalize(ms.name) !== '外购') return
+                  selectedItems.push({
+                    ...part,
+                    type: 'part',
+                    project_name: (data.find(d => d.id === part.tooling_id)?.project_name || ''),
+                    production_unit: (data.find(d => d.id === part.tooling_id)?.production_unit || ''),
+                    specifications_text: formatSpecificationsForProduction(part.specifications, part.part_category),
+                    applicant: (data.find(d => d.id === part.tooling_id)?.recorder || '')
                   })
-                })
+                }
+                if (partIds.length > 0) {
+                  Object.values(partsMap).forEach(parts => parts.forEach(part => { if (partIds.includes(part.id)) pushPartIfWaigou(part) }))
+                } else if (parentIds.length > 0) {
+                  parentIds.forEach(pid => {
+                    const list = partsMap[pid] || []
+                    list.forEach(part => pushPartIfWaigou(part))
+                  })
+                }
                 
                 // 二次校验：所有选中的必须完整，否则整体失败并提示
                 const dateOk = (s: any) => typeof s === 'string' && /\d{4}-\d{2}-\d{2}/.test(String(s))
@@ -4069,6 +4087,10 @@ const ToolingInfoPage: React.FC = () => {
                   message.error(`生成采购单失败：共有 ${invalid.length} 条信息不完整，请补全后重试`)
                   return
                 }
+                if (selectedItems.length === 0) {
+                  message.warning('未找到可生成采购单的记录（需选择外购零件或任何标准件）')
+                  return
+                }
 
                 const result = await generatePurchaseOrders(selectedItems, materials, materialSources, partTypes)
                 if (result) {
@@ -4086,6 +4108,7 @@ const ToolingInfoPage: React.FC = () => {
             okText="删除"
             cancelText="取消"
             okButtonProps={{ danger: true }}
+            overlayClassName="danger-popconfirm"
             onConfirm={async () => {
               await handleExternalAction(async () => {
                 const toolingIds = selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-'))
@@ -4167,6 +4190,9 @@ const ToolingInfoPage: React.FC = () => {
           .excel-table .ant-table-row-expand-icon-cell { display: none !important; }
           .filter-bar .ant-input { border: none !important; box-shadow: none !important; }
           .filter-bar .ant-input-affix-wrapper { border: 1px solid #d9d9d9 !important; box-shadow: none !important; }
+          .danger-popconfirm .ant-popover-inner { background-color: #fff1f0 !important; border: 1px solid #ffccc7 !important; }
+          .danger-popconfirm .ant-popover-message-title { color: #cf1322 !important; font-weight: 600; }
+          .danger-popconfirm .ant-popover-arrow::before { background-color: #fff1f0 !important; }
           `}</style>
         <Table
           className="excel-table"
