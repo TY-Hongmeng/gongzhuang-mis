@@ -9,7 +9,7 @@ import Companies from "./pages/Companies";
 import CompanyOrg from "./pages/CompanyOrg";
 import Users from "./pages/Users";
 import Permissions from "./pages/Permissions";
-import ToolingInfo from "./pages/ToolingInfo";
+import { ToolingInfoPage as ToolingInfo } from "./pages/ToolingInfo/ToolingInfoPage";
 import Materials from "./pages/Materials";
 import OptionsManagement from "./pages/OptionsManagement";
 import PartTypes from "./pages/PartTypes";

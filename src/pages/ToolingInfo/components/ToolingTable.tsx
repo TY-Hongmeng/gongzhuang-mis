@@ -284,7 +284,8 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
               ? [...expandedRowKeys, record.id]
               : expandedRowKeys.filter(k => k !== record.id)
             onExpand(keys)
-          }
+          },
+          expandedRowRender
         }}
         rowClassName={getRowClassName}
         rowSelection={useMemo(() => ({

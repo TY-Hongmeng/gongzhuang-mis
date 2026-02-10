@@ -148,7 +148,11 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
           }, 0)
         }}
         onBlur={() => {
-          setIsEditing(false)
+          // 如果已经触发了保存（例如通过Select的onChange），则不需要在此处关闭
+          // 让onChange中的逻辑来处理关闭，或者等待保存完成后关闭
+          if (!saveTriggeredRef.current && !isSavingRef.current) {
+            setIsEditing(false)
+          }
         }}
         onKeyDown={(e) => {
            if (e.key === 'Escape') {

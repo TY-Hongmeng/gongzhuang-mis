@@ -1,1 +1,1 @@
-export { default } from './ToolingInfoPage'
+export { ToolingInfoPage as default } from './ToolingInfoPage'

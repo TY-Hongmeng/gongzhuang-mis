@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { Card, Space, Button, message, Modal, Input, Select, Tag, Tooltip } from 'antd'
 import { SearchOutlined, PlusOutlined, DeleteOutlined, CalculatorOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons'
-import { PartTable } from './components/PartTable'
-import { usePartOperations } from '../hooks/usePartOperations'
-import { useToolingData } from '../hooks/useToolingData'
-import { useToolingMeta } from '../hooks/useToolingMeta'
+import { PartTable } from './PartTable'
+import { usePartOperations } from '@/hooks/usePartOperations'
+import { useToolingData } from '@/hooks/useToolingData'
+import { useToolingMeta } from '@/hooks/useToolingMeta'
 import * as XLSX from 'xlsx'
 
 interface PartItem {

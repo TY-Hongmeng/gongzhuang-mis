@@ -1,7 +1,7 @@
 import React from 'react'
 import { Card, Space, Button, Input, Select, DatePicker, AutoComplete } from 'antd'
 import { ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
-import { useToolingFilters } from '../../hooks/useToolingFilters'
+import { useToolingFilters } from '@/hooks/useToolingFilters'
 
 const { RangePicker } = DatePicker
 

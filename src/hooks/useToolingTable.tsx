@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from 'react'
 import { Tag, Tooltip } from 'antd'
 import { CheckCircleOutlined, WarningOutlined, ClockCircleOutlined } from '@ant-design/icons'
-import { useToolingMeta } from '../useToolingMeta'
+import { useToolingMeta } from './useToolingMeta'
 
 interface ToolingTableProps {
   onEdit: (id: string, key: string, value: any) => void

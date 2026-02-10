@@ -79,6 +79,26 @@ export const PartTable: React.FC<PartTableProps> = memo(({
       return
     }
 
+    // 自动规范备注中的日期格式
+    if (dataIndex === 'remarks' && typeof value === 'string' && value.trim()) {
+      // 尝试匹配日期格式 (YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD)
+      // 支持简写如 2026-2-10 -> 2026-02-10
+      const dateRegex = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/
+      const match = value.match(dateRegex)
+      if (match) {
+        const [full, year, month, day] = match
+        // 使用dayjs标准化
+        const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        // 替换原文中的日期部分，或者如果整个就是日期则直接替换
+        if (value.trim() === full) {
+          value = dateStr
+        } else {
+          // 如果备注包含其他文字，只替换日期部分
+          value = value.replace(full, dateStr)
+        }
+      }
+    }
+
     onEdit(record.id, dataIndex, value)
   }, [onEdit, validatePartQuantity, validateWeight])
 

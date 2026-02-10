@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from 'react'
 import { Select, AutoComplete, Tag, Tooltip } from 'antd'
 import { CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from '@ant-design/icons'
-import { useToolingMeta } from '../useToolingMeta'
+import { useToolingMeta } from './useToolingMeta'
 
 interface PartTableProps {
   toolingId: string

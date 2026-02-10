@@ -243,7 +243,9 @@ const CuttingManagement: React.FC = () => {
         const map: Record<string, string> = {};
         result.items.forEach((tooling: any) => {
           // 优先使用responsible_person_id，如果没有则使用recorder，如果都没有则显示'未分配'
-          map[tooling.id] = tooling.responsible_person_id || tooling.recorder || '未分配';
+          // 尝试获取名字，如果是UUID则后续通过idToNameMap转换，如果是名字则直接显示
+          const resp = tooling.responsible_person_id || tooling.responsible_person || tooling.recorder || '未分配';
+          map[tooling.id] = resp;
         });
         console.log('Responsible person map:', map);
         return map;

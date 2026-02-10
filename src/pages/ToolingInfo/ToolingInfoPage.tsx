@@ -897,6 +897,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
                   if (!tooling) return
                   handleToolingEdit(id, 'inventory_number', tooling.inventory_number || '')
                 }}
+                expandedRowRender={expandedContent}
               />
             </Spin>
           )}
