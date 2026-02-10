@@ -1485,14 +1485,39 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const page = Number(qs.get('page') || 1)
         const pageSize = Number(qs.get('pageSize') || 1000)
         const startTime = Date.now()
+        const materialSource = String(qs.get('material_source') || '').trim()
+        const startDate = qs.get('startDate')
+        const endDate = qs.get('endDate')
+        const keyword = String(qs.get('keyword') || '').trim()
+        const sortField = String(qs.get('sortField') || 'created_date')
+        const sortOrderAsc = String(qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
+
         const selectCols = [
           'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','part_id'
         ].join(',')
-        let q = supabase.from('cutting_orders').select(selectCols)
-        q = q.eq('is_deleted', false)
-        q = q.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        const { data, error } = await q
+
+        let query = supabase.from('cutting_orders').select(selectCols, { count: 'planned' })
+        query = query.eq('is_deleted', false)
+
+        if (materialSource) query = query.eq('material_source', materialSource)
+        if (startDate) query = query.gte('created_date', startDate)
+        if (endDate) query = query.lte('created_date', endDate)
+        if (keyword) {
+          const kw = `%${keyword}%`
+          query = query.or(
+            `inventory_number.ilike.${kw},project_name.ilike.${kw},part_name.ilike.${kw},part_drawing_number.ilike.${kw}`
+          )
+        }
+
+        query = query.order(sortField, { ascending: sortOrderAsc })
+
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
+        query = query.range(from, to)
+
+        const { data, error, count } = await query
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })
+
         let items = (data || []) as any[]
         const missingProj = items.filter(r => !r.project_name || r.project_name === '未命名项目')
         if (missingProj.length > 0) {
@@ -1507,7 +1532,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }))
           }
         }
-        return jsonResponse({ success: true, items, total: items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
+        return jsonResponse({ success: true, items, total: count || items.length, page, pageSize, queryTime: Date.now() - startTime, data: items })
       }
 
       // Cutting orders create (optimize & normalize, no upsert)
@@ -1577,6 +1602,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         const skipped = rows.length - inserted - updated
         return jsonResponse({ success: true, stats: { inserted, updated, skipped } })
+      }
+
+      // Cutting orders delete (single -> soft delete)
+      {
+        const m = path.match(/^\/api\/cutting-orders\/([^\/]+)$/)
+        if (m && method === 'DELETE') {
+          const id = m[1]
+          if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
+          const { error } = await supabase
+            .from('cutting_orders')
+            .update({ is_deleted: true, updated_date: new Date().toISOString() })
+            .eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
       }
 
       // Cutting orders batch delete -> soft delete for speed

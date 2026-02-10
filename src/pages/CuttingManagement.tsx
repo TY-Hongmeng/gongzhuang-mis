@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, message, DatePicker, Select, Popconfirm, Card, Row, Col, Space, Tag, Input, Divider, Typography } from 'antd';
-import { DeleteOutlined, ReloadOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons';
+import { Table, Button, message, DatePicker, Select, Card, Row, Col, Space, Tag, Input, Typography } from 'antd';
+import { ReloadOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx'
 import type { ColumnsType } from 'antd/es/table';
@@ -62,6 +62,7 @@ const CuttingManagement: React.FC = () => {
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
   const locationKeyRef = useRef(location.key);
+  const abortRef = useRef<AbortController | null>(null);
 
   // 自动排序函数 - 根据规格进行智能排序
   const sortOrdersBySpecifications = (orders: CuttingOrder[]) => {
@@ -265,7 +266,7 @@ const CuttingManagement: React.FC = () => {
       params.append('pageSize', pageSize.toString());
       
       if (filters.material_source) {
-        params.append('status', filters.material_source);
+        params.append('material_source', filters.material_source);
       }
       if (filters.dateRange && filters.dateRange.length === 2) {
         params.append('startDate', dayjs(filters.dateRange[0]).format('YYYY-MM-DD'));
@@ -276,10 +277,9 @@ const CuttingManagement: React.FC = () => {
       }
 
       const url = `/api/cutting-orders?${params.toString()}&_ts=${Date.now()}`;
-      console.log('Requesting URL:', url);
-      const response = await fetch(url);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      const response = await fetchWithFallback(url, { signal: abortRef.current.signal });
       
       let result;
       try {
@@ -447,10 +447,9 @@ const CuttingManagement: React.FC = () => {
       
       fetchTimeoutRef.current = setTimeout(() => {
         setFilters(prev => ({ ...prev, search: searchValue }));
-        fetchCuttingOrders(1, 10000);  // 获取所有数据
-      }, 800); // 增加搜索延迟到800ms，减少频繁请求
+      }, 800);
     },
-    []  // 移除了对pagination.pageSize的依赖，因为我们现在总是获取所有数据
+    []
   );
 
   useEffect(() => {
@@ -487,14 +486,16 @@ const CuttingManagement: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/cutting-orders/${id}`, {
-        method: 'DELETE'
+      const response = await fetchWithFallback('/api/cutting-orders/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] })
       });
       const result = await response.json();
 
       if (result.success) {
         message.success('删除成功');
-        fetchCuttingOrders(pagination.current, 10000);  // 获取所有数据
+        fetchCuttingOrders(pagination.current, 10000);
       } else {
         message.error('删除失败：' + result.error);
       }
@@ -771,7 +772,7 @@ const CuttingManagement: React.FC = () => {
                         {material}
                       </Tag>
                       <span className="text-gray-600 text-lg font-semibold">
-                        编制: {responsiblePerson}
+                        编制: {idToNameMap[String(responsiblePerson)] || responsiblePerson}
                       </span>
                       <span className="text-gray-600 text-sm">
                         共 {orders.length} 条记录
@@ -786,6 +787,7 @@ const CuttingManagement: React.FC = () => {
                       size="small"
                       dataSource={orders}
                       columns={columns}
+                      scroll={{ y: 400 }}
                       rowSelection={{
                         selectedRowKeys: selectedRowKeys.filter(key => 
                           orders.some(order => order.id === key)
