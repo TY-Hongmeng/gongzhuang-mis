@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, message, Row, Col, Space, Typography } from 'antd';
-/* removed unused ReloadOutlined */
+import { Table, Button, message, Row, Col, Space, Segmented } from 'antd';
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
 import { rollbackPurchaseOrders } from '../../services/toolingService';
-import { Segmented } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 
-/* removed unused Title */
 
 // Excel表格样式 - 与工装信息保持一致
 const excelTableStyles = `
@@ -83,7 +80,7 @@ export default function PurchaseOrdersList() {
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const didInitRef = useRef(false);
-  /* removed unused controllerRef and reloadDebounceRef */
+  
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
   const DEBUG = (import.meta as any)?.env?.DEV === true;
