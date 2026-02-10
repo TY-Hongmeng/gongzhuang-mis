@@ -3,6 +3,35 @@
 import { message } from 'antd'
 import { supabase } from '../lib/supabase'
 
+const getAccessToken = async (): Promise<string | undefined> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    let accessToken = session?.access_token
+    if (accessToken) return accessToken
+    try {
+      const keyPattern = /^sb-.*-auth-token$/
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && keyPattern.test(key)) {
+          const item = localStorage.getItem(key)
+          if (item) {
+            const parsed = JSON.parse(item)
+            const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token)
+            if (token) return token
+          }
+        }
+      }
+      const authStorage = localStorage.getItem('auth-storage')
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage)
+        const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken
+        if (token) return token
+      }
+    } catch {}
+  } catch {}
+  return undefined
+}
+
 export interface RowItem {
   id: string
   inventory_number?: string
@@ -338,62 +367,9 @@ export const generateCuttingOrders = async (orders: any[]) => {
 // 生成采购单
 export const generatePurchaseOrders = async (orders: any[]) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // Fallback: Try to find token in localStorage if session is missing
-    let accessToken = session?.access_token;
-    if (!accessToken) {
-      try {
-        console.log('[toolingService] Session missing, checking localStorage...');
-        const keyPattern = /^sb-.*-auth-token$/;
-        let found = false;
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && keyPattern.test(key)) {
-            const item = localStorage.getItem(key);
-            if (item) {
-              const parsed = JSON.parse(item);
-              const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
-              if (token) {
-                accessToken = token;
-                console.log('[toolingService] Recovered token from localStorage key:', key);
-                found = true;
-                break;
-              }
-            }
-          }
-        }
-
-        if (!found) {
-          // Fallback to auth-storage
-          const authStorage = localStorage.getItem('auth-storage');
-          if (authStorage) {
-            try {
-              const parsed = JSON.parse(authStorage);
-              const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
-              if (token) {
-                accessToken = token;
-                console.log('[toolingService] Recovered token from auth-storage');
-                found = true;
-              }
-            } catch (e) {}
-          }
-        }
-
-        if (!found) {
-             console.warn('[toolingService] No matching token found in localStorage. Keys:', Object.keys(localStorage));
-        }
-      } catch (e) {
-        console.warn('[toolingService] Failed to check localStorage for token', e);
-      }
-    }
-
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    } else {
-      console.warn('[toolingService] No access token found');
-    }
+    const token = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
 
     const response = await fetch('/api/purchase-orders', { method: 'POST', headers, body: JSON.stringify({ orders }) })
     if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
@@ -407,51 +383,9 @@ export const generatePurchaseOrders = async (orders: any[]) => {
 // 回退采购单（恢复到来源表并删除采购单）
 export const rollbackPurchaseOrders = async (orders: any[]) => {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    // 尝试从localStorage恢复token (针对supabase client可能丢失session的情况)
-    let accessToken = session?.access_token;
-    if (!accessToken) {
-       try {
-        const keyPattern = /^sb-.*-auth-token$/;
-        let found = false;
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && keyPattern.test(key)) {
-            const item = localStorage.getItem(key);
-            if (item) {
-              const parsed = JSON.parse(item);
-              const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
-              if (token) {
-                 accessToken = token;
-                 found = true;
-                 break;
-              }
-            }
-          }
-        }
-
-        if (!found) {
-          const authStorage = localStorage.getItem('auth-storage');
-          if (authStorage) {
-            try {
-              const parsed = JSON.parse(authStorage);
-              const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
-              if (token) {
-                accessToken = token;
-              }
-            } catch (e) {}
-          }
-        }
-      } catch (e) {
-        console.warn('[toolingService] Failed to recover session for rollback', e);
-      }
-    }
-
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
+    const token = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
 
     const response = await fetch('/api/purchase-orders/rollback', {
       method: 'POST',

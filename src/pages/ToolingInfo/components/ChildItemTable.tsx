@@ -1,9 +1,9 @@
 import React, { useMemo, useCallback, useRef, memo } from 'react'
 import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, FilterOutlined } from '@ant-design/icons'
-import { useChildItemTable } from '../../hooks/useChildItemTable'
-import { useAdvancedSearch } from '../../hooks/useAdvancedSearch'
-import EditableCell from '../../components/EditableCell'
+import { useChildItemTable } from '@/hooks/useChildItemTable'
+import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
+import EditableCell from '@/components/EditableCell'
 
 interface ChildItemTableProps {
   toolingId: string
@@ -228,13 +228,13 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         size="small"
         scroll={{ x: 1100, y: 400 }}
         rowClassName={getRowClassName}
-        rowSelection={{
+        rowSelection={useMemo(() => ({
           selectedRowKeys,
           onChange: onSelectChange,
           getCheckboxProps: (record: any) => ({
             disabled: String(record.id || '').startsWith('blank-')
           })
-        }}
+        }), [selectedRowKeys, onSelectChange])}
         components={{
           body: {
             cell: (props: any) => (

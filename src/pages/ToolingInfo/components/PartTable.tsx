@@ -1,11 +1,11 @@
 import React, { useMemo, useCallback, useRef, memo } from 'react'
 import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
 import { PlusOutlined, DeleteOutlined, CalculatorOutlined, FilterOutlined } from '@ant-design/icons'
-import { usePartTable } from '../../hooks/usePartTable'
-import { useAdvancedSearch } from '../../hooks/useAdvancedSearch'
-import EditableCell from '../../components/EditableCell'
-import SpecificationsInput from '../../components/SpecificationsInput'
-import { useToolingOperations } from '../../hooks/useToolingOperations'
+import { usePartTable } from '@/hooks/usePartTable'
+import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
+import EditableCell from '@/components/EditableCell'
+import SpecificationsInput from '@/components/SpecificationsInput'
+import { useToolingOperations } from '@/hooks/useToolingOperations'
 
 interface PartTableProps {
   toolingId: string
@@ -240,13 +240,13 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         size="small"
         scroll={{ x: 1300, y: 400 }}
         rowClassName={getRowClassName}
-        rowSelection={{
+        rowSelection={useMemo(() => ({
           selectedRowKeys,
           onChange: onSelectChange,
           getCheckboxProps: (record: any) => ({
             disabled: String(record.id || '').startsWith('blank-')
           })
-        }}
+        }), [selectedRowKeys, onSelectChange])}
         components={{
           body: {
             cell: (props: any) => (

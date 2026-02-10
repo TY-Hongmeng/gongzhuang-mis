@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { fetchWithFallback } from '../utils/api'
 import { message } from 'antd'
 
@@ -11,6 +11,11 @@ export const useToolingData = () => {
   const [childItemsMap, setChildItemsMap] = useState<Record<string, any[]>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
   const [expandedChildKeys, setExpandedChildKeys] = useState<string[]>([])
+  const partsCacheRef = useRef<Map<string, { items: any[]; ts: number }>>(new Map())
+  const childCacheRef = useRef<Map<string, { items: any[]; ts: number }>>(new Map())
+  const inflightPartsRef = useRef<Map<string, Promise<any[]>>>(new Map())
+  const inflightChildRef = useRef<Map<string, Promise<any[]>>>(new Map())
+  const TTL = 30 * 1000
 
   // 获取工装数据
   const fetchToolingData = useCallback(async (opts?: {
@@ -75,85 +80,102 @@ export const useToolingData = () => {
 
   // 获取零件数据
   const fetchPartsData = useCallback(async (toolingId: string) => {
-    try {
-      // 添加时间戳参数以避免缓存问题
-      const timestamp = Date.now()
-      const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts?t=${timestamp}`, { cache: 'no-store' })
-      const result = await response.json()
-      
-      // 兼容 data 和 items 两种格式
-      const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-      // 关键修复：处理数据，将所有对象转换为基本类型，避免循环引用
-      const items = rawItems.map(item => {
-        // 创建安全的规格对象，避免循环引用
-        const safeSpecifications = item.specifications ? Object.fromEntries(
-          Object.entries(item.specifications)
-            .filter(([_, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
-            .map(([key, value]) => [key, value === null || value === undefined ? '' : value])
-        ) : {};
-        
-        return {
-          ...item,
-          // 将所有属性转换为基本类型
-          id: String(item.id || ''),
-          tooling_id: String(item.tooling_id || ''),
-          part_inventory_number: String(item.part_inventory_number || ''),
-          part_drawing_number: String(item.part_drawing_number || ''),
-          part_name: String(item.part_name || ''),
-          part_quantity: item.part_quantity ? Number(item.part_quantity) : null,
-          material_id: String(item.material_id || ''),
-          material_source_id: String(item.material_source_id || ''),
-          part_category: String(item.part_category || ''),
-          specifications: safeSpecifications,
-          weight: item.weight ? Number(item.weight) : 0,
-          unit_price: item.unit_price ? Number(item.unit_price) : 0,
-          total_price: item.total_price ? Number(item.total_price) : 0,
-          remarks: String(item.remarks || ''),
-          process_route: String(item.process_route || ''),
-          // 移除可能导致循环引用的嵌套对象
-          material: undefined
-        };
-      });
-      
-      setPartsMap(prev => ({ ...prev, [toolingId]: items }))
-      return items
-    } catch (error) {
-      console.error('获取零件数据失败:', error)
-      return []
+    const now = Date.now()
+    const cached = partsCacheRef.current.get(toolingId)
+    if (cached && now - cached.ts < TTL) {
+      setPartsMap(prev => ({ ...prev, [toolingId]: cached.items }))
+      return cached.items
     }
+    const inflight = inflightPartsRef.current.get(toolingId)
+    if (inflight) return inflight
+    const promise = (async () => {
+      try {
+        const timestamp = Date.now()
+        const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts?t=${timestamp}`, { cache: 'no-store' })
+        const result = await response.json()
+        const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+        const items = rawItems.map(item => {
+          const safeSpecifications = item.specifications ? Object.fromEntries(
+            Object.entries(item.specifications)
+              .filter(([_, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+              .map(([key, value]) => [key, value === null || value === undefined ? '' : value])
+          ) : {};
+          return {
+            ...item,
+            id: String(item.id || ''),
+            tooling_id: String(item.tooling_id || ''),
+            part_inventory_number: String(item.part_inventory_number || ''),
+            part_drawing_number: String(item.part_drawing_number || ''),
+            part_name: String(item.part_name || ''),
+            part_quantity: item.part_quantity ? Number(item.part_quantity) : null,
+            material_id: String(item.material_id || ''),
+            material_source_id: String(item.material_source_id || ''),
+            part_category: String(item.part_category || ''),
+            specifications: safeSpecifications,
+            weight: item.weight ? Number(item.weight) : 0,
+            unit_price: item.unit_price ? Number(item.unit_price) : 0,
+            total_price: item.total_price ? Number(item.total_price) : 0,
+            remarks: String(item.remarks || ''),
+            process_route: String(item.process_route || ''),
+            material: undefined
+          };
+        });
+        partsCacheRef.current.set(toolingId, { items, ts: Date.now() })
+        setPartsMap(prev => ({ ...prev, [toolingId]: items }))
+        return items
+      } catch (error) {
+        console.error('获取零件数据失败:', error)
+        return []
+      } finally {
+        inflightPartsRef.current.delete(toolingId)
+      }
+    })()
+    inflightPartsRef.current.set(toolingId, promise)
+    return promise
   }, [])
 
   // 获取标准件数据
   const fetchChildItemsData = useCallback(async (toolingId: string) => {
-    try {
-      const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`)
-      const result = await response.json()
-      
-      if (result.success) {
-        // 兼容 data 和 items 两种格式
-        const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-        // 关键修复：处理数据，将所有对象转换为基本类型，避免循环引用
-        const items = rawItems.map(item => ({
-          ...item,
-          // 将所有属性转换为基本类型
-          id: String(item.id || ''),
-          tooling_id: String(item.tooling_id || ''),
-          name: String(item.name || ''),
-          model: String(item.model || ''),
-          quantity: item.quantity ? Number(item.quantity) : null,
-          unit: String(item.unit || ''),
-          required_date: String(item.required_date || ''),
-          remark: String(item.remark || ''),
-          type: String(item.type || '')
-        }))
-        setChildItemsMap(prev => ({ ...prev, [toolingId]: items }))
-        return items
-      }
-      return []
-    } catch (error) {
-      console.error('获取标准件数据失败:', error)
-      return []
+    const now = Date.now()
+    const cached = childCacheRef.current.get(toolingId)
+    if (cached && now - cached.ts < TTL) {
+      setChildItemsMap(prev => ({ ...prev, [toolingId]: cached.items }))
+      return cached.items
     }
+    const inflight = inflightChildRef.current.get(toolingId)
+    if (inflight) return inflight
+    const promise = (async () => {
+      try {
+        const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`)
+        const result = await response.json()
+        if (result.success) {
+          const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+          const items = rawItems.map(item => ({
+            ...item,
+            id: String(item.id || ''),
+            tooling_id: String(item.tooling_id || ''),
+            name: String(item.name || ''),
+            model: String(item.model || ''),
+            quantity: item.quantity ? Number(item.quantity) : null,
+            unit: String(item.unit || ''),
+            required_date: String(item.required_date || ''),
+            remark: String(item.remark || ''),
+            type: String(item.type || '')
+          }))
+          childCacheRef.current.set(toolingId, { items, ts: Date.now() })
+          setChildItemsMap(prev => ({ ...prev, [toolingId]: items }))
+          return items
+        }
+        return []
+      } catch (error) {
+        console.error('获取标准件数据失败:', error)
+        return []
+      } finally {
+        inflightChildRef.current.delete(toolingId)
+      }
+    })()
+    inflightChildRef.current.set(toolingId, promise)
+    return promise
   }, [])
 
   // 保存工装数据

@@ -1,10 +1,10 @@
 import React, { useMemo, useCallback, useRef, memo } from 'react'
 import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, DownloadOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons'
-import { useToolingTable } from '../../hooks/useToolingTable'
-import { useAdvancedSearch } from '../../hooks/useAdvancedSearch'
-import EditableCell from '../../components/EditableCell'
-import { useToolingOperations } from '../../hooks/useToolingOperations'
+import { useToolingTable } from '@/hooks/useToolingTable'
+import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
+import EditableCell from '@/components/EditableCell'
+import { useToolingOperations } from '@/hooks/useToolingOperations'
 
 interface ToolingTableProps {
   data: any[]
@@ -277,13 +277,13 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
           }
         }}
         rowClassName={getRowClassName}
-        rowSelection={{
+        rowSelection={useMemo(() => ({
           selectedRowKeys,
           onChange: onSelectChange,
           getCheckboxProps: (record: any) => ({
             disabled: String(record.id || '').startsWith('blank-')
           })
-        }}
+        }), [selectedRowKeys, onSelectChange])}
         components={{
           body: {
             cell: (props: any) => (
