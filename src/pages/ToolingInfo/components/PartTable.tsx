@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, memo } from 'react'
+import React, { useMemo, useCallback, useRef, memo, useState, useEffect } from 'react'
 import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
 import { PlusOutlined, DeleteOutlined, CalculatorOutlined, FilterOutlined } from '@ant-design/icons'
 import { usePartTable } from '@/hooks/usePartTable'
@@ -58,6 +58,15 @@ export const PartTable: React.FC<PartTableProps> = memo(({
   } = useAdvancedSearch(parts)
 
   const tableRef = useRef<any>(null)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem('part_table_ps') || '20', 10)
+    return Number.isFinite(v) && v > 0 ? v : 20
+  })
+  const DEBUG = (import.meta as any)?.env?.DEV === true
+  useEffect(() => {
+    const t = performance.now()
+    return () => { if (DEBUG) console.log('[PartTable] render', Math.round(performance.now() - t), 'ms') }
+  }, [filteredData, selectedRowKeys])
 
   const handleCellEdit = useCallback((record: any, dataIndex: string, value: any) => {
     if (dataIndex === 'part_quantity' && !validatePartQuantity(value)) {
@@ -234,7 +243,8 @@ export const PartTable: React.FC<PartTableProps> = memo(({
           showQuickJumper: true,
           showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
           pageSizeOptions: ['10', '20', '50', '100'],
-          defaultPageSize: 20
+          pageSize,
+          onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('part_table_ps', String(ps)) } }
         }}
         bordered={false}
         size="small"

@@ -1,6 +1,6 @@
-import React, { useMemo, useCallback, useRef, memo } from 'react'
+import React, { useMemo, useCallback, useRef, memo, useState, useEffect } from 'react'
 import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, DownloadOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons'
 import { useToolingTable } from '@/hooks/useToolingTable'
 import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
 import EditableCell from '@/components/EditableCell'
@@ -79,6 +79,15 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
   } = useAdvancedSearch(data)
 
   const tableRef = useRef<any>(null)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem('tooling_table_ps') || '20', 10)
+    return Number.isFinite(v) && v > 0 ? v : 20
+  })
+  const DEBUG = (import.meta as any)?.env?.DEV === true
+  useEffect(() => {
+    const t = performance.now()
+    return () => { if (DEBUG) console.log('[ToolingTable] render', Math.round(performance.now() - t), 'ms') }
+  }, [filteredData, loading, selectedRowKeys])
 
   const handleDelete = useCallback((record: ToolingItem) => {
     Modal.confirm({
@@ -262,7 +271,8 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
           showQuickJumper: true,
           showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
           pageSizeOptions: ['10', '20', '50', '100'],
-          defaultPageSize: 20
+          pageSize,
+          onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('tooling_table_ps', String(ps)) } }
         }}
         bordered={false}
         size="small"
