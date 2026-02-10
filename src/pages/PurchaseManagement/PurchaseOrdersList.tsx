@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Typography } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+/* removed unused ReloadOutlined */
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
 import { rollbackPurchaseOrders } from '../../services/toolingService';
@@ -11,7 +11,7 @@ import dayjs from 'dayjs';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 
-const { Title } = Typography;
+/* removed unused Title */
 
 // Excel表格样式 - 与工装信息保持一致
 const excelTableStyles = `
@@ -83,22 +83,22 @@ export default function PurchaseOrdersList() {
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const didInitRef = useRef(false);
-  const controllerRef = useRef<AbortController | null>(null);
-  const reloadDebounceRef = useRef<number | null>(null);
+  /* removed unused controllerRef and reloadDebounceRef */
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
   const DEBUG = (import.meta as any)?.env?.DEV === true;
 
   const totals = useMemo(() => {
-    const selected = data.filter(item => selectedRowKeys.includes(item.id))
-    const weight = selected.reduce((acc, item) => {
-      const n = typeof item.weight === 'number' ? item.weight : parseFloat(String(item.weight ?? ''))
-      return acc + (isNaN(n) ? 0 : n)
-    }, 0)
-    const price = selected.reduce((acc, item) => {
-      const n = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
-      return acc + (isNaN(n) ? 0 : n)
-    }, 0)
+    const set = new Set<string>(selectedRowKeys.map(String))
+    let weight = 0
+    let price = 0
+    for (const item of data) {
+      if (!set.has(String(item.id))) continue
+      const w = typeof item.weight === 'number' ? item.weight : parseFloat(String(item.weight ?? ''))
+      const p = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
+      if (!isNaN(w)) weight += w
+      if (!isNaN(p)) price += p
+    }
     return { weight, price }
   }, [data, selectedRowKeys])
 
@@ -226,13 +226,13 @@ export default function PurchaseOrdersList() {
 
 
 
-  const rowSelection = {
+  const rowSelection = useMemo(() => ({
     selectedRowKeys,
     onChange: (newSelectedRowKeys: React.Key[]) => {
       setSelectedRowKeys(newSelectedRowKeys);
     },
     columnWidth: 40,
-  };
+  }), [selectedRowKeys]);
 
   const [hiddenIds, setHiddenIds] = useState<string[]>([])
   const [approvalHiddenIds, setApprovalHiddenIds] = useState<string[]>([])
@@ -253,9 +253,9 @@ export default function PurchaseOrdersList() {
     loadApprovalHidden()
     const handler = () => loadHidden()
     const handler2 = () => loadApprovalHidden()
+    const storageHandler = () => { loadHidden(); loadApprovalHidden() }
     window.addEventListener('temporary_plans_updated', handler)
-    window.addEventListener('storage', handler)
-    window.addEventListener('storage', handler2)
+    window.addEventListener('storage', storageHandler)
     window.addEventListener('approval_updated', handler2)
     
     // 监听状态更新事件（如生成采购单后）
@@ -267,8 +267,7 @@ export default function PurchaseOrdersList() {
 
     return () => {
       window.removeEventListener('temporary_plans_updated', handler)
-      window.removeEventListener('storage', handler)
-      window.removeEventListener('storage', handler2)
+      window.removeEventListener('storage', storageHandler)
       window.removeEventListener('approval_updated', handler2)
       window.removeEventListener('status_updated', statusHandler)
     }
@@ -308,7 +307,7 @@ export default function PurchaseOrdersList() {
     return arr
   }, [data, hiddenIds, approvalHiddenIds, sourceFilter, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
 
-  const columns: ColumnsType<PurchaseOrder> = [
+  const columns: ColumnsType<PurchaseOrder> = useMemo(() => ([
     {
       title: '序号',
       dataIndex: 'index',
@@ -384,15 +383,13 @@ export default function PurchaseOrdersList() {
         return <span style={{ color: show !== null ? '#333' : '#999' }}>{show !== null ? `¥${show.toFixed(2)}` : '-'}</span>;
       }
     }
-  ];
+  ]), []);
 
   useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
     fetchPurchaseOrders();
-    return () => {
-      if (controllerRef.current) controllerRef.current.abort();
-    };
+    return () => {};
   }, []);
 
   return (
