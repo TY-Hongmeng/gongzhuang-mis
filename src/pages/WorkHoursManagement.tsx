@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, Typography, DatePicker, Button, Table, Row, Col, message, Select, Space } from 'antd'
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { fetchWithFallback } from '../utils/api'
 import dayjs from 'dayjs'
 // import zhCN from 'antd/locale/zh_CN'
 import { useNavigate } from 'react-router-dom'
@@ -103,7 +104,24 @@ const WorkHoursManagement: React.FC = () => {
       baseParams.set('order', 'work_date')
       baseParams.set('order_dir', 'desc')
       
-      const resp = await fetch(`/api/tooling/work-hours?${baseParams.toString()}`)
+      if (operator) baseParams.set('operator', operator)
+      if (shift) baseParams.set('shift', shift)
+      if (deviceNo) baseParams.set('device_no', deviceNo)
+      if (range && Array.isArray(range)) {
+        const startDate = range[0]?.format('YYYY-MM-DD')
+        const endDate = range[1]?.format('YYYY-MM-DD')
+        if (startDate && endDate) { baseParams.set('start', startDate); baseParams.set('end', endDate) }
+      } else if (yearMonth) {
+        const ymStart = dayjs(yearMonth).startOf('month').format('YYYY-MM-DD')
+        const ymEnd = dayjs(yearMonth).endOf('month').format('YYYY-MM-DD')
+        baseParams.set('start', ymStart)
+        baseParams.set('end', ymEnd)
+      }
+      if (partInventoryNo) baseParams.set('keyword', partInventoryNo)
+      else if (partDrawingNo) baseParams.set('keyword', partDrawingNo)
+      else if (partName) baseParams.set('keyword', partName)
+
+      const resp = await fetchWithFallback(`/api/tooling/work-hours?${baseParams.toString()}`)
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }

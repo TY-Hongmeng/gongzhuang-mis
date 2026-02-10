@@ -3,6 +3,7 @@ import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePic
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
+import { fetchWithFallback } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import { upsertProcessDone } from '../utils/processDone'
 
@@ -55,6 +56,8 @@ const WorkHours: React.FC = () => {
   const [completedTime, setCompletedTime] = React.useState<string>('')
   // 添加零件名称映射
   const [partNameMap, setPartNameMap] = React.useState<Record<string, string>>({})
+  const invAbortRef = React.useRef<AbortController | null>(null)
+  const invTimerRef = React.useRef<any>(null)
   
 
 
@@ -171,7 +174,9 @@ const WorkHours: React.FC = () => {
   const fetchInventory = async (q: string) => {
     try {
       setLoadingInv(true)
-      const resp = await fetch(`/api/tooling/parts/inventory-list?page=1&pageSize=50&search=${encodeURIComponent(q || '')}`)
+      if (invAbortRef.current) invAbortRef.current.abort()
+      invAbortRef.current = new AbortController()
+      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=50&search=${encodeURIComponent(q || '')}` , { signal: invAbortRef.current.signal })
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
@@ -214,7 +219,7 @@ const WorkHours: React.FC = () => {
           } catch {}
         } else {
           try {
-            const respM = await fetch(`/api/tooling/fixed-inventory-options`)
+            const respM = await fetchWithFallback(`/api/tooling/fixed-inventory-options`)
             if (respM.ok) {
               const jsonM = await respM.json()
               const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
@@ -291,7 +296,7 @@ const WorkHours: React.FC = () => {
   // 获取零件名称映射
   const fetchPartNameMap = async () => {
     try {
-      const r = await fetch('/api/tooling/parts/inventory-list?page=1&pageSize=500')
+      const r = await fetchWithFallback('/api/tooling/parts/inventory-list?page=1&pageSize=500')
       if (!r.ok) {
         throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
       }
@@ -312,7 +317,7 @@ const WorkHours: React.FC = () => {
     const isGhPages = /github\.io/i.test(host)
     const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
     const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
-    const r = await fetch(isGhPages ? `${restBase}/fixed_inventory_options?select=*` : '/api/tooling/fixed-inventory-options')
+    const r = await fetchWithFallback(isGhPages ? `${restBase}/fixed_inventory_options?select=*` : '/api/tooling/fixed-inventory-options')
     if (!r.ok) {
       throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
     }
@@ -330,7 +335,7 @@ const WorkHours: React.FC = () => {
     const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
     const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
     const url = isGhPages ? `${restBase}/devices?select=*&order=device_no.asc` : '/api/tooling/devices'
-    const r = await fetch(url)
+    const r = await fetchWithFallback(url)
     if (!r.ok) {
       throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
     }
@@ -373,9 +378,8 @@ const WorkHours: React.FC = () => {
       params.set('pageSize', '50')
       params.set('order', 'created_at')
       params.set('order_dir', 'desc')
-      // 移除操作者过滤，获取所有最近记录，确保同一设备的时间检查正确
-      // if (user?.real_name) params.set('operator', user.real_name)
-      const resp = await fetch(`/api/tooling/work-hours?${params.toString()}`)
+      if (user?.real_name) params.set('operator', user.real_name)
+      const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
@@ -688,6 +692,7 @@ const WorkHours: React.FC = () => {
                 const currEnd = dayjs(ws).add(addDay,'day').hour(Math.floor(eMinRaw/60)).minute(eMinRaw%60).valueOf()
                 const deviceNo = form.getFieldValue('device_no')
                 for (const it of recentItems || []) {
+                  if (String(it.operator || '') !== String(user?.real_name || '')) continue
                   if (String(it.device_no || '') === String(deviceNo || '')) continue
                   const os = String(it.aux_start_time || '')
                   const oe = String(it.aux_end_time || '')
@@ -803,7 +808,10 @@ const WorkHours: React.FC = () => {
               <Select
                 showSearch
                 filterOption={false}
-                onSearch={(val) => fetchInventory(val)}
+                onSearch={(val) => {
+                  if (invTimerRef.current) clearTimeout(invTimerRef.current)
+                  invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 400)
+                }}
                 onOpenChange={(open) => { if (open) fetchInventory('') }}
                 options={invOptions}
                 loading={loadingInv}

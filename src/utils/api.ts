@@ -1413,9 +1413,31 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const pageSize = Number(qs.get('pageSize') || 200)
         const order = qs.get('order') || 'work_date'
         const orderDir = (qs.get('order_dir') || 'desc').toLowerCase() === 'asc'
-        const { data, error } = await supabase.from('work_hours').select('*')
-          .order(order, { ascending: orderDir })
-          .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        const operator = String(qs.get('operator') || '').trim()
+        const shift = String(qs.get('shift') || '').trim()
+        const deviceNo = String(qs.get('device_no') || '').trim()
+        const processName = String(qs.get('process_name') || '').trim()
+        const start = String(qs.get('start') || '').trim()
+        const end = String(qs.get('end') || '').trim()
+        const keyword = String(qs.get('keyword') || '').trim()
+
+        let query = supabase.from('work_hours').select('*', { count: 'planned' })
+        if (operator) query = query.eq('operator', operator)
+        if (shift) query = query.eq('shift', shift)
+        if (deviceNo) query = query.eq('device_no', deviceNo)
+        if (processName) query = query.eq('process_name', processName)
+        if (start) query = query.gte('work_date', start)
+        if (end) query = query.lte('work_date', end)
+        if (keyword) {
+          const kw = `%${keyword}%`
+          query = query.or(
+            `part_inventory_number.ilike.${kw},part_drawing_number.ilike.${kw},process_name.ilike.${kw},device_no.ilike.${kw},operator.ilike.${kw}`
+          )
+        }
+
+        query = query.order(order, { ascending: orderDir })
+        query = query.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        const { data, error, count } = await query
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
         const items = data || []
         const totals = (items as any[]).reduce(
@@ -1428,7 +1450,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           },
           { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }
         )
-        return jsonResponse({ success: true, items, total: items.length, page, pageSize, totals, data: items })
+        return jsonResponse({ success: true, items, total: count || items.length, page, pageSize, totals, data: items })
       }
 
       // Work hours create
