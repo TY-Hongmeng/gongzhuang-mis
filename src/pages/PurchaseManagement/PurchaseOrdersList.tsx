@@ -87,6 +87,7 @@ export default function PurchaseOrdersList() {
   const reloadDebounceRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
+  const DEBUG = (import.meta as any)?.env?.DEV === true;
 
   const totals = useMemo(() => {
     const selected = data.filter(item => selectedRowKeys.includes(item.id))
@@ -106,7 +107,7 @@ export default function PurchaseOrdersList() {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setLoading(true);
-    console.log(`=== 开始获取采购单数据 ===`);
+    if (DEBUG) console.log(`=== 开始获取采购单数据 ===`);
     
     try {
       // 并发保护：不再主动中止上一请求，直接忽略新的并发触发
@@ -127,7 +128,7 @@ export default function PurchaseOrdersList() {
       });
       
       if (!response) {
-        console.error('fetchWithFallback returned null for /api/purchase-orders');
+        if (DEBUG) console.error('fetchWithFallback returned null for /api/purchase-orders');
         setData([]);
         return;
       }
@@ -146,7 +147,7 @@ export default function PurchaseOrdersList() {
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
-        console.error('非JSON响应:', text);
+        if (DEBUG) console.error('非JSON响应:', text);
         throw new Error('服务器返回了非JSON格式的数据');
       }
       
@@ -154,13 +155,13 @@ export default function PurchaseOrdersList() {
       try {
         result = await response.json();
       } catch (jsonError) {
-        console.error('JSON解析错误:', jsonError);
+        if (DEBUG) console.error('JSON解析错误:', jsonError);
         const text = await response.text();
-        console.error('响应内容:', text);
+        if (DEBUG) console.error('响应内容:', text);
         throw new Error('无法解析服务器返回的JSON数据');
       }
       
-      console.log('采购单数据获取成功:', result);
+      if (DEBUG) console.log('采购单数据获取成功:', result);
       
       // 支持两种数据格式：data 或 items
       let ordersData = [];
@@ -169,13 +170,13 @@ export default function PurchaseOrdersList() {
       } else if (result && result.items && Array.isArray(result.items)) {
         ordersData = result.items;
       } else {
-        console.error('数据格式错误:', result);
+        if (DEBUG) console.error('数据格式错误:', result);
         ordersData = [];
       }
       
       setData(ordersData);
     } catch (error) {
-      console.error('获取采购单数据失败:', error);
+      if (DEBUG) console.error('获取采购单数据失败:', error);
       message.destroy();
       message.error('获取采购单数据失败: ' + (error as Error).message);
       setData([]);
@@ -283,7 +284,7 @@ export default function PurchaseOrdersList() {
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch('/api/tooling/users/basic')
+        const resp = await fetchWithFallback('/api/tooling/users/basic')
         const js = await resp.json()
         const map: Record<string, string> = {}
         ;(js.items || []).forEach((u: any) => { map[String(u.real_name || '')] = String(u.team || '') })
@@ -408,13 +409,13 @@ export default function PurchaseOrdersList() {
           />
           <Space>
             <Button onClick={async () => {
-              console.log('[PurchaseOrdersList] Rollback button clicked');
+              if (DEBUG) console.log('[PurchaseOrdersList] Rollback button clicked');
               if (selectedRowKeys.length === 0) { message.warning('请选择要回退的采购单'); return }
               try {
                 const selectedSet = new Set<string>(selectedRowKeys.map(String))
                 const selectedItems = data.filter(d => selectedSet.has(String(d.id)))
                 
-                console.log('[PurchaseOrdersList] Calling rollbackPurchaseOrders with items:', selectedItems.length);
+                if (DEBUG) console.log('[PurchaseOrdersList] Calling rollbackPurchaseOrders with items:', selectedItems.length);
                 if (typeof rollbackPurchaseOrders !== 'function') {
                   throw new Error('回退服务未正确加载，请尝试刷新页面');
                 }
@@ -428,7 +429,7 @@ export default function PurchaseOrdersList() {
                 const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
                 const hb = new Set<string>(Array.isArray(hbArr) ? hbArr : [])
                 
-                console.log('[PurchaseOrdersList] Rollback: Before cleanup', {
+                if (DEBUG) console.log('[PurchaseOrdersList] Rollback: Before cleanup', {
                   manualHidden: Array.from(hm),
                   backupHidden: Array.from(hb),
                   rollingBack: selectedItems.map(it => it.inventory_number)
@@ -440,14 +441,14 @@ export default function PurchaseOrdersList() {
                     const originalId = inv.slice(7).trim()
                     if (hm.has(originalId)) {
                       hm.delete(originalId)
-                      console.log('[PurchaseOrdersList] Cleaned up manual ID:', originalId);
+                      if (DEBUG) console.log('[PurchaseOrdersList] Cleaned up manual ID:', originalId);
                     }
                   }
                   if (inv.startsWith('BACKUP-')) {
                     const originalId = inv.slice(7).trim()
                     if (hb.has(originalId)) {
                       hb.delete(originalId)
-                      console.log('[PurchaseOrdersList] Cleaned up backup ID:', originalId);
+                      if (DEBUG) console.log('[PurchaseOrdersList] Cleaned up backup ID:', originalId);
                     }
                   }
                 })
@@ -455,7 +456,7 @@ export default function PurchaseOrdersList() {
                 localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
                 localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
                 
-                console.log('[PurchaseOrdersList] Rollback: After cleanup', {
+                if (DEBUG) console.log('[PurchaseOrdersList] Rollback: After cleanup', {
                   manualHidden: Array.from(hm),
                   backupHidden: Array.from(hb)
                 });
@@ -478,7 +479,7 @@ export default function PurchaseOrdersList() {
                 
                 // 增加一个小延迟，确保数据库写入完成后再通知其他页面刷新
                 setTimeout(() => {
-                  console.log('[PurchaseOrdersList] Dispatching status_updated event');
+                  if (DEBUG) console.log('[PurchaseOrdersList] Dispatching status_updated event');
                   window.dispatchEvent(new Event('status_updated')) // 触发 ManualPurchaseOrders 重新加载
                 }, 200);
                 

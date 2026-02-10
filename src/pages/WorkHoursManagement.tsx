@@ -235,7 +235,7 @@ const WorkHoursManagement: React.FC = () => {
   React.useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('/api/tooling/parts/inventory-list?page=1&pageSize=500')
+        const r = await fetchWithFallback('/api/tooling/parts/inventory-list?page=1&pageSize=500')
         if (!r.ok) {
           throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
         }
@@ -255,7 +255,7 @@ const WorkHoursManagement: React.FC = () => {
   React.useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('/api/tooling/devices')
+        const r = await fetchWithFallback('/api/tooling/devices')
         if (!r.ok) {
           throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
         }
@@ -273,7 +273,7 @@ const WorkHoursManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const r = await fetch(`/api/tooling/users/basic?ts=${Date.now()}`)
+      const r = await fetchWithFallback(`/api/tooling/users/basic?ts=${Date.now()}`)
       if (!r.ok) {
         throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
       }

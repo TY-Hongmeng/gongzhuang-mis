@@ -958,7 +958,7 @@ const WorkHours: React.FC = () => {
           <Button danger disabled={!selectedRecentKeys.length} onClick={async () => {
             try {
               message.loading({ content: '删除中...', key: 'del' })
-              await Promise.all(selectedRecentKeys.map((id) => fetch(`/api/tooling/work-hours/${id}`, { method: 'DELETE' })))
+              await Promise.all(selectedRecentKeys.map((id) => fetchWithFallback(`/api/tooling/work-hours/${id}`, { method: 'DELETE' })))
               message.success({ content: '删除成功', key: 'del' })
               setSelectedRecentKeys([])
               fetchRecent()

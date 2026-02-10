@@ -1501,6 +1501,20 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // Work hours batch delete
+      if (method === 'POST' && path === '/api/tooling/work-hours/batch-delete') {
+        const body = await readBody()
+        const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
+        if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+        try {
+          const { error } = await supabase.from('work_hours').delete().in('id', ids)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, deleted: ids.length })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '删除失败' }, 500)
+        }
+      }
+
       // Cutting orders list
       if (method === 'GET' && path === '/api/cutting-orders') {
         const qs = getQuery(cleanUrl)
