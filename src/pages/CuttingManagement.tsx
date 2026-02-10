@@ -36,6 +36,7 @@ const CuttingManagement: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuthStore()
+  const DEBUG = (import.meta as any)?.env?.DEV === true
   const [userTeamsMap, setUserTeamsMap] = useState<Record<string, string>>({})
   const [idToNameMap, setIdToNameMap] = useState<Record<string, string>>({})
   const isTechnician = /技术员|技术人员|技术/.test(String(user?.roles?.name || ''))
@@ -66,17 +67,17 @@ const CuttingManagement: React.FC = () => {
 
   // 自动排序函数 - 根据规格进行智能排序
   const sortOrdersBySpecifications = (orders: CuttingOrder[]) => {
-    console.log('=== 开始自动排序 ===');
-    console.log('待排序订单数量:', orders.length, 'orders');
-    console.log('排序规则:');
-    console.log('  - 圆料(含φ): 按直径排序，如 φ20*30 → 直径20');
-    console.log('  - 板料: 按最后一组数字(厚度)排序，如 20*30*5 → 厚度5');
+    if (DEBUG) console.log('=== 开始自动排序 ===');
+    if (DEBUG) console.log('待排序订单数量:', orders.length, 'orders');
+    if (DEBUG) console.log('排序规则:');
+    if (DEBUG) console.log('  - 圆料(含φ): 按直径排序，如 φ20*30 → 直径20');
+    if (DEBUG) console.log('  - 板料: 按最后一组数字(厚度)排序，如 20*30*5 → 厚度5');
     
     // 显示排序前的数据样本
     if (orders.length > 0) {
-      console.log('排序前样本:');
+      if (DEBUG) console.log('排序前样本:');
       orders.slice(0, 3).forEach((order, index) => {
-        console.log(`  ${index + 1}. 材质:${order.material} 规格:${order.specifications}`);
+        if (DEBUG) console.log(`  ${index + 1}. 材质:${order.material} 规格:${order.specifications}`);
       });
     }
     
@@ -112,20 +113,20 @@ const CuttingManagement: React.FC = () => {
         const thicknessA = parseFloat(thicknessMatchA?.[1] || '0');
         const thicknessB = parseFloat(thicknessMatchB?.[1] || '0');
         
-        console.log(`板料排序: A="${specA}" 厚度=${thicknessA} (匹配:${thicknessMatchA?.[1]}) | B="${specB}" 厚度=${thicknessB} (匹配:${thicknessMatchB?.[1]}) | 结果:${thicknessA - thicknessB}`);
+        if (DEBUG) console.log(`板料排序: A="${specA}" 厚度=${thicknessA} (匹配:${thicknessMatchA?.[1]}) | B="${specB}" 厚度=${thicknessB} (匹配:${thicknessMatchB?.[1]}) | 结果:${thicknessA - thicknessB}`);
         return thicknessA - thicknessB;
       }
     });
     
     // 显示排序后的数据样本
     if (sortedOrders.length > 0) {
-      console.log('排序后样本:');
+      if (DEBUG) console.log('排序后样本:');
       sortedOrders.slice(0, 3).forEach((order, index) => {
-        console.log(`  ${index + 1}. 材质:${order.material} 规格:${order.specifications}`);
+        if (DEBUG) console.log(`  ${index + 1}. 材质:${order.material} 规格:${order.specifications}`);
       });
     }
     
-    console.log('=== 自动排序完成 ===');
+    if (DEBUG) console.log('=== 自动排序完成 ===');
     return sortedOrders;
   };
 
@@ -133,9 +134,9 @@ const CuttingManagement: React.FC = () => {
   const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[], responsiblePersonMap: Record<string, string>) => {
     const groups: Record<string, CuttingOrder[]> = {};
     
-    console.log(`=== 开始分组处理 ===`);
-    console.log(`输入订单数量: ${orders.length}`);
-    console.log(`编制信息映射:`, responsiblePersonMap);
+    if (DEBUG) console.log(`=== 开始分组处理 ===`);
+    if (DEBUG) console.log(`输入订单数量: ${orders.length}`);
+    if (DEBUG) console.log(`编制信息映射:`, responsiblePersonMap);
     
     // 检查是否有重复的ID
     const idSet = new Set();
@@ -169,7 +170,7 @@ const CuttingManagement: React.FC = () => {
     const uniqueGroupKeys = Object.keys(groupKeyStats);
     const groupSizeDistribution = Object.values(groupKeyStats).sort((a, b) => b - a);
     
-    console.log(`分组键分析:`, {
+    if (DEBUG) console.log(`分组键分析:`, {
       唯一分组键数量: uniqueGroupKeys.length,
       分组大小分布: groupSizeDistribution,
       最大分组: Math.max(...groupSizeDistribution),
@@ -182,7 +183,7 @@ const CuttingManagement: React.FC = () => {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 5);
     
-    console.log(`最大的5个分组:`, topGroups.map(([key, count]) => ({ key, count })));
+    if (DEBUG) console.log(`最大的5个分组:`, topGroups.map(([key, count]) => ({ key, count })));
     
     if (duplicateIds.length > 0) {
       console.error(`发现${duplicateIds.length}个重复ID:`, duplicateIds);
@@ -190,7 +191,7 @@ const CuttingManagement: React.FC = () => {
     
     // 统计分组结果
     const totalInGroups = Object.values(groups).reduce((sum, group) => sum + group.length, 0);
-    console.log(`分组统计:`, {
+    if (DEBUG) console.log(`分组统计:`, {
       输入订单总数: orders.length,
       唯一ID数量: idSet.size,
       分组数量: Object.keys(groups).length,
@@ -203,13 +204,13 @@ const CuttingManagement: React.FC = () => {
     }
     
     // 对每个分组内的订单进行自动排序
-    console.log('开始对每个分组进行自动排序...');
+    if (DEBUG) console.log('开始对每个分组进行自动排序...');
     Object.keys(groups).forEach(groupKey => {
-      console.log(`分组 "${groupKey}" 有 ${groups[groupKey].length} 个订单`);
+      if (DEBUG) console.log(`分组 "${groupKey}" 有 ${groups[groupKey].length} 个订单`);
       groups[groupKey] = sortOrdersBySpecifications(groups[groupKey]);
     });
     
-    console.log('分组和排序完成！');
+    if (DEBUG) console.log('分组和排序完成！');
     return groups;
   };
 
@@ -626,12 +627,12 @@ const CuttingManagement: React.FC = () => {
     }
   ];
 
-  const rowSelection = {
+  const rowSelection = React.useMemo(() => ({
     selectedRowKeys,
     onChange: (newSelectedRowKeys: React.Key[]) => {
       setSelectedRowKeys(newSelectedRowKeys);
     }
-  };
+  }), [selectedRowKeys]);
 
   const exportSelected = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择要导出的记录'); return }
