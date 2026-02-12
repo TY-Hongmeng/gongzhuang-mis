@@ -3,9 +3,12 @@ import { message } from 'antd'
 import { generateInventoryNumber, canGenerateInventoryNumber, calculateVolume } from '../utils/toolingCalculations'
 import { calculateTotalPrice } from '../utils/priceCalculator'
 import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../stores/authStore'
 
 // 工装业务逻辑Hook
 export const useToolingOperations = () => {
+  const user = useAuthStore(state => state.user)
+  
   // 生成下料单
   const generateCuttingOrders = useCallback(async (selectedParts: any[], materials: any[], materialSources: any[], partTypes: any[] = []) => {
     try {
@@ -28,22 +31,9 @@ export const useToolingOperations = () => {
         return null
       }
 
-      // 获取当前用户信息作为编制人
-      let currentUser = ''
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // 尝试从用户信息中获取真实姓名
-          const userData = await supabase
-            .from('users')
-            .select('real_name')
-            .eq('id', user.id)
-            .single();
-          currentUser = userData.data?.real_name || user.email || '系统用户';
-        }
-      } catch (e) {
-        console.warn('[useToolingOperations] Failed to get current user', e);
-      }
+      // 直接使用 authStore 中的用户信息作为编制人
+      const currentUser = user?.real_name || '系统用户'
+      console.log('[useToolingOperations] 当前用户:', currentUser, 'user:', user)
 
       const cuttingOrders = validParts.map((part, index) => {
         const material = materials.find(m => String(m.id) === String(part.material_id))
@@ -158,7 +148,7 @@ export const useToolingOperations = () => {
       message.error('生成下料单失败：' + error)
       return null
     }
-  }, [])
+  }, [user])
 
   // 生成采购单
   const generatePurchaseOrders = useCallback(async (selectedItems: any[], materials: any[], materialSources: any[], partTypes: any[] = []) => {
