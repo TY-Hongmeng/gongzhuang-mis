@@ -238,12 +238,18 @@ const CuttingManagement: React.FC = () => {
       
       const result = await response.json();
       console.log('Responsible person result:', result);
-      
-      if (result.success && result.items) {
+
+      const items = Array.isArray(result?.items)
+        ? result.items
+        : Array.isArray(result?.data)
+          ? result.data
+          : [];
+
+      if (items.length > 0) {
         const map: Record<string, string> = {};
-        result.items.forEach((tooling: any) => {
-          // 优先使用responsible_person_id，如果没有则使用recorder，如果都没有则显示'未分配'
-          map[tooling.id] = tooling.responsible_person_id || tooling.recorder || '未分配';
+        items.forEach((tooling: any) => {
+          const name = String(tooling?.recorder || '').trim();
+          map[tooling.id] = name || '未分配';
         });
         console.log('Responsible person map:', map);
         return map;
