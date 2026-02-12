@@ -28,6 +28,23 @@ export const useToolingOperations = () => {
         return null
       }
 
+      // 获取当前用户信息作为编制人
+      let currentUser = ''
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // 尝试从用户信息中获取真实姓名
+          const userData = await supabase
+            .from('users')
+            .select('real_name')
+            .eq('id', user.id)
+            .single();
+          currentUser = userData.data?.real_name || user.email || '系统用户';
+        }
+      } catch (e) {
+        console.warn('[useToolingOperations] Failed to get current user', e);
+      }
+
       const cuttingOrders = validParts.map((part, index) => {
         const material = materials.find(m => String(m.id) === String(part.material_id))
         const materialSource = materialSources.find(ms => String(ms.id) === String(part.material_source_id))
@@ -56,7 +73,8 @@ export const useToolingOperations = () => {
           material_source: materialSourceName,
           created_date: new Date().toISOString(),
           tooling_id: part.tooling_id || null,
-          part_id: part.id || null
+          part_id: part.id || null,
+          recorder: currentUser || part.recorder || '系统用户' // 添加编制人信息
         }
       })
 

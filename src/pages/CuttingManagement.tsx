@@ -154,7 +154,8 @@ const CuttingManagement: React.FC = () => {
       
       const date = dayjs(order.created_date).format('YYYY-MM-DD');
       const material = order.material_source || '未知';
-      const responsiblePerson = responsiblePersonMap[order.tooling_id] || '未分配';
+      // 优先使用订单自带的recorder字段作为编制人，其次才从tooling_id查找
+      const responsiblePerson = (order as any).recorder || responsiblePersonMap[order.tooling_id] || '未分配';
       const groupKey = `${date}_${material}_${responsiblePerson}`;
       
       // 统计分组键出现次数
