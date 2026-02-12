@@ -36,7 +36,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const startTime = Date.now()
 
   try {
-    // 使用简单的SQL查询，避免复杂的连接
+    // 使用SQL查询，直接关联获取责任人姓名
     let sql = `
       SELECT 
         co.id,
@@ -57,9 +57,11 @@ router.get('/', asyncHandler(async (req, res) => {
         co.remarks,
         ti.category as tooling_category,
         ti.production_unit,
-        ti.sets_count
+        ti.sets_count,
+        u.real_name as responsible_person_name
       FROM cutting_orders co
       LEFT JOIN tooling_info ti ON co.tooling_id = ti.id
+      LEFT JOIN users u ON ti.responsible_person_id = u.id
       WHERE co.is_deleted = false
     `
     

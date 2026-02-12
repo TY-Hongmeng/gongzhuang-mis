@@ -28,6 +28,7 @@ interface CuttingOrder {
   part_id: string;
   part_category?: string;
   recorder?: string;
+  responsible_person_name?: string;
   tooling_info?: {
     responsible_person_id: string | null;
   };
@@ -131,14 +132,12 @@ const CuttingManagement: React.FC = () => {
     return sortedOrders;
   };
 
-  // 分组函数 - 包含编制信息
-  const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[], responsiblePersonMap: Record<string, string>, idToNameMap: Record<string, string>) => {
+  // 分组函数
+  const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[]) => {
     const groups: Record<string, CuttingOrder[]> = {};
     
     if (DEBUG) console.log(`=== 开始分组处理 ===`);
     if (DEBUG) console.log(`输入订单数量: ${orders.length}`);
-    if (DEBUG) console.log(`编制信息映射:`, responsiblePersonMap);
-    if (DEBUG) console.log(`用户ID到姓名映射:`, idToNameMap);
     
     // 检查是否有重复的ID
     const idSet = new Set();
@@ -156,9 +155,8 @@ const CuttingManagement: React.FC = () => {
       
       const date = dayjs(order.created_date).format('YYYY-MM-DD');
       const material = order.material_source || '未知';
-      // 编制人：优先使用工装父表的责任人(responsible_person_id)，通过idToNameMap转换为姓名
-      const responsiblePersonId = responsiblePersonMap[order.tooling_id] || '';
-      const responsiblePerson = idToNameMap[responsiblePersonId] || responsiblePersonId || '未分配';
+      // 编制人：直接使用后端返回的责任人姓名
+      const responsiblePerson = order.responsible_person_name || '未分配';
       const groupKey = `${date}_${material}_${responsiblePerson}`;
       
       // 统计分组键出现次数
@@ -380,7 +378,6 @@ const CuttingManagement: React.FC = () => {
         console.log('具体工装ID列表:', toolingIds);
         
         const responsiblePersonMap = await fetchResponsiblePersonMap(toolingIds);
-        console.log('编制信息映射结果:', responsiblePersonMap);
         setResponsibleMap(responsiblePersonMap)
         
         // 对数据进行分组（包含编制信息）
@@ -399,7 +396,7 @@ const CuttingManagement: React.FC = () => {
             })
           }
         }
-        const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap, localIdToName);
+        const groups = groupDataByDateMaterialAndResponsible(items);
         setData(items)
         
         console.log('=== 最终分组结果 ===');
