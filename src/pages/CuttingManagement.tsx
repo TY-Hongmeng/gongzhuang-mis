@@ -155,7 +155,6 @@ const CuttingManagement: React.FC = () => {
       
       const date = dayjs(order.created_date).format('YYYY-MM-DD');
       const material = order.material_source || '未知';
-      // 优先使用订单自带的recorder字段作为编制人，其次才从tooling_id查找
       const responsiblePerson = order.recorder || responsiblePersonMap[order.tooling_id] || '未分配';
       const groupKey = `${date}_${material}_${responsiblePerson}`;
       
@@ -775,7 +774,7 @@ const CuttingManagement: React.FC = () => {
                         {material}
                       </Tag>
                       <span className="text-gray-600 text-lg font-semibold">
-                        编制: {idToNameMap[String(responsiblePerson)] || responsiblePerson}
+                        编制: {responsiblePerson}
                       </span>
                       <span className="text-gray-600 text-sm">
                         共 {orders.length} 条记录

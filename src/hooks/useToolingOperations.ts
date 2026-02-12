@@ -33,7 +33,6 @@ export const useToolingOperations = () => {
 
       // 直接使用 authStore 中的用户信息作为编制人
       const currentUser = user?.real_name || '系统用户'
-      console.log('[useToolingOperations] 当前用户:', currentUser, 'user:', user)
 
       const cuttingOrders = validParts.map((part, index) => {
         const material = materials.find(m => String(m.id) === String(part.material_id))
@@ -64,7 +63,7 @@ export const useToolingOperations = () => {
           created_date: new Date().toISOString(),
           tooling_id: part.tooling_id || null,
           part_id: part.id || null,
-          recorder: currentUser || part.recorder || '系统用户' // 添加编制人信息
+          recorder: currentUser
         }
       })
 
@@ -181,7 +180,7 @@ export const useToolingOperations = () => {
         }
       })
 
-      // 处理外购零件（仅材料来源为“外购/采购”的零件）
+      // 处理外购零件（仅材料来源为"外购/采购"的零件）
       const normalize = (s: string) => {
         const t = String(s || '').replace(/\s+/g, '').toLowerCase()
         if (!t) return ''
@@ -252,7 +251,7 @@ export const useToolingOperations = () => {
       })
 
       if (validOrders.length === 0) {
-        message.warning('没有符合条件的数据可以生成采购单：仅生成标准件或材料来源为“外购”的零件，请检查名称、数量、单位与需求日期')
+        message.warning('没有符合条件的数据可以生成采购单：仅生成标准件或材料来源为"外购"的零件，请检查名称、数量、单位与需求日期')
         return null
       }
 

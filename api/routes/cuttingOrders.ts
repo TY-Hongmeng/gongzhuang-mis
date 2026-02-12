@@ -222,7 +222,7 @@ router.post('/', asyncHandler(async (req, res) => {
       tooling_id: raw.tooling_id || null,
       part_id: raw.part_id || null,
       tooling_info_id: raw.tooling_id || null,
-      recorder: String(raw.recorder || '').trim() || '系统用户' // 添加编制人信息
+      recorder: String(raw.recorder || '').trim() || '系统用户'
     }
     // remarks 列：若传入 remarks 则使用；若仅有 heat_treatment 标记则写入“需调质”
     if (typeof raw.remarks === 'string' && raw.remarks.trim()) {
