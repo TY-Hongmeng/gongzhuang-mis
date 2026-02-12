@@ -132,12 +132,13 @@ const CuttingManagement: React.FC = () => {
   };
 
   // 分组函数 - 包含编制信息
-  const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[], responsiblePersonMap: Record<string, string>) => {
+  const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[], responsiblePersonMap: Record<string, string>, idToNameMap: Record<string, string>) => {
     const groups: Record<string, CuttingOrder[]> = {};
     
     if (DEBUG) console.log(`=== 开始分组处理 ===`);
     if (DEBUG) console.log(`输入订单数量: ${orders.length}`);
     if (DEBUG) console.log(`编制信息映射:`, responsiblePersonMap);
+    if (DEBUG) console.log(`用户ID到姓名映射:`, idToNameMap);
     
     // 检查是否有重复的ID
     const idSet = new Set();
@@ -155,7 +156,9 @@ const CuttingManagement: React.FC = () => {
       
       const date = dayjs(order.created_date).format('YYYY-MM-DD');
       const material = order.material_source || '未知';
-      const responsiblePerson = order.recorder || responsiblePersonMap[order.tooling_id] || '未分配';
+      // 编制人：优先使用工装父表的责任人(responsible_person_id)，通过idToNameMap转换为姓名
+      const responsiblePersonId = responsiblePersonMap[order.tooling_id] || '';
+      const responsiblePerson = idToNameMap[responsiblePersonId] || responsiblePersonId || '未分配';
       const groupKey = `${date}_${material}_${responsiblePerson}`;
       
       // 统计分组键出现次数
@@ -396,7 +399,7 @@ const CuttingManagement: React.FC = () => {
             })
           }
         }
-        const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap);
+        const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap, localIdToName);
         setData(items)
         
         console.log('=== 最终分组结果 ===');
