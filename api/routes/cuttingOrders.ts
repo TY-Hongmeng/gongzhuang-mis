@@ -53,6 +53,8 @@ router.get('/', asyncHandler(async (req, res) => {
         co.created_date,
         co.tooling_id,
         co.part_id,
+        co.recorder,
+        co.remarks,
         ti.category as tooling_category,
         ti.production_unit,
         ti.sets_count
