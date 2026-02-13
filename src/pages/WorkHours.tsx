@@ -402,11 +402,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
       const json = await resp.json()
-      if (json?.success) {
-        // 处理数据，将所有对象转换为基本类型，避免循环引用
-        const rawItems = json.items || []
+      const rawItems = Array.isArray(json?.items)
+        ? json.items
+        : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
+      if (json?.success || rawItems.length > 0) {
         const items = rawItems.map(item => ({
-          // 只保留需要的属性，并转换为基本类型
           id: String(item.id || ''),
           part_inventory_number: String(item.part_inventory_number || ''),
           part_drawing_number: String(item.part_drawing_number || ''),
@@ -422,10 +422,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           completed_quantity: Number(item.completed_quantity || 0),
           device_no: String(item.device_no || ''),
           shift: String(item.shift || ''),
-          // 转换其他可能包含循环引用的属性
           created_at: String(item.created_at || '')
         }))
         setRecentItems(items)
+      } else {
+        setRecentItems([])
       }
     } finally {
       setLoadingRecent(false)
