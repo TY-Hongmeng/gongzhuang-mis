@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { fetchWithFallback } from '../utils/api'
 import { message } from 'antd'
 
@@ -11,6 +11,10 @@ export const useToolingData = () => {
   const [childItemsMap, setChildItemsMap] = useState<Record<string, any[]>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
   const [expandedChildKeys, setExpandedChildKeys] = useState<string[]>([])
+  const partsMapRef = useRef(partsMap)
+  useEffect(() => {
+    partsMapRef.current = partsMap
+  }, [partsMap])
   const partsCacheRef = useRef<Map<string, { items: any[]; ts: number }>>(new Map())
   const childCacheRef = useRef<Map<string, { items: any[]; ts: number }>>(new Map())
   const inflightPartsRef = useRef<Map<string, Promise<any[]>>>(new Map())
@@ -81,8 +85,19 @@ export const useToolingData = () => {
   // 获取零件数据
   const fetchPartsData = useCallback(async (toolingId: string) => {
     const now = Date.now()
+    const localItems = partsMapRef.current[toolingId] || []
     const cached = partsCacheRef.current.get(toolingId)
     if (cached && now - cached.ts < TTL) {
+      if (localItems.length > 0) {
+        const cachedIds = new Set(cached.items.map(item => String(item.id)))
+        const localHasBlank = localItems.some(item => String(item.id || '').startsWith('blank-'))
+        const localDiff = localItems.length !== cached.items.length || localItems.some(item => !cachedIds.has(String(item.id)))
+        if (localHasBlank || localDiff) {
+          partsCacheRef.current.set(toolingId, { items: localItems, ts: now })
+          setPartsMap(prev => ({ ...prev, [toolingId]: localItems }))
+          return localItems
+        }
+      }
       setPartsMap(prev => ({ ...prev, [toolingId]: cached.items }))
       return cached.items
     }
