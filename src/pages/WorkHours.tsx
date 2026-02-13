@@ -825,7 +825,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>盘存编号</label>
               <Select
                 showSearch
-                filterOption={false}
+                filterOption={(input, option) => {
+                  const q = String(input || '').toLowerCase()
+                  const label = String(option?.label || '')
+                  const value = String(option?.value || '')
+                  return label.toLowerCase().includes(q) || value.toLowerCase().includes(q)
+                }}
                 onSearch={(val) => {
                   if (invTimerRef.current) clearTimeout(invTimerRef.current)
                   invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 400)
