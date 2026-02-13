@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1653,23 +1653,24 @@ const ToolingInfoPage: React.FC = () => {
                                (rec as any)?.material_source?.name || 
                                materialSourcesRef.current.find(ms => String(ms.id) === String(rec.material_source_id))?.name || ''
               const newSource = v
+              const nextSourceId = selectedSource?.id || ''
               
               if (rec.id.startsWith('blank-')) {
-                 handlePartSaveRef.current(toolingId, rec.id, 'material_source_id', selectedSource?.id || '')
+                 handlePartSaveRef.current(toolingId, rec.id, 'material_source_id', nextSourceId)
                  return
               }
 
-              const updates: any = { material_source_id: selectedSource?.id || '' }
-              
-              if (oldSource === '外购' && newSource !== '外购') {
-                 if (rec.remarks && rec.remarks.includes('-')) {
-                    updates.remarks = '需调质'
-                 }
-              } else if (newSource === '外购' && oldSource !== '外购') {
-                 updates.remarks = ''
+              if (String(rec.material_source_id || '') !== String(nextSourceId)) {
+                handlePartSaveRef.current(toolingId, rec.id, 'material_source_id', nextSourceId)
               }
-              
-              handlePartBatchSaveRef.current(toolingId, rec.id, updates)
+
+              if (oldSource === '外购' && newSource !== '外购') {
+                if (rec.remarks && rec.remarks.includes('-')) {
+                  handlePartSaveRef.current(toolingId, rec.id, 'remarks', '需调质')
+                }
+              } else if (newSource === '外购' && oldSource !== '外购') {
+                handlePartSaveRef.current(toolingId, rec.id, 'remarks', '')
+              }
             }}
           />
         )
