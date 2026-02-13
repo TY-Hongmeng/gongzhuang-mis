@@ -651,7 +651,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             {showRecent && (
               <Button onClick={handleGoEntry}>返回录入</Button>
             )}
-            <Button icon={<LeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
+            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
           </Space>
         </div>
       {showEntry && (
