@@ -416,38 +416,26 @@ const WorkHours: React.FC = () => {
 
   // 计算子表格中需要合并的列的rowSpan
   const getRowSpanConfig = (data: any[]) => {
-    // 按日期和班次分组，计算每个组的rowSpan
-    const rowSpanMap: Record<string, number> = {};
-    const mergedRows: Record<string, boolean> = {};
-    
-    // 首先遍历数据，计算每个日期和班次组合的行数
-    data.forEach((r, index) => {
-      const key = `${r.work_date}-${r.shift}`;
-      if (!rowSpanMap[key]) {
-        rowSpanMap[key] = 0;
+    const result = Array.from({ length: data.length }, () => ({ shouldRender: true, rowSpan: 1 }))
+    let i = 0
+    while (i < data.length) {
+      const r = data[i]
+      const key = `${r.shift_date || r.work_date}-${r.shift}`
+      let j = i + 1
+      while (j < data.length) {
+        const nr = data[j]
+        const nkey = `${nr.shift_date || nr.work_date}-${nr.shift}`
+        if (nkey !== key) break
+        j++
       }
-      rowSpanMap[key]++;
-    });
-    
-    // 然后创建rowSpan配置
-    return data.map((r, index) => {
-      const key = `${r.work_date}-${r.shift}`;
-      const isMerged = mergedRows[key];
-      
-      if (!isMerged) {
-        // 标记该组已处理
-        mergedRows[key] = true;
-        return {
-          shouldRender: true,
-          rowSpan: rowSpanMap[key]
-        };
-      } else {
-        return {
-          shouldRender: false,
-          rowSpan: 0
-        };
+      const span = j - i
+      result[i] = { shouldRender: true, rowSpan: span }
+      for (let k = i + 1; k < j; k++) {
+        result[k] = { shouldRender: false, rowSpan: 0 }
       }
-    });
+      i = j
+    }
+    return result
   };
 
   // 计算最近提交记录的统计数据，用于日统计、日辅助、日程序列
