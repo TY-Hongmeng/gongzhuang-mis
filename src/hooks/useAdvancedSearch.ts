@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 
 export interface SearchFilters {
   keyword?: string
@@ -11,7 +11,6 @@ export interface SearchFilters {
 
 export const useAdvancedSearch = <T extends Record<string, any>>(data: T[]) => {
   const [filters, setFilters] = useState<SearchFilters>({})
-  const [filteredData, setFilteredData] = useState<T[]>(data)
 
   const getToolingStatus = useCallback((item: T): 'complete' | 'incomplete' | 'warning' => {
     const hasInventoryNumber = !!item.inventory_number && item.inventory_number.trim() !== ''
@@ -27,13 +26,15 @@ export const useAdvancedSearch = <T extends Record<string, any>>(data: T[]) => {
     return 'warning'
   }, [])
 
-  const applyFilters = useCallback((newFilters: SearchFilters) => {
-    setFilters(newFilters)
+  const filteredData = useMemo(() => {
+    if (Object.keys(filters).length === 0) {
+      return data
+    }
 
     let result = [...data]
 
-    if (newFilters.keyword) {
-      const keyword = newFilters.keyword.toLowerCase()
+    if (filters.keyword) {
+      const keyword = filters.keyword.toLowerCase()
       result = result.filter(item => {
         const inventoryNumber = (item.inventory_number || '').toLowerCase()
         const projectName = (item.project_name || '').toLowerCase()
@@ -41,16 +42,16 @@ export const useAdvancedSearch = <T extends Record<string, any>>(data: T[]) => {
       })
     }
 
-    if (newFilters.productionUnit) {
-      result = result.filter(item => item.production_unit === newFilters.productionUnit)
+    if (filters.productionUnit) {
+      result = result.filter(item => item.production_unit === filters.productionUnit)
     }
 
-    if (newFilters.category) {
-      result = result.filter(item => item.category === newFilters.category)
+    if (filters.category) {
+      result = result.filter(item => item.category === filters.category)
     }
 
-    if (newFilters.dateRange && newFilters.dateRange.length === 2) {
-      const [startDate, endDate] = newFilters.dateRange
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      const [startDate, endDate] = filters.dateRange
       result = result.filter(item => {
         const receivedDate = item.received_date
         if (!receivedDate) return false
@@ -58,25 +59,28 @@ export const useAdvancedSearch = <T extends Record<string, any>>(data: T[]) => {
       })
     }
 
-    if (newFilters.status && newFilters.status !== 'all') {
-      result = result.filter(item => getToolingStatus(item) === newFilters.status)
+    if (filters.status && filters.status !== 'all') {
+      result = result.filter(item => getToolingStatus(item) === filters.status)
     }
 
-    if (newFilters.projectName) {
-      const projectName = newFilters.projectName.toLowerCase()
+    if (filters.projectName) {
+      const projectName = filters.projectName.toLowerCase()
       result = result.filter(item => {
         const name = (item.project_name || '').toLowerCase()
         return name.includes(projectName)
       })
     }
 
-    setFilteredData(result)
-  }, [data, getToolingStatus])
+    return result
+  }, [data, filters, getToolingStatus])
+
+  const applyFilters = useCallback((newFilters: SearchFilters) => {
+    setFilters(newFilters)
+  }, [])
 
   const resetFilters = useCallback(() => {
     setFilters({})
-    setFilteredData(data)
-  }, [data])
+  }, [])
 
   const activeFiltersCount = useMemo(() => {
     let count = 0

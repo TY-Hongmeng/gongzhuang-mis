@@ -70,9 +70,10 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   const selectOptions = useMemo(() => getSelectOptions(), [getSelectOptions])
 
   useEffect(() => {
-    if (!isEditing && String(value ?? '') !== lastValueRef.current) {
-      lastValueRef.current = String(value ?? '')
-      setEditValue(String(value ?? ''))
+    const strValue = String(value ?? '')
+    if (!isEditing) {
+      lastValueRef.current = strValue
+      setEditValue(strValue)
     }
   }, [value, isEditing])
 
@@ -175,14 +176,12 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
             lastValueRef.current = newValue
           } finally {
             isSavingRef.current = false
+            saveTriggeredRef.current = false
           }
-          setTimeout(() => {
-              if (saveTriggeredRef.current) {
-                  setIsEditing(false)
-              }
-          }, 0)
+          setIsEditing(false)
         }}
         onBlur={() => {
+          saveTriggeredRef.current = false
           setIsEditing(false)
         }}
         onKeyDown={(e) => {
