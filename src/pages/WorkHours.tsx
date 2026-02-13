@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space } from 'antd'
+import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal } from 'antd'
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
@@ -35,10 +35,15 @@ const WorkHoursFormStyle = {
 
 const { Title } = Typography
 
-const WorkHours: React.FC = () => {
+type WorkHoursMode = 'entry' | 'recent'
+
+const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [form] = Form.useForm()
+  const viewMode = mode || 'entry'
+  const showEntry = viewMode === 'entry'
+  const showRecent = viewMode === 'recent'
   const [invOptions, setInvOptions] = React.useState<any[]>([])
   const [loadingInv, setLoadingInv] = React.useState(false)
   const [selectedInv, setSelectedInv] = React.useState<string>('')
@@ -286,12 +291,16 @@ const WorkHours: React.FC = () => {
   }
 
   React.useEffect(() => {
-    fetchDevices()
     fetchRecent()
-    fetchFixedOptions()
-    fetchPartNameMap()
-    fetchInventory('')
-  }, [])
+    if (viewMode === 'entry') {
+      fetchDevices()
+      fetchFixedOptions()
+      fetchInventory('')
+    }
+    if (viewMode === 'recent') {
+      fetchPartNameMap()
+    }
+  }, [viewMode])
 
   // 获取零件名称映射
   const fetchPartNameMap = async () => {
@@ -361,14 +370,23 @@ const WorkHours: React.FC = () => {
   }
 
   const handleRefresh = async () => {
+    if (showRecent) {
+      setSelectedRecentKeys([])
+      await fetchRecent()
+      await fetchPartNameMap()
+      return
+    }
     setSelectedInv('')
     setSelectedInfo({})
     setProcessOptions([])
     setDeviceName('')
     form.resetFields()
-    await Promise.all([fetchInventory(''), fetchDevices()])
+    await Promise.all([fetchInventory(''), fetchDevices(), fetchFixedOptions()])
     await fetchRecent()
   }
+
+  const handleGoRecent = () => navigate('/work-hours-recent')
+  const handleGoEntry = () => navigate('/work-hours')
 
   const fetchRecent = async () => {
     try {
@@ -440,6 +458,7 @@ const WorkHours: React.FC = () => {
 
   // 计算最近提交记录的统计数据，用于日统计、日辅助、日程序列
   const recentStats = React.useMemo(() => {
+    if (!showRecent) return {}
     const statsMap: Record<string, { statHours: number; auxHours: number; procHours: number; runningCount: number }> = {};
     const deviceSetMap: Record<string, Set<string>> = {};
     
@@ -480,10 +499,11 @@ const WorkHours: React.FC = () => {
     });
     
     return statsMap;
-  }, [recentItems]);
+  }, [recentItems, showRecent]);
 
   // 将最近提交表格的columns数组提取出来，并使用useMemo缓存，避免每次渲染都重新创建
   const recentColumns = React.useMemo(() => {
+    if (!showRecent) return [] as any
     // 需要合并的列
     const mergeColumns = ['shift_date', 'shift', 'daily_stat_hours', 'daily_aux_hours', 'daily_proc_hours', 'running_count'];
     
@@ -614,17 +634,26 @@ const WorkHours: React.FC = () => {
       }
       return col;
     });
-  }, [recentItems, recentStats, partNameMap])
+  }, [recentItems, recentStats, partNameMap, showRecent])
+
+  const titleText = showRecent ? '最近提交' : '工时录入'
 
   return (
     <div className="p-3 max-w-[520px] mx-auto">
       <div className="flex items-center justify-between mb-3">
-          <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-pink-500 mb-2 mr-2" /> 工时录入</Title>
+          <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-pink-500 mb-2 mr-2" /> {titleText}</Title>
           <Space>
             <Button icon={<ReloadOutlined />} onClick={handleRefresh}>刷新</Button>
+            {showEntry && (
+              <Button onClick={handleGoRecent}>最近提交</Button>
+            )}
+            {showRecent && (
+              <Button onClick={handleGoEntry}>返回录入</Button>
+            )}
             <Button icon={<LeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
           </Space>
         </div>
+      {showEntry && (
       <Card styles={{ body: { padding: 10 } }}>
         <Form
           layout="vertical"
@@ -940,11 +969,25 @@ const WorkHours: React.FC = () => {
           </Form.Item>
         </Form>
       </Card>
+      )}
+      {showRecent && (
       <Card className="mt-3" styles={{ body: { padding: 10 } }}>
         <div className="flex items-center justify-between mb-2">
           <Typography.Text strong>最近提交</Typography.Text>
           <Button danger disabled={!selectedRecentKeys.length} onClick={async () => {
             try {
+              if (!selectedRecentKeys.length) return
+              const ok = await new Promise<boolean>((resolve) => {
+                Modal.confirm({
+                  title: '确认删除',
+                  content: `将永久删除 ${selectedRecentKeys.length} 条记录，确定执行？`,
+                  okText: '确定',
+                  cancelText: '取消',
+                  onOk: () => resolve(true),
+                  onCancel: () => resolve(false)
+                })
+              })
+              if (!ok) return
               message.loading({ content: '删除中...', key: 'del' })
               await Promise.all(selectedRecentKeys.map((id) => fetchWithFallback(`/api/tooling/work-hours/${id}`, { method: 'DELETE' })))
               message.success({ content: '删除成功', key: 'del' })
@@ -968,6 +1011,7 @@ const WorkHours: React.FC = () => {
           />
         </div>
       </Card>
+      )}
     </div>
   )
 }

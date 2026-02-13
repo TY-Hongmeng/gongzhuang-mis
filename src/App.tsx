@@ -50,7 +50,8 @@ export default function App() {
             <Route path="part-types" element={<ProtectedRoute requiredModule="base_data"><PartTypes /></ProtectedRoute>} />
             <Route path="cutting-management" element={<ProtectedRoute requiredModule="cutting"><CuttingManagement /></ProtectedRoute>} />
             <Route path="purchase-management" element={<ProtectedRoute requiredModule="purchase"><PurchaseManagement /></ProtectedRoute>} />
-            <Route path="work-hours" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours /></ProtectedRoute>} />
+            <Route path="work-hours" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours mode="entry" /></ProtectedRoute>} />
+            <Route path="work-hours-recent" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours mode="recent" /></ProtectedRoute>} />
             <Route path="work-hours-management" element={<ProtectedRoute requiredModule="work_hours"><WorkHoursManagement /></ProtectedRoute>} />
           </Route>
           
