@@ -250,12 +250,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
   const handlePartEdit = useCallback(async (toolingId: string, partId: string, key: string, value: any) => {
     try {
-      setPartsMap(prev => {
-        const list = prev[toolingId] || []
-        const updated = list.map(p => p.id === partId ? { ...p, [key]: value } : p)
-        return { ...prev, [toolingId]: updated }
-      })
-
       if (!String(partId || '').startsWith('blank-')) {
         const payload: any = {}
         if (key === 'part_quantity') {
@@ -268,24 +262,28 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
         const success = await savePartData(partId, payload)
         if (success) {
-          setTimeout(() => { fetchPartsData(toolingId) }, 200)
+          setPartsMap(prev => {
+            const list = prev[toolingId] || []
+            const updated = list.map(p => p.id === partId ? { ...p, [key]: value } : p)
+            return { ...prev, [toolingId]: updated }
+          })
         } else {
           message.error('保存零件失败')
         }
+      } else {
+        setPartsMap(prev => {
+          const list = prev[toolingId] || []
+          const updated = list.map(p => p.id === partId ? { ...p, [key]: value } : p)
+          return { ...prev, [toolingId]: updated }
+        })
       }
     } catch (error) {
       message.error('保存零件失败')
     }
-  }, [savePartData, fetchPartsData, setPartsMap])
+  }, [savePartData, setPartsMap])
 
   const handleChildItemEdit = useCallback(async (toolingId: string, id: string, key: string, value: any) => {
     try {
-      setChildItemsMap(prev => {
-        const list = prev[toolingId] || []
-        const updated = list.map(item => item.id === id ? { ...item, [key]: key === 'quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value } : item)
-        return { ...prev, [toolingId]: updated }
-      })
-
       if (!String(id || '').startsWith('blank-')) {
         const updateData: any = {}
         if (key === 'quantity') {
@@ -302,7 +300,11 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           body: JSON.stringify(updateData)
         })
         if (response.ok) {
-          setTimeout(() => { fetchChildItemsData(toolingId) }, 200)
+          setChildItemsMap(prev => {
+            const list = prev[toolingId] || []
+            const updated = list.map(item => item.id === id ? { ...item, [key]: key === 'quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value } : item)
+            return { ...prev, [toolingId]: updated }
+          })
         } else {
           message.error('保存标准件失败')
         }
@@ -340,7 +342,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             const updated = list.map(item => item.id === id ? { ...item, ...created, id: created.id } : item)
             return { ...prev, [toolingId]: updated }
           })
-          setTimeout(() => { fetchChildItemsData(toolingId) }, 200)
         } else {
           message.error('创建标准件失败')
         }
@@ -348,7 +349,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
     } catch (error) {
       message.error('保存标准件失败')
     }
-  }, [createChildItem, fetchChildItemsData, setChildItemsMap])
+  }, [createChildItem, setChildItemsMap])
 
   const handleToolingDelete = useCallback(async (id: string) => {
     Modal.confirm({

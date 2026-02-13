@@ -1,11 +1,21 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Input, InputRef, Select } from 'antd'
+
+interface SelectOption {
+  value: string
+  label: string
+}
 
 interface EditableCellProps {
   value: string | undefined
   record: any
   dataIndex: string
   options?: string[]
+  materialOptions?: SelectOption[]
+  materialSourceOptions?: SelectOption[]
+  partCategoryOptions?: SelectOption[]
+  productionUnitOptions?: SelectOption[]
+  categoryOptions?: SelectOption[]
   onSave: (id: string, key: string, value: string) => void
   customStyle?: React.CSSProperties
   renderDisplay?: (value: string | undefined, record: any, dataIndex: string) => React.ReactNode
@@ -16,6 +26,11 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   record, 
   dataIndex, 
   options, 
+  materialOptions,
+  materialSourceOptions,
+  partCategoryOptions,
+  productionUnitOptions,
+  categoryOptions,
   onSave,
   customStyle,
   renderDisplay
@@ -30,9 +45,29 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   const lastValueRef = useRef(String(value ?? ''))
   const compositionRef = useRef(false)
 
-  const selectOptions = useMemo(() => {
-    return options ? options.map(opt => ({ label: opt, value: opt })) : []
-  }, [options])
+  const getSelectOptions = useCallback(() => {
+    if (dataIndex === 'material_id' && materialOptions) {
+      return materialOptions
+    }
+    if (dataIndex === 'material_source_id' && materialSourceOptions) {
+      return materialSourceOptions
+    }
+    if (dataIndex === 'part_category' && partCategoryOptions) {
+      return partCategoryOptions
+    }
+    if (dataIndex === 'production_unit' && productionUnitOptions) {
+      return productionUnitOptions
+    }
+    if (dataIndex === 'category' && categoryOptions) {
+      return categoryOptions
+    }
+    if (options) {
+      return options.map(opt => ({ label: opt, value: opt }))
+    }
+    return []
+  }, [dataIndex, materialOptions, materialSourceOptions, partCategoryOptions, productionUnitOptions, categoryOptions, options])
+
+  const selectOptions = useMemo(() => getSelectOptions(), [getSelectOptions])
 
   useEffect(() => {
     if (!isEditing && String(value ?? '') !== lastValueRef.current) {
@@ -51,7 +86,7 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
     if (saveTriggeredRef.current || isSavingRef.current) {
       return
     }
-    if (options && options.length > 0) {
+    if (selectOptions.length > 0) {
       setIsEditing(false)
       return
     }
@@ -86,7 +121,7 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
 
   useEffect(() => {
     if (isEditing) {
-      if (options) {
+      if (selectOptions.length > 0) {
         setTimeout(() => {
           selectRef.current?.focus()
         }, 0)
@@ -95,7 +130,7 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
         inputRef.current?.select?.()
       }
     }
-  }, [isEditing, options])
+  }, [isEditing, selectOptions])
 
   if (!isEditing) {
     const displayValue = String(editValue ?? '')
@@ -125,7 +160,7 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
     )
   }
 
-  if (options) {
+  if (selectOptions.length > 0) {
     return (
       <Select
         ref={selectRef}
@@ -190,7 +225,12 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   return prev.value === next.value &&
          prev.record === next.record &&
          prev.dataIndex === next.dataIndex &&
-         prev.options === next.options
+         prev.options === next.options &&
+         prev.materialOptions === next.materialOptions &&
+         prev.materialSourceOptions === next.materialSourceOptions &&
+         prev.partCategoryOptions === next.partCategoryOptions &&
+         prev.productionUnitOptions === next.productionUnitOptions &&
+         prev.categoryOptions === next.categoryOptions
 })
 
 export default EditableCell
