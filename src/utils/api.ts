@@ -22,12 +22,14 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/tooling',
     '/api/tooling/devices', 
     '/api/tooling/fixed-inventory-options',
+    '/api/tooling/org',
     '/api/auth',
     '/api/cutting-orders',
     '/api/purchase-orders',
     '/api/backup-materials',
     '/api/manual-plans',
-    '/api/users'
+    '/api/users',
+    '/api/companies'
   ]
   const isApiPath = apiPaths.some(path => cleanUrl.startsWith(path))
   
@@ -1976,16 +1978,93 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       }
 
 
+      // Companies
+      if (method === 'GET' && path === '/api/companies') {
+        const qs = getQuery(cleanUrl)
+        const id = qs.get('id')
+        let query = scopedClient.from('companies').select('*')
+        if (id) query = query.eq('id', id)
+        const { data, error } = await query
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        const items = Array.isArray(data) ? data : []
+        const first = items[0]
+        return jsonResponse({ success: true, items, data: first })
+      }
+
       // Workshops & teams (organization data)
       if (method === 'GET' && path === '/api/tooling/org/workshops') {
-        const { data, error } = await supabase.from('workshops').select('*')
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        const qs = getQuery(cleanUrl)
+        const companyId = qs.get('company_id')
+        let query = scopedClient.from('workshops').select('*')
+        if (companyId) query = query.eq('company_id', companyId)
+        const { data, error } = await query
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, items: data || [], data: data || [] })
       }
+      if (method === 'POST' && path === '/api/tooling/org/workshops') {
+        const body = await readBody()
+        const { data, error } = await scopedClient
+          .from('workshops')
+          .insert({ company_id: body.company_id || null, name: body.name || '' })
+          .select('*')
+          .single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
+      }
+      if (method === 'PUT' && path.match(/^\/api\/tooling\/org\/workshops\/[^\/]+$/)) {
+        const id = path.split('/').pop()
+        if (!id) return jsonResponse({ success: false, error: 'Invalid workshop ID' }, 400)
+        const body = await readBody()
+        const { data, error } = await scopedClient.from('workshops').update(body).eq('id', id).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
+      }
+      if (method === 'DELETE' && path.match(/^\/api\/tooling\/org\/workshops\/[^\/]+$/)) {
+        const id = path.split('/').pop()
+        if (!id) return jsonResponse({ success: false, error: 'Invalid workshop ID' }, 400)
+        const { error } = await scopedClient.from('workshops').delete().eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
+
       if (method === 'GET' && path === '/api/tooling/org/teams') {
-        const { data, error } = await supabase.from('teams').select('*')
-        if (error) return jsonResponse({ data: [] })
-        return jsonResponse({ data: data || [] })
+        const qs = getQuery(cleanUrl)
+        const companyId = qs.get('company_id')
+        const workshopId = qs.get('workshop_id')
+        let query = scopedClient.from('teams').select('*')
+        if (companyId) query = query.eq('company_id', companyId)
+        if (workshopId) query = query.eq('workshop_id', workshopId)
+        const { data, error } = await query
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, items: data || [], data: data || [] })
+      }
+      if (method === 'POST' && path === '/api/tooling/org/teams') {
+        const body = await readBody()
+        const payload: any = {
+          company_id: body.company_id || null,
+          workshop_id: body.workshop_id || null,
+          name: body.name || ''
+        }
+        if (body.aux_coeff !== undefined) payload.aux_coeff = body.aux_coeff
+        if (body.proc_coeff !== undefined) payload.proc_coeff = body.proc_coeff
+        const { data, error } = await scopedClient.from('teams').insert(payload).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
+      }
+      if (method === 'PUT' && path.match(/^\/api\/tooling\/org\/teams\/[^\/]+$/)) {
+        const id = path.split('/').pop()
+        if (!id) return jsonResponse({ success: false, error: 'Invalid team ID' }, 400)
+        const body = await readBody()
+        const { data, error } = await scopedClient.from('teams').update(body).eq('id', id).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
+      }
+      if (method === 'DELETE' && path.match(/^\/api\/tooling\/org\/teams\/[^\/]+$/)) {
+        const id = path.split('/').pop()
+        if (!id) return jsonResponse({ success: false, error: 'Invalid team ID' }, 400)
+        const { error } = await scopedClient.from('teams').delete().eq('id', id)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
       }
 
       // Parts inventory list

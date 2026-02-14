@@ -1,6 +1,7 @@
 import React from 'react'
 import { Card, Typography, Button, Tree, Modal, Form, Input, message } from 'antd'
 import { useParams, useNavigate } from 'react-router-dom'
+import { fetchWithFallback } from '../utils/api'
 
 const { Title } = Typography
 
@@ -15,7 +16,7 @@ const CompanyOrg: React.FC = () => {
 
   const load = async () => {
     try {
-      const c = await fetch(`/api/companies?id=${id}`)
+      const c = await fetchWithFallback(`/api/companies?id=${id}`)
       const cj = await c.json().catch(() => ({}))
       const companyItem = Array.isArray(cj?.items)
         ? cj.items[0]
@@ -23,9 +24,9 @@ const CompanyOrg: React.FC = () => {
       const nextCompanyName = String(companyItem?.name || '')
       setCompanyName(nextCompanyName)
 
-      const ws = await fetch(`/api/tooling/org/workshops?company_id=${id}`)
+      const ws = await fetchWithFallback(`/api/tooling/org/workshops?company_id=${id}`)
       const wj = await ws.json().catch(() => ({}))
-      const ts = await fetch(`/api/tooling/org/teams?company_id=${id}`)
+      const ts = await fetchWithFallback(`/api/tooling/org/teams?company_id=${id}`)
       const tj = await ts.json().catch(() => ({}))
       const wsItems = Array.isArray(wj?.items) ? wj.items : (Array.isArray(wj?.data) ? wj.data : [])
       const tsItems = Array.isArray(tj?.items) ? tj.items : (Array.isArray(tj?.data) ? tj.data : [])
@@ -70,9 +71,9 @@ const CompanyOrg: React.FC = () => {
       if (editingNode.type === 'workshop') {
         if (editingNode.key) {
           const idStr = editingNode.key.split('w-')[1]
-          await fetch(`/api/tooling/org/workshops/${idStr}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: values.name }) })
+          await fetchWithFallback(`/api/tooling/org/workshops/${idStr}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: values.name }) })
         } else {
-          await fetch('/api/tooling/org/workshops', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: id, name: values.name }) })
+          await fetchWithFallback('/api/tooling/org/workshops', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: id, name: values.name }) })
         }
       } else {
         if (editingNode.key) {
@@ -82,7 +83,7 @@ const CompanyOrg: React.FC = () => {
             body.aux_coeff = values.aux_coeff ?? 1
             body.proc_coeff = values.proc_coeff ?? 1
           }
-          await fetch(`/api/tooling/org/teams/${idStr}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          await fetchWithFallback(`/api/tooling/org/teams/${idStr}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         } else {
           const parentWorkshopId = editingNode?.parent?.data?.id
           const body: any = { company_id: id, workshop_id: parentWorkshopId || null, name: values.name }
@@ -90,7 +91,7 @@ const CompanyOrg: React.FC = () => {
             body.aux_coeff = values.aux_coeff ?? 1
             body.proc_coeff = values.proc_coeff ?? 1
           }
-          await fetch('/api/tooling/org/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          await fetchWithFallback('/api/tooling/org/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         }
       }
       setModalOpen(false)
@@ -105,10 +106,10 @@ const CompanyOrg: React.FC = () => {
     try {
       if (node.type === 'workshop') {
         const idStr = node.key.split('w-')[1]
-        await fetch(`/api/tooling/org/workshops/${idStr}`, { method: 'DELETE' })
+        await fetchWithFallback(`/api/tooling/org/workshops/${idStr}`, { method: 'DELETE' })
       } else {
         const idStr = node.key.split('t-')[1]
-        await fetch(`/api/tooling/org/teams/${idStr}`, { method: 'DELETE' })
+        await fetchWithFallback(`/api/tooling/org/teams/${idStr}`, { method: 'DELETE' })
       }
       message.success('已删除')
       load()
