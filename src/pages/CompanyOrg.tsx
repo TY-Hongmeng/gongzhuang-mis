@@ -17,20 +17,26 @@ const CompanyOrg: React.FC = () => {
     try {
       const c = await fetch(`/api/companies?id=${id}`)
       const cj = await c.json().catch(() => ({}))
-      setCompanyName(cj?.data?.name || '')
+      const companyItem = Array.isArray(cj?.items)
+        ? cj.items[0]
+        : (Array.isArray(cj?.data) ? cj.data[0] : (cj?.data || cj))
+      const nextCompanyName = String(companyItem?.name || '')
+      setCompanyName(nextCompanyName)
 
       const ws = await fetch(`/api/tooling/org/workshops?company_id=${id}`)
-      const wj = await ws.json()
+      const wj = await ws.json().catch(() => ({}))
       const ts = await fetch(`/api/tooling/org/teams?company_id=${id}`)
-      const tj = await ts.json()
-      const workshops = (wj.items || []).map((w: any) => ({ key: `w-${w.id}`, title: w.name, type: 'workshop', data: w }))
-      const teams = (tj.items || []).map((t: any) => ({ key: `t-${t.id}`, title: t.name, type: 'team', data: t }))
+      const tj = await ts.json().catch(() => ({}))
+      const wsItems = Array.isArray(wj?.items) ? wj.items : (Array.isArray(wj?.data) ? wj.data : [])
+      const tsItems = Array.isArray(tj?.items) ? tj.items : (Array.isArray(tj?.data) ? tj.data : [])
+      const workshops = wsItems.map((w: any) => ({ key: `w-${w.id}`, title: w.name, type: 'workshop', data: w }))
+      const teams = tsItems.map((t: any) => ({ key: `t-${t.id}`, title: t.name, type: 'team', data: t }))
       const wsNodes = workshops.map((w: any) => ({
         ...w,
         children: teams.filter((t: any) => t.data?.workshop_id === w.data.id)
       }))
       const unassignedTeams = teams.filter((t: any) => !t.data?.workshop_id)
-      const root = { key: `c-${id}`, title: companyName || '公司', children: [...wsNodes, ...unassignedTeams] }
+      const root = { key: `c-${id}`, title: nextCompanyName || '公司', children: [...wsNodes, ...unassignedTeams] }
       setTreeData([root])
     } catch (e) {}
   }
