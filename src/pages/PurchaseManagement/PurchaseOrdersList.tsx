@@ -291,6 +291,7 @@ export default function PurchaseOrdersList() {
   }, [])
 
   const filteredData = useMemo(() => {
+    if (isTechnician && !teamsLoaded) return []
     let arr = data
       .filter(item => !hiddenIds.includes(item.id) && !approvalHiddenIds.includes(item.id))
       .filter(item => sourceFilter === '全部' ? true : item.source === sourceFilter)
