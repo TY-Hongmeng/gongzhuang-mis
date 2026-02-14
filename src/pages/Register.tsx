@@ -219,8 +219,8 @@ const Register: React.FC = () => {
                   const wj = await ws.json()
                   const ts = await fetch(`/api/tooling/org/teams?company_id=${companyId}`)
                   const tj = await ts.json()
-                  const wsItems = wj.items || []
-                  const tsItems = tj.items || []
+                  const wsItems = Array.isArray(wj?.items) ? wj.items : (Array.isArray(wj?.data) ? wj.data : [])
+                  const tsItems = Array.isArray(tj?.items) ? tj.items : (Array.isArray(tj?.data) ? tj.data : [])
                   setWorkshops(wsItems)
                   setHasWorkshops(wsItems.length > 0)
                   const rid = form.getFieldValue('roleId')
@@ -268,7 +268,8 @@ const Register: React.FC = () => {
                       try {
                         const ts = await fetch(`/api/tooling/org/teams?company_id=${cid}`)
                         const tj = await ts.json()
-                        const techTeams = (tj.items || []).filter((t: any) => String(t.name || '').includes('技术组'))
+                        const baseTeams = Array.isArray(tj?.items) ? tj.items : (Array.isArray(tj?.data) ? tj.data : [])
+                        const techTeams = baseTeams.filter((t: any) => String(t.name || '').includes('技术组'))
                         setTeams(techTeams)
                       } catch {}
                     } else {
@@ -303,7 +304,7 @@ const Register: React.FC = () => {
                       <Select placeholder="请选择车间" className="rounded-lg" onChange={async (wid) => {
                         const ts = await fetch(`/api/tooling/org/teams?company_id=${form.getFieldValue('companyId')}&workshop_id=${wid}`)
                         const tj = await ts.json()
-                        const nextTeams = tj.items || []
+                        const nextTeams = Array.isArray(tj?.items) ? tj.items : (Array.isArray(tj?.data) ? tj.data : [])
                         setTeams(nextTeams)
                         form.setFieldsValue({ teamId: undefined })
                       }}>

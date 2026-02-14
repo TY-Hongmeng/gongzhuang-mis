@@ -188,7 +188,7 @@ const Companies: React.FC = () => {
       width: 200,
       align: 'center',
       render: (_: any, record: Company) => (
-        <Button type="link" onClick={() => window.location.href = `/company-org/${record.id}`}>组织机构</Button>
+        <Button type="link" onClick={() => navigate(`/company-org/${record.id}`)}>组织机构</Button>
       )
     },
     {
