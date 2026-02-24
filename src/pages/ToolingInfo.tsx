@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -282,6 +282,7 @@ const ToolingInfoPage: React.FC = () => {
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
   const [statusTick, setStatusTick] = useState(0)
+  const [tableScrollY, setTableScrollY] = useState(600)
   const statusColorMap: Record<string, string> = {
     '审批中': '#faad14',
     '采购中': '#1890ff',
@@ -1610,6 +1611,21 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     handleChildItemSaveRef.current = handleChildItemSave
   }, [handleChildItemSave])
+  useEffect(() => {
+    const calc = () => {
+      const el = tableWrapRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const h = window.innerHeight - rect.top - 16
+      setTableScrollY(Math.max(320, Math.floor(h)))
+    }
+    const raf = requestAnimationFrame(calc)
+    window.addEventListener('resize', calc)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', calc)
+    }
+  }, [filterSearch, filterUnit, filterCategory, expandedRowKeys.length])
   
   const handleDeleteChildItemRef = useRef(handleDeleteChildItem)
   useEffect(() => {
@@ -4083,7 +4099,7 @@ const ToolingInfoPage: React.FC = () => {
   ]
 
   return (
-    <Card>
+    <Card style={{ height: 'calc(100vh - 24px)' }} bodyStyle={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="flex items-center justify-between mb-4">
         <Title level={2} className="mb-0">
           <ToolOutlined className="text-3xl text-red-500 mb-2" /> 工装信息
@@ -4326,7 +4342,7 @@ const ToolingInfoPage: React.FC = () => {
           allowClear
         />
       </div>
-        <div ref={tableWrapRef}>
+        <div ref={tableWrapRef} style={{ flex: 1, minHeight: 0 }}>
           <style>{`
           .excel-table { --row-h: 32px; }
           .excel-table .ant-table-thead > tr > th { height: var(--row-h) !important; }
@@ -4352,7 +4368,7 @@ const ToolingInfoPage: React.FC = () => {
           columns={columns}
           pagination={false}
           bordered={false}
-          scroll={{ y: 600 }}
+          scroll={{ y: tableScrollY }}
           locale={{ emptyText: '' }}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
