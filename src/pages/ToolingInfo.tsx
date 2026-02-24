@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -105,6 +105,16 @@ const shouldAutoFillRecorder = (row: RowItem): boolean => {
   return fieldsToCheck.some(field => field && field.toString().trim() !== '')
 }
 
+const isDateString = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim())
+const normalizeDateInput = (value: string) => {
+  const v = String(value || '').trim()
+  const m = v.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/)
+  if (!m) return v
+  const mm = String(Number(m[2])).padStart(2, '0')
+  const dd = String(Number(m[3])).padStart(2, '0')
+  return `${m[1]}-${mm}-${dd}`
+}
+
 const ExpandedSubTables: React.FC<{
   toolingId: string
   parts: PartItem[]
@@ -118,6 +128,7 @@ const ExpandedSubTables: React.FC<{
   setSelectedRowKeys: (keys: string[] | ((prev: string[]) => string[])) => void
   onAddPart: () => void
   onAddChildItem: () => void
+  statusTick: number
 }> = React.memo(({
   toolingId,
   parts,
@@ -130,8 +141,14 @@ const ExpandedSubTables: React.FC<{
   selectedRowKeys,
   setSelectedRowKeys,
   onAddPart,
-  onAddChildItem
+  onAddChildItem,
+  statusTick
 }) => {
+  const isPartCompleted = (rec: PartItem): boolean => {
+    void statusTick
+    const v = localStorage.getItem(`status_part_${rec.id}`) || ''
+    return isDateString(v)
+  }
   const isPartReady = (rec: PartItem): boolean => {
     const nameOk = !!String(rec.part_name || '').trim()
     const q = rec.part_quantity
@@ -142,6 +159,11 @@ const ExpandedSubTables: React.FC<{
     const applicantOk = !!String(parentApplicant).trim()
     const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk
     return ready
+  }
+  const isChildCompleted = (rec: ChildItem): boolean => {
+    void statusTick
+    const v = localStorage.getItem(`status_child_${rec.id}`) || ''
+    return isDateString(v)
   }
   const isChildReady = (rec: ChildItem): boolean => {
     const nameOk = !!String(rec.name || '').trim()
@@ -168,7 +190,9 @@ const ExpandedSubTables: React.FC<{
           bordered={false}
           size="small"
           scroll={{ y: 320 }}
-          onRow={(rec: any) => ({ className: isPartReady(rec) ? 'text-blue-600' : undefined })}
+          onRow={(rec: any) => ({
+            className: isPartCompleted(rec) ? 'text-green-600' : (isPartReady(rec) ? 'text-blue-600' : undefined)
+          })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5)),
             onChange: (keys) => {
@@ -205,7 +229,9 @@ const ExpandedSubTables: React.FC<{
           bordered={false}
           size="small"
           scroll={{ y: 320 }}
-          onRow={(rec: any) => ({ className: isChildReady(rec) ? 'text-blue-600' : undefined })}
+          onRow={(rec: any) => ({
+            className: isChildCompleted(rec) ? 'text-green-600' : (isChildReady(rec) ? 'text-blue-600' : undefined)
+          })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
             onChange: (keys) => {
@@ -263,7 +289,25 @@ const ToolingInfoPage: React.FC = () => {
   }
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
+    if (isDateString(status)) {
+      return <span style={{ color: '#52c41a', fontWeight: 600 }}>{status}</span>
+    }
     return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
+  }, [])
+  const saveStatusInput = useCallback((type: 'part' | 'child', id: string, value: string) => {
+    const key = type === 'part' ? `status_part_${id}` : `status_child_${id}`
+    const normalized = normalizeDateInput(value)
+    if (!normalized) {
+      localStorage.removeItem(key)
+      window.dispatchEvent(new Event('status_updated'))
+      return
+    }
+    if (!isDateString(normalized)) {
+      message.error('日期格式应为YYYY-MM-DD')
+      return
+    }
+    localStorage.setItem(key, normalized)
+    window.dispatchEvent(new Event('status_updated'))
   }, [])
   const getPurchaseStatus = useCallback((type: 'part' | 'child', id: string) => {
     void statusTick
@@ -1797,7 +1841,6 @@ const ToolingInfoPage: React.FC = () => {
         width: 100,
         render: (_text: any, rec: PartItem) => {
           const purchaseStatus = getPurchaseStatus('part', String(rec.id || ''))
-          if (purchaseStatus) return renderStatusText(purchaseStatus)
           const nameOk = !!String(rec.part_name || '').trim()
           const q = rec.part_quantity
           const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
@@ -1809,7 +1852,19 @@ const ToolingInfoPage: React.FC = () => {
           const normalized = String(msName || '').replace(/\s+/g, '').toLowerCase()
           const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
           const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
-          return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+          return (
+            <EditableCell
+              value={purchaseStatus}
+              record={rec as any}
+              dataIndex={'__status' as any}
+              onSave={(pid, _k, v) => saveStatusInput('part', String(pid || ''), v)}
+              renderDisplay={(val) => {
+                const raw = String(val || '').trim()
+                if (raw) return renderStatusText(raw)
+                return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+              }}
+            />
+          )
         }
       },
       {
@@ -1888,7 +1943,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [getPurchaseStatus, renderStatusText])
+  }, [getPurchaseStatus, renderStatusText, saveStatusInput])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -1973,7 +2028,6 @@ const ToolingInfoPage: React.FC = () => {
         width: 120,
         render: (_text: any, rec: ChildItem) => {
           const purchaseStatus = getPurchaseStatus('child', String(rec.id || ''))
-          if (purchaseStatus) return renderStatusText(purchaseStatus)
           const nameOk = !!String(rec.name || '').trim()
           const modelOk = !!String(rec.model || '').trim()
           const qtyOk = Number(rec.quantity || 0) > 0
@@ -1983,7 +2037,19 @@ const ToolingInfoPage: React.FC = () => {
           const prodUnitOk = !!String(parentUnit).trim()
           const applicantOk = !!String(parentApplicant).trim()
           const ready = nameOk && modelOk && qtyOk && unitOk && demandDateOk && projectOk && prodUnitOk && applicantOk
-          return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+          return (
+            <EditableCell
+              value={purchaseStatus}
+              record={rec as any}
+              dataIndex={'__status' as any}
+              onSave={(pid, _k, v) => saveStatusInput('child', String(pid || ''), v)}
+              renderDisplay={(val) => {
+                const raw = String(val || '').trim()
+                if (raw) return renderStatusText(raw)
+                return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+              }}
+            />
+          )
         }
       },
       {
@@ -2001,7 +2067,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [getPurchaseStatus, renderStatusText])
+  }, [getPurchaseStatus, renderStatusText, saveStatusInput])
 
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
@@ -2088,6 +2154,7 @@ const ToolingInfoPage: React.FC = () => {
         setSelectedRowKeys={setSelectedRowKeys}
         onAddPart={handleAddPart}
         onAddChildItem={handleAddChildItem}
+        statusTick={statusTick}
       />
     )
   }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
