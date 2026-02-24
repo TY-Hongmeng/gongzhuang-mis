@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1436,7 +1436,9 @@ const ToolingInfoPage: React.FC = () => {
         const list = prev[toolingId] || []
         let updated = list.map(item => {
           if (item.id !== id) return item
-          const v = key === 'quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value
+          const v = key === 'quantity'
+            ? (String(value).trim() === '' ? '' : Number(value))
+            : (key === 'remark' ? normalizeDateInput(String(value ?? '')) : value)
           const row = { ...item, [key]: v }
           nextItem = row
           return row
@@ -1455,7 +1457,14 @@ const ToolingInfoPage: React.FC = () => {
         const n = Number(q)
         return !isNaN(n) && n > 0
       })()
-      const hasAny = !!(String(nextItem.name || '').trim() || String(nextItem.model || '').trim() || qtyHas || String(nextItem.unit || '').trim() || String(nextItem.required_date || '').trim())
+      const hasAny = !!(
+        String(nextItem.name || '').trim()
+        || String(nextItem.model || '').trim()
+        || qtyHas
+        || String(nextItem.unit || '').trim()
+        || String(nextItem.required_date || '').trim()
+        || String(nextItem.remark || '').trim()
+      )
       if (!hasAny) return
 
       if (id.startsWith('blank-')) {
@@ -1476,6 +1485,7 @@ const ToolingInfoPage: React.FC = () => {
             if (typeof nextItem!.quantity === 'number' && nextItem!.quantity > 0) postData.quantity = nextItem!.quantity
             if (nextItem!.unit && String(nextItem!.unit).trim() !== '') postData.unit = String(nextItem!.unit).trim()
             if (nextItem!.required_date && String(nextItem!.required_date).trim() !== '') postData.required_date = String(nextItem!.required_date).trim()
+            if (nextItem!.remark && String(nextItem!.remark).trim() !== '') postData.remark = String(nextItem!.remark).trim()
 
             const created = await createChildItem(toolingId, postData)
             if (created) {
@@ -1498,8 +1508,9 @@ const ToolingInfoPage: React.FC = () => {
         if (key === 'quantity') {
           const num = typeof value === 'number' ? value : Number(value)
           updateData.quantity = (value === '' || value === null || isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
-        } else if (key === 'name' || key === 'model' || key === 'unit' || key === 'required_date') {
-          const txt = String(value ?? '').trim()
+        } else if (key === 'name' || key === 'model' || key === 'unit' || key === 'required_date' || key === 'remark') {
+          const raw = key === 'remark' ? normalizeDateInput(String(value ?? '')) : String(value ?? '')
+          const txt = String(raw).trim()
           updateData[key] = txt !== '' ? txt : null
         }
 
