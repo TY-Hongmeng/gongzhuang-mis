@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Table,
   Button,
@@ -41,6 +41,8 @@ interface UserWithRelations extends User {
 
 const Users: React.FC = () => {
   const navigate = useNavigate()
+  const adminPhone = '18004499801'
+  const adminAutoFixedRef = useRef(false)
   const [users, setUsers] = useState<UserWithRelations[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -56,6 +58,9 @@ const Users: React.FC = () => {
   const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [form] = Form.useForm()
+  const isAdminUser = (user?: any) => {
+    return String(user?.phone || '') === adminPhone || String(user?.role?.name || '') === '超级管理员'
+  }
 
   useEffect(() => {
     loadUsers()
@@ -76,6 +81,16 @@ const Users: React.FC = () => {
       // 后端返回 { success: true, users: [...] }
       const list = j.users || j.items || []
       setUsers(list)
+      const adminUser = list.find((u: any) => isAdminUser(u))
+      if (adminUser && adminUser.status !== 'active' && !adminAutoFixedRef.current) {
+        adminAutoFixedRef.current = true
+        await fetchWithFallback(`/api/users/${adminUser.id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'active' })
+        })
+        loadUsers()
+      }
     } catch (error) {
       message.error('加载用户列表失败')
     } finally {
@@ -161,6 +176,11 @@ const Users: React.FC = () => {
 
   const handleUpdateStatus = async (userId: string, status: 'active' | 'inactive' | 'pending') => {
     try {
+      const target = users.find(u => u.id === userId)
+      if (isAdminUser(target)) {
+        message.warning('管理员账号不可禁用')
+        return
+      }
       const r = await fetchWithFallback(`/api/users/${userId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -191,6 +211,9 @@ const Users: React.FC = () => {
         workshop_id: values.workshop_id || null,
         team_id: values.team_id || null,
         status: values.status
+      }
+      if (isAdminUser(editingUser) || String(values.phone || '') === adminPhone) {
+        payload.status = 'active'
       }
       const r = await fetchWithFallback(`/api/users/${editingUser.id}`, {
         method: 'PUT',
@@ -321,7 +344,7 @@ const Users: React.FC = () => {
       width: 120,
       render: (_: any, record: UserWithRelations) => (
         <Space>
-          {record.status === 'pending' && (
+          {!isAdminUser(record) && record.status === 'pending' && (
             <Popconfirm
               title="确定要激活这个用户吗？"
               onConfirm={() => handleUpdateStatus(record.id, 'active')}
@@ -331,7 +354,7 @@ const Users: React.FC = () => {
               <Button type="link" icon={<CheckOutlined />} className="text-green-600">激活</Button>
             </Popconfirm>
           )}
-          {record.status === 'active' && (
+          {!isAdminUser(record) && record.status === 'active' && (
             <Popconfirm
               title="确定要禁用这个用户吗？"
               onConfirm={() => handleUpdateStatus(record.id, 'inactive')}
@@ -341,7 +364,7 @@ const Users: React.FC = () => {
               <Button type="link" icon={<CloseOutlined />} danger>禁用</Button>
             </Popconfirm>
           )}
-          {record.status === 'inactive' && (
+          {!isAdminUser(record) && record.status === 'inactive' && (
             <Popconfirm
               title="确定要重新激活这个用户吗？"
               onConfirm={() => handleUpdateStatus(record.id, 'active')}
@@ -492,10 +515,10 @@ const Users: React.FC = () => {
             rules={[{ required: true, message: '请选择所属公司' }]}
           >
             <Select placeholder="请选择所属公司" onChange={async (cid) => {
-              const ws = await fetch(`/api/tooling/org/workshops?company_id=${cid}&ts=${Date.now()}`)
+              const ws = await fetchWithFallback(`/api/tooling/org/workshops?company_id=${cid}&ts=${Date.now()}`)
               const wj = ws.ok ? await ws.json() : { items: [] }
               setWorkshops(wj.items || [])
-              const ts = await fetch(`/api/tooling/org/teams?company_id=${cid}&ts=${Date.now()}`)
+              const ts = await fetchWithFallback(`/api/tooling/org/teams?company_id=${cid}&ts=${Date.now()}`)
               const tj = ts.ok ? await ts.json() : { items: [] }
               setTeams(tj.items || [])
               form.setFieldsValue({ workshop_id: undefined, team_id: undefined })
@@ -510,7 +533,7 @@ const Users: React.FC = () => {
 
           <Form.Item name="workshop_id" label="车间">
             <Select placeholder="请选择车间" onChange={async (wid) => {
-              const ts = await fetch(`/api/tooling/org/teams?company_id=${form.getFieldValue('company_id')}&workshop_id=${wid}&ts=${Date.now()}`)
+              const ts = await fetchWithFallback(`/api/tooling/org/teams?company_id=${form.getFieldValue('company_id')}&workshop_id=${wid}&ts=${Date.now()}`)
               const tj = ts.ok ? await ts.json() : { items: [] }
               setTeams(tj.items || [])
               form.setFieldsValue({ team_id: undefined })
@@ -548,7 +571,7 @@ const Users: React.FC = () => {
             label="用户状态"
             rules={[{ required: true, message: '请选择用户状态' }]}
           >
-            <Select placeholder="请选择用户状态">
+            <Select placeholder="请选择用户状态" disabled={isAdminUser(editingUser)}>
               <Option value="active">正常</Option>
               <Option value="inactive">禁用</Option>
               <Option value="pending">待审核</Option>

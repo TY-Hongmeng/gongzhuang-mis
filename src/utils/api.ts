@@ -424,6 +424,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     }
 
     const method = (init?.method || 'GET').toUpperCase()
+    const adminPhone = '18004499801'
     if (method === 'OPTIONS') {
       return jsonResponse({ success: true })
     }
@@ -577,6 +578,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const userId = path.split('/').pop()
           if (!userId) return jsonResponse({ success: false, error: 'Invalid user ID' }, 400)
           const body = await readBody()
+          const existing = await scopedClient.from('users').select('id, phone').eq('id', userId).single()
+          const existingPhone = String((existing?.data as any)?.phone || '')
           const payload: any = {
             real_name: body.real_name,
             phone: body.phone,
@@ -587,6 +590,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             workshop_id: body.workshop_id ?? null,
             team_id: body.team_id ?? null,
             status: body.status
+          }
+          if (existingPhone === adminPhone || String(body.phone || '') === adminPhone) {
+            payload.status = 'active'
           }
           const { data, error } = await scopedClient.from('users').update(payload).eq('id', userId).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -599,7 +605,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const status = String(body?.status || '').trim()
           if (!status) return jsonResponse({ success: false, error: '缺少状态' }, 400)
-          const { data, error } = await scopedClient.from('users').update({ status }).eq('id', userId).select('*').single()
+          const existing = await scopedClient.from('users').select('id, phone').eq('id', userId).single()
+          const existingPhone = String((existing?.data as any)?.phone || '')
+          const nextStatus = existingPhone === adminPhone ? 'active' : status
+          const { data, error } = await scopedClient.from('users').update({ status: nextStatus }).eq('id', userId).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, data })
         }
