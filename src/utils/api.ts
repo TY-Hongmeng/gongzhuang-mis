@@ -572,6 +572,37 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           `).order('created_at', { ascending: false })
           return jsonResponse({ success: true, users: error ? [] : data })
         }
+
+        if (method === 'PUT' && path.match(/^\/api\/users\/[^\/]+$/)) {
+          const userId = path.split('/').pop()
+          if (!userId) return jsonResponse({ success: false, error: 'Invalid user ID' }, 400)
+          const body = await readBody()
+          const payload: any = {
+            real_name: body.real_name,
+            phone: body.phone,
+            id_card: body.id_card,
+            company_id: body.company_id ?? null,
+            role_id: body.role_id ?? null,
+            capability_coeff: body.capability_coeff ?? 1,
+            workshop_id: body.workshop_id ?? null,
+            team_id: body.team_id ?? null,
+            status: body.status
+          }
+          const { data, error } = await scopedClient.from('users').update(payload).eq('id', userId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
+        if (method === 'PUT' && path.match(/^\/api\/users\/[^\/]+\/status$/)) {
+          const parts = path.split('/')
+          const userId = parts.length >= 4 ? parts[3] : ''
+          if (!userId) return jsonResponse({ success: false, error: 'Invalid user ID' }, 400)
+          const body = await readBody()
+          const status = String(body?.status || '').trim()
+          if (!status) return jsonResponse({ success: false, error: '缺少状态' }, 400)
+          const { data, error } = await scopedClient.from('users').update({ status }).eq('id', userId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
       }
       // ---- Production units CRUD ----
       if (path.startsWith('/api/options/production-units')) {

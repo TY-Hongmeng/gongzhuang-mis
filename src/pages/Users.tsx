@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { supabase, type User, type Company, type Role } from '../lib/supabase'
+import { fetchWithFallback } from '../utils/api'
 
 const { Title } = Typography
 const { Option } = Select
@@ -66,7 +67,7 @@ const Users: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const r = await fetch('/api/users')
+      const r = await fetchWithFallback('/api/users')
       const j = await r.json()
       if (!r.ok || j?.success !== true) {
         message.error('加载用户列表失败')
@@ -84,7 +85,7 @@ const Users: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
-      const r = await fetch('/api/users/companies')
+      const r = await fetchWithFallback('/api/users/companies')
       const j = await r.json()
       if (!r.ok || j?.success !== true) {
         console.error('加载公司列表失败')
@@ -103,7 +104,7 @@ const Users: React.FC = () => {
 
   const loadRoles = async () => {
     try {
-      const r = await fetch('/api/users/roles')
+      const r = await fetchWithFallback('/api/users/roles')
       const j = await r.json()
       if (!r.ok || j?.success !== true) {
         console.error('加载角色列表失败')
@@ -122,9 +123,9 @@ const Users: React.FC = () => {
 
   const loadOrgAll = async () => {
     try {
-      let ws = await fetch(`/api/tooling/org/workshops?ts=${Date.now()}`)
+      let ws = await fetchWithFallback(`/api/tooling/org/workshops?ts=${Date.now()}`)
       let wj: any = ws.ok ? await ws.json() : { items: [] }
-      let ts = await fetch(`/api/tooling/org/teams?ts=${Date.now()}`)
+      let ts = await fetchWithFallback(`/api/tooling/org/teams?ts=${Date.now()}`)
       let tj: any = ts.ok ? await ts.json() : { items: [] }
       setWorkshops(wj.items || [])
       setTeams(tj.items || [])
@@ -153,14 +154,14 @@ const Users: React.FC = () => {
     })
     // 加载该公司的车间/班组列表
     if (user.company_id) {
-      fetch(`/api/tooling/org/workshops?company_id=${user.company_id}&ts=${Date.now()}`).then(r=>r.ok?r.json():{items:[]}).then((j:any)=>setWorkshops((j?.items)||[]))
-      fetch(`/api/tooling/org/teams?company_id=${user.company_id}&ts=${Date.now()}`).then(r=>r.ok?r.json():{items:[]}).then((j:any)=>setTeams((j?.items)||[]))
+      fetchWithFallback(`/api/tooling/org/workshops?company_id=${user.company_id}&ts=${Date.now()}`).then(r=>r.ok?r.json():{items:[]}).then((j:any)=>setWorkshops((j?.items)||[]))
+      fetchWithFallback(`/api/tooling/org/teams?company_id=${user.company_id}&ts=${Date.now()}`).then(r=>r.ok?r.json():{items:[]}).then((j:any)=>setTeams((j?.items)||[]))
     }
   }
 
   const handleUpdateStatus = async (userId: string, status: 'active' | 'inactive' | 'pending') => {
     try {
-      const r = await fetch(`/api/users/${userId}/status`, {
+      const r = await fetchWithFallback(`/api/users/${userId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -191,7 +192,7 @@ const Users: React.FC = () => {
         team_id: values.team_id || null,
         status: values.status
       }
-      const r = await fetch(`/api/users/${editingUser.id}`, {
+      const r = await fetchWithFallback(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
