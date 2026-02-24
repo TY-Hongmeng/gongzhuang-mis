@@ -460,8 +460,8 @@ export default function PurchaseOrdersList() {
                 selectedItems.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
-                  if (pid) localStorage.setItem(`status_part_${pid}`, '审批中')
-                  if (cid) localStorage.setItem(`status_child_${cid}`, '审批中')
+                  if (pid) localStorage.setItem(`status_part_${pid}`, '就绪')
+                  if (cid) localStorage.setItem(`status_child_${cid}`, '就绪')
                 })
                 
                 const apprHidden = new Set<string>(approvalHiddenIds)

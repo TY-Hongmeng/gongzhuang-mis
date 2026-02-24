@@ -64,6 +64,7 @@ export default function TemporaryPlans() {
       const cid = (item as any)?.child_item_id
       if (pid) localStorage.setItem(`status_part_${pid}`, value && value.trim() ? '采购中' : '审批中')
       if (cid) localStorage.setItem(`status_child_${cid}`, value && value.trim() ? '采购中' : '审批中')
+      window.dispatchEvent(new Event('status_updated'))
       return next
     })
   }
@@ -85,6 +86,7 @@ export default function TemporaryPlans() {
       const newStatus = checked ? '已到货' : ((item as any)?.purchaser ? '采购中' : '审批中')
       if (pid) localStorage.setItem(`status_part_${pid}`, newStatus)
       if (cid) localStorage.setItem(`status_child_${cid}`, newStatus)
+      window.dispatchEvent(new Event('status_updated'))
       return next
     })
   }
@@ -107,6 +109,7 @@ export default function TemporaryPlans() {
       const newStatus = str ? '已到货' : ((item as any)?.purchaser ? '采购中' : '审批中')
       if (pid) localStorage.setItem(`status_part_${pid}`, newStatus)
       if (cid) localStorage.setItem(`status_child_${cid}`, newStatus)
+      window.dispatchEvent(new Event('status_updated'))
       return next
     })
   }
@@ -142,8 +145,8 @@ export default function TemporaryPlans() {
                   if (inv.startsWith('BACKUP-')) hb.delete(inv.slice(7))
                   const pid = (it as any).part_id
                   const cid = (it as any).child_item_id
-                  if (pid) localStorage.setItem(`status_part_${pid}`, '审批中')
-                  if (cid) localStorage.setItem(`status_child_${cid}`, '审批中')
+                  if (pid) localStorage.setItem(`status_part_${pid}`, '提计划')
+                  if (cid) localStorage.setItem(`status_child_${cid}`, '提计划')
                 }
               }))
               localStorage.setItem('temporary_hidden_ids', JSON.stringify(Array.from(hidden)))
