@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2071,12 +2071,26 @@ const ToolingInfoPage: React.FC = () => {
   }, [])
 
   const importProcessRoutes = async (file: File) => {
-    const buf = await file.arrayBuffer()
-    const wb = XLSX.read(buf, { type: 'array' })
-    const sheetName = wb.SheetNames[0]
-    const ws = wb.Sheets[sheetName]
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
-    if (!rows || rows.length === 0) return
+    const loadingKey = 'process-import'
+    message.loading({ content: '正在解析工艺卡片...', key: loadingKey })
+    try {
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const sheetName = wb.SheetNames[0]
+      if (!sheetName) {
+        message.error({ content: '未找到可用的工作表', key: loadingKey })
+        return
+      }
+      const ws = wb.Sheets[sheetName]
+      if (!ws) {
+        message.error({ content: '未找到可用的工作表', key: loadingKey })
+        return
+      }
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]
+      if (!rows || rows.length === 0) {
+        message.error({ content: '工艺卡片为空或无法解析', key: loadingKey })
+        return
+      }
     const cellStr = (v: any) => String(v ?? '').trim()
     const findCell = (cands: string[]) => {
       for (let ri = 0; ri < rows.length; ri++) {
@@ -2280,6 +2294,10 @@ const ToolingInfoPage: React.FC = () => {
         ? { part_drawing_number: k.slice(8), process_route: v }
         : { part_inventory_number: k, process_route: v }
     ))
+    if (mappings.length === 0) {
+      message.warning({ content: '未识别到可导入的工艺路线', key: loadingKey })
+      return
+    }
     try {
       const resp = await fetchWithFallback('/api/tooling/parts/process-routes', {
         method: 'POST',
@@ -2351,14 +2369,17 @@ const ToolingInfoPage: React.FC = () => {
         })
         const msg = `生成并保存工艺路线：共${Object.keys(mapUpdates).length}条映射`
         console.table({ 映射条数: Object.keys(mapUpdates).length, 页面子编号数: allChildKeysOnPage.length })
-        message.success(msg)
+        message.success({ content: msg, key: loadingKey })
         // 刷新当前工装零件信息以展示后端值
         fetchToolingData()
       } else {
-        message.error('保存工艺路线失败：' + (result?.error || '未知错误'))
+        message.error({ content: '保存工艺路线失败：' + (result?.error || '未知错误'), key: loadingKey })
       }
     } catch (e: any) {
-      message.error('保存工艺路线失败：' + (e?.message || '网络错误'))
+      message.error({ content: '保存工艺路线失败：' + (e?.message || '网络错误'), key: loadingKey })
+    }
+    } catch (e: any) {
+      message.error({ content: '工艺卡片解析失败：' + (e?.message || '网络错误'), key: loadingKey })
     }
   }
 
