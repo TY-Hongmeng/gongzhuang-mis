@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -189,7 +189,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
-          scroll={{ y: 320 }}
+          scroll={{ x: 'max-content', y: 320 }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -228,7 +228,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
-          scroll={{ y: 320 }}
+          scroll={{ x: 'max-content', y: 320 }}
           onRow={(rec: any) => ({
             className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -4066,7 +4066,7 @@ const ToolingInfoPage: React.FC = () => {
   ]
 
   return (
-    <Card>
+    <Card className="tooling-info">
       <div className="flex items-center justify-between mb-4">
         <Title level={2} className="mb-0">
           <ToolOutlined className="text-3xl text-red-500 mb-2" /> 工装信息
@@ -4314,6 +4314,8 @@ const ToolingInfoPage: React.FC = () => {
           .excel-table { --row-h: 32px; }
           .excel-table .ant-table-thead > tr > th { height: var(--row-h) !important; }
           .excel-table .ant-table-tbody > tr > td { height: var(--row-h) !important; padding: 0 8px; }
+          .tooling-info .ant-table-cell { white-space: nowrap; }
+          .tooling-info .ant-table { width: max-content; }
           .editing-input { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
           .row-completed > td { background: #f6ffed !important; }
@@ -4335,7 +4337,7 @@ const ToolingInfoPage: React.FC = () => {
           columns={columns}
           pagination={false}
           bordered={false}
-          scroll={{ y: 600 }}
+          scroll={{ x: 'max-content', y: 600 }}
           locale={{ emptyText: '' }}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
