@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -256,6 +256,42 @@ const ToolingInfoPage: React.FC = () => {
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
   const [statusTick, setStatusTick] = useState(0)
+  const statusColorMap: Record<string, string> = {
+    '审批中': '#faad14',
+    '采购中': '#1890ff',
+    '已到货': '#52c41a'
+  }
+  const renderStatusText = useCallback((status: string) => {
+    if (!status) return null
+    return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
+  }, [])
+  const getPurchaseStatus = useCallback((type: 'part' | 'child', id: string) => {
+    void statusTick
+    try {
+      const key = type === 'part' ? `status_part_${id}` : `status_child_${id}`
+      const direct = localStorage.getItem(key) || ''
+      if (direct) return direct
+    } catch {}
+    try {
+      const raw = localStorage.getItem('temporary_plans') || '[]'
+      const groups = JSON.parse(raw) as Array<{ items?: any[] }>
+      for (const g of Array.isArray(groups) ? groups : []) {
+        const items = Array.isArray(g?.items) ? g.items : []
+        for (const it of items) {
+          const pid = String((it as any)?.part_id || '')
+          const cid = String((it as any)?.child_item_id || '')
+          const match = type === 'part' ? pid === String(id) : cid === String(id)
+          if (!match) continue
+          const arrivalDate = String((it as any)?.arrival_date || '').trim()
+          if (arrivalDate) return '已到货'
+          const purchaser = String((it as any)?.purchaser || '').trim()
+          if (purchaser) return '采购中'
+          return '审批中'
+        }
+      }
+    } catch {}
+    return ''
+  }, [statusTick])
   const ROUTE_BUCKET_PREFIX = 'process_routes_bucket:'
   const ROUTE_BUCKET_SLICE = 4
   const bucketKeyForInv = (inv: string) => ROUTE_BUCKET_PREFIX + String(inv || '').trim().toUpperCase().slice(0, ROUTE_BUCKET_SLICE)
@@ -1760,6 +1796,8 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__status',
         width: 100,
         render: (_text: any, rec: PartItem) => {
+          const purchaseStatus = getPurchaseStatus('part', String(rec.id || ''))
+          if (purchaseStatus) return renderStatusText(purchaseStatus)
           const nameOk = !!String(rec.part_name || '').trim()
           const q = rec.part_quantity
           const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
@@ -1850,7 +1888,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [])
+  }, [getPurchaseStatus, renderStatusText])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -1934,6 +1972,8 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__status',
         width: 120,
         render: (_text: any, rec: ChildItem) => {
+          const purchaseStatus = getPurchaseStatus('child', String(rec.id || ''))
+          if (purchaseStatus) return renderStatusText(purchaseStatus)
           const nameOk = !!String(rec.name || '').trim()
           const modelOk = !!String(rec.model || '').trim()
           const qtyOk = Number(rec.quantity || 0) > 0
@@ -1961,7 +2001,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [])
+  }, [getPurchaseStatus, renderStatusText])
 
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
