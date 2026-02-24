@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -191,7 +191,7 @@ const ExpandedSubTables: React.FC<{
           size="small"
           scroll={{ y: 320 }}
           onRow={(rec: any) => ({
-            className: isPartCompleted(rec) ? 'text-green-600' : (isPartReady(rec) ? 'text-blue-600' : undefined)
+            className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
           })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('part-')).map(k => k.slice(5)),
@@ -230,7 +230,7 @@ const ExpandedSubTables: React.FC<{
           size="small"
           scroll={{ y: 320 }}
           onRow={(rec: any) => ({
-            className: isChildCompleted(rec) ? 'text-green-600' : (isChildReady(rec) ? 'text-blue-600' : undefined)
+            className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
           })}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
@@ -4316,6 +4316,8 @@ const ToolingInfoPage: React.FC = () => {
           .excel-table .ant-table-tbody > tr > td { height: var(--row-h) !important; padding: 0 8px; }
           .editing-input { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
+          .row-completed > td { background: #f6ffed !important; }
+          .row-completed:hover > td { background: #f6ffed !important; }
           .excel-table .ant-table-expand-icon-col,
           .excel-table .ant-table-row-expand-icon-cell { display: none !important; }
           .filter-bar .ant-input { border: none !important; box-shadow: none !important; }
