@@ -83,11 +83,14 @@ export const useToolingData = () => {
   }, [])
 
   // 获取零件数据
-  const fetchPartsData = useCallback(async (toolingId: string) => {
+  const fetchPartsData = useCallback(async (toolingId: string, force = false) => {
     const now = Date.now()
     const localItems = partsMapRef.current[toolingId] || []
     const cached = partsCacheRef.current.get(toolingId)
-    if (cached && now - cached.ts < TTL) {
+    if (force) {
+      partsCacheRef.current.delete(toolingId)
+    }
+    if (!force && cached && now - cached.ts < TTL) {
       if (localItems.length > 0) {
         const cachedIds = new Set(cached.items.map(item => String(item.id)))
         const localHasBlank = localItems.some(item => String(item.id || '').startsWith('blank-'))
@@ -150,10 +153,13 @@ export const useToolingData = () => {
   }, [])
 
   // 获取标准件数据
-  const fetchChildItemsData = useCallback(async (toolingId: string) => {
+    const fetchChildItemsData = useCallback(async (toolingId: string, force = false) => {
     const now = Date.now()
     const cached = childCacheRef.current.get(toolingId)
-    if (cached && now - cached.ts < TTL) {
+    if (force) {
+      childCacheRef.current.delete(toolingId)
+    }
+    if (!force && cached && now - cached.ts < TTL) {
       setChildItemsMap(prev => ({ ...prev, [toolingId]: cached.items }))
       return cached.items
     }
@@ -161,7 +167,8 @@ export const useToolingData = () => {
     if (inflight) return inflight
     const promise = (async () => {
       try {
-        const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`)
+        const timestamp = Date.now()
+        const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items?t=${timestamp}`, { cache: 'no-store' })
         const result = await response.json()
         if (result.success) {
           const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
