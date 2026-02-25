@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -860,6 +860,17 @@ const ToolingInfoPage: React.FC = () => {
   const runWithPreservedScroll = async (action: () => Promise<void>) => {
     await handleExternalAction(action)
   }
+  const handleRefresh = useCallback(async () => {
+    await fetchAllMeta()
+    await fetchToolingData()
+    const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
+    if (expandedIds.length > 0) {
+      await Promise.all(expandedIds.map(id => Promise.all([
+        fetchPartsData(id),
+        fetchChildItemsData(id)
+      ])))
+    }
+  }, [fetchAllMeta, fetchToolingData, fetchPartsData, fetchChildItemsData, expandedRowKeys, expandedChildKeys])
 
   // 为指定行生成盘存编号
   const generateInventoryNumberForRow = async (rowId: string) => {
@@ -4311,7 +4322,7 @@ const ToolingInfoPage: React.FC = () => {
           >
             <Button danger>批量删除</Button>
           </Popconfirm>
-          <Button icon={<ReloadOutlined />} onClick={() => handleExternalAction(() => { fetchAllMeta(); fetchToolingData(); })}>刷新</Button>
+          <Button icon={<ReloadOutlined />} onClick={() => handleExternalAction(handleRefresh)}>刷新</Button>
           <Button icon={<LeftOutlined />} onClick={() => handleExternalAction(() => navigate('/dashboard'))}>返回</Button>
         </Space>
       </div>
