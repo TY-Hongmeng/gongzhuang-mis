@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -433,6 +433,16 @@ const ToolingInfoPage: React.FC = () => {
     partsMapRef.current = partsMap
   }, [partsMap])
   
+  const applyStatusMap = useCallback((type: 'part' | 'child', ids: string[], map: Record<string, string>) => {
+    setStatusMap(prev => {
+      const nextType = { ...prev[type] }
+      ids.forEach(id => { delete nextType[id] })
+      Object.entries(map || {}).forEach(([id, value]) => {
+        if (id) nextType[id] = String(value || '').trim()
+      })
+      return { ...prev, [type]: nextType }
+    })
+  }, [])
   const partStatusIds = useMemo(() => {
     const ids = new Set<string>()
     Object.values(partsMap).forEach(list => {
@@ -454,6 +464,18 @@ const ToolingInfoPage: React.FC = () => {
     return Array.from(ids)
   }, [childItemsMap])
   const statusFetchKeyRef = useRef<{ part: string; child: string }>({ part: '', child: '' })
+  const refreshStatusMap = useCallback(async () => {
+    const partIds = partStatusIds
+    const childIds = childStatusIds
+    if (partIds.length > 0) {
+      const map = await fetchPurchaseStatusMap('part', partIds)
+      applyStatusMap('part', partIds, map)
+    }
+    if (childIds.length > 0) {
+      const map = await fetchPurchaseStatusMap('child', childIds)
+      applyStatusMap('child', childIds, map)
+    }
+  }, [applyStatusMap, partStatusIds, childStatusIds])
   useEffect(() => {
     const key = partStatusIds.slice().sort().join(',')
     if (key === statusFetchKeyRef.current.part) return
@@ -461,9 +483,9 @@ const ToolingInfoPage: React.FC = () => {
     if (!partStatusIds.length) return
     fetchPurchaseStatusMap('part', partStatusIds).then(map => {
       if (!map || typeof map !== 'object') return
-      setStatusMap(prev => ({ ...prev, part: { ...prev.part, ...map } }))
+      applyStatusMap('part', partStatusIds, map)
     })
-  }, [partStatusIds])
+  }, [partStatusIds, applyStatusMap])
   useEffect(() => {
     const key = childStatusIds.slice().sort().join(',')
     if (key === statusFetchKeyRef.current.child) return
@@ -471,9 +493,20 @@ const ToolingInfoPage: React.FC = () => {
     if (!childStatusIds.length) return
     fetchPurchaseStatusMap('child', childStatusIds).then(map => {
       if (!map || typeof map !== 'object') return
-      setStatusMap(prev => ({ ...prev, child: { ...prev.child, ...map } }))
+      applyStatusMap('child', childStatusIds, map)
     })
-  }, [childStatusIds])
+  }, [childStatusIds, applyStatusMap])
+  useEffect(() => {
+    const t = setInterval(() => {
+      refreshStatusMap()
+    }, 15000)
+    return () => clearInterval(t)
+  }, [refreshStatusMap])
+  useEffect(() => {
+    const handler = () => refreshStatusMap()
+    window.addEventListener('focus', handler)
+    return () => window.removeEventListener('focus', handler)
+  }, [refreshStatusMap])
 
   const dataRef = useRef(data)
   useEffect(() => {
