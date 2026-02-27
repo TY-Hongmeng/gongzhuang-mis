@@ -1,2 +1,0 @@
-ALTER TABLE work_hours
-  ADD COLUMN IF NOT EXISTS device_no TEXT;

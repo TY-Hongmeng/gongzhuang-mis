@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -183,6 +183,7 @@ const ExpandedSubTables: React.FC<{
           <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
         </div>
         <Table
+          className="tooling-sub-table"
           rowKey="id"
           columns={partColumns}
           dataSource={parts}
@@ -221,6 +222,7 @@ const ExpandedSubTables: React.FC<{
           <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
         </div>
         <Table
+          className="tooling-sub-table"
           rowKey="id"
           columns={childColumns}
           dataSource={childItems}
@@ -289,7 +291,11 @@ const ToolingInfoPage: React.FC = () => {
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
     if (isDateString(status)) {
-      return <span style={{ color: '#52c41a', fontWeight: 600 }}>{status}</span>
+      return (
+        <span style={{ background: '#2f8f4e', color: '#ffffff', fontWeight: 600, padding: '2px 6px', borderRadius: 4, display: 'inline-block' }}>
+          {status}
+        </span>
+      )
     }
     return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
   }, [])
@@ -4360,6 +4366,8 @@ const ToolingInfoPage: React.FC = () => {
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
           .row-completed > td { background: #2f8f4e !important; }
           .row-completed:hover > td { background: #2f8f4e !important; }
+          .excel-table .ant-table-tbody > tr:hover > td { background-color: inherit !important; }
+          .tooling-sub-table .ant-table-tbody > tr:hover > td { background-color: inherit !important; }
           .excel-table .ant-table-expand-icon-col,
           .excel-table .ant-table-row-expand-icon-cell { display: none !important; }
           .filter-bar .ant-input { border: none !important; box-shadow: none !important; }
