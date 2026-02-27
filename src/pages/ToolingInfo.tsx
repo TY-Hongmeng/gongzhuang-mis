@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -178,11 +178,16 @@ const ExpandedSubTables: React.FC<{
   }
   return (
     <div style={{ padding: '16px 24px', background: '#fafafa' }} onClick={(e) => e.stopPropagation()}>
+      <style>{`
+        .subtable-no-hover .ant-table-tbody > tr:hover > td { background: inherit !important; }
+        .subtable-no-hover .row-completed:hover > td { background: #2f8f4e !important; }
+      `}</style>
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
           <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
         </div>
         <Table
+          className="subtable-no-hover"
           rowKey="id"
           columns={partColumns}
           dataSource={parts}
@@ -221,6 +226,7 @@ const ExpandedSubTables: React.FC<{
           <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
         </div>
         <Table
+          className="subtable-no-hover"
           rowKey="id"
           columns={childColumns}
           dataSource={childItems}
@@ -4356,6 +4362,7 @@ const ToolingInfoPage: React.FC = () => {
           .excel-table { --row-h: 32px; }
           .excel-table .ant-table-thead > tr > th { height: var(--row-h) !important; }
           .excel-table .ant-table-tbody > tr > td { height: var(--row-h) !important; padding: 0 8px; }
+          .excel-table .ant-table-tbody > tr:hover > td { background: inherit !important; }
           .editing-input { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
           .row-completed > td { background: #2f8f4e !important; }
