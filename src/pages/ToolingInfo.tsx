@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -14,6 +14,7 @@ import { generateInventoryNumber, canGenerateInventoryNumber } from '../utils/to
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
 import { useToolingOperations } from '../hooks/useToolingOperations'
+import { fetchPurchaseStatusMap, updatePurchaseStatus } from '../services/toolingService'
 import EditableCell from '../components/EditableCell'
 import SpecificationsInput from '../components/SpecificationsInput'
 import type { Material } from '../types/tooling'
@@ -124,6 +125,7 @@ const ExpandedSubTables: React.FC<{
   parentApplicant: string
   partColumns: any[]
   childColumns: any[]
+  getStatusValue: (type: 'part' | 'child', id: string) => string
   selectedRowKeys: string[]
   setSelectedRowKeys: (keys: string[] | ((prev: string[]) => string[])) => void
   onAddPart: () => void
@@ -138,6 +140,7 @@ const ExpandedSubTables: React.FC<{
   parentApplicant,
   partColumns,
   childColumns,
+  getStatusValue,
   selectedRowKeys,
   setSelectedRowKeys,
   onAddPart,
@@ -146,7 +149,7 @@ const ExpandedSubTables: React.FC<{
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
     void statusTick
-    const v = localStorage.getItem(`status_part_${rec.id}`) || ''
+    const v = getStatusValue('part', String(rec.id || ''))
     return isDateString(v)
   }
   const isPartReady = (rec: PartItem): boolean => {
@@ -162,7 +165,7 @@ const ExpandedSubTables: React.FC<{
   }
   const isChildCompleted = (rec: ChildItem): boolean => {
     void statusTick
-    const v = localStorage.getItem(`status_child_${rec.id}`) || ''
+    const v = getStatusValue('child', String(rec.id || ''))
     return isDateString(v)
   }
   const isChildReady = (rec: ChildItem): boolean => {
@@ -292,6 +295,7 @@ const ToolingInfoPage: React.FC = () => {
     '采购中': '#1890ff',
     '已到货': '#52c41a'
   }
+  const [statusMap, setStatusMap] = useState<{ part: Record<string, string>; child: Record<string, string> }>({ part: {}, child: {} })
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
     if (isDateString(status)) {
@@ -300,10 +304,14 @@ const ToolingInfoPage: React.FC = () => {
     return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
   }, [])
   const saveStatusInput = useCallback((type: 'part' | 'child', id: string, value: string) => {
-    const key = type === 'part' ? `status_part_${id}` : `status_child_${id}`
     const normalized = normalizeDateInput(value)
     if (!normalized) {
-      localStorage.removeItem(key)
+      setStatusMap(prev => {
+        const next = { ...prev[type] }
+        delete next[id]
+        return { ...prev, [type]: next }
+      })
+      updatePurchaseStatus(type, id, null)
       window.dispatchEvent(new Event('status_updated'))
       return
     }
@@ -311,15 +319,18 @@ const ToolingInfoPage: React.FC = () => {
       message.error('日期格式应为YYYY-MM-DD')
       return
     }
-    localStorage.setItem(key, normalized)
+    setStatusMap(prev => ({ ...prev, [type]: { ...prev[type], [id]: normalized } }))
+    updatePurchaseStatus(type, id, normalized)
     window.dispatchEvent(new Event('status_updated'))
   }, [])
   const getPurchaseStatus = useCallback((type: 'part' | 'child', id: string) => {
     void statusTick
+    const direct = statusMap[type]?.[id]
+    if (direct) return direct
     try {
       const key = type === 'part' ? `status_part_${id}` : `status_child_${id}`
-      const direct = localStorage.getItem(key) || ''
-      if (direct) return direct
+      const localValue = localStorage.getItem(key) || ''
+      if (localValue) return localValue
     } catch {}
     try {
       const raw = localStorage.getItem('temporary_plans') || '[]'
@@ -340,7 +351,7 @@ const ToolingInfoPage: React.FC = () => {
       }
     } catch {}
     return ''
-  }, [statusTick])
+  }, [statusMap, statusTick])
   const ROUTE_BUCKET_PREFIX = 'process_routes_bucket:'
   const ROUTE_BUCKET_SLICE = 4
   const bucketKeyForInv = (inv: string) => ROUTE_BUCKET_PREFIX + String(inv || '').trim().toUpperCase().slice(0, ROUTE_BUCKET_SLICE)
@@ -422,6 +433,48 @@ const ToolingInfoPage: React.FC = () => {
     partsMapRef.current = partsMap
   }, [partsMap])
   
+  const partStatusIds = useMemo(() => {
+    const ids = new Set<string>()
+    Object.values(partsMap).forEach(list => {
+      (list || []).forEach((p: any) => {
+        const id = String(p?.id || '')
+        if (id && !id.startsWith('blank-')) ids.add(id)
+      })
+    })
+    return Array.from(ids)
+  }, [partsMap])
+  const childStatusIds = useMemo(() => {
+    const ids = new Set<string>()
+    Object.values(childItemsMap).forEach(list => {
+      (list || []).forEach((c: any) => {
+        const id = String(c?.id || '')
+        if (id && !id.startsWith('blank-')) ids.add(id)
+      })
+    })
+    return Array.from(ids)
+  }, [childItemsMap])
+  const statusFetchKeyRef = useRef<{ part: string; child: string }>({ part: '', child: '' })
+  useEffect(() => {
+    const key = partStatusIds.slice().sort().join(',')
+    if (key === statusFetchKeyRef.current.part) return
+    statusFetchKeyRef.current.part = key
+    if (!partStatusIds.length) return
+    fetchPurchaseStatusMap('part', partStatusIds).then(map => {
+      if (!map || typeof map !== 'object') return
+      setStatusMap(prev => ({ ...prev, part: { ...prev.part, ...map } }))
+    })
+  }, [partStatusIds])
+  useEffect(() => {
+    const key = childStatusIds.slice().sort().join(',')
+    if (key === statusFetchKeyRef.current.child) return
+    statusFetchKeyRef.current.child = key
+    if (!childStatusIds.length) return
+    fetchPurchaseStatusMap('child', childStatusIds).then(map => {
+      if (!map || typeof map !== 'object') return
+      setStatusMap(prev => ({ ...prev, child: { ...prev.child, ...map } }))
+    })
+  }, [childStatusIds])
+
   const dataRef = useRef(data)
   useEffect(() => {
     dataRef.current = data
@@ -2211,6 +2264,7 @@ const ToolingInfoPage: React.FC = () => {
         parentApplicant={parentApplicant}
         partColumns={cols}
         childColumns={childCols}
+        getStatusValue={getPurchaseStatus}
         selectedRowKeys={selectedRowKeys}
         setSelectedRowKeys={setSelectedRowKeys}
         onAddPart={handleAddPart}
@@ -2218,7 +2272,7 @@ const ToolingInfoPage: React.FC = () => {
         statusTick={statusTick}
       />
     )
-  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
+  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap, getPurchaseStatus])
 
   // 初始化数据
   useEffect(() => {

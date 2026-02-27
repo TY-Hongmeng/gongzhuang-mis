@@ -2,6 +2,7 @@
 
 import { message } from 'antd'
 import { supabase } from '../lib/supabase'
+import { fetchWithFallback } from '../utils/api'
 
 const getAccessToken = async (): Promise<string | undefined> => {
   try {
@@ -310,6 +311,42 @@ export const updateToolingChildItem = async (id: string, data: Partial<ChildItem
   } catch (error) {
     console.error('更新工装标准件失败:', error)
     return { success: false, error: '更新工装标准件失败' }
+  }
+}
+
+export const updatePurchaseStatus = async (type: 'part' | 'child', id: string, status?: string | null) => {
+  try {
+    const accessToken = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const response = await fetchWithFallback('/api/tooling/status', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ type, id, status: status ?? null })
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const fetchPurchaseStatusMap = async (type: 'part' | 'child', ids: string[]) => {
+  try {
+    const list = Array.isArray(ids) ? ids.filter(Boolean) : []
+    if (list.length === 0) return {}
+    const accessToken = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const response = await fetchWithFallback('/api/tooling/status/batch', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ type, ids: list })
+    })
+    if (!response.ok) return {}
+    const result = await response.json().catch(() => ({}))
+    return (result && result.map) ? result.map : {}
+  } catch {
+    return {}
   }
 }
 

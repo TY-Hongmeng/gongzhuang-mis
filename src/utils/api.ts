@@ -1127,6 +1127,54 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }))
         return jsonResponse({ success: true, items, total: items.length, page, pageSize, data: items })
       }
+
+      if (method === 'POST' && path === '/api/tooling/status/batch') {
+        const body = await readBody()
+        const type = String(body.type || '').trim()
+        const ids = Array.isArray(body.ids) ? body.ids.map((x: any) => String(x || '')).filter(Boolean) : []
+        if (!type || (type !== 'part' && type !== 'child')) return jsonResponse({ success: false, error: 'Invalid type' }, 400)
+        if (ids.length === 0) return jsonResponse({ success: true, map: {} })
+        const { data, error } = await supabase
+          .from('tooling_status')
+          .select('item_id,status')
+          .eq('item_type', type)
+          .in('item_id', ids)
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        const map: Record<string, string> = {}
+        ;(data || []).forEach((row: any) => {
+          const k = String(row.item_id || '')
+          if (k) map[k] = String(row.status || '')
+        })
+        return jsonResponse({ success: true, map })
+      }
+
+      if (method === 'POST' && path === '/api/tooling/status') {
+        const body = await readBody()
+        const type = String(body.type || '').trim()
+        const id = String(body.id || '').trim()
+        const status = body.status === null || typeof body.status === 'undefined' ? '' : String(body.status || '').trim()
+        if (!type || !id || (type !== 'part' && type !== 'child')) return jsonResponse({ success: false, error: 'Invalid payload' }, 400)
+        if (!status) {
+          const { error } = await supabase
+            .from('tooling_status')
+            .delete()
+            .eq('item_type', type)
+            .eq('item_id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        const { error } = await supabase
+          .from('tooling_status')
+          .upsert({
+            item_type: type,
+            item_id: id,
+            status,
+            updated_by: body.updated_by ? String(body.updated_by) : null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'item_type,item_id' })
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true })
+      }
       
       // Create tooling
       if (method === 'POST' && path === '/api/tooling') {

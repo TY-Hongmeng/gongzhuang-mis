@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented } from 'antd';
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
-import { rollbackPurchaseOrders } from '../../services/toolingService';
+import { rollbackPurchaseOrders, updatePurchaseStatus } from '../../services/toolingService';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../stores/authStore';
@@ -460,8 +460,14 @@ export default function PurchaseOrdersList() {
                 selectedItems.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
-                  if (pid) localStorage.setItem(`status_part_${pid}`, '就绪')
-                  if (cid) localStorage.setItem(`status_child_${cid}`, '就绪')
+                  if (pid) {
+                    localStorage.setItem(`status_part_${pid}`, '就绪')
+                    updatePurchaseStatus('part', String(pid), '就绪')
+                  }
+                  if (cid) {
+                    localStorage.setItem(`status_child_${cid}`, '就绪')
+                    updatePurchaseStatus('child', String(cid), '就绪')
+                  }
                 })
                 
                 const apprHidden = new Set<string>(approvalHiddenIds)
@@ -583,8 +589,14 @@ export default function PurchaseOrdersList() {
                 selected.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
-                  if (pid) localStorage.setItem(`status_part_${pid}`, '审批中')
-                  if (cid) localStorage.setItem(`status_child_${cid}`, '审批中')
+                  if (pid) {
+                    localStorage.setItem(`status_part_${pid}`, '审批中')
+                    updatePurchaseStatus('part', String(pid), '审批中')
+                  }
+                  if (cid) {
+                    localStorage.setItem(`status_child_${cid}`, '审批中')
+                    updatePurchaseStatus('child', String(cid), '审批中')
+                  }
                 })
                 message.success(`已生成临时计划：${newGroups.map(g => g.code).join(', ')}`)
                 setSelectedRowKeys([])

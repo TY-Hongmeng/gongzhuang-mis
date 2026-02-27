@@ -3,6 +3,7 @@ import { message } from 'antd'
 import { generateInventoryNumber, canGenerateInventoryNumber, calculateVolume } from '../utils/toolingCalculations'
 import { calculateTotalPrice } from '../utils/priceCalculator'
 import { supabase } from '../lib/supabase'
+import { updatePurchaseStatus } from '../services/toolingService'
 
 // 工装业务逻辑Hook
 export const useToolingOperations = () => {
@@ -127,7 +128,10 @@ export const useToolingOperations = () => {
           const ms = materialSources.find(ms => String(ms.id) === String(p.material_source_id))
           const name = normalize(ms?.name || '')
           if (name !== '外购') {
-            if (p.id) localStorage.setItem(`status_part_${p.id}`, '下料中')
+            if (p.id) {
+              localStorage.setItem(`status_part_${p.id}`, '下料中')
+              updatePurchaseStatus('part', String(p.id), '下料中')
+            }
           }
         })
         window.dispatchEvent(new Event('status_updated'))
@@ -330,8 +334,14 @@ export const useToolingOperations = () => {
 
         // 状态：提计划（写入并广播）
         purchaseOrders.forEach(o => {
-          if (o.part_id) localStorage.setItem(`status_part_${o.part_id}`, '提计划')
-          if (o.child_item_id) localStorage.setItem(`status_child_${o.child_item_id}`, '提计划')
+          if (o.part_id) {
+            localStorage.setItem(`status_part_${o.part_id}`, '提计划')
+            updatePurchaseStatus('part', String(o.part_id), '提计划')
+          }
+          if (o.child_item_id) {
+            localStorage.setItem(`status_child_${o.child_item_id}`, '提计划')
+            updatePurchaseStatus('child', String(o.child_item_id), '提计划')
+          }
         })
         window.dispatchEvent(new Event('status_updated'))
         return result

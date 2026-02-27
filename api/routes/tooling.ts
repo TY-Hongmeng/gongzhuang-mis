@@ -4,6 +4,32 @@ import { query } from '../lib/db.js';
 import { sendSuccess, sendSuccessList, sendError, sendNotFound, sendCreated, sendUpdated, sendDeleted } from '../lib/response.js';
 
 const router = express.Router();
+let statusTableReady = false;
+const ensureStatusTable = async () => {
+  if (statusTableReady) return;
+  statusTableReady = true;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    const mod = await import('pg') as any;
+    const PgClient = (mod.Client || mod.default?.Client);
+    if (!PgClient) return;
+    const client = new PgClient({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+    await client.connect();
+    await client.query(`CREATE TABLE IF NOT EXISTS tooling_status (
+      id BIGSERIAL PRIMARY KEY,
+      item_type TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      status TEXT,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS tooling_status_unique ON tooling_status(item_type, item_id)`);
+    await client.end();
+  } catch (e) {
+    statusTableReady = false;
+  }
+};
 
 // GET /api/tooling
 // 支持分页、搜索、筛选与排序
@@ -93,6 +119,69 @@ router.get('/', async (req, res) => {
     });
   } catch (err) {
     console.error('Tooling route error:', err);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+router.post('/status/batch', async (req, res) => {
+  try {
+    const { type, ids } = req.body || {};
+    const itemType = String(type || '').trim();
+    const list = Array.isArray(ids) ? ids.map((x: any) => String(x || '')).filter(Boolean) : [];
+    if (!itemType || (itemType !== 'part' && itemType !== 'child')) {
+      return res.status(400).json({ success: false, error: 'Invalid type' });
+    }
+    await ensureStatusTable();
+    if (list.length === 0) return res.json({ success: true, map: {} });
+    const { data, error } = await supabase
+      .from('tooling_status')
+      .select('item_id,status')
+      .eq('item_type', itemType)
+      .in('item_id', list);
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    const map: Record<string, string> = {};
+    (data || []).forEach((row: any) => {
+      const k = String(row.item_id || '');
+      if (k) map[k] = String(row.status || '');
+    });
+    return res.json({ success: true, map });
+  } catch (err) {
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+router.post('/status', async (req, res) => {
+  try {
+    const { type, id, status, updated_by } = req.body || {};
+    const itemType = String(type || '').trim();
+    const itemId = String(id || '').trim();
+    if (!itemType || !itemId || (itemType !== 'part' && itemType !== 'child')) {
+      return res.status(400).json({ success: false, error: 'Invalid payload' });
+    }
+    await ensureStatusTable();
+    const normalized = status === null || typeof status === 'undefined' ? '' : String(status || '').trim();
+    if (!normalized) {
+      const { error } = await supabase
+        .from('tooling_status')
+        .delete()
+        .eq('item_type', itemType)
+        .eq('item_id', itemId);
+      if (error) return res.status(500).json({ success: false, error: error.message });
+      return res.json({ success: true });
+    }
+    const payload = {
+      item_type: itemType,
+      item_id: itemId,
+      status: normalized,
+      updated_by: updated_by ? String(updated_by) : null,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase
+      .from('tooling_status')
+      .upsert(payload, { onConflict: 'item_type,item_id' });
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ success: false, error: '服务器错误' });
   }
 });
