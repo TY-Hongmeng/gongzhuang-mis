@@ -64,6 +64,7 @@ export interface PartItem {
   unit_price?: number; // 单价(元/kg)
   total_price?: number; // 总价格(元)
   remarks?: string; // 备注（原调质列，现在支持外购材料时输入需求日期）
+  purchase_status?: string;
   material?: any; // 材质信息
 }
 
@@ -76,6 +77,7 @@ export interface ChildItem {
   unit: string | null; // 单位（允许为空）
   required_date: string; // 需求日期
   remark?: string; // 备注
+  purchase_status?: string;
 }
 
 // 获取工装列表
@@ -323,6 +325,38 @@ export const updatePurchaseStatus = async (type: 'part' | 'child', id: string, s
       method: 'POST',
       headers,
       body: JSON.stringify({ type, id, status: status ?? null })
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const updatePartPurchaseStatus = async (id: string, status?: string | null) => {
+  try {
+    const accessToken = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const response = await fetchWithFallback(`/api/tooling/parts/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ purchase_status: status ?? null })
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const updateChildPurchaseStatus = async (id: string, status?: string | null) => {
+  try {
+    const accessToken = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const response = await fetchWithFallback(`/api/tooling/child-items/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ purchase_status: status ?? null })
     })
     return response.ok
   } catch {

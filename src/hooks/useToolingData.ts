@@ -134,6 +134,7 @@ export const useToolingData = () => {
             unit_price: item.unit_price ? Number(item.unit_price) : 0,
             total_price: item.total_price ? Number(item.total_price) : 0,
             remarks: String(item.remarks || ''),
+            purchase_status: String(item.purchase_status || ''),
             process_route: String(item.process_route || ''),
             material: undefined
           };
@@ -182,6 +183,7 @@ export const useToolingData = () => {
             unit: String(item.unit || ''),
             required_date: String(item.required_date || ''),
             remark: String(item.remark || ''),
+            purchase_status: String(item.purchase_status || ''),
             type: String(item.type || '')
           }))
           childCacheRef.current.set(toolingId, { items, ts: Date.now() })

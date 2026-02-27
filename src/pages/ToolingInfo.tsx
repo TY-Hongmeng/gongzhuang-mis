@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -14,7 +14,7 @@ import { generateInventoryNumber, canGenerateInventoryNumber } from '../utils/to
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
 import { useToolingOperations } from '../hooks/useToolingOperations'
-import { fetchPurchaseStatusMap, updatePurchaseStatus } from '../services/toolingService'
+import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../services/toolingService'
 import EditableCell from '../components/EditableCell'
 import SpecificationsInput from '../components/SpecificationsInput'
 import type { Material } from '../types/tooling'
@@ -125,12 +125,10 @@ const ExpandedSubTables: React.FC<{
   parentApplicant: string
   partColumns: any[]
   childColumns: any[]
-  getStatusValue: (type: 'part' | 'child', id: string) => string
   selectedRowKeys: string[]
   setSelectedRowKeys: (keys: string[] | ((prev: string[]) => string[])) => void
   onAddPart: () => void
   onAddChildItem: () => void
-  statusTick: number
 }> = React.memo(({
   toolingId,
   parts,
@@ -140,16 +138,13 @@ const ExpandedSubTables: React.FC<{
   parentApplicant,
   partColumns,
   childColumns,
-  getStatusValue,
   selectedRowKeys,
   setSelectedRowKeys,
   onAddPart,
-  onAddChildItem,
-  statusTick
+  onAddChildItem
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
-    void statusTick
-    const v = getStatusValue('part', String(rec.id || ''))
+    const v = String((rec as any).purchase_status || '').trim()
     return isDateString(v)
   }
   const isPartReady = (rec: PartItem): boolean => {
@@ -164,8 +159,7 @@ const ExpandedSubTables: React.FC<{
     return ready
   }
   const isChildCompleted = (rec: ChildItem): boolean => {
-    void statusTick
-    const v = getStatusValue('child', String(rec.id || ''))
+    const v = String((rec as any).purchase_status || '').trim()
     return isDateString(v)
   }
   const isChildReady = (rec: ChildItem): boolean => {
@@ -288,14 +282,12 @@ const ToolingInfoPage: React.FC = () => {
   const [extraRows, setExtraRows] = useState(2)
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
-  const [statusTick, setStatusTick] = useState(0)
   const [tableScrollY, setTableScrollY] = useState(600)
   const statusColorMap: Record<string, string> = {
     '审批中': '#faad14',
     '采购中': '#1890ff',
     '已到货': '#52c41a'
   }
-  const [statusMap, setStatusMap] = useState<{ part: Record<string, string>; child: Record<string, string> }>({ part: {}, child: {} })
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
     if (isDateString(status)) {
@@ -303,55 +295,6 @@ const ToolingInfoPage: React.FC = () => {
     }
     return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
   }, [])
-  const saveStatusInput = useCallback((type: 'part' | 'child', id: string, value: string) => {
-    const normalized = normalizeDateInput(value)
-    if (!normalized) {
-      setStatusMap(prev => {
-        const next = { ...prev[type] }
-        delete next[id]
-        return { ...prev, [type]: next }
-      })
-      updatePurchaseStatus(type, id, null)
-      window.dispatchEvent(new Event('status_updated'))
-      return
-    }
-    if (!isDateString(normalized)) {
-      message.error('日期格式应为YYYY-MM-DD')
-      return
-    }
-    setStatusMap(prev => ({ ...prev, [type]: { ...prev[type], [id]: normalized } }))
-    updatePurchaseStatus(type, id, normalized)
-    window.dispatchEvent(new Event('status_updated'))
-  }, [])
-  const getPurchaseStatus = useCallback((type: 'part' | 'child', id: string) => {
-    void statusTick
-    const direct = statusMap[type]?.[id]
-    if (direct) return direct
-    try {
-      const key = type === 'part' ? `status_part_${id}` : `status_child_${id}`
-      const localValue = localStorage.getItem(key) || ''
-      if (localValue) return localValue
-    } catch {}
-    try {
-      const raw = localStorage.getItem('temporary_plans') || '[]'
-      const groups = JSON.parse(raw) as Array<{ items?: any[] }>
-      for (const g of Array.isArray(groups) ? groups : []) {
-        const items = Array.isArray(g?.items) ? g.items : []
-        for (const it of items) {
-          const pid = String((it as any)?.part_id || '')
-          const cid = String((it as any)?.child_item_id || '')
-          const match = type === 'part' ? pid === String(id) : cid === String(id)
-          if (!match) continue
-          const arrivalDate = String((it as any)?.arrival_date || '').trim()
-          if (arrivalDate) return '已到货'
-          const purchaser = String((it as any)?.purchaser || '').trim()
-          if (purchaser) return '采购中'
-          return '审批中'
-        }
-      }
-    } catch {}
-    return ''
-  }, [statusMap, statusTick])
   const ROUTE_BUCKET_PREFIX = 'process_routes_bucket:'
   const ROUTE_BUCKET_SLICE = 4
   const bucketKeyForInv = (inv: string) => ROUTE_BUCKET_PREFIX + String(inv || '').trim().toUpperCase().slice(0, ROUTE_BUCKET_SLICE)
@@ -426,6 +369,33 @@ const ToolingInfoPage: React.FC = () => {
     batchDelete
   } = useToolingData()
   const selectedParentIds = useMemo(() => selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')), [selectedRowKeys])
+  const saveStatusInput = useCallback((type: 'part' | 'child', id: string, value: string) => {
+    const normalized = String(normalizeDateInput(value || '') || '').trim()
+    const nextValue = normalized ? normalized : null
+    if (type === 'part') {
+      setPartsMap(prev => {
+        const next = { ...prev }
+        Object.keys(next).forEach(toolingId => {
+          const list = next[toolingId] || []
+          const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
+          next[toolingId] = updated
+        })
+        return next
+      })
+      updatePartPurchaseStatus(id, nextValue)
+      return
+    }
+    setChildItemsMap(prev => {
+      const next = { ...prev }
+      Object.keys(next).forEach(toolingId => {
+        const list = next[toolingId] || []
+        const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
+        next[toolingId] = updated
+      })
+      return next
+    })
+    updateChildPurchaseStatus(id, nextValue)
+  }, [setPartsMap, setChildItemsMap])
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
@@ -433,81 +403,6 @@ const ToolingInfoPage: React.FC = () => {
     partsMapRef.current = partsMap
   }, [partsMap])
   
-  const applyStatusMap = useCallback((type: 'part' | 'child', ids: string[], map: Record<string, string>) => {
-    setStatusMap(prev => {
-      const nextType = { ...prev[type] }
-      ids.forEach(id => { delete nextType[id] })
-      Object.entries(map || {}).forEach(([id, value]) => {
-        if (id) nextType[id] = String(value || '').trim()
-      })
-      return { ...prev, [type]: nextType }
-    })
-  }, [])
-  const partStatusIds = useMemo(() => {
-    const ids = new Set<string>()
-    Object.values(partsMap).forEach(list => {
-      (list || []).forEach((p: any) => {
-        const id = String(p?.id || '')
-        if (id && !id.startsWith('blank-')) ids.add(id)
-      })
-    })
-    return Array.from(ids)
-  }, [partsMap])
-  const childStatusIds = useMemo(() => {
-    const ids = new Set<string>()
-    Object.values(childItemsMap).forEach(list => {
-      (list || []).forEach((c: any) => {
-        const id = String(c?.id || '')
-        if (id && !id.startsWith('blank-')) ids.add(id)
-      })
-    })
-    return Array.from(ids)
-  }, [childItemsMap])
-  const statusFetchKeyRef = useRef<{ part: string; child: string }>({ part: '', child: '' })
-  const refreshStatusMap = useCallback(async () => {
-    const partIds = partStatusIds
-    const childIds = childStatusIds
-    if (partIds.length > 0) {
-      const map = await fetchPurchaseStatusMap('part', partIds)
-      applyStatusMap('part', partIds, map)
-    }
-    if (childIds.length > 0) {
-      const map = await fetchPurchaseStatusMap('child', childIds)
-      applyStatusMap('child', childIds, map)
-    }
-  }, [applyStatusMap, partStatusIds, childStatusIds])
-  useEffect(() => {
-    const key = partStatusIds.slice().sort().join(',')
-    if (key === statusFetchKeyRef.current.part) return
-    statusFetchKeyRef.current.part = key
-    if (!partStatusIds.length) return
-    fetchPurchaseStatusMap('part', partStatusIds).then(map => {
-      if (!map || typeof map !== 'object') return
-      applyStatusMap('part', partStatusIds, map)
-    })
-  }, [partStatusIds, applyStatusMap])
-  useEffect(() => {
-    const key = childStatusIds.slice().sort().join(',')
-    if (key === statusFetchKeyRef.current.child) return
-    statusFetchKeyRef.current.child = key
-    if (!childStatusIds.length) return
-    fetchPurchaseStatusMap('child', childStatusIds).then(map => {
-      if (!map || typeof map !== 'object') return
-      applyStatusMap('child', childStatusIds, map)
-    })
-  }, [childStatusIds, applyStatusMap])
-  useEffect(() => {
-    const t = setInterval(() => {
-      refreshStatusMap()
-    }, 15000)
-    return () => clearInterval(t)
-  }, [refreshStatusMap])
-  useEffect(() => {
-    const handler = () => refreshStatusMap()
-    window.addEventListener('focus', handler)
-    return () => window.removeEventListener('focus', handler)
-  }, [refreshStatusMap])
-
   const dataRef = useRef(data)
   useEffect(() => {
     dataRef.current = data
@@ -1981,7 +1876,7 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__status',
         width: 140,
         render: (_text: any, rec: PartItem) => {
-          const purchaseStatus = getPurchaseStatus('part', String(rec.id || ''))
+          const purchaseStatus = String((rec as any).purchase_status || '').trim()
           const nameOk = !!String(rec.part_name || '').trim()
           const q = rec.part_quantity
           const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
@@ -2084,7 +1979,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [getPurchaseStatus, renderStatusText, saveStatusInput])
+  }, [renderStatusText, saveStatusInput])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -2168,7 +2063,7 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__status',
         width: 140,
         render: (_text: any, rec: ChildItem) => {
-          const purchaseStatus = getPurchaseStatus('child', String(rec.id || ''))
+          const purchaseStatus = String((rec as any).purchase_status || '').trim()
           const nameOk = !!String(rec.name || '').trim()
           const modelOk = !!String(rec.model || '').trim()
           const qtyOk = Number(rec.quantity || 0) > 0
@@ -2214,7 +2109,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [getPurchaseStatus, renderStatusText, saveStatusInput])
+  }, [renderStatusText, saveStatusInput])
 
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
@@ -2297,26 +2192,19 @@ const ToolingInfoPage: React.FC = () => {
         parentApplicant={parentApplicant}
         partColumns={cols}
         childColumns={childCols}
-        getStatusValue={getPurchaseStatus}
         selectedRowKeys={selectedRowKeys}
         setSelectedRowKeys={setSelectedRowKeys}
         onAddPart={handleAddPart}
         onAddChildItem={handleAddChildItem}
-        statusTick={statusTick}
       />
     )
-  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap, getPurchaseStatus])
+  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
     fetchAllMeta()
     fetchToolingData()
-    const handler = () => setStatusTick(v => v + 1)
-    window.addEventListener('temporary_plans_updated', handler)
-    window.addEventListener('status_updated', handler)
     return () => {
-      window.removeEventListener('temporary_plans_updated', handler)
-      window.removeEventListener('status_updated', handler)
       // 清理所有定时器
       Object.values(partSaveTimersRef.current).forEach(timer => clearTimeout(timer))
       Object.values(childSaveTimersRef.current).forEach(timer => clearTimeout(timer))

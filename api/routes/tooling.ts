@@ -30,6 +30,39 @@ const ensureStatusTable = async () => {
     statusTableReady = false;
   }
 };
+let statusColumnsReady = false;
+const ensurePurchaseStatusColumns = async () => {
+  if (statusColumnsReady) return;
+  statusColumnsReady = true;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    const mod = await import('pg') as any;
+    const PgClient = (mod.Client || mod.default?.Client);
+    if (!PgClient) return;
+    const client = new PgClient({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+    await client.connect();
+    await client.query(`ALTER TABLE parts_info ADD COLUMN IF NOT EXISTS purchase_status TEXT`);
+    await client.query(`ALTER TABLE child_items ADD COLUMN IF NOT EXISTS purchase_status TEXT`);
+    try {
+      await client.query(`UPDATE parts_info p
+        SET purchase_status = s.status
+        FROM tooling_status s
+        WHERE s.item_type = 'part'
+          AND s.item_id::text = p.id::text
+          AND (p.purchase_status IS NULL OR p.purchase_status = '')`);
+      await client.query(`UPDATE child_items c
+        SET purchase_status = s.status
+        FROM tooling_status s
+        WHERE s.item_type = 'child'
+          AND s.item_id::text = c.id::text
+          AND (c.purchase_status IS NULL OR c.purchase_status = '')`);
+    } catch {}
+    await client.end();
+  } catch (e) {
+    statusColumnsReady = false;
+  }
+};
 
 // GET /api/tooling
 // 支持分页、搜索、筛选与排序
@@ -534,6 +567,7 @@ router.put('/:id', async (req, res) => {
 // 获取某工装的零件列表
 router.get('/:id/parts', async (req, res) => {
   try {
+    await ensurePurchaseStatusColumns();
     const { id } = req.params;
     // 添加缓存控制头，确保获取最新数据
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -679,6 +713,7 @@ router.post('/:id/parts', async (req, res) => {
   router.put('/parts/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    await ensurePurchaseStatusColumns();
     const payload = req.body || {};
     
     console.log('更新零件请求:', {
@@ -1514,6 +1549,7 @@ router.get('/batch', async (req, res) => {
 // 获取某工装的标准件列表
 router.get('/:id/child-items', async (req, res) => {
   try {
+    await ensurePurchaseStatusColumns();
     const { id } = req.params;
     const { data, error } = await supabase
           .from('child_items')
@@ -1578,6 +1614,7 @@ router.post('/:id/child-items', async (req, res) => {
 router.put('/child-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    await ensurePurchaseStatusColumns();
     const payload = req.body || {};
     
     console.log('更新标准件请求:', {

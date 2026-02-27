@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Table, Space, Button, Checkbox, DatePicker, message } from 'antd'
 import dayjs from 'dayjs'
 import EditableCell from '../../components/EditableCell'
-import { updatePurchaseStatus } from '../../services/toolingService'
+import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService'
 
 interface TempItem {
   id: string
@@ -64,15 +64,8 @@ export default function TemporaryPlans() {
       const pid = (item as any)?.part_id
       const cid = (item as any)?.child_item_id
       const nextStatus = value && value.trim() ? '采购中' : '审批中'
-      if (pid) {
-        localStorage.setItem(`status_part_${pid}`, nextStatus)
-        updatePurchaseStatus('part', String(pid), nextStatus)
-      }
-      if (cid) {
-        localStorage.setItem(`status_child_${cid}`, nextStatus)
-        updatePurchaseStatus('child', String(cid), nextStatus)
-      }
-      window.dispatchEvent(new Event('status_updated'))
+      if (pid) updatePartPurchaseStatus(String(pid), nextStatus)
+      if (cid) updateChildPurchaseStatus(String(cid), nextStatus)
       return next
     })
   }
@@ -92,15 +85,8 @@ export default function TemporaryPlans() {
       const pid = (item as any)?.part_id
       const cid = (item as any)?.child_item_id
       const newStatus = checked ? '已到货' : ((item as any)?.purchaser ? '采购中' : '审批中')
-      if (pid) {
-        localStorage.setItem(`status_part_${pid}`, newStatus)
-        updatePurchaseStatus('part', String(pid), newStatus)
-      }
-      if (cid) {
-        localStorage.setItem(`status_child_${cid}`, newStatus)
-        updatePurchaseStatus('child', String(cid), newStatus)
-      }
-      window.dispatchEvent(new Event('status_updated'))
+      if (pid) updatePartPurchaseStatus(String(pid), newStatus)
+      if (cid) updateChildPurchaseStatus(String(cid), newStatus)
       return next
     })
   }
@@ -121,15 +107,8 @@ export default function TemporaryPlans() {
       const pid = (item as any)?.part_id
       const cid = (item as any)?.child_item_id
       const newStatus = str ? '已到货' : ((item as any)?.purchaser ? '采购中' : '审批中')
-      if (pid) {
-        localStorage.setItem(`status_part_${pid}`, newStatus)
-        updatePurchaseStatus('part', String(pid), newStatus)
-      }
-      if (cid) {
-        localStorage.setItem(`status_child_${cid}`, newStatus)
-        updatePurchaseStatus('child', String(cid), newStatus)
-      }
-      window.dispatchEvent(new Event('status_updated'))
+      if (pid) updatePartPurchaseStatus(String(pid), newStatus)
+      if (cid) updateChildPurchaseStatus(String(cid), newStatus)
       return next
     })
   }
@@ -165,14 +144,8 @@ export default function TemporaryPlans() {
                   if (inv.startsWith('BACKUP-')) hb.delete(inv.slice(7))
                   const pid = (it as any).part_id
                   const cid = (it as any).child_item_id
-                  if (pid) {
-                    localStorage.setItem(`status_part_${pid}`, '提计划')
-                    updatePurchaseStatus('part', String(pid), '提计划')
-                  }
-                  if (cid) {
-                    localStorage.setItem(`status_child_${cid}`, '提计划')
-                    updatePurchaseStatus('child', String(cid), '提计划')
-                  }
+                  if (pid) updatePartPurchaseStatus(String(pid), '提计划')
+                  if (cid) updateChildPurchaseStatus(String(cid), '提计划')
                 }
               }))
               localStorage.setItem('temporary_hidden_ids', JSON.stringify(Array.from(hidden)))

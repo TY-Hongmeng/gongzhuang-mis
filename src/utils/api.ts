@@ -1368,6 +1368,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
           payload.weight = Number.isNaN(w) ? null : w
         }
+        if (Object.prototype.hasOwnProperty.call(body, 'purchase_status')) {
+          const s = body.purchase_status
+          payload.purchase_status = (s === null) ? null : String(s || '')
+        }
         const { error } = await supabase.from('parts_info').update(payload).eq('id', id)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
@@ -1423,6 +1427,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (Object.prototype.hasOwnProperty.call(body, 'required_date')) payload.required_date = String(body.required_date ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'remark')) payload.remark = String(body.remark ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'type')) payload.type = String(body.type ?? '') || null
+        if (Object.prototype.hasOwnProperty.call(body, 'purchase_status')) payload.purchase_status = String(body.purchase_status ?? '') || null
         const { error } = await supabase.from('child_items').update(payload).eq('id', id)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
