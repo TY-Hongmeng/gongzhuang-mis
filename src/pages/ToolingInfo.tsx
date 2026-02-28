@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2211,6 +2211,58 @@ const ToolingInfoPage: React.FC = () => {
       />
     )
   }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
+
+  // 确保展开的子表至少有一行空白行
+  useEffect(() => {
+    const idsToCheck = new Set([...expandedRowKeys, ...expandedChildKeys])
+    if (idsToCheck.size === 0) return
+
+    setPartsMap(prev => {
+      const next = { ...prev }
+      let hasChange = false
+      expandedRowKeys.forEach(tid => {
+        const list = next[tid]
+        // 仅当明确为数组且长度为0时（已加载但无数据），添加空白行
+        if (Array.isArray(list) && list.length === 0) {
+          next[tid] = [{
+            id: `blank-${tid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            tooling_id: tid,
+            part_drawing_number: '',
+            part_name: '',
+            part_quantity: '',
+            material_id: '',
+            material_source_id: '',
+            part_category: '',
+            specifications: {},
+            weight: 0,
+            remarks: ''
+          }]
+          hasChange = true
+        }
+      })
+      return hasChange ? next : prev
+    })
+
+    setChildItemsMap(prev => {
+      const next = { ...prev }
+      let hasChange = false
+      expandedChildKeys.forEach(tid => {
+        const list = next[tid]
+        if (Array.isArray(list) && list.length === 0) {
+          next[tid] = [{
+            id: `blank-${tid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            tooling_id: tid,
+            name: '',
+            model: '',
+            quantity: '',
+            remarks: ''
+          }]
+          hasChange = true
+        }
+      })
+      return hasChange ? next : prev
+    })
+  }, [expandedRowKeys, expandedChildKeys, partsMap, childItemsMap, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
