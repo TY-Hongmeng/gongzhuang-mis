@@ -38,6 +38,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isDev = (import.meta as any).env?.DEV === true
   
   if (cleanUrl.startsWith('/') && isApiPath) {
+    const forceBackend = /^\/api\/tooling\/status/.test(cleanUrl)
+      || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
+      || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
+      || /^\/api\/tooling\/parts\//.test(cleanUrl)
+      || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
     const isCriticalOrderPath = cleanUrl.startsWith('/api/purchase-orders') || cleanUrl.startsWith('/api/cutting-orders')
     
@@ -48,7 +53,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       // 不返回，继续向下执行
     } else {
       // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
-      if (isGhPages || (!isLocal && !isDev)) {
+      if ((isGhPages || (!isLocal && !isDev)) && !forceBackend) {
         const handled = await handleClientSideApi(cleanUrl, init)
         if (handled) return handled
       }

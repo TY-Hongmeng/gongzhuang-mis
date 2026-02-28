@@ -568,6 +568,7 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/parts', async (req, res) => {
   try {
     await ensurePurchaseStatusColumns();
+    await ensureStatusTable();
     const { id } = req.params;
     // 添加缓存控制头，确保获取最新数据
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -836,6 +837,7 @@ router.post('/:id/parts', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message, code: error.code });
     }
     if (hasStatus) {
+      await ensureStatusTable();
       const s = payload.purchase_status
       const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
       if (!status) {
@@ -1603,6 +1605,7 @@ router.get('/batch', async (req, res) => {
 router.get('/:id/child-items', async (req, res) => {
   try {
     await ensurePurchaseStatusColumns();
+    await ensureStatusTable();
     const { id } = req.params;
     const { data, error } = await supabase
           .from('child_items')
@@ -1734,6 +1737,7 @@ router.put('/child-items/:id', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message, code: error.code });
     }
     if (hasStatus) {
+      await ensureStatusTable();
       const s = payload.purchase_status
       const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
       if (!status) {
