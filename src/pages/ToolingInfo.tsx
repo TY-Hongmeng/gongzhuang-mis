@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -290,7 +290,7 @@ const ToolingInfoPage: React.FC = () => {
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
     if (isDateString(status)) {
-      return <span style={{ color: '#52c41a', fontWeight: 600 }}>{status}</span>
+      return <span style={{ color: '#000000', fontWeight: 600 }}>{status}</span>
     }
     return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
   }, [])
@@ -1867,7 +1867,7 @@ const ToolingInfoPage: React.FC = () => {
         width: 100,
         render: (text: number, rec: PartItem) => {
           const dep = getWeightCached(rec)
-          return <span style={{ color: '#999' }}>{dep.totalWeight.toFixed(3)}</span>
+          return <span style={{ color: '#000000' }}>{dep.totalWeight.toFixed(3)}</span>
         }
       },
       {
@@ -1876,7 +1876,7 @@ const ToolingInfoPage: React.FC = () => {
         width: 100,
         render: (text: number, rec: PartItem) => {
           const { total } = getPriceCached(rec)
-          return <span style={{ color: '#999' }}>{total.toFixed(2)}</span>
+          return <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
         }
       },
       {
@@ -2700,7 +2700,7 @@ const ToolingInfoPage: React.FC = () => {
       dataIndex: 'recorder',
       width: 120,
       render: (text: string, record: RowItem) => (
-        <span className="text-gray-600">{text || '-'}</span>
+        <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
   ], [handleSave, data, fetchPartsData, fetchChildItemsData])
