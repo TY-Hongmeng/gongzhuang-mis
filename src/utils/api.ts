@@ -1293,7 +1293,27 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .eq('tooling_id', toolingId)
           .order('created_at', { ascending: true })
         if (error) return jsonResponse({ success: true, items: [], data: [] })
-        return jsonResponse({ success: true, items: data || [], data: data || [] })
+        const items = (data || []) as any[]
+        const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
+        if (missingIds.length > 0) {
+          const { data: statusRows } = await supabase
+            .from('tooling_status')
+            .select('item_id,status')
+            .eq('item_type', 'part')
+            .in('item_id', missingIds)
+          const statusMap = new Map<string, string>()
+          ;(statusRows || []).forEach((r: any) => {
+            const k = String(r.item_id || '')
+            if (k) statusMap.set(k, String(r.status || ''))
+          })
+          items.forEach((r: any) => {
+            if (!String(r.purchase_status || '').trim()) {
+              const s = statusMap.get(String(r.id || '')) || ''
+              if (s) r.purchase_status = s
+            }
+          })
+        }
+        return jsonResponse({ success: true, items, data: items })
       }
       if (method === 'POST' && partsMatch) {
         const toolingId = partsMatch[1]
@@ -1333,6 +1353,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const id = partIdMatch[1]
         const body = await readBody()
         const payload: any = {}
+        const hasStatus = Object.prototype.hasOwnProperty.call(body, 'purchase_status')
         if (Object.prototype.hasOwnProperty.call(body, 'part_inventory_number')) {
           const s = body.part_inventory_number
           payload.part_inventory_number = (s === null) ? null : String(s || '')
@@ -1368,12 +1389,24 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
           payload.weight = Number.isNaN(w) ? null : w
         }
-        if (Object.prototype.hasOwnProperty.call(body, 'purchase_status')) {
+        const updateStatus = async () => {
+          if (!hasStatus) return
           const s = body.purchase_status
-          payload.purchase_status = (s === null) ? null : String(s || '')
+          const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+          if (!status) {
+            await supabase.from('tooling_status').delete().eq('item_type', 'part').eq('item_id', id)
+            return
+          }
+          await supabase
+            .from('tooling_status')
+            .upsert({ item_type: 'part', item_id: id, status, updated_at: new Date().toISOString() }, { onConflict: 'item_type,item_id' })
         }
-        const { error } = await supabase.from('parts_info').update(payload).eq('id', id)
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        const hasOtherFields = Object.keys(payload).length > 0
+        if (hasOtherFields) {
+          const { error } = await supabase.from('parts_info').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        }
+        await updateStatus()
         return jsonResponse({ success: true })
       }
       if (partIdMatch && method === 'DELETE') {
@@ -1393,7 +1426,27 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .eq('tooling_id', toolingId)
           .order('created_at', { ascending: true })
         if (error) return jsonResponse({ success: true, items: [], data: [] })
-        return jsonResponse({ success: true, items: data || [], data: data || [] })
+        const items = (data || []) as any[]
+        const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
+        if (missingIds.length > 0) {
+          const { data: statusRows } = await supabase
+            .from('tooling_status')
+            .select('item_id,status')
+            .eq('item_type', 'child')
+            .in('item_id', missingIds)
+          const statusMap = new Map<string, string>()
+          ;(statusRows || []).forEach((r: any) => {
+            const k = String(r.item_id || '')
+            if (k) statusMap.set(k, String(r.status || ''))
+          })
+          items.forEach((r: any) => {
+            if (!String(r.purchase_status || '').trim()) {
+              const s = statusMap.get(String(r.id || '')) || ''
+              if (s) r.purchase_status = s
+            }
+          })
+        }
+        return jsonResponse({ success: true, items, data: items })
       }
       if (method === 'POST' && childMatch) {
         const toolingId = childMatch[1]
@@ -1417,6 +1470,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const id = childIdMatch[1]
         const body = await readBody()
         const payload: any = {}
+        const hasStatus = Object.prototype.hasOwnProperty.call(body, 'purchase_status')
         if (Object.prototype.hasOwnProperty.call(body, 'name')) payload.name = String(body.name ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'model')) payload.model = String(body.model ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'quantity')) {
@@ -1427,9 +1481,24 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (Object.prototype.hasOwnProperty.call(body, 'required_date')) payload.required_date = String(body.required_date ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'remark')) payload.remark = String(body.remark ?? '') || null
         if (Object.prototype.hasOwnProperty.call(body, 'type')) payload.type = String(body.type ?? '') || null
-        if (Object.prototype.hasOwnProperty.call(body, 'purchase_status')) payload.purchase_status = String(body.purchase_status ?? '') || null
-        const { error } = await supabase.from('child_items').update(payload).eq('id', id)
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        const updateStatus = async () => {
+          if (!hasStatus) return
+          const s = body.purchase_status
+          const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+          if (!status) {
+            await supabase.from('tooling_status').delete().eq('item_type', 'child').eq('item_id', id)
+            return
+          }
+          await supabase
+            .from('tooling_status')
+            .upsert({ item_type: 'child', item_id: id, status, updated_at: new Date().toISOString() }, { onConflict: 'item_type,item_id' })
+        }
+        const hasOtherFields = Object.keys(payload).length > 0
+        if (hasOtherFields) {
+          const { error } = await supabase.from('child_items').update(payload).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        }
+        await updateStatus()
         return jsonResponse({ success: true })
       }
       if (childIdMatch && method === 'DELETE') {
