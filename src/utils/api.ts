@@ -19,6 +19,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
+  const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
+    || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
     '/api/options/', 
@@ -92,16 +94,16 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       const fallback = `http://localhost:3003${u.pathname}${u.search}`
       return await fetch(fallback, init)
     }
-    if (res.status === 404 && cleanUrl.startsWith('/') && !forceBackend) {
-      const handled = await handleClientSideApi(abs, init)
+    if (res.status === 404 && cleanUrl.startsWith('/') && (!forceBackend || allowClientFallbackOn404)) {
+      const handled = await handleClientSideApi(cleanUrl, init)
       if (handled) return handled
     }
     return res
   } catch (err) {
     console.error('fetchWithFallback: Network error or similar', err)
     // 网络错误时，尝试调用客户端API处理
-    if (cleanUrl.startsWith('/')) {
-      const handled = await handleClientSideApi(abs, init)
+    if (cleanUrl.startsWith('/') && (!forceBackend || allowClientFallbackOn404)) {
+      const handled = await handleClientSideApi(cleanUrl, init)
       if (handled) return handled
     }
     // 在 GitHub Pages 环境不再回退到 localhost，直接抛错
