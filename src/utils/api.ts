@@ -14,6 +14,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
   )
 
+  const forceBackend = /^\/api\/tooling\/status/.test(cleanUrl)
+    || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
+    || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
+    || /^\/api\/tooling\/parts\//.test(cleanUrl)
+    || /^\/api\/tooling\/child-items\//.test(cleanUrl)
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
     '/api/options/', 
@@ -38,11 +43,6 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const isDev = (import.meta as any).env?.DEV === true
   
   if (cleanUrl.startsWith('/') && isApiPath) {
-    const forceBackend = /^\/api\/tooling\/status/.test(cleanUrl)
-      || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
-      || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
-      || /^\/api\/tooling\/parts\//.test(cleanUrl)
-      || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
     const isCriticalOrderPath = cleanUrl.startsWith('/api/purchase-orders') || cleanUrl.startsWith('/api/cutting-orders')
     
@@ -92,7 +92,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       const fallback = `http://localhost:3003${u.pathname}${u.search}`
       return await fetch(fallback, init)
     }
-    if (res.status === 404 && cleanUrl.startsWith('/')) {
+    if (res.status === 404 && cleanUrl.startsWith('/') && !forceBackend) {
       const handled = await handleClientSideApi(abs, init)
       if (handled) return handled
     }

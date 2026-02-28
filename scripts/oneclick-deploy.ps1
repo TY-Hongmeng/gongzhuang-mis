@@ -3,6 +3,7 @@ Param(
   [string]$ProjectRef,
   [string]$SupabaseUrl,
   [string]$ServiceRoleKey,
+  [string]$SupabaseDbUrl,
   [string]$GithubRepo = "TY-Hongmeng/gongzhuang-mis"
 )
 
@@ -25,8 +26,12 @@ function Link-Project($Ref) {
   supabase link --project-ref $Ref | Out-Null
 }
 
-function Set-FunctionSecrets($Url, $Key) {
-  supabase secrets set SUPABASE_URL="$Url" SUPABASE_SERVICE_ROLE_KEY="$Key" | Out-Null
+function Set-FunctionSecrets($Url, $Key, $DbUrl) {
+  if ($DbUrl) {
+    supabase secrets set SUPABASE_URL="$Url" SUPABASE_SERVICE_ROLE_KEY="$Key" SUPABASE_DB_URL="$DbUrl" | Out-Null
+  } else {
+    supabase secrets set SUPABASE_URL="$Url" SUPABASE_SERVICE_ROLE_KEY="$Key" | Out-Null
+  }
 }
 
 function Deploy-ApiFunction {
@@ -47,6 +52,6 @@ function Print-NextSteps($Ref, $Repo, $Url) {
 Ensure-SupabaseCLI
 Ensure-LoggedIn $SupabaseAccessToken
 Link-Project $ProjectRef
-Set-FunctionSecrets $SupabaseUrl $ServiceRoleKey
+Set-FunctionSecrets $SupabaseUrl $ServiceRoleKey $SupabaseDbUrl
 Deploy-ApiFunction
 Print-NextSteps $ProjectRef $GithubRepo $SupabaseUrl
