@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -176,7 +176,7 @@ const ExpandedSubTables: React.FC<{
     <div style={{ padding: '16px 24px', background: '#fafafa' }} onClick={(e) => e.stopPropagation()}>
       <style>{`
         .subtable-no-hover .ant-table-tbody > tr:hover > td { background: inherit !important; }
-        .subtable-no-hover .row-completed:hover > td { background: #2f8f4e !important; }
+        .subtable-no-hover .ant-table-tbody > tr.row-completed:hover > td { background: #2f8f4e !important; }
       `}</style>
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
@@ -4362,7 +4362,7 @@ const ToolingInfoPage: React.FC = () => {
           .editing-input { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
           .row-completed > td { background: #2f8f4e !important; }
-          .row-completed:hover > td { background: #2f8f4e !important; }
+          .excel-table .ant-table-tbody > tr.row-completed:hover > td { background: #2f8f4e !important; }
           .excel-table .ant-table-expand-icon-col,
           .excel-table .ant-table-row-expand-icon-cell { display: none !important; }
           .filter-bar .ant-input { border: none !important; box-shadow: none !important; }
