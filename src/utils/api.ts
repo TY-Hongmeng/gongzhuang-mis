@@ -21,6 +21,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
+  const method = String(init?.method || 'GET').toUpperCase()
+  const clientOnly = isGhPages && (
+    /^\/api\/tooling\/parts\/[^\/]+$/.test(cleanUrl) ||
+    /^\/api\/tooling\/child-items\/[^\/]+$/.test(cleanUrl)
+  ) && (method === 'PUT' || method === 'DELETE')
   // 所有API路径都直接使用客户端API处理，不经过外部API
   const apiPaths = [
     '/api/options/', 
@@ -54,6 +59,10 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       console.log(`[API] Critical path ${cleanUrl} detected in local environment, bypassing client-side handler to use backend.`)
       // 不返回，继续向下执行
     } else {
+      if (clientOnly) {
+        const handled = await handleClientSideApi(cleanUrl, init)
+        if (handled) return handled
+      }
       // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
       if ((isGhPages || (!isLocal && !isDev)) && !forceBackend) {
         const handled = await handleClientSideApi(cleanUrl, init)
@@ -1400,6 +1409,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (!hasStatus) return
           const s = body.purchase_status
           const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+          payload.purchase_status = status ? status : null
           if (!status) {
             await supabase.from('tooling_status').delete().eq('item_type', 'part').eq('item_id', id)
             return
@@ -1410,7 +1420,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         const hasOtherFields = Object.keys(payload).length > 0
         if (hasOtherFields) {
-          const { error } = await supabase.from('parts_info').update(payload).eq('id', id)
+          let { error } = await supabase.from('parts_info').update(payload).eq('id', id)
+          if (error && hasStatus && Object.prototype.hasOwnProperty.call(payload, 'purchase_status')) {
+            const msg = String(error.message || '')
+            if (msg.includes('purchase_status')) {
+              const retryPayload = { ...payload }
+              delete retryPayload.purchase_status
+              const retry = await supabase.from('parts_info').update(retryPayload).eq('id', id)
+              error = retry.error
+            }
+          }
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
         }
         await updateStatus()
@@ -1492,6 +1511,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (!hasStatus) return
           const s = body.purchase_status
           const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+          payload.purchase_status = status ? status : null
           if (!status) {
             await supabase.from('tooling_status').delete().eq('item_type', 'child').eq('item_id', id)
             return
@@ -1502,7 +1522,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         const hasOtherFields = Object.keys(payload).length > 0
         if (hasOtherFields) {
-          const { error } = await supabase.from('child_items').update(payload).eq('id', id)
+          let { error } = await supabase.from('child_items').update(payload).eq('id', id)
+          if (error && hasStatus && Object.prototype.hasOwnProperty.call(payload, 'purchase_status')) {
+            const msg = String(error.message || '')
+            if (msg.includes('purchase_status')) {
+              const retryPayload = { ...payload }
+              delete retryPayload.purchase_status
+              const retry = await supabase.from('child_items').update(retryPayload).eq('id', id)
+              error = retry.error
+            }
+          }
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
         }
         await updateStatus()
