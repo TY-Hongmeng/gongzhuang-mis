@@ -21,6 +21,9 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
+    || /^\/api\/tooling\/parts\//.test(cleanUrl)
+    || /^\/api\/tooling\/child-items\//.test(cleanUrl)
+    || /^\/api\/tooling\/status/.test(cleanUrl)
   const method = String(init?.method || 'GET').toUpperCase()
   const clientOnly = isGhPages && (
     /^\/api\/tooling\/parts\/[^\/]+$/.test(cleanUrl) ||
