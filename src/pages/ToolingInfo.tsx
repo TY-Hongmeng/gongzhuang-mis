@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -290,9 +290,9 @@ const ToolingInfoPage: React.FC = () => {
   const renderStatusText = useCallback((status: string) => {
     if (!status) return null
     if (isDateString(status)) {
-      return <span style={{ color: '#000000', fontWeight: 600 }}>{status}</span>
+      return <span style={{ color: '#000000' }}>{status}</span>
     }
-    return <span style={{ color: statusColorMap[status] || '#595959', fontWeight: 500 }}>{status}</span>
+    return <span style={{ color: statusColorMap[status] || '#595959' }}>{status}</span>
   }, [])
   const ROUTE_BUCKET_PREFIX = 'process_routes_bucket:'
   const ROUTE_BUCKET_SLICE = 4
@@ -1905,7 +1905,7 @@ const ToolingInfoPage: React.FC = () => {
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
                 if (raw) return renderStatusText(raw)
-                return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+                return ready ? <span style={{ color: '#1890ff' }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
               }}
             />
           )
@@ -2090,7 +2090,7 @@ const ToolingInfoPage: React.FC = () => {
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
                 if (raw) return renderStatusText(raw)
-                return ready ? <span style={{ color: '#1890ff', fontWeight: 500 }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
+                return ready ? <span style={{ color: '#1890ff' }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
               }}
             />
           )
