@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -14,7 +14,6 @@ import { generateInventoryNumber, canGenerateInventoryNumber } from '../utils/to
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
 import { useToolingOperations } from '../hooks/useToolingOperations'
-import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../services/toolingService'
 import EditableCell from '../components/EditableCell'
 import SpecificationsInput from '../components/SpecificationsInput'
 import type { Material } from '../types/tooling'
@@ -369,33 +368,42 @@ const ToolingInfoPage: React.FC = () => {
     batchDelete
   } = useToolingData()
   const selectedParentIds = useMemo(() => selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')), [selectedRowKeys])
-  const saveStatusInput = useCallback((type: 'part' | 'child', id: string, value: string) => {
+  const saveStatusInput = useCallback(async (toolingId: string, type: 'part' | 'child', id: string, value: string) => {
     const normalized = String(normalizeDateInput(value || '') || '').trim()
     const nextValue = normalized ? normalized : null
     if (type === 'part') {
       setPartsMap(prev => {
-        const next = { ...prev }
-        Object.keys(next).forEach(toolingId => {
-          const list = next[toolingId] || []
-          const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
-          next[toolingId] = updated
-        })
-        return next
+        const list = prev[toolingId] || []
+        const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
+        return { ...prev, [toolingId]: updated }
       })
-      updatePartPurchaseStatus(id, nextValue)
+      const ok = await savePartData(id, { purchase_status: nextValue })
+      if (!ok) {
+        message.error('状态保存失败，请重试')
+        await fetchPartsData(toolingId, true)
+      }
       return
     }
     setChildItemsMap(prev => {
-      const next = { ...prev }
-      Object.keys(next).forEach(toolingId => {
-        const list = next[toolingId] || []
-        const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
-        next[toolingId] = updated
-      })
-      return next
+      const list = prev[toolingId] || []
+      const updated = list.map(item => item.id === id ? { ...item, purchase_status: nextValue || '' } : item)
+      return { ...prev, [toolingId]: updated }
     })
-    updateChildPurchaseStatus(id, nextValue)
-  }, [setPartsMap, setChildItemsMap])
+    try {
+      const response = await fetch(`/api/tooling/child-items/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchase_status: nextValue })
+      })
+      if (!response.ok) {
+        message.error('状态保存失败，请重试')
+        await fetchChildItemsData(toolingId, true)
+      }
+    } catch {
+      message.error('状态保存失败，请重试')
+      await fetchChildItemsData(toolingId, true)
+    }
+  }, [setPartsMap, setChildItemsMap, savePartData, fetchPartsData, fetchChildItemsData])
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
@@ -1893,7 +1901,7 @@ const ToolingInfoPage: React.FC = () => {
               value={purchaseStatus}
               record={rec as any}
               dataIndex={'__status' as any}
-              onSave={(pid, _k, v) => saveStatusInput('part', String(pid || ''), v)}
+              onSave={(pid, _k, v) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
                 if (raw) return renderStatusText(raw)
@@ -2078,7 +2086,7 @@ const ToolingInfoPage: React.FC = () => {
               value={purchaseStatus}
               record={rec as any}
               dataIndex={'__status' as any}
-              onSave={(pid, _k, v) => saveStatusInput('child', String(pid || ''), v)}
+              onSave={(pid, _k, v) => saveStatusInput(toolingId, 'child', String(pid || ''), v)}
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
                 if (raw) return renderStatusText(raw)
