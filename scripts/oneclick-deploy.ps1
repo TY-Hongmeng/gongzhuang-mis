@@ -7,6 +7,12 @@ Param(
   [string]$GithubRepo = "TY-Hongmeng/gongzhuang-mis"
 )
 
+if (-not $SupabaseAccessToken) { $SupabaseAccessToken = $env:SUPABASE_ACCESS_TOKEN }
+if (-not $ProjectRef) { $ProjectRef = $env:SUPABASE_PROJECT_REF }
+if (-not $SupabaseUrl) { $SupabaseUrl = $env:SUPABASE_URL }
+if (-not $ServiceRoleKey) { $ServiceRoleKey = $env:SUPABASE_SERVICE_ROLE_KEY }
+if (-not $SupabaseDbUrl) { $SupabaseDbUrl = $env:SUPABASE_DB_URL }
+
 function Ensure-SupabaseCLI {
   if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
     Write-Host "Installing Supabase CLI..."
@@ -18,7 +24,10 @@ function Ensure-LoggedIn($Token) {
   if ($Token) {
     supabase login --token $Token | Out-Null
   } else {
-    supabase login | Out-Null
+    $null = supabase projects list 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      throw "SUPABASE_ACCESS_TOKEN 未设置且当前未登录 Supabase CLI。"
+    }
   }
 }
 
