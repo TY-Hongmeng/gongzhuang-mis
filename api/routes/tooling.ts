@@ -577,7 +577,7 @@ router.get('/:id/parts', async (req, res) => {
       const sel = [
         'id','tooling_id','part_inventory_number','part_drawing_number','part_name','part_quantity',
         'material_id','material_source_id','part_category','specifications','weight','unit_price',
-        'total_price','remarks','process_route'
+        'total_price','remarks','process_route','purchase_status'
       ].join(',')
       const { data, error } = await supabase
           .from('parts_info')
@@ -585,11 +585,40 @@ router.get('/:id/parts', async (req, res) => {
           .eq('tooling_id', id)
           .order('part_inventory_number', { ascending: true });
       if (error) throw error
-      return res.json({ success: true, items: data || [] })
+      const items = (data || []) as any[]
+      const missingIds = items
+        .filter(r => !String(r.purchase_status || '').trim())
+        .map(r => String(r.id || ''))
+        .filter(Boolean)
+      if (missingIds.length > 0) {
+        const { data: statusRows } = await supabase
+          .from('tooling_status')
+          .select('item_id,status')
+          .eq('item_type', 'part')
+          .in('item_id', missingIds)
+        const statusMap = new Map<string, string>()
+        ;(statusRows || []).forEach((r: any) => {
+          const k = String(r.item_id || '')
+          if (k) statusMap.set(k, String(r.status || ''))
+        })
+        items.forEach((r: any) => {
+          if (!String(r.purchase_status || '').trim()) {
+            const s = statusMap.get(String(r.id || '')) || ''
+            if (s) r.purchase_status = s
+          }
+        })
+      }
+      return res.json({ success: true, items })
     } catch (e: any) {
       console.warn('[Tooling] Supabase parts fetch failed, falling back to PG:', e?.message)
       try {
-        const sql = `SELECT p.*, row_to_json(m) AS material, row_to_json(s) AS material_source FROM parts_info p LEFT JOIN materials m ON p.material_id = m.id LEFT JOIN material_sources s ON p.material_source_id = s.id WHERE p.tooling_id = $1 ORDER BY p.part_inventory_number ASC`
+        const sql = `SELECT p.*, COALESCE(ts.status, p.purchase_status) AS purchase_status, row_to_json(m) AS material, row_to_json(s) AS material_source
+          FROM parts_info p
+          LEFT JOIN tooling_status ts ON ts.item_type = 'part' AND ts.item_id::text = p.id::text
+          LEFT JOIN materials m ON p.material_id = m.id
+          LEFT JOIN material_sources s ON p.material_source_id = s.id
+          WHERE p.tooling_id = $1
+          ORDER BY p.part_inventory_number ASC`
         const r = await query(sql, [id])
         return res.json({ success: true, items: r.rows || [] })
       } catch (pgErr: any) {
@@ -715,6 +744,7 @@ router.post('/:id/parts', async (req, res) => {
     const { id } = req.params;
     await ensurePurchaseStatusColumns();
     const payload = req.body || {};
+    const hasStatus = Object.prototype.hasOwnProperty.call(payload, 'purchase_status')
     
     console.log('更新零件请求:', {
       partId: id,
@@ -743,6 +773,9 @@ router.post('/:id/parts', async (req, res) => {
     }
     if (cleanedPayload.weight === '' || cleanedPayload.weight === null) {
       delete cleanedPayload.weight;
+    }
+    if (hasStatus) {
+      delete cleanedPayload.purchase_status
     }
     
     console.log('清理后的payload:', cleanedPayload);
@@ -801,6 +834,26 @@ router.post('/:id/parts', async (req, res) => {
       }
       console.error('Update parts_info error:', error);
       return res.status(500).json({ success: false, error: error.message, code: error.code });
+    }
+    if (hasStatus) {
+      const s = payload.purchase_status
+      const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+      if (!status) {
+        await supabase
+          .from('tooling_status')
+          .delete()
+          .eq('item_type', 'part')
+          .eq('item_id', id)
+      } else {
+        await supabase
+          .from('tooling_status')
+          .upsert({
+            item_type: 'part',
+            item_id: id,
+            status,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'item_type,item_id' })
+      }
     }
 
     const arr = Array.isArray(data) ? data : [];
@@ -1562,7 +1615,30 @@ router.get('/:id/child-items', async (req, res) => {
           return res.status(500).json({ success: false, error: error.message, code: error.code });
         }
 
-        res.json({ success: true, items: data || [] });
+        const items = (data || []) as any[]
+        const missingIds = items
+          .filter(r => !String(r.purchase_status || '').trim())
+          .map(r => String(r.id || ''))
+          .filter(Boolean)
+        if (missingIds.length > 0) {
+          const { data: statusRows } = await supabase
+            .from('tooling_status')
+            .select('item_id,status')
+            .eq('item_type', 'child')
+            .in('item_id', missingIds)
+          const statusMap = new Map<string, string>()
+          ;(statusRows || []).forEach((r: any) => {
+            const k = String(r.item_id || '')
+            if (k) statusMap.set(k, String(r.status || ''))
+          })
+          items.forEach((r: any) => {
+            if (!String(r.purchase_status || '').trim()) {
+              const s = statusMap.get(String(r.id || '')) || ''
+              if (s) r.purchase_status = s
+            }
+          })
+        }
+        res.json({ success: true, items });
   } catch (err) {
     console.error('Get child items route error:', err);
     res.status(500).json({ success: false, error: '服务器错误' });
@@ -1616,6 +1692,7 @@ router.put('/child-items/:id', async (req, res) => {
     const { id } = req.params;
     await ensurePurchaseStatusColumns();
     const payload = req.body || {};
+    const hasStatus = Object.prototype.hasOwnProperty.call(payload, 'purchase_status')
     
     console.log('更新标准件请求:', {
       childItemId: id,
@@ -1640,6 +1717,9 @@ router.put('/child-items/:id', async (req, res) => {
     if (cleanedPayload.quantity === '' || cleanedPayload.quantity === null) {
       delete cleanedPayload.quantity;
     }
+    if (hasStatus) {
+      delete cleanedPayload.purchase_status
+    }
     
     console.log('清理后的payload:', cleanedPayload);
 
@@ -1652,6 +1732,26 @@ router.put('/child-items/:id', async (req, res) => {
     if (error) {
       console.error('Update child_items error:', error);
       return res.status(500).json({ success: false, error: error.message, code: error.code });
+    }
+    if (hasStatus) {
+      const s = payload.purchase_status
+      const status = (s === null || typeof s === 'undefined') ? '' : String(s || '').trim()
+      if (!status) {
+        await supabase
+          .from('tooling_status')
+          .delete()
+          .eq('item_type', 'child')
+          .eq('item_id', id)
+      } else {
+        await supabase
+          .from('tooling_status')
+          .upsert({
+            item_type: 'child',
+            item_id: id,
+            status,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'item_type,item_id' })
+      }
     }
 
     const arr = Array.isArray(data) ? data : [];
