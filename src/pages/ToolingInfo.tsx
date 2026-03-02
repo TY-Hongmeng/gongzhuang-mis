@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -370,6 +370,8 @@ const ToolingInfoPage: React.FC = () => {
     fetchToolingData,
     fetchPartsData,
     fetchChildItemsData,
+    setPartsLoadingMap,
+    setChildLoadingMap,
     saveToolingData,
     savePartData,
     createTooling,
@@ -2144,8 +2146,10 @@ const ToolingInfoPage: React.FC = () => {
     // 获取当前数据，不再自动添加空白行
     const partsList = partsMap[toolingId] || []
     const childList = childItemsMap[toolingId] || []
-    const partsLoading = !!partsLoadingMap[toolingId]
-    const childLoading = !!childLoadingMap[toolingId]
+    const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMap, toolingId)
+    const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMap, toolingId)
+    const partsLoading = partsLoadingMap[toolingId] || !hasPartsLoaded
+    const childLoading = childLoadingMap[toolingId] || !hasChildLoaded
 
     const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${parentReceivedDate}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
@@ -4513,8 +4517,14 @@ const ToolingInfoPage: React.FC = () => {
               const id = record.id as string
               setExpandedRowKeys(prev => expanded ? [...prev, id] : prev.filter(k => k !== id))
               if (expanded) {
-                if (!partsMap[id] || partsMap[id].length === 0) fetchPartsData(id)
-                if (!childItemsMap[id] || childItemsMap[id].length === 0) fetchChildItemsData(id)
+                if (!partsMap[id] || partsMap[id].length === 0) {
+                  setPartsLoadingMap(prev => ({ ...prev, [id]: true }))
+                  fetchPartsData(id)
+                }
+                if (!childItemsMap[id] || childItemsMap[id].length === 0) {
+                  setChildLoadingMap(prev => ({ ...prev, [id]: true }))
+                  fetchChildItemsData(id)
+                }
               }
             },
             expandRowByClick: false,
