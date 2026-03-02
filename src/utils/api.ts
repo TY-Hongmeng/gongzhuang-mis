@@ -1125,11 +1125,25 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const pageSize = Number(qs.get('pageSize') || 50)
         const sortField = String(qs.get('sortField') || 'created_at')
         const sortOrder = String(qs.get('sortOrder') || 'asc').toLowerCase() === 'asc'
-        const { data, error } = await supabase
+        const search = String(qs.get('search') || '').trim()
+        const productionUnit = String(qs.get('production_unit') || '').trim()
+        const category = String(qs.get('category') || '').trim()
+        let query = supabase
           .from('tooling_info')
-          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder')
+          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder', { count: 'planned' })
+        
+        if (search) {
+          const keyword = `%${search}%`
+          query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`)
+        }
+        if (productionUnit) query = query.eq('production_unit', productionUnit)
+        if (category) query = query.eq('category', category)
+        
+        query = query
           .order(sortField as any, { ascending: sortOrder })
           .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+        
+        const { data, error, count } = await query
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize })
         const items = (data || []).map((x: any) => ({
           id: x.id,
@@ -1144,7 +1158,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           sets_count: typeof x.sets_count === 'number' ? x.sets_count : 1,
           recorder: x.recorder || ''
         }))
-        return jsonResponse({ success: true, items, total: items.length, page, pageSize, data: items })
+        return jsonResponse({ success: true, items, total: typeof count === 'number' ? count : items.length, page, pageSize, data: items })
       }
 
       if (method === 'POST' && path === '/api/tooling/status/batch') {
