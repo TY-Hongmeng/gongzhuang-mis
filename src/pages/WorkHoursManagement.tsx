@@ -504,8 +504,9 @@ const WorkHoursManagement: React.FC = () => {
     { title: '加工数量', dataIndex: 'completed_quantity', align: 'center' }
   ], [partNameMap, deviceMap, userMap, items, dailyHoursSum])
 
+  const expandColumnWidth = 48
   const parentColumnWidths = [90, 70, 70, 140, 140, 140, 140, 140, 140, 90, 120, 160]
-  const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0)
+  const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0) + expandColumnWidth
 
   // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
   const parentColumns = React.useMemo(() => [
@@ -1220,7 +1221,7 @@ const WorkHoursManagement: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: parentColumnWidths.map(w => `${w}px`).join(' '),
+              gridTemplateColumns: [expandColumnWidth, ...parentColumnWidths].map(w => `${w}px`).join(' '),
               alignItems: 'center',
               gap: 0,
               width: parentTableWidth,
@@ -1230,6 +1231,7 @@ const WorkHoursManagement: React.FC = () => {
               background: '#fafafa'
             }}
           >
+            <div />
             <div />
             <div />
             <div />
@@ -1255,6 +1257,7 @@ const WorkHoursManagement: React.FC = () => {
           tableLayout="fixed"
           expandable={{
             childrenColumnName: '_nochildren',
+            columnWidth: expandColumnWidth,
             expandedRowKeys,
             onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
             expandedRowRender: (record: any) => {
