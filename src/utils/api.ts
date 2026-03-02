@@ -1782,6 +1782,24 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           ...row,
           tooling_id: row.tooling_id || row.tooling_info_id || row.tooling_id
         }))
+        const missingTooling = items.filter(r => !r.tooling_id && r.inventory_number)
+        if (missingTooling.length > 0) {
+          const parentInvs = Array.from(new Set(missingTooling.map(r => String(r.inventory_number || '').trim().slice(0, 10)).filter(Boolean)))
+          if (parentInvs.length > 0) {
+            const { data: tinfo } = await supabase
+              .from('tooling_info')
+              .select('id, inventory_number')
+              .in('inventory_number', parentInvs)
+            const invToId = new Map<string, string>()
+            ;(tinfo || []).forEach(t => invToId.set(String((t as any).inventory_number || ''), String((t as any).id || '')))
+            items = items.map(r => {
+              if (r.tooling_id) return r
+              const parentInv = String(r.inventory_number || '').trim().slice(0, 10)
+              const tid = invToId.get(parentInv) || ''
+              return { ...r, tooling_id: tid || r.tooling_id }
+            })
+          }
+        }
         const missingProj = items.filter(r => !r.project_name || r.project_name === '未命名项目')
         if (missingProj.length > 0) {
           const ids = Array.from(new Set(missingProj.map(r => r.tooling_id).filter(Boolean)))
