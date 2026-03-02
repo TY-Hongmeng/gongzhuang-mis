@@ -25,6 +25,7 @@ interface CuttingOrder {
   material_source: string;
   created_date: string;
   tooling_id: string;
+  tooling_info_id?: string;
   part_id: string;
   part_category?: string;
   tooling_info?: {
@@ -64,6 +65,9 @@ const CuttingManagement: React.FC = () => {
   const isInitialMount = useRef(true);
   const locationKeyRef = useRef(location.key);
   const abortRef = useRef<AbortController | null>(null);
+  const getToolingId = useCallback((order: CuttingOrder) => {
+    return String(order.tooling_id || order.tooling_info_id || '').trim()
+  }, [])
 
   // 自动排序函数 - 根据规格进行智能排序
   const sortOrdersBySpecifications = (orders: CuttingOrder[]) => {
@@ -154,7 +158,8 @@ const CuttingManagement: React.FC = () => {
       
       const date = dayjs(order.created_date).format('YYYY-MM-DD');
       const material = order.material_source || '未知';
-      const responsiblePerson = responsiblePersonMap[order.tooling_id] || '未分配';
+      const toolingKey = getToolingId(order)
+      const responsiblePerson = (toolingKey && responsiblePersonMap[toolingKey]) ? responsiblePersonMap[toolingKey] : '未分配';
       const groupKey = `${date}_${material}_${responsiblePerson}`;
       
       // 统计分组键出现次数
@@ -377,7 +382,9 @@ const CuttingManagement: React.FC = () => {
         setQueryTime(result.queryTime || 0);
         
         // 获取编制信息 - 确保items存在
-        const toolingIds = result.items.map((order: CuttingOrder) => order.tooling_id).filter(Boolean);
+        const toolingIds = result.items
+          .map((order: CuttingOrder) => getToolingId(order))
+          .filter(Boolean);
         console.log('需要获取编制信息的工装ID数量:', toolingIds.length);
         console.log('具体工装ID列表:', toolingIds);
         
@@ -392,7 +399,8 @@ const CuttingManagement: React.FC = () => {
           const myTeamLocal = String(localNameToTeam[String(user?.real_name || '')] || '').trim()
           if (myTeamLocal) {
             items = items.filter((order: any) => {
-              const rawResp = String(responsiblePersonMap[order.tooling_id] || '').trim()
+              const tid = getToolingId(order)
+              const rawResp = String((tid && responsiblePersonMap[tid]) || '').trim()
               const byIdName = localIdToName[rawResp]
               const name = String(byIdName || rawResp).trim()
               const team = String(localNameToTeam[name] || '').trim()
@@ -649,7 +657,7 @@ const CuttingManagement: React.FC = () => {
     const dateText = dateSet.size === 1 ? Array.from(dateSet)[0] : `${Array.from(dateSet)[0]} 等`
     const sourceSet = new Set(rows.map(r => r.material_source || ''))
     const sourceText = sourceSet.size === 1 ? Array.from(sourceSet)[0] : '混合'
-    const firstToolingId = rows[0]?.tooling_id || ''
+    const firstToolingId = rows[0] ? getToolingId(rows[0]) : ''
     const rawResp = firstToolingId ? (responsibleMap[firstToolingId] || '') : ''
     const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
     const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '

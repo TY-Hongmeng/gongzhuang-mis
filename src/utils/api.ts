@@ -1752,7 +1752,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const sortOrderAsc = String(qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
 
         const selectCols = [
-          'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','part_id'
+          'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','tooling_info_id','part_id'
         ].join(',')
 
         let query = supabase.from('cutting_orders').select(selectCols, { count: 'planned' })
@@ -1778,6 +1778,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, queryTime: Date.now() - startTime, data: [] })
 
         let items = (data || []) as any[]
+        items = items.map((row: any) => ({
+          ...row,
+          tooling_id: row.tooling_id || row.tooling_info_id || row.tooling_id
+        }))
         const missingProj = items.filter(r => !r.project_name || r.project_name === '未命名项目')
         if (missingProj.length > 0) {
           const ids = Array.from(new Set(missingProj.map(r => r.tooling_id).filter(Boolean)))
