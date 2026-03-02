@@ -1,6 +1,6 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
-import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
+import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import { safeLocalStorage } from '../utils/safeStorage'
@@ -47,6 +47,7 @@ interface RowItem {
   inventory_number?: string
   production_unit?: string
   category?: string
+  priority_level?: number
   received_date?: string
   demand_date?: string
   completed_date?: string
@@ -616,6 +617,11 @@ const ToolingInfoPage: React.FC = () => {
   const [filterSearch, setFilterSearch] = useState('')
   const [filterUnit, setFilterUnit] = useState<string | undefined>(undefined)
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
+  const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
+  const filteredVisibleData = useMemo(() => {
+    if (!filterPriority) return visibleData
+    return (visibleData || []).filter((row: any) => Number(row.priority_level || 0) === filterPriority)
+  }, [visibleData, filterPriority])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
@@ -626,8 +632,9 @@ const ToolingInfoPage: React.FC = () => {
     if (filterSearch.trim()) opts.search = filterSearch.trim()
     if (filterUnit) opts.production_unit = filterUnit
     if (filterCategory) opts.category = filterCategory
+    if (filterPriority) opts.priority_level = filterPriority
     fetchToolingData(opts)
-  }, [filterSearch, filterUnit, filterCategory, fetchToolingData])
+  }, [filterSearch, filterUnit, filterCategory, filterPriority, fetchToolingData])
   
   // 添加筛选状态变化自动触发筛选的逻辑，300ms防抖
   useEffect(() => {
@@ -636,7 +643,7 @@ const ToolingInfoPage: React.FC = () => {
     }, 300)
     
     return () => clearTimeout(timeoutId)
-  }, [filterSearch, filterUnit, filterCategory, applyFilters])
+  }, [filterSearch, filterUnit, filterCategory, filterPriority, applyFilters])
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>()
@@ -745,7 +752,7 @@ const ToolingInfoPage: React.FC = () => {
       if (processDoneFetchRef.current.timer) clearTimeout(processDoneFetchRef.current.timer)
       processDoneFetchRef.current.timer = null
     }
-  }, [data, partsMap, expandedRowKeys, expandedChildKeys, filterSearch, filterUnit, filterCategory])
+  }, [data, partsMap, expandedRowKeys, expandedChildKeys, filterSearch, filterUnit, filterCategory, filterPriority])
   
   // 导入文件输入框ref
   const importFileInputRef = useRef<HTMLInputElement>(null)
@@ -842,6 +849,7 @@ const ToolingInfoPage: React.FC = () => {
         inventory_number: '',
         production_unit: '',
         category: '',
+        priority_level: 0,
         received_date: '',
         demand_date: '',
         completed_date: '',
@@ -910,7 +918,7 @@ const ToolingInfoPage: React.FC = () => {
   }
 
   // 保存工装数据
-  const handleSave = useCallback(async (id: string, key: keyof RowItem, value: string) => {
+  const handleSave = useCallback(async (id: string, key: keyof RowItem, value: any) => {
     try {
       // 重复盘存编号即时校验与提示
       if (key === 'inventory_number') {
@@ -939,6 +947,7 @@ const ToolingInfoPage: React.FC = () => {
             inventory_number: '', 
             production_unit: '', 
             category: '', 
+            priority_level: 0,
             project_name: '', 
             received_date: '', 
             demand_date: '', 
@@ -988,6 +997,9 @@ const ToolingInfoPage: React.FC = () => {
         if (updatedRowData.category && updatedRowData.category.trim() !== '') {
           payload.category = updatedRowData.category.trim()
         }
+        if (Number(updatedRowData.priority_level || 0) > 0) {
+          payload.priority_level = Number(updatedRowData.priority_level || 0)
+        }
         if (updatedRowData.received_date && updatedRowData.received_date.trim() !== '') {
           payload.received_date = updatedRowData.received_date.trim()
         }
@@ -1028,6 +1040,7 @@ const ToolingInfoPage: React.FC = () => {
                 inventory_number: '',
                 production_unit: '',
                 category: '',
+                priority_level: 0,
                 received_date: '',
                 demand_date: '',
                 completed_date: '',
@@ -2724,6 +2737,19 @@ const ToolingInfoPage: React.FC = () => {
           dataIndex="category"
           options={toolingCategories}
           onSave={handleSave}
+        />
+      )
+    },
+    {
+      title: '级别',
+      dataIndex: 'priority_level',
+      width: 120,
+      onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
+      render: (_: any, record: RowItem) => (
+        <Rate
+          count={3}
+          value={Number(record.priority_level || 0)}
+          onChange={(v) => handleSave(record.id, 'priority_level', v || 0)}
         />
       )
     },
@@ -4426,6 +4452,14 @@ const ToolingInfoPage: React.FC = () => {
           onSelect={(v) => setFilterCategory(String(v))}
           allowClear
         />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span>优先级</span>
+          <Rate
+            count={3}
+            value={filterPriority || 0}
+            onChange={(v) => setFilterPriority(v ? v : undefined)}
+          />
+        </div>
       </div>
         <div ref={tableWrapRef} style={{ flex: 1, minHeight: 0 }}>
           <style>{`
@@ -4450,7 +4484,7 @@ const ToolingInfoPage: React.FC = () => {
           rowKey="id"
           loading={loading}
           components={{ header: { cell: HeaderCell } }}
-          dataSource={ensureBlankToolings(visibleData)}
+          dataSource={ensureBlankToolings(filteredVisibleData)}
           columns={columns}
           pagination={false}
           bordered={false}
@@ -4478,7 +4512,7 @@ const ToolingInfoPage: React.FC = () => {
               })
             },
             onSelectAll: (selected) => {
-              const currentList = ensureBlankToolings(visibleData).filter(r => !String(r.id || '').startsWith('blank-'))
+              const currentList = ensureBlankToolings(filteredVisibleData).filter(r => !String(r.id || '').startsWith('blank-'))
               if (selected) {
                 // 仅针对当前列表的父级行选择，以及其已加载子项
                 const allKeys: string[] = []

@@ -45,6 +45,7 @@ export const useToolingData = () => {
       if (opts?.search) p.set('search', String(opts.search))
       if (opts?.production_unit) p.set('production_unit', String(opts.production_unit))
       if (opts?.category) p.set('category', String(opts.category))
+      if (opts?.priority_level) p.set('priority_level', String(opts.priority_level))
       if (opts?.start_date) p.set('start_date', String(opts.start_date))
       if (opts?.end_date) p.set('end_date', String(opts.end_date))
       const response = await fetchWithFallback(`/api/tooling?${p.toString()}`, { 
@@ -64,6 +65,7 @@ export const useToolingData = () => {
         inventory_number: String(item.inventory_number || ''),
         production_unit: String(item.production_unit || ''),
         category: String(item.category || ''),
+        priority_level: typeof item.priority_level === 'number' ? item.priority_level : Number(item.priority_level || 0),
         received_date: String(item.received_date || ''),
         demand_date: String(item.demand_date || ''),
         completed_date: String(item.completed_date || ''),
