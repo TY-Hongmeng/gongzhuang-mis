@@ -640,20 +640,38 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const titleText = showRecent ? '最近提交' : '工时录入'
 
   return (
-    <div className="p-3 max-w-[520px] mx-auto">
-      <div className="flex items-center justify-between mb-3">
-          <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-pink-500 mb-2 mr-2" /> {titleText}</Title>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>刷新</Button>
-            {showEntry && (
-              <Button onClick={handleGoRecent}>最近提交</Button>
-            )}
-            {showRecent && (
-              <Button onClick={handleGoEntry}>返回录入</Button>
-            )}
-            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
-          </Space>
-        </div>
+    <div className="work-hours-container">
+      <style>{`
+        .work-hours-container { padding: 12px; max-width: 520px; margin: 0 auto; }
+        .work-hours-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .work-hours-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .work-hours-item { flex: 1 1 160px; min-width: 160px; }
+        .work-hours-form .ant-picker,
+        .work-hours-form .ant-input,
+        .work-hours-form .ant-select,
+        .work-hours-form .ant-input-number { width: 100%; }
+        @media (min-width: 768px) {
+          .work-hours-container { max-width: 960px; }
+          .work-hours-row { gap: 12px; }
+          .work-hours-item { flex: 1 1 240px; min-width: 220px; }
+        }
+        @media (min-width: 1200px) {
+          .work-hours-container { max-width: 1200px; }
+        }
+      `}</style>
+      <div className="work-hours-header">
+        <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-pink-500 mb-2 mr-2" /> {titleText}</Title>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh}>刷新</Button>
+          {showEntry && (
+            <Button onClick={handleGoRecent}>最近提交</Button>
+          )}
+          {showRecent && (
+            <Button onClick={handleGoEntry}>返回录入</Button>
+          )}
+          <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
+        </Space>
+      </div>
       {showEntry && (
       <Card styles={{ body: { padding: 10 } }}>
         <Form
@@ -661,6 +679,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           size="small"
           initialValues={{}}
           form={form}
+          className="work-hours-form"
           onFinish={async (vals) => {
             if (!selectedInv) {
               message.warning('请先选择盘存编号')
@@ -810,18 +829,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           }}
         >
           {/* 第一行：班次日期、班次 */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} style={{ flex: 1, marginBottom: 8 }} preserve={false}>
-              <DatePicker style={{ width: '100%', maxWidth: 110 }} placeholder="" />
+          <div className="work-hours-row">
+            <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
+              <DatePicker placeholder="" />
             </Form.Item>
-            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} style={{ flex: 1, marginBottom: 8 }}>
-              <Select style={{ width: '100%', maxWidth: 110 }} options={[{ value: '白班', label: '白班' }, { value: '夜班', label: '夜班' }]} />
+            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
+              <Select options={[{ value: '白班', label: '白班' }, { value: '夜班', label: '夜班' }]} />
             </Form.Item>
           </div>
 
           {/* 第二行：盘存编号、零件名称 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <div style={{ flex: 1, marginBottom: 8 }}>
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>盘存编号</label>
               <Select
                 showSearch
@@ -838,13 +857,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 onOpenChange={(open) => { if (open) fetchInventory('') }}
                 options={invOptions}
                 loading={loadingInv}
-                style={{ width: '100%', maxWidth: 110 }}
+                style={{ width: '100%' }}
                 value={selectedInv || undefined}
                 allowClear
                 onChange={onSelectInv}
               />
             </div>
-            <div style={{ flex: 1, marginBottom: 8 }}>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
               {/* 直接显示零件名称，无标签 */}
               <div style={{ marginBottom: 4 }}>
                 <span>{selectedInfo.name || '-'}</span>
@@ -857,31 +876,30 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           {/* 第三行：加工工序、设备编号 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <Form.Item name="process_name" label="加工工序" rules={[{ required: true, message: '请选择或填写加工工序' }]} style={{ flex: 1, marginBottom: 8 }}>
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <Form.Item name="process_name" label="加工工序" rules={[{ required: true, message: '请选择或填写加工工序' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
               {useManualProcess ? (
-                <Input style={{ width: '100%', maxWidth: 110 }} />
+                <Input />
               ) : (
-                <Select options={processOptions.map(p => ({ value: p, label: p }))} style={{ width: '100%', maxWidth: 110 }} />
+                <Select options={processOptions.map(p => ({ value: p, label: p }))} />
               )}
             </Form.Item>
-            <Form.Item name="device_no" label="设备编号" rules={[{ required: true, message: '请选择设备编号' }]} style={{ flex: 1, marginBottom: 8 }}>
+            <Form.Item name="device_no" label="设备编号" rules={[{ required: true, message: '请选择设备编号' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
               <Select
                 showSearch
                 filterOption={(input, option) => String(option?.label || '').includes(input)}
                 options={deviceOptions}
-                style={{ width: '100%', maxWidth: 110 }}
                 onSelect={(_val, opt: any) => setDeviceName(opt?.meta?.device_name || '')}
               />
             </Form.Item>
           </div>
 
           {/* 第四行：加工日期和辅助时长 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <Form.Item name="work_date" label="加工日期" rules={[{ required: true, message: '请选择加工日期' }]} style={{ flex: 1, marginBottom: 8 }} preserve={false}>
-              <DatePicker style={{ width: '100%', maxWidth: 110 }} placeholder="" />
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <Form.Item name="work_date" label="加工日期" rules={[{ required: true, message: '请选择加工日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
+              <DatePicker placeholder="" />
             </Form.Item>
-            <div style={{ flex: 1, marginBottom: 8 }}>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>辅助时长:</label>
               <span style={{ fontSize: '14px' }}>
                 {calculateAuxDuration() || '-'}分钟
@@ -890,11 +908,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
           
           {/* 第五行：辅助开始、辅助结束 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <Form.Item name="aux_start" label="辅助开始" rules={[{ required: true, message: '请选择辅助开始时间' }]} style={{ flex: 1, marginBottom: 8 }} preserve={false}>
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <Form.Item name="aux_start" label="辅助开始" rules={[{ required: true, message: '请选择辅助开始时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
               <TimePicker 
                 format="HH:mm" 
-                style={{ width: '100%', maxWidth: 110 }} 
                 showNow={false}
                 placeholder=""
                 hourStep={1}
@@ -904,10 +921,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 hideDisabledOptions={false}
               />
             </Form.Item>
-            <Form.Item name="aux_end" label="辅助结束" rules={[{ required: true, message: '请选择辅助结束时间' }]} style={{ flex: 1, marginBottom: 8 }} preserve={false}>
+            <Form.Item name="aux_end" label="辅助结束" rules={[{ required: true, message: '请选择辅助结束时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
               <TimePicker 
                 format="HH:mm" 
-                style={{ width: '100%', maxWidth: 110 }} 
                 showNow={false}
                 placeholder=""
                 hourStep={1}
@@ -920,32 +936,30 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           {/* 第六行：程序时长(分钟)、完成数量 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <Form.Item name="proc_minutes" label="程序时长(分钟)" rules={[{ required: true, message: '请输入程序时长' }]} style={{ flex: 1, marginBottom: 8 }}>
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <Form.Item name="proc_minutes" label="程序时长(分钟)" rules={[{ required: true, message: '请输入程序时长' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
               <InputNumber 
                 min={0} 
                 step={5} 
                 controls={false} 
-                style={{ width: '100%', maxWidth: 110 }} 
               />
             </Form.Item>
-            <Form.Item name="completed_quantity" label="完成数量" rules={[{ required: true, message: '请输入完成数量' }]} style={{ flex: 1, marginBottom: 8 }}>
+            <Form.Item name="completed_quantity" label="完成数量" rules={[{ required: true, message: '请输入完成数量' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
               <InputNumber 
                 min={0} 
                 step={1} 
                 controls={false} 
-                style={{ width: '100%', maxWidth: 110 }} 
               />
             </Form.Item>
           </div>
 
           {/* 第七行：上次结束时间、本次完成时间 */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <div style={{ flex: 1, marginBottom: 8 }}>
+          <div className="work-hours-row" style={{ marginBottom: 8 }}>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>上次结束时间</label>
               <span>{lastCompletedTime || '-'}</span>
             </div>
-            <div style={{ flex: 1, marginBottom: 8 }}>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>本次完成时间</label>
               <span>{completedTime || '-'}</span>
             </div>
