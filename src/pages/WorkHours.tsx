@@ -646,17 +646,25 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
         .work-hours-row { display: flex; gap: 6px; flex-wrap: wrap; }
         .work-hours-item { flex: 1 1 160px; min-width: 160px; }
+        .work-hours-card { border-radius: 12px; }
+        .work-hours-info { background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 8px 10px; min-height: 56px; }
+        .work-hours-form .ant-form-item-label > label { font-weight: 500; }
         .work-hours-form .ant-picker,
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
         @media (min-width: 768px) {
-          .work-hours-container { max-width: 960px; }
+          .work-hours-container { max-width: 900px; }
           .work-hours-row { gap: 12px; }
           .work-hours-item { flex: 1 1 240px; min-width: 220px; }
         }
+        @media (min-width: 1024px) {
+          .work-hours-container { max-width: 980px; }
+          .work-hours-row { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); column-gap: 16px; row-gap: 12px; }
+          .work-hours-item { min-width: 0; }
+        }
         @media (min-width: 1200px) {
-          .work-hours-container { max-width: 1200px; }
+          .work-hours-container { max-width: 1100px; }
         }
       `}</style>
       <div className="work-hours-header">
@@ -673,7 +681,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         </Space>
       </div>
       {showEntry && (
-      <Card styles={{ body: { padding: 10 } }}>
+      <Card className="work-hours-card" styles={{ body: { padding: 12 } }}>
         <Form
           layout="vertical"
           size="small"
@@ -865,12 +873,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
             <div className="work-hours-item" style={{ marginBottom: 8 }}>
               {/* 直接显示零件名称，无标签 */}
-              <div style={{ marginBottom: 4 }}>
-                <span>{selectedInfo.name || '-'}</span>
-              </div>
-              {/* 直接显示图号，无标签，在零件名称下方 */}
-              <div>
-                <span>{selectedInfo.drawing || '-'}</span>
+              <div className="work-hours-info">
+                <div style={{ marginBottom: 4 }}>
+                  <span>{selectedInfo.name || '-'}</span>
+                </div>
+                <div>
+                  <span>{selectedInfo.drawing || '-'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -991,7 +1000,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       </Card>
       )}
       {showRecent && (
-      <Card className="mt-3" styles={{ body: { padding: 10 } }}>
+      <Card className="mt-3 work-hours-card" styles={{ body: { padding: 12 } }}>
         <div className="flex items-center justify-between mb-2">
           <Typography.Text strong>最近提交</Typography.Text>
           <Button danger disabled={!selectedRecentKeys.length} onClick={async () => {
