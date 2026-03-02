@@ -9,6 +9,8 @@ export const useToolingData = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
   const [partsMap, setPartsMap] = useState<Record<string, any[]>>({})
   const [childItemsMap, setChildItemsMap] = useState<Record<string, any[]>>({})
+  const [partsLoadingMap, setPartsLoadingMap] = useState<Record<string, boolean>>({})
+  const [childLoadingMap, setChildLoadingMap] = useState<Record<string, boolean>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
   const [expandedChildKeys, setExpandedChildKeys] = useState<string[]>([])
   const partsMapRef = useRef(partsMap)
@@ -91,6 +93,7 @@ export const useToolingData = () => {
       partsCacheRef.current.delete(toolingId)
     }
     if (!force && cached && now - cached.ts < TTL) {
+      setPartsLoadingMap(prev => ({ ...prev, [toolingId]: false }))
       if (localItems.length > 0) {
         const cachedIds = new Set(cached.items.map(item => String(item.id)))
         const localHasBlank = localItems.some(item => String(item.id || '').startsWith('blank-'))
@@ -105,8 +108,12 @@ export const useToolingData = () => {
       return cached.items
     }
     const inflight = inflightPartsRef.current.get(toolingId)
-    if (inflight) return inflight
+    if (inflight) {
+      setPartsLoadingMap(prev => ({ ...prev, [toolingId]: true }))
+      return inflight
+    }
     const promise = (async () => {
+      setPartsLoadingMap(prev => ({ ...prev, [toolingId]: true }))
       try {
         const timestamp = Date.now()
         const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts?t=${timestamp}`, { cache: 'no-store' })
@@ -147,6 +154,7 @@ export const useToolingData = () => {
         return []
       } finally {
         inflightPartsRef.current.delete(toolingId)
+        setPartsLoadingMap(prev => ({ ...prev, [toolingId]: false }))
       }
     })()
     inflightPartsRef.current.set(toolingId, promise)
@@ -161,12 +169,17 @@ export const useToolingData = () => {
       childCacheRef.current.delete(toolingId)
     }
     if (!force && cached && now - cached.ts < TTL) {
+      setChildLoadingMap(prev => ({ ...prev, [toolingId]: false }))
       setChildItemsMap(prev => ({ ...prev, [toolingId]: cached.items }))
       return cached.items
     }
     const inflight = inflightChildRef.current.get(toolingId)
-    if (inflight) return inflight
+    if (inflight) {
+      setChildLoadingMap(prev => ({ ...prev, [toolingId]: true }))
+      return inflight
+    }
     const promise = (async () => {
+      setChildLoadingMap(prev => ({ ...prev, [toolingId]: true }))
       try {
         const timestamp = Date.now()
         const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items?t=${timestamp}`, { cache: 'no-store' })
@@ -196,6 +209,7 @@ export const useToolingData = () => {
         return []
       } finally {
         inflightChildRef.current.delete(toolingId)
+        setChildLoadingMap(prev => ({ ...prev, [toolingId]: false }))
       }
     })()
     inflightChildRef.current.set(toolingId, promise)
@@ -417,6 +431,8 @@ export const useToolingData = () => {
     selectedRowKeys,
     partsMap,
     childItemsMap,
+    partsLoadingMap,
+    childLoadingMap,
     expandedRowKeys,
     expandedChildKeys,
     setData,
@@ -424,6 +440,8 @@ export const useToolingData = () => {
     setSelectedRowKeys,
     setPartsMap,
     setChildItemsMap,
+    setPartsLoadingMap,
+    setChildLoadingMap,
     setExpandedRowKeys,
     setExpandedChildKeys,
     fetchToolingData,

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -119,6 +119,8 @@ const ExpandedSubTables: React.FC<{
   toolingId: string
   parts: PartItem[]
   childItems: ChildItem[]
+  partsLoading: boolean
+  childLoading: boolean
   parentProject: string
   parentUnit: string
   parentApplicant: string
@@ -132,6 +134,8 @@ const ExpandedSubTables: React.FC<{
   toolingId,
   parts,
   childItems,
+  partsLoading,
+  childLoading,
   parentProject,
   parentUnit,
   parentApplicant,
@@ -187,9 +191,11 @@ const ExpandedSubTables: React.FC<{
           rowKey="id"
           columns={partColumns}
           dataSource={parts}
+          loading={partsLoading}
           pagination={false}
           bordered={false}
           size="small"
+          locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -226,9 +232,11 @@ const ExpandedSubTables: React.FC<{
           rowKey="id"
           columns={childColumns}
           dataSource={childItems}
+          loading={childLoading}
           pagination={false}
           bordered={false}
           size="small"
+          locale={{ emptyText: childLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -349,6 +357,8 @@ const ToolingInfoPage: React.FC = () => {
     selectedRowKeys,
     partsMap,
     childItemsMap,
+    partsLoadingMap,
+    childLoadingMap,
     expandedRowKeys,
     expandedChildKeys,
     setData,
@@ -2134,6 +2144,8 @@ const ToolingInfoPage: React.FC = () => {
     // 获取当前数据，不再自动添加空白行
     const partsList = partsMap[toolingId] || []
     const childList = childItemsMap[toolingId] || []
+    const partsLoading = !!partsLoadingMap[toolingId]
+    const childLoading = !!childLoadingMap[toolingId]
 
     const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${parentReceivedDate}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
@@ -2199,6 +2211,8 @@ const ToolingInfoPage: React.FC = () => {
         toolingId={toolingId}
         parts={partsList as any}
         childItems={childList as any}
+        partsLoading={partsLoading}
+        childLoading={childLoading}
         parentProject={parentProject}
         parentUnit={parentUnit}
         parentApplicant={parentApplicant}
