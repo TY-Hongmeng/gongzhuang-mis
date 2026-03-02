@@ -14,11 +14,13 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
   )
 
-  const forceBackend = /^\/api\/tooling\/status/.test(cleanUrl)
+  const forceBackend = !isGhPages && (
+    /^\/api\/tooling\/status/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
+  )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
@@ -100,6 +102,10 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   })()
   
   try {
+    if (isGhPages && /functions\.supabase\.co/.test(abs)) {
+      const handled = await handleClientSideApi(abs, init)
+      if (handled) return handled
+    }
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
       const u = new URL(abs, window.location.origin)
