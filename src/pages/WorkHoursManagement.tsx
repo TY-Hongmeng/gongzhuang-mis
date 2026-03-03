@@ -273,9 +273,10 @@ const WorkHoursManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      // 并行获取用户、车间、班组数据，确保能正确映射 ID 到名称
+      // 改用 /api/users 接口获取完整用户数据，确保能正确获取车间和班组信息
+      // 同时并行获取车间和班组数据，用于建立映射
       const [ur, wr, tr] = await Promise.all([
-        fetchWithFallback(`/api/tooling/users/basic?ts=${Date.now()}`),
+        fetchWithFallback('/api/users'),
         fetchWithFallback('/api/tooling/org/workshops'),
         fetchWithFallback('/api/tooling/org/teams')
       ])
@@ -289,16 +290,20 @@ const WorkHoursManagement: React.FC = () => {
       ;(wj.items || []).forEach((w: any) => { if(w.id) wMap[w.id] = w.name })
       ;(tj.items || []).forEach((t: any) => { if(t.id) tMap[t.id] = t.name })
       
-      if (uj?.success) {
+      // /api/users 返回的数据结构可能是 { users: [...] } 或 { items: [...] }
+      const userList = uj.users || uj.items || []
+      
+      if (userList.length > 0) {
         const map: Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }> = {}
-        ;(uj.items || []).forEach((u: any) => { 
+        userList.forEach((u: any) => { 
             // 尝试多种方式获取车间和班组名称
-            let wsName = u.workshop || u.workshop_name || ''
+            // 优先使用关联对象中的 name
+            let wsName = u.workshop?.name || u.workshop_name || ''
             if (!wsName && (u.workshop_id || u.workshopId)) {
                 wsName = wMap[u.workshop_id || u.workshopId] || ''
             }
             
-            let teamName = u.team || u.team_name || ''
+            let teamName = u.team?.name || u.team_name || ''
             if (!teamName && (u.team_id || u.teamId)) {
                 teamName = tMap[u.team_id || u.teamId] || ''
             }
