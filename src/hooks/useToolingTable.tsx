@@ -46,24 +46,20 @@ export const useToolingTable = ({ onEdit }: ToolingTableProps) => {
   }, [])
 
   const getToolingStatus = useCallback((item: ToolingItem): { status: 'complete' | 'incomplete' | 'warning', icon: React.ReactNode } => {
-    const hasInventoryNumber = !!item.inventory_number && item.inventory_number.trim() !== ''
-    const hasProductionUnit = !!item.production_unit && item.production_unit.trim() !== ''
-    const hasCategory = !!item.category && item.category.trim() !== ''
-    const hasProjectName = !!item.project_name && item.project_name.trim() !== ''
-    const hasReceivedDate = !!item.received_date && item.received_date.trim() !== ''
-    const hasProductionDate = !!item.production_date && item.production_date.trim() !== ''
+    // 只要有完成日期，就是完成状态
+    const hasCompletedDate = !!item.completed_date && item.completed_date.trim() !== ''
+
+    if (hasCompletedDate) {
+      return {
+        status: 'complete',
+        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />
+      }
+    }
 
     if (item.id.startsWith('blank-')) {
       return {
         status: 'incomplete',
         icon: null
-      }
-    }
-
-    if (hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate) {
-      return {
-        status: 'complete',
-        icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />
       }
     }
 

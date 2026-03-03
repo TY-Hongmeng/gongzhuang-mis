@@ -21,11 +21,6 @@ export const useToolingFilters = () => {
     return Array.from(set).map(v => ({ value: v, label: v }))
   }, [data])
 
-  const statusOptions = [
-    { value: 'completed', label: '已完成' },
-    { value: 'incomplete', label: '未完成' }
-  ]
-
   return {
     filterSearch,
     setFilterSearch,
@@ -36,7 +31,6 @@ export const useToolingFilters = () => {
     filterStatus,
     setFilterStatus,
     unitOptions,
-    categoryOptions,
-    statusOptions
+    categoryOptions
   }
 }

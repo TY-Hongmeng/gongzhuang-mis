@@ -84,23 +84,15 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
 
   // 二次筛选：处理完成/未完成状态
   const filteredData = useMemo(() => {
-    if (!filterStatus) return baseFilteredData
+    if (!filterStatus || filterStatus === 'all') return baseFilteredData
     
     return baseFilteredData.filter(item => {
       // 判断是否完成的逻辑：
-      // 必须有盘存编号、投产单位、类别、项目名称、接收日期、投产日期
-      // 且这些字段都不为空字符串
-      const hasInventoryNumber = !!item.inventory_number && String(item.inventory_number).trim() !== ''
-      const hasProductionUnit = !!item.production_unit && String(item.production_unit).trim() !== ''
-      const hasCategory = !!item.category && String(item.category).trim() !== ''
-      const hasProjectName = !!item.project_name && String(item.project_name).trim() !== ''
-      const hasReceivedDate = !!item.received_date && String(item.received_date).trim() !== ''
-      const hasProductionDate = !!item.production_date && String(item.production_date).trim() !== ''
+      // 只要有完成日期，就视为完成
+      const hasCompletedDate = !!item.completed_date && String(item.completed_date).trim() !== ''
       
-      const isComplete = hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate
-      
-      if (filterStatus === 'completed') return isComplete
-      if (filterStatus === 'incomplete') return !isComplete
+      if (filterStatus === 'completed') return hasCompletedDate
+      if (filterStatus === 'incomplete') return !hasCompletedDate
       return true
     })
   }, [baseFilteredData, filterStatus])
@@ -117,16 +109,10 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
   }, [filteredData, loading, selectedRowKeys])
 
   const getRowClassName = (record: ToolingItem) => {
-    const hasInventoryNumber = !!record.inventory_number && String(record.inventory_number).trim() !== ''
-    const hasProductionUnit = !!record.production_unit && String(record.production_unit).trim() !== ''
-    const hasCategory = !!record.category && String(record.category).trim() !== ''
-    const hasProjectName = !!record.project_name && String(record.project_name).trim() !== ''
-    const hasReceivedDate = !!record.received_date && String(record.received_date).trim() !== ''
-    const hasProductionDate = !!record.production_date && String(record.production_date).trim() !== ''
+    // 只要有完成日期，就显示绿色背景
+    const hasCompletedDate = !!record.completed_date && String(record.completed_date).trim() !== ''
     
-    const isComplete = hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate
-    
-    if (isComplete) {
+    if (hasCompletedDate) {
       return 'tooling-row-complete'
     }
     return ''

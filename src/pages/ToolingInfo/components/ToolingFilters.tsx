@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Space, Button, Input, Select, DatePicker, AutoComplete } from 'antd'
+import { Card, Space, Button, Input, Select, DatePicker, AutoComplete, Segmented } from 'antd'
 import { ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { useToolingFilters } from '../../hooks/useToolingFilters'
 
@@ -28,8 +28,7 @@ export const ToolingFilters: React.FC<ToolingFiltersProps> = ({
     filterStatus,
     setFilterStatus,
     unitOptions,
-    categoryOptions,
-    statusOptions
+    categoryOptions
   } = useToolingFilters()
 
   return (
@@ -58,13 +57,14 @@ export const ToolingFilters: React.FC<ToolingFiltersProps> = ({
           style={{ width: 150 }}
           allowClear
         />
-        <Select
-          placeholder="状态"
-          value={filterStatus}
-          onChange={setFilterStatus}
-          options={statusOptions}
-          style={{ width: 150 }}
-          allowClear
+        <Segmented
+          options={[
+            { label: '全部', value: 'all' },
+            { label: '完成', value: 'completed' },
+            { label: '未完成', value: 'incomplete' }
+          ]}
+          value={filterStatus || 'all'}
+          onChange={(val) => setFilterStatus(val === 'all' ? undefined : val as string)}
         />
         <Button
           type="primary"
