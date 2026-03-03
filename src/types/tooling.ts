@@ -40,6 +40,7 @@ export interface ToolingInfo {
   category: string; // 类别
   inventory_number: string; // 盘存编号
   project_name: string; // 项目名称
+  priority_level?: number; // 优先级别
   sets_count: number; // 套数
   production_date: string; // 投产日期
   demand_date: string; // 需求日期

@@ -1134,9 +1134,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const search = String(qs.get('search') || '').trim()
         const productionUnit = String(qs.get('production_unit') || '').trim()
         const category = String(qs.get('category') || '').trim()
+        const priorityLevel = String(qs.get('priority_level') || '').trim()
         let query = supabase
           .from('tooling_info')
-          .select('id,inventory_number,production_unit,category,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder', { count: 'planned' })
+          .select('id,inventory_number,production_unit,category,priority_level,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder', { count: 'planned' })
         
         if (search) {
           const keyword = `%${search}%`
@@ -1144,6 +1145,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         if (productionUnit) query = query.eq('production_unit', productionUnit)
         if (category) query = query.eq('category', category)
+        if (priorityLevel) {
+          const pv = Number(priorityLevel)
+          if (!Number.isNaN(pv)) query = query.eq('priority_level', pv)
+        }
         
         query = query
           .order(sortField as any, { ascending: sortOrder })
@@ -1156,6 +1161,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           inventory_number: x.inventory_number || '',
           production_unit: x.production_unit || '',
           category: x.category || '',
+          priority_level: typeof x.priority_level === 'number' ? x.priority_level : Number(x.priority_level || 0),
           received_date: x.received_date || '',
           demand_date: x.demand_date || '',
           completed_date: x.completed_date || '',

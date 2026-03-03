@@ -74,6 +74,7 @@ router.get('/', async (req, res) => {
       search = '',
       production_unit,
       category,
+      priority_level,
       start_date,
       end_date,
       sortField = 'created_at',
@@ -121,6 +122,12 @@ router.get('/', async (req, res) => {
     }
     if (category) {
       query = query.ilike('category', `%${category}%`);
+    }
+    if (priority_level) {
+      const pv = Number(priority_level)
+      if (!Number.isNaN(pv)) {
+        query = query.eq('priority_level', pv)
+      }
     }
     if (start_date) {
       query = query.gte('production_date', start_date);
@@ -475,7 +482,7 @@ router.put('/:id', async (req, res) => {
 
     // Prefer PG direct update for single-field updates to avoid schema cache issues
     const keys = Object.keys(payload || {})
-    const allowed = ['inventory_number','production_unit','category','project_name','received_date','demand_date','completed_date','recorder']
+    const allowed = ['inventory_number','production_unit','category','project_name','received_date','demand_date','completed_date','recorder','priority_level']
     if (keys.length === 1 && allowed.includes(keys[0]) && (process.env.SUPABASE_DB_URL || '')) {
       try {
         const k = keys[0]
@@ -512,7 +519,7 @@ router.put('/:id', async (req, res) => {
       const keys = Object.keys(payload || {})
       const k = keys[0]
       const v = (payload as any)[k]
-      const allowed = ['inventory_number','production_unit','category','project_name','received_date','demand_date','completed_date']
+      const allowed = ['inventory_number','production_unit','category','project_name','received_date','demand_date','completed_date','priority_level']
       if (keys.length === 1 && allowed.includes(k) && (process.env.SUPABASE_DB_URL || '')) {
         try {
           // 处理日期字段的空字符串

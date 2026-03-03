@@ -1,0 +1,1 @@
+ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 0;
