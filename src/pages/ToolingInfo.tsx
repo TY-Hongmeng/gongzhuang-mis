@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -281,6 +281,12 @@ const ToolingInfoPage: React.FC = () => {
   } = useToolingMeta()
 
   const { user } = useAuthStore()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   const [blankPartDisabledMap, setBlankPartDisabledMap] = useState<Record<string, boolean>>({})
   const [blankChildDisabledMap, setBlankChildDisabledMap] = useState<Record<string, boolean>>({})
   const blankPartDisabledMapRef = useRef(blankPartDisabledMap)
@@ -4212,12 +4218,12 @@ const ToolingInfoPage: React.FC = () => {
   ]
 
   return (
-    <Card style={{ height: 'calc(100vh - 24px)' }} bodyStyle={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="flex items-center justify-between mb-4">
+    <Card style={{ height: 'calc(100vh - 24px)' }} bodyStyle={{ display: 'flex', flexDirection: 'column', height: '100%', padding: isMobile ? 8 : 24 }}>
+      <div className="flex items-center justify-between mb-4" style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 8 : 0 }}>
         <Title level={2} className="mb-0">
           <ToolOutlined className="text-3xl text-red-500 mb-2" /> 工装信息
         </Title>
-        <Space>
+        <Space wrap>
           <Button onClick={triggerToolingImport}>导入工装信息</Button>
           <Button onClick={triggerImport}>导入工艺卡片</Button>
           <Button onClick={() => handleExternalAction(exportToolingInfo)}>导出工装信息</Button>
@@ -4428,17 +4434,17 @@ const ToolingInfoPage: React.FC = () => {
           <Button icon={<LeftOutlined />} onClick={() => handleExternalAction(() => navigate('/dashboard'))}>返回</Button>
         </Space>
       </div>
-      <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
         <Input
           allowClear
           placeholder="搜索（盘存编号/项目/责任人）"
-          style={{ width: 200 }}
+          style={{ width: isMobile ? '100%' : 200 }}
           value={filterSearch}
           onChange={(e) => setFilterSearch(e.target.value)}
         />
         <AutoComplete
           placeholder="投产单位"
-          style={{ width: 200 }}
+          style={{ width: isMobile ? '100%' : 200 }}
           options={unitOptions as any}
           value={filterUnit}
           onSearch={(v) => setFilterUnit(v)}
@@ -4447,7 +4453,7 @@ const ToolingInfoPage: React.FC = () => {
         />
         <AutoComplete
           placeholder="工装类别"
-          style={{ width: 200 }}
+          style={{ width: isMobile ? '100%' : 200 }}
           options={categoryOptions as any}
           value={filterCategory}
           onSearch={(v) => setFilterCategory(v)}
@@ -4490,7 +4496,7 @@ const ToolingInfoPage: React.FC = () => {
           columns={columns}
           pagination={false}
           bordered={false}
-          scroll={{ y: tableScrollY }}
+          scroll={{ x: isMobile ? 1300 : undefined, y: tableScrollY }}
           locale={{ emptyText: '' }}
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
