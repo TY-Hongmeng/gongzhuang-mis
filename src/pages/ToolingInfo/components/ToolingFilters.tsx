@@ -25,8 +25,11 @@ export const ToolingFilters: React.FC<ToolingFiltersProps> = ({
     setFilterUnit,
     filterCategory,
     setFilterCategory,
+    filterStatus,
+    setFilterStatus,
     unitOptions,
-    categoryOptions
+    categoryOptions,
+    statusOptions
   } = useToolingFilters()
 
   return (
@@ -52,6 +55,14 @@ export const ToolingFilters: React.FC<ToolingFiltersProps> = ({
           value={filterCategory}
           onChange={setFilterCategory}
           options={categoryOptions}
+          style={{ width: 150 }}
+          allowClear
+        />
+        <Select
+          placeholder="状态"
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={statusOptions}
           style={{ width: 150 }}
           allowClear
         />

@@ -5,6 +5,7 @@ import { useToolingTable } from '@/hooks/useToolingTable'
 import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
 import EditableCell from '@/components/EditableCell'
 import { useToolingOperations } from '@/hooks/useToolingOperations'
+import { useToolingFilters } from '@/hooks/useToolingFilters'
 
 interface ToolingTableProps {
   data: any[]
@@ -70,13 +71,39 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
     getToolingStatus
   } = useToolingTable(onEdit)
 
+  // 接收外部传入的筛选状态
+  const { filterStatus } = useToolingFilters()
+
   const {
-    filteredData,
+    filteredData: baseFilteredData,
     activeFiltersCount,
     hasActiveFilters,
     applyFilters,
     resetFilters
   } = useAdvancedSearch(data)
+
+  // 二次筛选：处理完成/未完成状态
+  const filteredData = useMemo(() => {
+    if (!filterStatus) return baseFilteredData
+    
+    return baseFilteredData.filter(item => {
+      // 判断是否完成的逻辑：
+      // 必须有盘存编号、投产单位、类别、项目名称、接收日期、投产日期
+      // 且这些字段都不为空字符串
+      const hasInventoryNumber = !!item.inventory_number && String(item.inventory_number).trim() !== ''
+      const hasProductionUnit = !!item.production_unit && String(item.production_unit).trim() !== ''
+      const hasCategory = !!item.category && String(item.category).trim() !== ''
+      const hasProjectName = !!item.project_name && String(item.project_name).trim() !== ''
+      const hasReceivedDate = !!item.received_date && String(item.received_date).trim() !== ''
+      const hasProductionDate = !!item.production_date && String(item.production_date).trim() !== ''
+      
+      const isComplete = hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate
+      
+      if (filterStatus === 'completed') return isComplete
+      if (filterStatus === 'incomplete') return !isComplete
+      return true
+    })
+  }, [baseFilteredData, filterStatus])
 
   const tableRef = useRef<any>(null)
   const [pageSize, setPageSize] = useState<number>(() => {
@@ -88,6 +115,22 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
     const t = performance.now()
     return () => { if (DEBUG) console.log('[ToolingTable] render', Math.round(performance.now() - t), 'ms') }
   }, [filteredData, loading, selectedRowKeys])
+
+  const getRowClassName = (record: ToolingItem) => {
+    const hasInventoryNumber = !!record.inventory_number && String(record.inventory_number).trim() !== ''
+    const hasProductionUnit = !!record.production_unit && String(record.production_unit).trim() !== ''
+    const hasCategory = !!record.category && String(record.category).trim() !== ''
+    const hasProjectName = !!record.project_name && String(record.project_name).trim() !== ''
+    const hasReceivedDate = !!record.received_date && String(record.received_date).trim() !== ''
+    const hasProductionDate = !!record.production_date && String(record.production_date).trim() !== ''
+    
+    const isComplete = hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate
+    
+    if (isComplete) {
+      return 'tooling-row-complete'
+    }
+    return ''
+  }
 
   const handleDelete = useCallback((record: ToolingItem) => {
     Modal.confirm({

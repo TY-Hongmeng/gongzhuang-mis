@@ -7,6 +7,7 @@ export const useToolingFilters = () => {
   const [filterSearch, setFilterSearch] = React.useState('')
   const [filterUnit, setFilterUnit] = React.useState<string | undefined>(undefined)
   const [filterCategory, setFilterCategory] = React.useState<string | undefined>(undefined)
+  const [filterStatus, setFilterStatus] = React.useState<string | undefined>(undefined)
 
   const unitOptions = React.useMemo(() => {
     const set = new Set<string>()
@@ -20,6 +21,11 @@ export const useToolingFilters = () => {
     return Array.from(set).map(v => ({ value: v, label: v }))
   }, [data])
 
+  const statusOptions = [
+    { value: 'completed', label: '已完成' },
+    { value: 'incomplete', label: '未完成' }
+  ]
+
   return {
     filterSearch,
     setFilterSearch,
@@ -27,7 +33,10 @@ export const useToolingFilters = () => {
     setFilterUnit,
     filterCategory,
     setFilterCategory,
+    filterStatus,
+    setFilterStatus,
     unitOptions,
-    categoryOptions
+    categoryOptions,
+    statusOptions
   }
 }
