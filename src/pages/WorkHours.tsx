@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore'
 import { fetchWithFallback } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import { upsertProcessDone } from '../utils/processDone'
+import QuickTimeInput from '../components/QuickTimeInput'
 
 // 立即在全局作用域定义setAuxRange函数，确保在任何地方调用都不会出错
 ;(function() {
@@ -919,58 +920,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           {/* 第五行：辅助开始、辅助结束 */}
           <div className="work-hours-row" style={{ marginBottom: 8 }}>
             <Form.Item name="aux_start" label="辅助开始" rules={[{ required: true, message: '请选择辅助开始时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
-              <TimePicker 
-                format="HH:mm" 
-                showNow={false}
-                placeholder=""
-                hourStep={1}
-                minuteStep={1}
-                secondStep={1}
-                changeOnScroll
-                hideDisabledOptions={false}
-                renderExtraFooter={() => (
-                  <Button size="small" type="link" onClick={() => form.setFieldValue('aux_start', dayjs())}>
-                    当前时间
-                  </Button>
-                )}
-              />
+              <QuickTimeInput />
             </Form.Item>
             <Form.Item name="aux_end" label="辅助结束" rules={[{ required: true, message: '请选择辅助结束时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
-              <TimePicker 
-                format="HH:mm" 
-                showNow={false}
-                placeholder=""
-                hourStep={1}
-                minuteStep={1}
-                secondStep={1}
-                changeOnScroll
-                hideDisabledOptions={false}
-                renderExtraFooter={() => (
-                  <Space>
-                    <Button size="small" type="link" onClick={() => form.setFieldValue('aux_end', dayjs())}>
-                      当前
-                    </Button>
-                    <Button size="small" type="link" onClick={() => {
-                      const start = form.getFieldValue('aux_start')
-                      if (start) form.setFieldValue('aux_end', dayjs(start).add(15, 'minute'))
-                    }}>
-                      +15分
-                    </Button>
-                    <Button size="small" type="link" onClick={() => {
-                      const start = form.getFieldValue('aux_start')
-                      if (start) form.setFieldValue('aux_end', dayjs(start).add(30, 'minute'))
-                    }}>
-                      +30分
-                    </Button>
-                    <Button size="small" type="link" onClick={() => {
-                      const start = form.getFieldValue('aux_start')
-                      if (start) form.setFieldValue('aux_end', dayjs(start).add(60, 'minute'))
-                    }}>
-                      +60分
-                    </Button>
-                  </Space>
-                )}
-              />
+              <QuickTimeInput isEndTime startTime={wAuxStart} />
             </Form.Item>
           </div>
 
