@@ -1137,7 +1137,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const priorityLevel = String(qs.get('priority_level') || '').trim()
         let query = supabase
           .from('tooling_info')
-          .select('id,inventory_number,production_unit,category,priority_level,received_date,demand_date,completed_date,project_name,production_date,sets_count,recorder', { count: 'planned' })
+          .select('*', { count: 'planned' })
         
         if (search) {
           const keyword = `%${search}%`
