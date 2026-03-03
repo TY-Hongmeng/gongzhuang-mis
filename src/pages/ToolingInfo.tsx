@@ -1,6 +1,6 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
-import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate } from 'antd'
+import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import { safeLocalStorage } from '../utils/safeStorage'
@@ -624,10 +624,28 @@ const ToolingInfoPage: React.FC = () => {
   const [filterUnit, setFilterUnit] = useState<string | undefined>(undefined)
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
+  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
+
   const filteredVisibleData = useMemo(() => {
-    if (!filterPriority) return visibleData
-    return (visibleData || []).filter((row: any) => Number(row.priority_level || 0) === filterPriority)
-  }, [visibleData, filterPriority])
+    let result = visibleData || []
+    
+    if (filterPriority) {
+      result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
+    }
+    
+    if (filterStatus !== 'all') {
+      result = result.filter((row: any) => {
+        // 只要有完成日期，就是完成状态
+        const hasCompletedDate = !!row.completed_date && String(row.completed_date).trim() !== ''
+        
+        if (filterStatus === 'completed') return hasCompletedDate
+        if (filterStatus === 'incomplete') return !hasCompletedDate
+        return true
+      })
+    }
+    
+    return result
+  }, [visibleData, filterPriority, filterStatus])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
@@ -4468,6 +4486,15 @@ const ToolingInfoPage: React.FC = () => {
             onChange={(v) => setFilterPriority(v ? v : undefined)}
           />
         </div>
+        <Segmented
+          options={[
+            { label: '全部', value: 'all' },
+            { label: '完成', value: 'completed' },
+            { label: '未完成', value: 'incomplete' }
+          ]}
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as any)}
+        />
       </div>
         <div ref={tableWrapRef} style={{ flex: 1, minHeight: 0 }}>
           <style>{`
@@ -4501,7 +4528,9 @@ const ToolingInfoPage: React.FC = () => {
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
             if (isBlank) return ''
-            return isDateString(record?.completed_date) ? 'row-completed' : ''
+            // 只要有完成日期，就显示绿色背景
+            const hasCompletedDate = !!record.completed_date && String(record.completed_date).trim() !== ''
+            return hasCompletedDate ? 'row-completed' : ''
           }}
           rowSelection={{
             selectedRowKeys: selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
