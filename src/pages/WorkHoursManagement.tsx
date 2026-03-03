@@ -273,17 +273,49 @@ const WorkHoursManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const r = await fetchWithFallback(`/api/tooling/users/basic?ts=${Date.now()}`)
-      if (!r.ok) {
-        throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
-      }
-      const j = await r.json()
-      if (j?.success) {
+      // 并行获取用户、车间、班组数据，确保能正确映射 ID 到名称
+      const [ur, wr, tr] = await Promise.all([
+        fetchWithFallback(`/api/tooling/users/basic?ts=${Date.now()}`),
+        fetchWithFallback('/api/tooling/org/workshops'),
+        fetchWithFallback('/api/tooling/org/teams')
+      ])
+      
+      const uj = ur.ok ? await ur.json() : { items: [] }
+      const wj = wr.ok ? await wr.json() : { items: [] }
+      const tj = tr.ok ? await tr.json() : { items: [] }
+      
+      const wMap: Record<string, string> = {}
+      const tMap: Record<string, string> = {}
+      ;(wj.items || []).forEach((w: any) => { if(w.id) wMap[w.id] = w.name })
+      ;(tj.items || []).forEach((t: any) => { if(t.id) tMap[t.id] = t.name })
+      
+      if (uj?.success) {
         const map: Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }> = {}
-        ;(j.items || []).forEach((u: any) => { map[u.real_name] = { workshop: u.workshop, team: u.team, aux_coeff: Number(u.aux_coeff ?? 1), proc_coeff: Number(u.proc_coeff ?? 1), capability_coeff: Number(u.capability_coeff ?? 1) } })
+        ;(uj.items || []).forEach((u: any) => { 
+            // 尝试多种方式获取车间和班组名称
+            let wsName = u.workshop || u.workshop_name || ''
+            if (!wsName && (u.workshop_id || u.workshopId)) {
+                wsName = wMap[u.workshop_id || u.workshopId] || ''
+            }
+            
+            let teamName = u.team || u.team_name || ''
+            if (!teamName && (u.team_id || u.teamId)) {
+                teamName = tMap[u.team_id || u.teamId] || ''
+            }
+
+            map[u.real_name] = { 
+                workshop: wsName, 
+                team: teamName, 
+                aux_coeff: Number(u.aux_coeff ?? 1), 
+                proc_coeff: Number(u.proc_coeff ?? 1), 
+                capability_coeff: Number(u.capability_coeff ?? 1) 
+            } 
+        })
         setUserMap(map)
       }
-    } catch {}
+    } catch (e) {
+        console.error('获取用户信息失败', e)
+    }
   }
 
   // 计算每个日期、班次的开动设备数量
