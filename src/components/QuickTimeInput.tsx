@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Input, Button } from 'antd'
+import { Input } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
 import { ClockCircleOutlined } from '@ant-design/icons'
 
@@ -80,57 +80,6 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
     }
   }
 
-  // 快捷操作处理
-  const setTime = (d: Dayjs) => {
-    onChange?.(d)
-    setInputValue(d.format('HH:mm'))
-  }
-
-  const addMinutes = (mins: number) => {
-    // 如果已有值，基于现有值；否则基于当前时间（如果是结束时间且没有值，优先基于开始时间）
-    let base = value
-    if (!base) {
-        if (isEndTime && startTime) base = startTime
-        else base = dayjs()
-    }
-    const newTime = base.add(mins, 'minute')
-    setTime(newTime)
-  }
-
-  // 快捷按钮组
-  const renderShortcuts = () => {
-    if (isEndTime) {
-      return (
-        <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button size="small" onClick={() => setTime(dayjs())}>当前</Button>
-          <Button size="small" onClick={() => addMinutes(15)}>+15分</Button>
-          <Button size="small" onClick={() => addMinutes(30)}>+30分</Button>
-          <Button size="small" onClick={() => addMinutes(60)}>+1小时</Button>
-          <Button size="small" onClick={() => addMinutes(120)}>+2小时</Button>
-        </div>
-      )
-    }
-
-    // 开始时间快捷键
-    return (
-      <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Button size="small" onClick={() => setTime(dayjs())}>当前</Button>
-        <Button size="small" onClick={() => {
-          const t = dayjs().hour(8).minute(0).second(0)
-          setTime(t)
-        }}>08:00</Button>
-        <Button size="small" onClick={() => {
-          const t = dayjs().hour(13).minute(0).second(0)
-          setTime(t)
-        }}>13:00</Button>
-        <Button size="small" onClick={() => {
-          const t = dayjs().hour(19).minute(0).second(0)
-          setTime(t)
-        }}>19:00</Button>
-      </div>
-    )
-  }
-
   // 计算时长显示（仅用于结束时间且已有开始时间）
   const getDurationText = () => {
     if (isEndTime && startTime && value) {
@@ -166,7 +115,6 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
             onChange?.(null)
         }}
       />
-      {renderShortcuts()}
     </div>
   )
 }
