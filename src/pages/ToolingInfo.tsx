@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -179,13 +179,26 @@ const ExpandedSubTables: React.FC<{
   }
 
   const [partFilterStatus, setPartFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
-  const filteredParts = useMemo(() => {
-    if (partFilterStatus === 'all') return parts
-    return parts.filter(p => {
-      const isCompleted = isPartCompleted(p)
-      if (partFilterStatus === 'completed') return isCompleted
-      return !isCompleted
-    })
+  const { filteredParts, counts } = useMemo(() => {
+    let result = parts
+    
+    // 计算各状态数量
+    const allCount = parts.length
+    const completedCount = parts.filter(p => isPartCompleted(p)).length
+    const incompleteCount = allCount - completedCount
+
+    if (partFilterStatus !== 'all') {
+      result = result.filter(p => {
+        const isCompleted = isPartCompleted(p)
+        if (partFilterStatus === 'completed') return isCompleted
+        return !isCompleted
+      })
+    }
+    
+    return {
+      filteredParts: result,
+      counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
+    }
   }, [parts, partFilterStatus])
 
   return (
@@ -199,9 +212,9 @@ const ExpandedSubTables: React.FC<{
           <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
           <Segmented
             options={[
-              { label: '全部', value: 'all' },
-              { label: '完成', value: 'completed' },
-              { label: '未完成', value: 'incomplete' }
+              { label: `全部 (${counts.all})`, value: 'all' },
+              { label: `完成 (${counts.completed})`, value: 'completed' },
+              { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
             ]}
             value={partFilterStatus}
             onChange={(v) => setPartFilterStatus(v as any)}
@@ -647,12 +660,17 @@ const ToolingInfoPage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
 
-  const filteredVisibleData = useMemo(() => {
+  const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
     
     if (filterPriority) {
       result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
     }
+
+    // 计算各状态数量
+    const allCount = result.length
+    const completedCount = result.filter((row: any) => !!row.completed_date && String(row.completed_date).trim() !== '').length
+    const incompleteCount = allCount - completedCount
     
     if (filterStatus !== 'all') {
       result = result.filter((row: any) => {
@@ -665,7 +683,10 @@ const ToolingInfoPage: React.FC = () => {
       })
     }
     
-    return result
+    return {
+      filteredVisibleData: result,
+      counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
+    }
   }, [visibleData, filterPriority, filterStatus])
   const applyFilters = useCallback(() => {
     const opts: any = {
@@ -4509,9 +4530,9 @@ const ToolingInfoPage: React.FC = () => {
         </div>
         <Segmented
           options={[
-            { label: '全部', value: 'all' },
-            { label: '完成', value: 'completed' },
-            { label: '未完成', value: 'incomplete' }
+            { label: `全部 (${counts.all})`, value: 'all' },
+            { label: `完成 (${counts.completed})`, value: 'completed' },
+            { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
           ]}
           value={filterStatus}
           onChange={(v) => setFilterStatus(v as any)}
