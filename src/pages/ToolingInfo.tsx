@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -4284,15 +4284,6 @@ const ToolingInfoPage: React.FC = () => {
           <ToolOutlined className="text-3xl text-red-500 mb-2" /> 工装信息
         </Title>
         <Space wrap>
-          <Segmented
-            options={[
-              { label: `全部 (${counts.all})`, value: 'all' },
-              { label: `完成 (${counts.completed})`, value: 'completed' },
-              { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
-            ]}
-            value={filterStatus}
-            onChange={(v) => setFilterStatus(v as any)}
-          />
           <Button onClick={triggerToolingImport}>导入工装信息</Button>
           <Button onClick={triggerImport}>导入工艺卡片</Button>
           <Button onClick={() => handleExternalAction(exportToolingInfo)}>导出工装信息</Button>
@@ -4503,40 +4494,51 @@ const ToolingInfoPage: React.FC = () => {
           <Button icon={<LeftOutlined />} onClick={() => handleExternalAction(() => navigate('/dashboard'))}>返回</Button>
         </Space>
       </div>
-      <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
-        <Input
-          allowClear
-          placeholder="搜索（盘存编号/项目/责任人）"
-          style={{ width: isMobile ? '100%' : 200 }}
-          value={filterSearch}
-          onChange={(e) => setFilterSearch(e.target.value)}
-        />
-        <AutoComplete
-          placeholder="投产单位"
-          style={{ width: isMobile ? '100%' : 200 }}
-          options={unitOptions as any}
-          value={filterUnit}
-          onSearch={(v) => setFilterUnit(v)}
-          onSelect={(v) => setFilterUnit(String(v))}
-          allowClear
-        />
-        <AutoComplete
-          placeholder="工装类别"
-          style={{ width: isMobile ? '100%' : 200 }}
-          options={categoryOptions as any}
-          value={filterCategory}
-          onSearch={(v) => setFilterCategory(v)}
-          onSelect={(v) => setFilterCategory(String(v))}
-          allowClear
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span>优先级</span>
-          <Rate
-            count={3}
-            value={filterPriority || 0}
-            onChange={(v) => setFilterPriority(v ? v : undefined)}
+      <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Input
+            allowClear
+            placeholder="搜索（盘存编号/项目/责任人）"
+            style={{ width: isMobile ? '100%' : 200 }}
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
           />
+          <AutoComplete
+            placeholder="投产单位"
+            style={{ width: isMobile ? '100%' : 200 }}
+            options={unitOptions as any}
+            value={filterUnit}
+            onSearch={(v) => setFilterUnit(v)}
+            onSelect={(v) => setFilterUnit(String(v))}
+            allowClear
+          />
+          <AutoComplete
+            placeholder="工装类别"
+            style={{ width: isMobile ? '100%' : 200 }}
+            options={categoryOptions as any}
+            value={filterCategory}
+            onSearch={(v) => setFilterCategory(v)}
+            onSelect={(v) => setFilterCategory(String(v))}
+            allowClear
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span>优先级</span>
+            <Rate
+              count={3}
+              value={filterPriority || 0}
+              onChange={(v) => setFilterPriority(v ? v : undefined)}
+            />
+          </div>
         </div>
+        <Segmented
+          options={[
+            { label: `全部 (${counts.all})`, value: 'all' },
+            { label: `完成 (${counts.completed})`, value: 'completed' },
+            { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
+          ]}
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as any)}
+        />
       </div>
         <div ref={tableWrapRef} style={{ flex: 1, minHeight: 0 }}>
           <style>{`
