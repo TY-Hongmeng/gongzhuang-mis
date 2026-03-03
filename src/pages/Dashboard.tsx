@@ -44,19 +44,27 @@ const Dashboard: React.FC = () => {
     })
   }
 
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768)
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
   return (
-    <div className="p-6">
+    <div className={isMobile ? "p-4" : "p-6"}>
       {/* 顶部标题与操作 */}
-      <div className="flex items-center justify-between mb-4">
-        <Title level={2} className="mb-0">
+      <div className={`flex ${isMobile ? 'flex-col items-start gap-4' : 'items-center justify-between'} mb-4`}>
+        <Title level={isMobile ? 3 : 2} className="mb-0">
           欢迎回来，{user?.real_name}！
         </Title>
-        <Button type="primary" danger icon={<LogoutOutlined />} onClick={handleLogout}>
+        <Button type="primary" danger icon={<LogoutOutlined />} onClick={handleLogout} style={isMobile ? { width: '100%' } : {}}>
           退出登录
         </Button>
       </div>
