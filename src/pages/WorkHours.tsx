@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal } from 'antd'
-import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal, Segmented } from 'antd'
+import { ReloadOutlined, LeftOutlined, ExperimentOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
 import { fetchWithFallback } from '../utils/api'
@@ -839,11 +839,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         >
           {/* 第一行：班次日期、班次 */}
           <div className="work-hours-row">
-            <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
+            <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
               <DatePicker placeholder="" />
             </Form.Item>
-            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <Select options={[{ value: '白班', label: '白班' }, { value: '夜班', label: '夜班' }]} />
+            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue="白班">
+              <Segmented block options={['白班', '夜班']} />
             </Form.Item>
           </div>
 
@@ -906,7 +906,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
 
           {/* 第四行：加工日期和辅助时长 */}
           <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <Form.Item name="work_date" label="加工日期" rules={[{ required: true, message: '请选择加工日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
+            <Form.Item name="work_date" label="加工日期" rules={[{ required: true, message: '请选择加工日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
               <DatePicker placeholder="" />
             </Form.Item>
             <div className="work-hours-item" style={{ marginBottom: 8 }}>
@@ -933,14 +933,34 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <InputNumber 
                 min={0} 
                 step={5} 
-                controls={false} 
+                controls={false}
+                addonBefore={<MinusOutlined onClick={() => {
+                  const val = form.getFieldValue('proc_minutes') || 0
+                  if (val >= 5) form.setFieldValue('proc_minutes', val - 5)
+                }} />}
+                addonAfter={<PlusOutlined onClick={() => {
+                  const val = form.getFieldValue('proc_minutes') || 0
+                  form.setFieldValue('proc_minutes', val + 5)
+                }} />}
+                inputMode="numeric"
+                style={{ width: '100%' }}
               />
             </Form.Item>
             <Form.Item name="completed_quantity" label="完成数量" rules={[{ required: true, message: '请输入完成数量' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
               <InputNumber 
                 min={0} 
                 step={1} 
-                controls={false} 
+                controls={false}
+                addonBefore={<MinusOutlined onClick={() => {
+                  const val = form.getFieldValue('completed_quantity') || 0
+                  if (val >= 1) form.setFieldValue('completed_quantity', val - 1)
+                }} />}
+                addonAfter={<PlusOutlined onClick={() => {
+                  const val = form.getFieldValue('completed_quantity') || 0
+                  form.setFieldValue('completed_quantity', val + 1)
+                }} />}
+                inputMode="numeric"
+                style={{ width: '100%' }}
               />
             </Form.Item>
           </div>
