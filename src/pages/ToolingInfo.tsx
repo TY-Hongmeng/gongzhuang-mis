@@ -4081,6 +4081,34 @@ const ToolingInfoPage: React.FC = () => {
     }
   }
 
+  const renderPreviewStatus = (valid?: boolean) => {
+    if (valid === true) {
+      return <span style={{ color: '#52c41a' }}>有效</span>
+    }
+    if (valid === false) {
+      return <span style={{ color: '#f5222d' }}>无效</span>
+    }
+    return <span style={{ color: '#999' }}>—</span>
+  }
+
+  const renderPreviewErrors = (errors?: string[]) => {
+    const list = Array.isArray(errors) ? errors.filter(e => String(e || '').trim()) : []
+    return (
+      <span style={{ color: '#f5222d', fontSize: '12px' }}>
+        {list.length > 0 ? list.join('; ') : '-'}
+      </span>
+    )
+  }
+
+  const renderPreviewWarnings = (warnings?: string[]) => {
+    const list = Array.isArray(warnings) ? warnings.filter(w => String(w || '').trim()) : []
+    return (
+      <span style={{ color: '#fa8c16', fontSize: '12px' }}>
+        {list.length > 0 ? list.join('; ') : '-'}
+      </span>
+    )
+  }
+
   // 导入预览父表列定义
   const importPreviewColumns = [
     {
@@ -4145,31 +4173,19 @@ const ToolingInfoPage: React.FC = () => {
       title: '状态',
       dataIndex: '_valid',
       width: 100,
-      render: (valid: boolean) => (
-        <span style={{ color: valid ? '#52c41a' : '#f5222d' }}>
-          {valid ? '有效' : '无效'}
-        </span>
-      )
+      render: (valid: boolean) => renderPreviewStatus(valid)
     },
     {
       title: '错误信息',
       dataIndex: '_errors',
       width: 300,
-      render: (errors: string[]) => (
-        <span style={{ color: '#f5222d', fontSize: '12px' }}>
-          {errors.join('; ')}
-        </span>
-      )
+      render: (errors: string[]) => renderPreviewErrors(errors)
     },
     {
       title: '提示',
       dataIndex: '_warnings',
       width: 240,
-      render: (warnings: string[]) => (
-        <span style={{ color: '#fa8c16', fontSize: '12px' }}>
-          {(warnings || []).join('; ')}
-        </span>
-      )
+      render: (warnings: string[]) => renderPreviewWarnings(warnings)
     }
   ]
   
@@ -4230,21 +4246,13 @@ const ToolingInfoPage: React.FC = () => {
       title: '状态',
       dataIndex: '_valid',
       width: 100,
-      render: (valid: boolean) => (
-        <span style={{ color: valid ? '#52c41a' : '#f5222d' }}>
-          {valid ? '有效' : '无效'}
-        </span>
-      )
+      render: (valid: boolean) => renderPreviewStatus(valid)
     },
     {
       title: '错误信息',
       dataIndex: '_errors',
       width: 300,
-      render: (errors: string[]) => (
-        <span style={{ color: '#f5222d', fontSize: '12px' }}>
-          {errors.join('; ')}
-        </span>
-      )
+      render: (errors: string[]) => renderPreviewErrors(errors)
     }
   ]
   
@@ -4285,21 +4293,13 @@ const ToolingInfoPage: React.FC = () => {
       title: '状态',
       dataIndex: '_valid',
       width: 100,
-      render: (valid: boolean) => (
-        <span style={{ color: valid ? '#52c41a' : '#f5222d' }}>
-          {valid ? '有效' : '无效'}
-        </span>
-      )
+      render: (valid: boolean) => renderPreviewStatus(valid)
     },
     {
       title: '错误信息',
       dataIndex: '_errors',
       width: 300,
-      render: (errors: string[]) => (
-        <span style={{ color: '#f5222d', fontSize: '12px' }}>
-          {errors.join('; ')}
-        </span>
-      )
+      render: (errors: string[]) => renderPreviewErrors(errors)
     }
   ]
 
