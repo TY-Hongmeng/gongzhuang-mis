@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3146,6 +3146,7 @@ const ToolingInfoPage: React.FC = () => {
         ['   - 批量导入前请先备份现有数据'],
         ['   - 零件信息和标准件信息可以为空，不影响工装信息的导入'],
         ['   - 导入时会自动创建关联关系'],
+        ['   - 材质、材料来源、料型可为空，系统将提示但仍可导入'],
         ['   - 无效记录（如缺少必填字段）会被跳过，不会影响其他记录的导入']
       ]
       
@@ -3277,8 +3278,8 @@ const ToolingInfoPage: React.FC = () => {
         // 验证零件信息
         const validatedParts = associatedParts.map(part => {
           const errors: string[] = []
-          // 料型字段是数据库必填字段，必须包含在必填字段列表中
-          const requiredFields = ['父表盘存编号', '零件名称', '数量', '料型']
+          const warnings: string[] = []
+          const requiredFields = ['父表盘存编号', '零件名称', '数量']
           for (const field of requiredFields) {
             if (!part[field] || String(part[field]).trim() === '') {
               errors.push(`缺少必填字段${field}`)
@@ -3292,6 +3293,8 @@ const ToolingInfoPage: React.FC = () => {
             if (!materialExists) {
               errors.push(`材质“${materialName}”不存在`)
             }
+          } else {
+            warnings.push('材质为空')
           }
           
           // 验证材料来源是否存在
@@ -3301,6 +3304,8 @@ const ToolingInfoPage: React.FC = () => {
             if (!sourceExists) {
               errors.push(`材料来源“${sourceName}”不存在`)
             }
+          } else {
+            warnings.push('材料来源为空')
           }
           
           // 验证料型是否存在
@@ -3310,6 +3315,8 @@ const ToolingInfoPage: React.FC = () => {
             if (!partTypeExists) {
               errors.push(`料型“${partCategory}”不存在`)
             }
+          } else {
+            warnings.push('料型为空')
           }
           
           // 验证规格中的乘号格式
@@ -3347,6 +3354,7 @@ const ToolingInfoPage: React.FC = () => {
           return {
             ...formattedPart,
             _errors: errors,
+            _warnings: warnings,
             _valid: errors.length === 0
           }
         })
@@ -3535,14 +3543,16 @@ const ToolingInfoPage: React.FC = () => {
         }
         
         const validPartsRows = (partsRows as PartImportRow[]).filter(row => {
-          // 料型字段是数据库必填字段，必须包含在必填字段列表中
-          const requiredFields = ['父表盘存编号', '零件名称', '数量', '料型']
+          const requiredFields = ['父表盘存编号', '零件名称', '数量']
           return requiredFields.every(field => row[field] && String(row[field]).trim() !== '')
         })
         
         // 收集零件导入错误信息
         const partImportErrors: string[] = []
         let partSuccessCount = 0 // 单独跟踪零件成功数量
+        let missingMaterialCount = 0
+        let missingSourceCount = 0
+        let missingPartTypeCount = 0
         
         for (const row of validPartsRows) {
           const parentInventoryNumber = row['父表盘存编号']
@@ -3574,6 +3584,7 @@ const ToolingInfoPage: React.FC = () => {
             partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到材质“${materialName}”`)
             continue
           }
+          if (!materialName) missingMaterialCount++
           
           // 查找材料来源ID，允许材料来源为空；支持同义词
           const rawSource = String(row['材料来源'] || '').trim()
@@ -3612,13 +3623,18 @@ const ToolingInfoPage: React.FC = () => {
               continue
             }
           }
+          if (!rawSource) missingSourceCount++
           
           // 验证料型是否在允许的列表中
-          const partCategory = String(row['料型']).trim()
-          const isValidPartCategory = partTypes.some(pt => pt.name === partCategory)
-          if (!isValidPartCategory) {
-            partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到料型“${partCategory}”`)
-            continue
+          const partCategory = String(row['料型'] || '').trim()
+          if (partCategory) {
+            const isValidPartCategory = partTypes.some(pt => pt.name === partCategory)
+            if (!isValidPartCategory) {
+              partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到料型“${partCategory}”`)
+              continue
+            }
+          } else {
+            missingPartTypeCount++
           }
           
           // 处理规格中的乘号，将×或x转换为*号
@@ -3684,8 +3700,8 @@ const ToolingInfoPage: React.FC = () => {
             part_drawing_number: String(row['图号'] || '').trim(),
             part_name: String(row['零件名称']).trim(),
             part_quantity: Number(row['数量']),
-            part_category: String(row['料型']).trim(), // 料型是必填字段，直接赋值
-            specifications: parseSpecifications(normalizedSpecText, String(row['料型']).trim()), // 根据料型解析规格
+            part_category: partCategory || null,
+            specifications: parseSpecifications(normalizedSpecText, partCategory),
             remarks: String(row['备注'] || '').trim(),
             source: '自备' // 添加工厂要求的source字段
           }
@@ -3696,9 +3712,6 @@ const ToolingInfoPage: React.FC = () => {
           }
           if (selectedSource) {
             payload.material_source_id = selectedSource.id
-          } else {
-            const defaultSource = materialSources.find(ms => ms.name === '自备')
-            if (defaultSource) payload.material_source_id = defaultSource.id
           }
 
           // 备注规范化：外购填日期(YYYY-MM-DD)，其他情况保留原始备注或设置为“需调质/空”
@@ -3751,6 +3764,9 @@ const ToolingInfoPage: React.FC = () => {
         // 如果有零件导入错误，显示给用户
         if (partImportErrors.length > 0) {
           message.warning(`零件信息导入完成，成功${partSuccessCount}条，失败${partImportErrors.length}条。失败原因：${partImportErrors.join('； ')}`)
+        }
+        if (missingMaterialCount + missingSourceCount + missingPartTypeCount > 0) {
+          message.warning(`零件信息存在空字段提示：材质为空${missingMaterialCount}条，材料来源为空${missingSourceCount}条，料型为空${missingPartTypeCount}条`)
         }
       }
       
@@ -4142,6 +4158,16 @@ const ToolingInfoPage: React.FC = () => {
       render: (errors: string[]) => (
         <span style={{ color: '#f5222d', fontSize: '12px' }}>
           {errors.join('; ')}
+        </span>
+      )
+    },
+    {
+      title: '提示',
+      dataIndex: '_warnings',
+      width: 240,
+      render: (warnings: string[]) => (
+        <span style={{ color: '#fa8c16', fontSize: '12px' }}>
+          {(warnings || []).join('; ')}
         </span>
       )
     }
@@ -4668,6 +4694,7 @@ const ToolingInfoPage: React.FC = () => {
               <li>日期格式为YYYY-MM-DD</li>
               <li>零件盘存编号格式：父表盘存编号+两位序号（如：LD26010101）</li>
               <li>"父表盘存编号"必须与工装信息表中的"盘存编号"完全一致</li>
+              <li>材质、材料来源、料型可为空，系统将提示但仍可导入</li>
               <li>批量导入前请先备份现有数据</li>
             </ul>
           </div>
