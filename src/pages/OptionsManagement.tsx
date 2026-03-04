@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Save, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Popconfirm, Modal, Button, Typography, Space } from 'antd';
-import { DatabaseOutlined, ReloadOutlined, LeftOutlined } from '@ant-design/icons';
+import { Popconfirm, Modal, Button, Typography, Space, message } from 'antd';
+import { DatabaseOutlined, ReloadOutlined, LeftOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { PartType } from '../types/tooling';
 import { fetchWithFallback } from '../utils/api'
+import * as XLSX from 'xlsx'
 
 interface ProductionUnit {
   id: string;
@@ -76,6 +77,9 @@ export default function OptionsManagement() {
   const [editingFixedOption, setEditingFixedOption] = useState<FixedOptionItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [materialImportVisible, setMaterialImportVisible] = useState(false);
+  const [materialImporting, setMaterialImporting] = useState(false);
+  const materialFileInputRef = useRef<HTMLInputElement>(null);
   
 
   
@@ -197,6 +201,95 @@ export default function OptionsManagement() {
   const handleCreateFixedOption = () => setEditingFixedOption({ id: null as any, option_value: '', option_label: '', is_active: true } as any);
 
   const handleEditPartType = (partType: any) => setEditingPartType({ ...partType });
+
+  const handleDownloadMaterialTemplate = () => {
+    const templateData = [{
+      材料名称: '示例：45#钢',
+      密度: 7.85,
+      单价: 5.5
+    }]
+    const ws = XLSX.utils.json_to_sheet(templateData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '材料库')
+    XLSX.writeFile(wb, `材料库导入模板_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const normalizeMaterialName = (name: string) => String(name || '').trim().toLowerCase()
+
+  const handleMaterialFileSelect = async (file: File) => {
+    setMaterialImporting(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      if (!sheetName) {
+        message.error('未找到工作表')
+        return
+      }
+      const sheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' })
+      if (!rows.length) {
+        message.error('导入文件为空')
+        return
+      }
+      const materialMap = new Map<string, any>()
+      materials.forEach((m) => {
+        const key = normalizeMaterialName(m.name)
+        if (key) materialMap.set(key, m)
+      })
+      let created = 0
+      let updated = 0
+      let skipped = 0
+      const errors: string[] = []
+      for (const row of rows) {
+        const name = String(row['材料名称'] || row['name'] || '').trim()
+        const densityRaw = row['密度'] ?? row['density'] ?? ''
+        const priceRaw = row['单价'] ?? row['unit_price'] ?? ''
+        if (!name) {
+          skipped++
+          continue
+        }
+        const density = Number(densityRaw)
+        const unit_price = priceRaw === '' || priceRaw === null || priceRaw === undefined ? null : Number(priceRaw)
+        if (Number.isNaN(density) || density <= 0) {
+          errors.push(`${name} 密度无效`)
+          continue
+        }
+        if (unit_price !== null && Number.isNaN(unit_price)) {
+          errors.push(`${name} 单价无效`)
+          continue
+        }
+        const existing = materialMap.get(normalizeMaterialName(name))
+        const url = existing ? `/api/materials/${existing.id}` : '/api/materials'
+        const method = existing ? 'PUT' : 'POST'
+        const response = await fetchWithFallback(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, density, unit_price })
+        })
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}))
+          errors.push(`${name} 导入失败${err?.error ? `：${err.error}` : ''}`)
+          continue
+        }
+        if (existing) updated++
+        else created++
+      }
+      await fetchTabData('materials')
+      const msg = `导入完成：新增 ${created}，更新 ${updated}，跳过 ${skipped}`
+      if (errors.length) {
+        message.warning(`${msg}，失败 ${errors.length}`)
+      } else {
+        message.success(msg)
+      }
+      setMaterialImportVisible(false)
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '导入失败')
+    } finally {
+      setMaterialImporting(false)
+      if (materialFileInputRef.current) materialFileInputRef.current.value = ''
+    }
+  }
 
   const handleSaveUnit = async () => {
     if (!editingUnit?.name.trim()) {
@@ -745,7 +838,13 @@ export default function OptionsManagement() {
                 {/* 材料管理 - 简化版本 */}
                 {activeTab === 'materials' && !editingMaterial && (
                   <div>
-                    <div className="mb-4 flex justify-end">
+                    <div className="mb-4 flex justify-end space-x-2">
+                      <Button icon={<DownloadOutlined />} onClick={handleDownloadMaterialTemplate} disabled={loading}>
+                        下载模板
+                      </Button>
+                      <Button icon={<UploadOutlined />} onClick={() => setMaterialImportVisible(true)} disabled={loading}>
+                        导入
+                      </Button>
                       <button 
                         onClick={handleCreateMaterial} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -1178,6 +1277,40 @@ export default function OptionsManagement() {
           </div>
         </div>
       </div>
+
+      <input
+        ref={materialFileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.xlsm"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleMaterialFileSelect(file)
+        }}
+      />
+
+      <Modal
+        title="导入材料库"
+        open={materialImportVisible}
+        onCancel={() => setMaterialImportVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setMaterialImportVisible(false)} disabled={materialImporting}>
+            取消
+          </Button>,
+          <Button key="choose" type="primary" onClick={() => materialFileInputRef.current?.click()} loading={materialImporting}>
+            选择文件
+          </Button>
+        ]}
+      >
+        <div className="space-y-2">
+          <div>请使用模板导入，字段包含：</div>
+          <ul className="list-disc list-inside">
+            <li>材料名称</li>
+            <li>密度</li>
+            <li>单价</li>
+          </ul>
+        </div>
+      </Modal>
     </div>
   );
 }
