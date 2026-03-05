@@ -9,6 +9,7 @@ interface SpecificationsInputProps {
   partTypes: {id: string, name: string, volume_formula?: string, input_format?: string}[]
   onSave: (specs: Record<string, any>) => void
   modelText?: string
+  textColor?: string
 }
 
 const SpecificationsInput: React.FC<SpecificationsInputProps> = ({ 
@@ -16,7 +17,8 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
   partType, 
   partTypes, 
   onSave,
-  modelText
+  modelText,
+  textColor
 }) => {
   const [editValue, setEditValue] = useState(formatSpecificationsForProduction(specs, partType))
   const [isEditing, setIsEditing] = useState(false)
@@ -100,7 +102,8 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
           cursor: 'pointer',
           minHeight: '32px',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          color: textColor || undefined
         }}
       >
         {formatSpecificationsForProduction(specs, partType) || modelText || ''}
@@ -118,7 +121,7 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
           position: 'absolute',
           left: '8px',
           zIndex: 1,
-          color: '#666',
+          color: textColor || '#666',
           fontSize: '14px',
           pointerEvents: 'none'
         }}>
@@ -144,7 +147,7 @@ const SpecificationsInput: React.FC<SpecificationsInputProps> = ({
           borderRadius: '4px',
           padding: isRoundType ? '4px 4px 4px 20px' : '4px',
           fontSize: '14px',
-          color: '#333'
+          color: textColor || '#333'
         }}
       />
     </div>

@@ -1926,14 +1926,13 @@ const ToolingInfoPage: React.FC = () => {
         width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
-          <div style={{ color: getPartTypeColor(rec.part_category) }}>
-            <SpecificationsInput
-              specs={rec.specifications || {}}
-              partType={rec.part_category}
-              partTypes={partTypesRef.current}
-              onSave={(v) => handlePartSaveRef.current(toolingId, rec.id, 'specifications', v)}
-            />
-          </div>
+          <SpecificationsInput
+            specs={rec.specifications || {}}
+            partType={rec.part_category}
+            partTypes={partTypesRef.current}
+            onSave={(v) => handlePartSaveRef.current(toolingId, rec.id, 'specifications', v)}
+            textColor={getPartTypeColor(rec.part_category)}
+          />
         )
       },
       {
