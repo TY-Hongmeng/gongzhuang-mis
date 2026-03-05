@@ -118,11 +118,11 @@ const normalizeDateInput = (value: string) => {
 
 const getPartTypeColor = (partType?: string) => {
   const t = String(partType || '').trim()
-  if (!t) return '#ffffff'
-  if (['板材'].includes(t)) return '#f0f5ff'
-  if (['圆钢'].includes(t)) return '#f6ffed'
-  if (['圆环'].includes(t)) return '#fff7e6'
-  return '#f9f0ff'
+  if (!t) return '#000000'
+  if (['板材'].includes(t)) return '#003a8c'
+  if (['圆钢'].includes(t)) return '#d46b08'
+  if (['圆环'].includes(t)) return '#d4b106'
+  return '#000000'
 }
 
 const ExpandedSubTables: React.FC<{
@@ -1926,7 +1926,7 @@ const ToolingInfoPage: React.FC = () => {
         width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
-          <div style={{ backgroundColor: getPartTypeColor(rec.part_category), padding: '2px 4px', borderRadius: 4 }}>
+          <div style={{ color: getPartTypeColor(rec.part_category) }}>
             <SpecificationsInput
               specs={rec.specifications || {}}
               partType={rec.part_category}
