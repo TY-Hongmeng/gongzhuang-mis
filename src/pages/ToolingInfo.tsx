@@ -1965,7 +1965,7 @@ const ToolingInfoPage: React.FC = () => {
           return (
             <input
               type="checkbox"
-              checked={text === '需调质'}
+              checked={['需调质', '是', '1', 'yes', 'true'].includes(String(text || '').toLowerCase()) || text?.includes('需调质') || text?.includes('调质')}
               onChange={(e) => handlePartSaveRef.current(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
               style={{ cursor: 'pointer' }}
             />
