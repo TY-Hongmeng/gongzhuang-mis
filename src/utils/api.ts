@@ -1758,7 +1758,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const sortOrderAsc = String(qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
 
         const selectCols = [
-          'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','tooling_info_id','part_id'
+          'id','inventory_number','project_name','part_drawing_number','part_name','material','specifications','part_quantity','total_weight','material_source','created_date','tooling_id','tooling_info_id','part_id','remarks'
         ].join(',')
 
         let query = supabase.from('cutting_orders').select(selectCols, { count: 'planned' })
