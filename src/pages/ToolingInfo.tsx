@@ -117,11 +117,11 @@ const normalizeDateInput = (value: string) => {
 }
 
 const getPartTypeColor = (partType?: string) => {
-  const t = String(partType || '').trim()
+  const t = String(partType || '').replace(/\s+/g, '')
   if (!t) return '#000000'
-  if (['板材'].includes(t)) return '#003a8c'
-  if (['圆钢'].includes(t)) return '#d46b08'
-  if (['圆环'].includes(t)) return '#d4b106'
+  if (t.includes('板材') || t.includes('板料')) return '#003a8c'
+  if (t.includes('圆钢') || t.includes('圆料')) return '#d46b08'
+  if (t.includes('圆环')) return '#d4b106'
   return '#000000'
 }
 
