@@ -109,7 +109,7 @@ const shouldAutoFillRecorder = (row: RowItem): boolean => {
 const isDateString = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim())
 const normalizeDateInput = (value: string) => {
   const v = String(value || '').trim()
-  const m = v.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/)
+  const m = v.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/)
   if (!m) return v
   const mm = String(Number(m[2])).padStart(2, '0')
   const dd = String(Number(m[3])).padStart(2, '0')
@@ -1073,13 +1073,13 @@ const ToolingInfoPage: React.FC = () => {
           payload.priority_level = Number(updatedRowData.priority_level || 0)
         }
         if (updatedRowData.received_date && updatedRowData.received_date.trim() !== '') {
-          payload.received_date = updatedRowData.received_date.trim()
+          payload.received_date = normalizeDateInput(updatedRowData.received_date).trim()
         }
         if (updatedRowData.demand_date && updatedRowData.demand_date.trim() !== '') {
-          payload.demand_date = updatedRowData.demand_date.trim()
+          payload.demand_date = normalizeDateInput(updatedRowData.demand_date).trim()
         }
         if (updatedRowData.completed_date && updatedRowData.completed_date.trim() !== '') {
-          payload.completed_date = updatedRowData.completed_date.trim()
+          payload.completed_date = normalizeDateInput(updatedRowData.completed_date).trim()
         }
         if (updatedRowData.recorder && String(updatedRowData.recorder).trim() !== '') {
           payload.recorder = String(updatedRowData.recorder).trim()
@@ -1157,8 +1157,8 @@ const ToolingInfoPage: React.FC = () => {
         const textFields = ['inventory_number', 'production_unit', 'category', 'project_name', 'recorder']
         const normalizedValue = (() => {
           if (dateFields.includes(String(key))) {
-            const v = String(value ?? '').trim()
-            return v === '' ? null : v
+            const v = normalizeDateInput(String(value ?? ''))
+            return String(v || '').trim() === '' ? null : String(v).trim()
           }
           if (textFields.includes(String(key))) {
             const v = String(value ?? '').trim()
@@ -1553,7 +1553,7 @@ const ToolingInfoPage: React.FC = () => {
           if (item.id !== id) return item
           const v = key === 'quantity'
             ? (String(value).trim() === '' ? '' : Number(value))
-            : (key === 'remark' ? normalizeDateInput(String(value ?? '')) : value)
+            : (key === 'remark' || key === 'required_date' ? normalizeDateInput(String(value ?? '')) : value)
           const row = { ...item, [key]: v }
           nextItem = row
           return row
@@ -1624,7 +1624,7 @@ const ToolingInfoPage: React.FC = () => {
           const num = typeof value === 'number' ? value : Number(value)
           updateData.quantity = (value === '' || value === null || isNaN(Number(num)) || Number(num) <= 0) ? null : Number(num)
         } else if (key === 'name' || key === 'model' || key === 'unit' || key === 'required_date' || key === 'remark') {
-          const raw = key === 'remark' ? normalizeDateInput(String(value ?? '')) : String(value ?? '')
+          const raw = (key === 'remark' || key === 'required_date') ? normalizeDateInput(String(value ?? '')) : String(value ?? '')
           const txt = String(raw).trim()
           updateData[key] = txt !== '' ? txt : null
         }
