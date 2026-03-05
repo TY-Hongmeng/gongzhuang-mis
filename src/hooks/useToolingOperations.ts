@@ -51,7 +51,6 @@ export const useToolingOperations = () => {
           return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
         })()
         const heatFlag = isHeat ||
-          (part as any)._force_heat === true || // 优先使用强制标记
           String((part as any).heat_treatment || '').trim() === '1' ||
           String((part as any).heat_treatment || '').trim().toLowerCase() === 'true'
         // 特别强制：如果原始备注包含调质，就强制为“需调质”，忽略其他情况
