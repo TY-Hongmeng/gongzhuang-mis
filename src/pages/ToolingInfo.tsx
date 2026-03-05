@@ -2323,7 +2323,23 @@ const ToolingInfoPage: React.FC = () => {
         onAddChildItem={handleAddChildItem}
       />
     )
-  }, [partsMap, childItemsMap, selectedRowKeys, createPartColumns, createChildColumns, data, setPartsMap, setChildItemsMap])
+  }, [
+    partsMap,
+    childItemsMap,
+    selectedRowKeys,
+    createPartColumns,
+    createChildColumns,
+    data,
+    setPartsMap,
+    setChildItemsMap,
+    materials,
+    materialSources,
+    partTypes,
+    materialOptions,
+    materialSourceOptions,
+    materialSourceNameMap,
+    partTypeOptions
+  ])
 
   // 确保展开的子表至少有一行空白行
   useEffect(() => {
