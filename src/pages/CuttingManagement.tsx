@@ -33,6 +33,12 @@ interface CuttingOrder {
   };
 }
 
+const isHeatRemark = (remarks?: string) => {
+  if (!remarks) return false
+  const v = String(remarks).trim().toLowerCase()
+  return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
+}
+
 const CuttingManagement: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -631,7 +637,7 @@ const CuttingManagement: React.FC = () => {
       width: 80,
       align: 'center',
       render: (remarks: string | undefined) => {
-        const isHeat = typeof remarks === 'string' && remarks.includes('需调质')
+        const isHeat = isHeatRemark(remarks)
         return (
           <Tag color={isHeat ? 'green' : 'default'}>
             {isHeat ? '是' : '否'}
@@ -679,7 +685,7 @@ const CuttingManagement: React.FC = () => {
         o.specifications,
         o.part_quantity,
         Number.isFinite(weightNum) ? Number(weightNum.toFixed(3)) : '',
-        (typeof o.remarks === 'string' && o.remarks.includes('需调质')) ? '是' : '否'
+        isHeatRemark(o.remarks) ? '是' : '否'
       ])
     })
     const ws = XLSX.utils.aoa_to_sheet(aoa)

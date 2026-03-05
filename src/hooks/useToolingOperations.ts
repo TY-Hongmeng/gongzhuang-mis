@@ -44,6 +44,12 @@ export const useToolingOperations = () => {
         const inv = (part.part_inventory_number && String(part.part_inventory_number).trim())
           ? String(part.part_inventory_number).trim()
           : `CO-${part.tooling_id || 'T'}-${part.id || 'P'}-${dateStr}`
+        const rawRemark = typeof part.remarks === 'string' ? String(part.remarks).trim() : ''
+        const isHeat = (() => {
+          if (!rawRemark) return false
+          const v = rawRemark.toLowerCase()
+          return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
+        })()
         return {
           inventory_number: inv,
           project_name: part.project_name || '',
@@ -53,7 +59,7 @@ export const useToolingOperations = () => {
           specifications: part.specifications_text || '无规格',
           part_quantity: parseInt(String(part.part_quantity || 0), 10),
           total_weight: totalWeight,
-          remarks: (typeof part.remarks === 'string' && part.remarks.trim()) ? String(part.remarks).trim() : '',
+          remarks: isHeat ? '需调质' : rawRemark,
           material_source: materialSourceName,
           created_date: new Date().toISOString(),
           tooling_id: part.tooling_id || null,

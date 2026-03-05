@@ -1845,8 +1845,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             tooling_info_id: raw.tooling_id || null,
             is_deleted: false,
           }
-          if (typeof raw.remarks === 'string' && raw.remarks.trim()) payload.remarks = String(raw.remarks).trim()
-          else if (raw.heat_treatment) payload.remarks = '需调质'
+          const rawRemark = typeof raw.remarks === 'string' ? String(raw.remarks).trim() : ''
+          const isHeat = (() => {
+            if (!rawRemark) return false
+            const v = rawRemark.toLowerCase()
+            return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
+          })()
+          if (isHeat || raw.heat_treatment) payload.remarks = '需调质'
+          else if (rawRemark) payload.remarks = rawRemark
           return payload
         }).filter((p: any) => p.inventory_number && p.part_name && p.part_quantity > 0)
 
