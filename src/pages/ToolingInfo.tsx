@@ -1273,9 +1273,6 @@ const ToolingInfoPage: React.FC = () => {
           const updatedRow = { ...r, [key]: nextVal }
           if (r.id === id) {
             updatedPartData = updatedRow
-            if (key === 'remarks') {
-              console.log('[Debug] handlePartSave - setPartsMap updating', { id, oldVal: r.remarks, newVal: nextVal })
-            }
           }
           return updatedRow
         })
@@ -1343,7 +1340,6 @@ const ToolingInfoPage: React.FC = () => {
           case 'remarks': {
             const s = String(value ?? '').trim()
             payload.remarks = s || null
-            console.log('[Debug] handlePartSave - payload prepared', { id, payload })
             break
           }
           case 'weight': {
@@ -1365,10 +1361,8 @@ const ToolingInfoPage: React.FC = () => {
 
         const success = await savePartData(id, payload)
         if (success) {
-          console.log('[Debug] handlePartSave - savePartData success', { id })
           // 保存成功，本地状态已通过 setPartsMap 更新（乐观更新），无需重新拉取
         } else {
-          console.error('[Debug] handlePartSave - savePartData failed', { id })
           // 保存失败，回滚为服务端数据
           // 移除 fetchPartsData 调用，避免重复请求导致卡死
           // 继续执行，让锁能正确释放
@@ -4357,7 +4351,6 @@ const ToolingInfoPage: React.FC = () => {
                 Object.values(partsMap).forEach(parts => {
                   parts.forEach(part => {
                     if (partIds.includes(part.id)) {
-                      console.log('[Debug] handleGenerateCuttingOrders - part selected', { id: part.id, remarks: part.remarks })
                       selectedParts.push({
                         ...part,
                         specifications_text: formatSpecificationsForProduction(part.specifications, part.part_category)
