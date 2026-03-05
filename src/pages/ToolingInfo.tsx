@@ -116,6 +116,15 @@ const normalizeDateInput = (value: string) => {
   return `${m[1]}-${mm}-${dd}`
 }
 
+const getPartTypeColor = (partType?: string) => {
+  const t = String(partType || '').trim()
+  if (!t) return '#ffffff'
+  if (['板料', '板材', '板料割圆'].includes(t)) return '#f0f5ff'
+  if (['圆料', '圆管', '圆环'].includes(t)) return '#f6ffed'
+  if (['锯床割方', '锯切'].includes(t)) return '#fff7e6'
+  return '#f9f0ff'
+}
+
 const ExpandedSubTables: React.FC<{
   toolingId: string
   parts: PartItem[]
@@ -1917,12 +1926,14 @@ const ToolingInfoPage: React.FC = () => {
         width: 120,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
-          <SpecificationsInput
-            specs={rec.specifications || {}}
-            partType={rec.part_category}
-            partTypes={partTypesRef.current}
-            onSave={(v) => handlePartSaveRef.current(toolingId, rec.id, 'specifications', v)}
-          />
+          <div style={{ backgroundColor: getPartTypeColor(rec.part_category), padding: '2px 4px', borderRadius: 4 }}>
+            <SpecificationsInput
+              specs={rec.specifications || {}}
+              partType={rec.part_category}
+              partTypes={partTypesRef.current}
+              onSave={(v) => handlePartSaveRef.current(toolingId, rec.id, 'specifications', v)}
+            />
+          </div>
         )
       },
       {
