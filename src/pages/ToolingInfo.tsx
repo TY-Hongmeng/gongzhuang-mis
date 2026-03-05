@@ -390,6 +390,12 @@ const ToolingInfoPage: React.FC = () => {
   const [importPreviewVisible, setImportPreviewVisible] = useState(false)
   const [importPreviewData, setImportPreviewData] = useState<any[]>([])
   const [importFile, setImportFile] = useState<File | null>(null)
+  const [importSummaryVisible, setImportSummaryVisible] = useState(false)
+  const [importSummary, setImportSummary] = useState({
+    tooling: { total: 0, success: 0, failed: 0 },
+    parts: { total: 0, success: 0, failed: 0 },
+    childItems: { total: 0, success: 0, failed: 0 }
+  })
 
   // 使用自定义Hooks
   const {
@@ -3422,6 +3428,7 @@ const ToolingInfoPage: React.FC = () => {
       }
       
       const toolingRows = XLSX.utils.sheet_to_json(toolingWs)
+      const toolingTotal = toolingRows.length
       
       // 定义导入数据类型
       interface ToolingImportRow {
@@ -3524,8 +3531,11 @@ const ToolingInfoPage: React.FC = () => {
       
       // 2. 解析零件信息工作表（如果存在）
       const partsWs = wb.Sheets['零件信息']
+      let partsTotal = 0
+      let partSuccessCount = 0
       if (partsWs) {
         const partsRows = XLSX.utils.sheet_to_json(partsWs)
+        partsTotal = partsRows.length
         
         interface PartImportRow {
           '父表盘存编号': string
@@ -3549,7 +3559,6 @@ const ToolingInfoPage: React.FC = () => {
         
         // 收集零件导入错误信息
         const partImportErrors: string[] = []
-        let partSuccessCount = 0 // 单独跟踪零件成功数量
         let missingMaterialCount = 0
         let missingSourceCount = 0
         let missingPartTypeCount = 0
@@ -3772,8 +3781,11 @@ const ToolingInfoPage: React.FC = () => {
       
       // 3. 解析标准件信息工作表（如果存在）
       const childItemsWs = wb.Sheets['标准件信息']
+      let childTotal = 0
+      let childSuccessCount = 0
       if (childItemsWs) {
         const childItemsRows = XLSX.utils.sheet_to_json(childItemsWs)
+        childTotal = childItemsRows.length
         
         interface ChildItemImportRow {
           '父表盘存编号': string
@@ -3791,7 +3803,6 @@ const ToolingInfoPage: React.FC = () => {
         
         // 收集标准件导入错误信息
         const childImportErrors: string[] = []
-        let childSuccessCount = 0 // 单独跟踪标准件成功数量
         
         for (const row of validChildItemsRows) {
           const parentInventoryNumber = row['父表盘存编号']
@@ -3846,12 +3857,12 @@ const ToolingInfoPage: React.FC = () => {
       // 这样可以避免大量请求导致页面卡死
       // 如果用户需要查看导入的数据，可以手动展开工装行
       
-      // 根据成功条数显示不同的消息
-      if (successCount > 0) {
-        message.success(`成功导入${successCount}条记录`)
-      } else {
-        message.warning('未成功导入任何记录，请检查导入数据和格式')
-      }
+      setImportSummary({
+        tooling: { total: toolingTotal, success: toolingSuccessCount, failed: Math.max(toolingTotal - toolingSuccessCount, 0) },
+        parts: { total: partsTotal, success: partSuccessCount, failed: Math.max(partsTotal - partSuccessCount, 0) },
+        childItems: { total: childTotal, success: childSuccessCount, failed: Math.max(childTotal - childSuccessCount, 0) }
+      })
+      setImportSummaryVisible(true)
       
       // 关闭预览
       setImportPreviewVisible(false)
@@ -4799,6 +4810,32 @@ const ToolingInfoPage: React.FC = () => {
             indentSize: 0
           }}
         />
+      </Modal>
+
+      <Modal
+        title="导入结果"
+        open={importSummaryVisible}
+        onCancel={() => setImportSummaryVisible(false)}
+        footer={[
+          <Button key="ok" type="primary" onClick={() => setImportSummaryVisible(false)}>
+            确定
+          </Button>
+        ]}
+      >
+        <div className="space-y-4">
+          <div>
+            <div className="font-medium">父表（工装信息）</div>
+            <div className="text-gray-600">成功 {importSummary.tooling.success} 条，失败 {importSummary.tooling.failed} 条</div>
+          </div>
+          <div>
+            <div className="font-medium">子表（零件信息）</div>
+            <div className="text-gray-600">成功 {importSummary.parts.success} 条，失败 {importSummary.parts.failed} 条</div>
+          </div>
+          <div>
+            <div className="font-medium">子表（标准件信息）</div>
+            <div className="text-gray-600">成功 {importSummary.childItems.success} 条，失败 {importSummary.childItems.failed} 条</div>
+          </div>
+        </div>
       </Modal>
     </Card>
   )
