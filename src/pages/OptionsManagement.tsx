@@ -80,6 +80,9 @@ export default function OptionsManagement() {
   const [materialImportVisible, setMaterialImportVisible] = useState(false);
   const [materialImporting, setMaterialImporting] = useState(false);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
+  const [deviceImportVisible, setDeviceImportVisible] = useState(false);
+  const [deviceImporting, setDeviceImporting] = useState(false);
+  const deviceFileInputRef = useRef<HTMLInputElement>(null);
   
 
   
@@ -288,6 +291,110 @@ export default function OptionsManagement() {
     } finally {
       setMaterialImporting(false)
       if (materialFileInputRef.current) materialFileInputRef.current.value = ''
+    }
+  }
+
+  const handleDownloadDeviceTemplate = () => {
+    const templateData = [{
+      设备编号: 'CNC-001',
+      设备名称: '数控加工中心',
+      '最大辅助时间(分钟)': 30
+    }]
+    const ws = XLSX.utils.json_to_sheet(templateData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '设备')
+    XLSX.writeFile(wb, `设备导入模板_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const normalizeDeviceNo = (deviceNo: string) => String(deviceNo || '').trim().toLowerCase()
+
+  const handleDeviceFileSelect = async (file: File) => {
+    setDeviceImporting(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      if (!sheetName) {
+        message.error('未找到工作表')
+        return
+      }
+      const sheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' })
+      if (!rows.length) {
+        message.error('导入文件为空')
+        return
+      }
+
+      const deviceMap = new Map<string, DeviceItem>()
+      devices.forEach((d) => {
+        const key = normalizeDeviceNo(d.device_no)
+        if (key) deviceMap.set(key, d)
+      })
+
+      let created = 0
+      let updated = 0
+      let skipped = 0
+      const errors: string[] = []
+
+      for (const row of rows) {
+        const device_no = String(
+          row['设备编号'] ?? row['设备号'] ?? row['device_no'] ?? row['deviceNo'] ?? ''
+        ).trim()
+        const device_name = String(
+          row['设备名称'] ?? row['name'] ?? row['device_name'] ?? row['deviceName'] ?? ''
+        ).trim()
+        const maxRaw = row['最大辅助时间(分钟)'] ?? row['最大辅助时间'] ?? row['max_aux_minutes'] ?? row['maxAuxMinutes'] ?? ''
+
+        if (!device_no) {
+          skipped++
+          continue
+        }
+        if (!device_name) {
+          errors.push(`${device_no} 设备名称不能为空`)
+          continue
+        }
+        const max_aux_minutes = (maxRaw === '' || maxRaw === null || maxRaw === undefined)
+          ? null
+          : Number(maxRaw)
+        if (max_aux_minutes !== null && (Number.isNaN(max_aux_minutes) || max_aux_minutes < 0)) {
+          errors.push(`${device_no} 最大辅助时间无效`)
+          continue
+        }
+
+        const existing = deviceMap.get(normalizeDeviceNo(device_no))
+        const url = existing ? '/api/tooling/devices/update' : '/api/tooling/devices'
+        const response = await fetchWithFallback(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            id: existing ? String(existing.id) : undefined,
+            device_no,
+            device_name,
+            max_aux_minutes
+          })
+        })
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}))
+          errors.push(`${device_no} 导入失败${err?.error ? `：${err.error}` : ''}`)
+          continue
+        }
+        if (existing) updated++
+        else created++
+      }
+
+      await fetchTabData('devices')
+      const msg = `导入完成：新增 ${created}，更新 ${updated}，跳过 ${skipped}`
+      if (errors.length) {
+        message.warning(`${msg}，失败 ${errors.length}`)
+      } else {
+        message.success(msg)
+      }
+      setDeviceImportVisible(false)
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '导入失败')
+    } finally {
+      setDeviceImporting(false)
+      if (deviceFileInputRef.current) deviceFileInputRef.current.value = ''
     }
   }
 
@@ -1047,7 +1154,13 @@ export default function OptionsManagement() {
                 {activeTab === 'devices' && !editingDevice && (
                   <div>
                     {/* 新增按钮 */}
-                    <div className="mb-4 flex justify-end">
+                    <div className="mb-4 flex justify-end space-x-2">
+                      <Button icon={<DownloadOutlined />} onClick={handleDownloadDeviceTemplate} disabled={loading}>
+                        下载模板
+                      </Button>
+                      <Button icon={<UploadOutlined />} onClick={() => setDeviceImportVisible(true)} disabled={loading}>
+                        导入
+                      </Button>
                       <button 
                         onClick={handleCreateDevice} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -1277,6 +1390,40 @@ export default function OptionsManagement() {
           </div>
         </div>
       </div>
+
+      <input
+        ref={deviceFileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.xlsm"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleDeviceFileSelect(file)
+        }}
+      />
+
+      <Modal
+        title="导入设备"
+        open={deviceImportVisible}
+        onCancel={() => setDeviceImportVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setDeviceImportVisible(false)} disabled={deviceImporting}>
+            取消
+          </Button>,
+          <Button key="choose" type="primary" onClick={() => deviceFileInputRef.current?.click()} loading={deviceImporting}>
+            选择文件
+          </Button>
+        ]}
+      >
+        <div className="space-y-2">
+          <div>请使用模板导入，字段包含：</div>
+          <ul className="list-disc list-inside">
+            <li>设备编号</li>
+            <li>设备名称</li>
+            <li>最大辅助时间(分钟)</li>
+          </ul>
+        </div>
+      </Modal>
 
       <input
         ref={materialFileInputRef}
