@@ -53,6 +53,8 @@ export const useToolingOperations = () => {
         const heatFlag = isHeat ||
           String((part as any).heat_treatment || '').trim() === '1' ||
           String((part as any).heat_treatment || '').trim().toLowerCase() === 'true'
+        // 特别强制：如果原始备注包含调质，就强制为“需调质”，忽略其他情况
+        const finalRemark = heatFlag ? '需调质' : rawRemark
         return {
           inventory_number: inv,
           project_name: part.project_name || '',
@@ -62,7 +64,7 @@ export const useToolingOperations = () => {
           specifications: part.specifications_text || '无规格',
           part_quantity: parseInt(String(part.part_quantity || 0), 10),
           total_weight: totalWeight,
-          remarks: heatFlag ? '需调质' : rawRemark,
+          remarks: finalRemark,
           material_source: materialSourceName,
           created_date: new Date().toISOString(),
           tooling_id: part.tooling_id || null,

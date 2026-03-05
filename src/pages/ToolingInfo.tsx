@@ -4351,8 +4351,14 @@ const ToolingInfoPage: React.FC = () => {
                 Object.values(partsMap).forEach(parts => {
                   parts.forEach(part => {
                     if (partIds.includes(part.id)) {
+                      // 强制处理备注：如果包含调质关键词，直接传给后端“需调质”，确保生成下料单时正确识别
+                      const rawRemark = String(part.remarks || '').trim()
+                      const isHeat = rawRemark === '需调质' || rawRemark === '是' || rawRemark === '1' || rawRemark === 'true' || rawRemark.includes('调质') || rawRemark.includes('热处理')
+                      const finalRemark = isHeat ? '需调质' : rawRemark
+                      
                       selectedParts.push({
                         ...part,
+                        remarks: finalRemark,
                         specifications_text: formatSpecificationsForProduction(part.specifications, part.part_category)
                       })
                     }
