@@ -4359,6 +4359,7 @@ const ToolingInfoPage: React.FC = () => {
                       selectedParts.push({
                         ...part,
                         remarks: finalRemark,
+                        _force_heat: isHeat, // 添加强制标记
                         specifications_text: formatSpecificationsForProduction(part.specifications, part.part_category)
                       })
                     }
