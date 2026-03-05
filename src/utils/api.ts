@@ -1859,10 +1859,44 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const invs = Array.from(new Set(normalized.map((p: any) => p.inventory_number)))
         const { data: existing } = await supabase
           .from('cutting_orders')
-          .select('id, inventory_number')
+          .select('id, inventory_number, created_date')
           .in('inventory_number', invs)
           .eq('is_deleted', false)
-        const existingSet = new Set<string>((existing || []).map((e: any) => String(e.inventory_number)))
+
+        const keepIdByInv = new Map<string, string>()
+        const dupIdsToDelete: string[] = []
+        const groups = new Map<string, any[]>()
+        ;(existing || []).forEach((e: any) => {
+          const inv = String(e?.inventory_number || '')
+          if (!inv) return
+          const list = groups.get(inv) || []
+          list.push(e)
+          groups.set(inv, list)
+        })
+        for (const [inv, list] of groups.entries()) {
+          const sorted = list.slice().sort((a: any, b: any) => {
+            const ad = String(a?.created_date || '')
+            const bd = String(b?.created_date || '')
+            if (ad && bd) return ad.localeCompare(bd)
+            return String(a?.id || '').localeCompare(String(b?.id || ''))
+          })
+          const keep = sorted[0]
+          const keepId = String(keep?.id || '')
+          if (keepId) keepIdByInv.set(inv, keepId)
+          for (let i = 1; i < sorted.length; i++) {
+            const id = String(sorted[i]?.id || '')
+            if (id) dupIdsToDelete.push(id)
+          }
+        }
+        if (dupIdsToDelete.length) {
+          const { error: delErr } = await supabase
+            .from('cutting_orders')
+            .update({ is_deleted: true, updated_date: nowIso })
+            .in('id', dupIdsToDelete)
+          if (delErr) return jsonResponse({ success: false, error: delErr.message }, 500)
+        }
+
+        const existingSet = new Set<string>(Array.from(keepIdByInv.keys()))
         const toInsert = normalized.filter((p: any) => !existingSet.has(String(p.inventory_number)))
         const toUpdate = normalized.filter((p: any) => existingSet.has(String(p.inventory_number)))
 
@@ -1874,6 +1908,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           inserted = toInsert.length
         }
         for (const row of toUpdate) {
+          const keepId = keepIdByInv.get(String(row.inventory_number)) || ''
+          if (!keepId) continue
           const { error: updErr } = await supabase.from('cutting_orders').update({
             project_name: row.project_name,
             part_drawing_number: row.part_drawing_number,
@@ -1889,7 +1925,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             is_deleted: false,
             updated_date: nowIso,
             remarks: row.remarks || null
-          }).eq('inventory_number', row.inventory_number)
+          }).eq('id', keepId)
           if (updErr) return jsonResponse({ success: false, error: updErr.message }, 500)
           updated++
         }

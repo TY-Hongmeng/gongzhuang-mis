@@ -422,14 +422,21 @@ export const generateCuttingOrders = async (orders: any[]) => {
       return o
     }) : []
 
-    if (supabase) {
-      const { error } = await supabase.from('cutting_orders').insert(normalized)
-      if (error) throw error
-      return { success: true }
+    const token = await getAccessToken()
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetchWithFallback('/api/cutting-orders', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ orders: normalized })
+    })
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '')
+      throw new Error(`服务器错误: ${response.status} - ${errorText}`)
     }
-    const response = await fetch('/api/cutting-orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: normalized }) })
-    if (!response.ok) { const errorText = await response.text(); throw new Error(`服务器错误: ${response.status} - ${errorText}`) }
-    const result = await response.json(); return result
+    const result = await response.json().catch(() => ({}))
+    return result
   } catch (error) {
     console.error('生成下料单失败:', error)
     throw error

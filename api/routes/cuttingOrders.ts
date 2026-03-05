@@ -207,6 +207,7 @@ router.post('/', asyncHandler(async (req, res) => {
   let skipped = 0
 
   for (const raw of orders) {
+    const nowIso = new Date().toISOString()
     const payload: any = {
       inventory_number: String(raw.inventory_number || '').trim(),
       project_name: String(raw.project_name || '').trim(),
@@ -215,7 +216,7 @@ router.post('/', asyncHandler(async (req, res) => {
       specifications: String(raw.specifications || ''),
       part_quantity: Number(raw.part_quantity || 0),
       material_source: String(raw.material_source || '').trim() || '锯切',
-      created_date: raw.created_date || new Date().toISOString(),
+      created_date: raw.created_date || nowIso,
       material: raw.material || '',
       total_weight: raw.total_weight ?? null,
       tooling_id: raw.tooling_id || null,
@@ -238,9 +239,23 @@ router.post('/', asyncHandler(async (req, res) => {
     // 查重：同 inventory_number 且未删除的记录存在则更新以对齐最新零件信息
     let existingId: string | null = null
     try {
-      const dup = await supabaseQuery('cutting_orders', { filters: { inventory_number: payload.inventory_number, is_deleted: false } })
+      const dup = await supabaseQuery('cutting_orders', {
+        filters: { inventory_number: payload.inventory_number, is_deleted: false },
+        orderBy: { column: 'created_date', ascending: true }
+      })
       if (Array.isArray(dup) && dup.length > 0) {
         existingId = dup[0].id
+        if (dup.length > 1) {
+          for (let i = 1; i < dup.length; i++) {
+            const id = dup[i]?.id
+            if (!id) continue
+            try {
+              await supabaseUpdate('cutting_orders', { is_deleted: true, updated_date: nowIso }, { id })
+            } catch (e) {
+              console.warn('[CuttingOrders] Soft-delete duplicate warning:', e)
+            }
+          }
+        }
       }
     } catch (err) {
       console.warn('[CuttingOrders] duplicate check warning:', err)
@@ -261,7 +276,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
     if (existingId) {
       // 执行更新，恢复软删除标志为false，并写入更新时间
-      const updatePayload = { ...payload, is_deleted: false, updated_date: new Date().toISOString() }
+      const updatePayload = { ...payload, is_deleted: false, updated_date: nowIso }
       const rows = await supabaseUpdate('cutting_orders', updatePayload, { id: existingId })
       if (rows && rows.length > 0) updatedArr.push(rows[0])
     } else {
