@@ -673,21 +673,22 @@ const CuttingManagement: React.FC = () => {
     const setIds = new Set(selectedRowKeys.map(String))
     const rows = data.filter(d => setIds.has(String(d.id)))
     if (rows.length === 0) { message.warning('没有可导出的记录'); return }
-    const dateSet = new Set(rows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
+    const sortedRows = sortOrdersBySpecifications([...rows])
+    const dateSet = new Set(sortedRows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
     const dateText = dateSet.size === 1 ? Array.from(dateSet)[0] : `${Array.from(dateSet)[0]} 等`
-    const sourceSet = new Set(rows.map(r => r.material_source || ''))
+    const sourceSet = new Set(sortedRows.map(r => r.material_source || ''))
     const sourceText = sourceSet.size === 1 ? Array.from(sourceSet)[0] : '混合'
-    const firstToolingId = rows[0] ? getToolingId(rows[0]) : ''
+    const firstToolingId = sortedRows[0] ? getToolingId(sortedRows[0]) : ''
     const rawResp = firstToolingId ? (responsibleMap[firstToolingId] || '') : ''
     const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
     const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '
 
     const headers = ['序号','盘存编号','项目名称','图号','零件名称','材质','规格','数量','重量(kg)','调质']
     const aoa: any[][] = []
-    aoa.push([dateText, sourceText, compiledText, `共 ${rows.length} 条记录`])
+    aoa.push([dateText, sourceText, compiledText, `共 ${sortedRows.length} 条记录`])
     aoa.push([])
     aoa.push(headers)
-    rows.forEach((o, i) => {
+    sortedRows.forEach((o, i) => {
       const weightNum = Number(o.total_weight || 0)
       aoa.push([
         i + 1,
@@ -724,11 +725,12 @@ const CuttingManagement: React.FC = () => {
     const rows = data.filter(d => setIds.has(String(d.id)))
     if (rows.length === 0) { message.warning('没有可打印的记录'); return }
 
-    const dateSet = new Set(rows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
+    const sortedRows = sortOrdersBySpecifications([...rows])
+    const dateSet = new Set(sortedRows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
     const dateText = dateSet.size === 1 ? Array.from(dateSet)[0] : `${Array.from(dateSet)[0]} 等`
-    const sourceSet = new Set(rows.map(r => r.material_source || ''))
+    const sourceSet = new Set(sortedRows.map(r => r.material_source || ''))
     const sourceText = sourceSet.size === 1 ? Array.from(sourceSet)[0] : '混合'
-    const firstToolingId = rows[0] ? getToolingId(rows[0]) : ''
+    const firstToolingId = sortedRows[0] ? getToolingId(sortedRows[0]) : ''
     const rawResp = firstToolingId ? (responsibleMap[firstToolingId] || '') : ''
     const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
     const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '
@@ -739,7 +741,7 @@ const CuttingManagement: React.FC = () => {
       return
     }
 
-    const rowsHtml = rows.map((o, i) => {
+    const rowsHtml = sortedRows.map((o, i) => {
       const weightNum = Number(o.total_weight || 0)
       return `
         <tr>
@@ -773,7 +775,7 @@ const CuttingManagement: React.FC = () => {
         </head>
         <body>
           <h1>下料单</h1>
-          <div class="meta">${escapeHtml(dateText)} / ${escapeHtml(sourceText)} / ${escapeHtml(compiledText)} / 共 ${rows.length} 条</div>
+          <div class="meta">${escapeHtml(dateText)} / ${escapeHtml(sourceText)} / ${escapeHtml(compiledText)} / 共 ${sortedRows.length} 条</div>
           <table>
             <thead>
               <tr>
