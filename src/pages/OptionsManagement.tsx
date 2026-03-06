@@ -335,6 +335,12 @@ export default function OptionsManagement() {
       let updated = 0
       let skipped = 0
       const errors: string[] = []
+      const candidates: Array<{
+        device_no: string
+        device_name: string
+        max_aux_minutes: number | null
+        existing?: DeviceItem
+      }> = []
 
       for (const row of rows) {
         const device_no = String(
@@ -362,24 +368,40 @@ export default function OptionsManagement() {
         }
 
         const existing = deviceMap.get(normalizeDeviceNo(device_no))
-        const url = existing ? '/api/tooling/devices/update' : '/api/tooling/devices'
-        const response = await fetchWithFallback(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            id: existing ? String(existing.id) : undefined,
-            device_no,
-            device_name,
-            max_aux_minutes
+        candidates.push({ device_no, device_name, max_aux_minutes, existing })
+      }
+
+      const chunkSize = 6
+      for (let i = 0; i < candidates.length; i += chunkSize) {
+        const batch = candidates.slice(i, i + chunkSize)
+        const results = await Promise.all(batch.map(async (item) => {
+          const url = item.existing ? '/api/tooling/devices/update' : '/api/tooling/devices'
+          const response = await fetchWithFallback(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              id: item.existing ? String(item.existing.id) : undefined,
+              device_no: item.device_no,
+              device_name: item.device_name,
+              max_aux_minutes: item.max_aux_minutes
+            })
           })
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}))
+            return { ok: false, error: `${item.device_no} 导入失败${err?.error ? `：${err.error}` : ''}` }
+          }
+          return { ok: true, updated: Boolean(item.existing) }
+        }))
+
+        results.forEach((r) => {
+          if (!r.ok) {
+            errors.push(r.error)
+            return
+          }
+          if (r.updated) updated++
+          else created++
         })
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}))
-          errors.push(`${device_no} 导入失败${err?.error ? `：${err.error}` : ''}`)
-          continue
-        }
-        if (existing) updated++
-        else created++
+        await new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       await fetchTabData('devices')
