@@ -272,15 +272,11 @@ const CuttingManagement: React.FC = () => {
     return {};
   };
 
-  const DEBUG = import.meta.env.DEV
-
   const fetchCuttingOrders = async (page = 1, pageSize = 10000) => {  // 请求大量数据，相当于获取所有数据
     setLoading(true);
-    if (DEBUG) {
-      console.log(`=== 开始获取下料单数据 ===`);
-      console.log(`请求参数: page=${page}, pageSize=${pageSize}`);
-      console.log(`当前筛选条件:`, filters);
-    }
+    console.log(`=== 开始获取下料单数据 ===`);
+    console.log(`请求参数: page=${page}, pageSize=${pageSize}`);
+    console.log(`当前筛选条件:`, filters);
     
     try {
       const params = new URLSearchParams();
@@ -306,28 +302,26 @@ const CuttingManagement: React.FC = () => {
       let result;
       try {
         result = await response.json();
-        if (DEBUG) console.log('Response data:', result);
+        console.log('Response data:', result);
       } catch (jsonError) {
         console.error('JSON parsing error:', jsonError);
-        if (DEBUG) console.error('Response text:', await response.text());
+        console.error('Response text:', await response.text());
         throw new Error('解析响应数据失败');
       }
 
       if (result.success) {
-        if (DEBUG) {
-          console.log('=== API数据接收完成 ===');
-          console.log('API返回数据概况:', {
-            返回记录数: result.items?.length || 0,
-            总记录数: result.total,
-            查询耗时: result.queryTime,
-            当前页: result.page,
-            每页大小: result.pageSize
-          });
-        }
+        console.log('=== API数据接收完成 ===');
+        console.log('API返回数据概况:', {
+          返回记录数: result.items?.length || 0,
+          总记录数: result.total,
+          查询耗时: result.queryTime,
+          当前页: result.page,
+          每页大小: result.pageSize
+        });
         
         // 确保result.items存在且是数组
         if (!result.items || !Array.isArray(result.items)) {
-          if (DEBUG) console.warn('API返回的数据格式不正确，items字段缺失或不是数组');
+          console.warn('API返回的数据格式不正确，items字段缺失或不是数组');
           setData([]);
           setGroupedData({});
           setPagination(prev => ({
@@ -339,8 +333,27 @@ const CuttingManagement: React.FC = () => {
           return;
         }
         
-        if (DEBUG && result.items.length > 0) {
+        if (result.items.length > 0) {
           console.log(`收到${result.items.length}条数据，开始详细分析...`);
+          
+          // 分析所有数据的关键字段
+          const dataAnalysis = {
+            总数: result.items.length,
+            有工装ID的数量: result.items.filter((item: any) => item.tooling_id).length,
+            无工装ID的数量: result.items.filter((item: any) => !item.tooling_id).length,
+            材料来源分布: result.items.reduce((acc: any, item: any) => {
+              acc[item.material_source] = (acc[item.material_source] || 0) + 1;
+              return acc;
+            }, {}),
+            创建日期分布: result.items.reduce((acc: any, item: any) => {
+              const date = dayjs(item.created_date).format('YYYY-MM-DD');
+              acc[date] = (acc[date] || 0) + 1;
+              return acc;
+            }, {})
+          };
+          
+          console.log('数据完整分析:', dataAnalysis);
+          
           console.log('前10条数据详情:', result.items.slice(0, 10).map((item: any, index: number) => ({
             序号: index + 1,
             ID: item.id,
@@ -378,17 +391,15 @@ const CuttingManagement: React.FC = () => {
         const toolingIds = result.items
           .map((order: CuttingOrder) => getToolingId(order))
           .filter(Boolean);
-        if (DEBUG) {
-          console.log('需要获取编制信息的工装ID数量:', toolingIds.length);
-          console.log('具体工装ID列表:', toolingIds);
-        }
+        console.log('需要获取编制信息的工装ID数量:', toolingIds.length);
+        console.log('具体工装ID列表:', toolingIds);
         
         const responsiblePersonMap = await fetchResponsiblePersonMap(toolingIds);
-        if (DEBUG) console.log('编制信息映射结果:', responsiblePersonMap);
+        console.log('编制信息映射结果:', responsiblePersonMap);
         setResponsibleMap(responsiblePersonMap)
         
         // 对数据进行分组（包含编制信息）
-        if (DEBUG) console.log('开始分组处理...');
+        console.log('开始分组处理...');
         // 技术员仅显示同技术组人员；当无法识别技术组或未分配时不过滤
         if (isTechnician) {
           const myTeamLocal = String(localNameToTeam[String(user?.real_name || '')] || '').trim()
@@ -407,18 +418,16 @@ const CuttingManagement: React.FC = () => {
         const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap);
         setData(items)
         
-        if (DEBUG) {
-          console.log('=== 最终分组结果 ===');
-          console.log('分组处理完成，结果概况:', {
-            分组数量: Object.keys(groups).length,
-            各分组详细情况: Object.entries(groups).map(([key, orders]) => ({ 
-              分组键: key, 
-              记录数: orders.length,
-              分组信息: key.split('_')
-            })),
-            可见记录总数: Object.values(groups).reduce((sum, orders) => sum + orders.length, 0)
-          });
-        }
+        console.log('=== 最终分组结果 ===');
+        console.log('分组处理完成，结果概况:', {
+          分组数量: Object.keys(groups).length,
+          各分组详细情况: Object.entries(groups).map(([key, orders]) => ({ 
+            分组键: key, 
+            记录数: orders.length,
+            分组信息: key.split('_')
+          })),
+          可见记录总数: Object.values(groups).reduce((sum, orders) => sum + orders.length, 0)
+        });
         
         setGroupedData(groups);
         
@@ -429,7 +438,7 @@ const CuttingManagement: React.FC = () => {
           total: result.total
         }));
         
-        if (DEBUG) console.log('=== 数据获取和处理完成 ===');
+        console.log('=== 数据获取和处理完成 ===');
       } else {
         message.error('获取下料单失败：' + result.error);
       }
@@ -496,25 +505,7 @@ const CuttingManagement: React.FC = () => {
     };
   }, [filters, pagination.pageSize, location.key]);
 
-  const removeOrdersFromLocalState = useCallback((ids: string[]) => {
-    if (!Array.isArray(ids) || ids.length === 0) return
-    const idSet = new Set(ids)
-
-    setData(prev => prev.filter(item => !idSet.has(item.id)))
-    setGroupedData(prev => {
-      const next: Record<string, any[]> = {}
-      Object.entries(prev).forEach(([key, orders]) => {
-        const remain = (orders || []).filter((o: any) => !idSet.has(o.id))
-        if (remain.length > 0) next[key] = remain
-      })
-      return next
-    })
-    setSelectedRowKeys(prev => prev.filter(k => !idSet.has(String(k))))
-    setPagination(prev => ({ ...prev, total: Math.max(Number(prev.total || 0) - ids.length, 0) }))
-  }, [])
-
   const handleDelete = async (id: string) => {
-    removeOrdersFromLocalState([id])
     try {
       const response = await fetchWithFallback('/api/cutting-orders/batch-delete', {
         method: 'POST',
@@ -525,14 +516,13 @@ const CuttingManagement: React.FC = () => {
 
       if (result.success) {
         message.success('删除成功');
+        fetchCuttingOrders(pagination.current, 10000);
       } else {
         message.error('删除失败：' + result.error);
-        fetchCuttingOrders(pagination.current, 10000);
       }
     } catch (error) {
       console.error('删除失败:', error);
       message.error('删除失败');
-      fetchCuttingOrders(pagination.current, 10000);
     }
   };
 
@@ -542,27 +532,48 @@ const CuttingManagement: React.FC = () => {
       return;
     }
 
-    const ids = [...selectedRowKeys]
-    removeOrdersFromLocalState(ids)
-    setSelectedRowKeys([]);
     try {
       const response = await fetch('/api/cutting-orders/batch-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids })
+        body: JSON.stringify({ ids: selectedRowKeys })
       });
       const result = await response.json();
 
       if (result.success) {
-        message.success(`成功删除 ${result.deleted} 条下料单`);
+        const deletedCount = result.deleted || selectedRowKeys.length;
+        message.success(`成功删除 ${deletedCount} 条下料单`);
+        
+        // 乐观更新：立即从本地移除
+        setData(prev => prev.filter(item => !selectedRowKeys.includes(item.id)));
+        
+        // 更新分组数据，移除已删除项，并清理空分组
+        setGroupedData(prev => {
+          const next: Record<string, any[]> = {}
+          Object.entries(prev).forEach(([key, orders]) => {
+            const newOrders = orders.filter(o => !selectedRowKeys.includes(o.id));
+            if (newOrders.length > 0) {
+              next[key] = newOrders;
+            }
+          })
+          return next
+        })
+        
+        // 更新分页总数
+        setPagination(prev => ({
+          ...prev,
+          total: Math.max(0, prev.total - deletedCount)
+        }));
+        
+        setSelectedRowKeys([]);
+        // 移除重新请求，避免闪烁
+        // fetchCuttingOrders(pagination.current, 10000);
       } else {
         message.error('批量删除失败：' + result.error);
-        fetchCuttingOrders(pagination.current, 10000);
       }
     } catch (error) {
       console.error('批量删除失败:', error);
       message.error('批量删除失败');
-      fetchCuttingOrders(pagination.current, 10000);
     }
   };
 
