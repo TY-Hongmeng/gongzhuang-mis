@@ -708,6 +708,102 @@ const CuttingManagement: React.FC = () => {
     XLSX.writeFile(wb, `下料单_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`)
   }
 
+  const escapeHtml = (value: any) => {
+    const text = String(value ?? '')
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  const printSelected = () => {
+    if (selectedRowKeys.length === 0) { message.warning('请选择要打印的记录'); return }
+    const setIds = new Set(selectedRowKeys.map(String))
+    const rows = data.filter(d => setIds.has(String(d.id)))
+    if (rows.length === 0) { message.warning('没有可打印的记录'); return }
+
+    const dateSet = new Set(rows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
+    const dateText = dateSet.size === 1 ? Array.from(dateSet)[0] : `${Array.from(dateSet)[0]} 等`
+    const sourceSet = new Set(rows.map(r => r.material_source || ''))
+    const sourceText = sourceSet.size === 1 ? Array.from(sourceSet)[0] : '混合'
+    const firstToolingId = rows[0] ? getToolingId(rows[0]) : ''
+    const rawResp = firstToolingId ? (responsibleMap[firstToolingId] || '') : ''
+    const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
+    const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      message.error('无法打开打印窗口，请检查浏览器弹窗设置')
+      return
+    }
+
+    const rowsHtml = rows.map((o, i) => {
+      const weightNum = Number(o.total_weight || 0)
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(o.inventory_number)}</td>
+          <td>${escapeHtml(o.project_name)}</td>
+          <td>${escapeHtml(o.part_drawing_number)}</td>
+          <td>${escapeHtml(o.part_name)}</td>
+          <td>${escapeHtml(o.material)}</td>
+          <td>${escapeHtml(o.specifications)}</td>
+          <td>${escapeHtml(o.part_quantity)}</td>
+          <td>${Number.isFinite(weightNum) ? weightNum.toFixed(3) : ''}</td>
+          <td>${isHeatRemark(o.remarks) ? '是' : '否'}</td>
+        </tr>
+      `
+    }).join('')
+
+    const html = `
+      <html>
+        <head>
+          <title>下料单打印</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+            h1 { font-size: 18px; margin: 0 0 8px; }
+            .meta { margin-bottom: 8px; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
+            th { background: #f3f3f3; }
+          </style>
+        </head>
+        <body>
+          <h1>下料单</h1>
+          <div class="meta">${escapeHtml(dateText)} / ${escapeHtml(sourceText)} / ${escapeHtml(compiledText)} / 共 ${rows.length} 条</div>
+          <table>
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>盘存编号</th>
+                <th>项目名称</th>
+                <th>图号</th>
+                <th>零件名称</th>
+                <th>材质</th>
+                <th>规格</th>
+                <th>数量</th>
+                <th>重量(kg)</th>
+                <th>调质</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -777,6 +873,9 @@ const CuttingManagement: React.FC = () => {
               disabled={selectedRowKeys.length === 0}
             >
               批量删除
+            </Button>
+            <Button onClick={printSelected} disabled={selectedRowKeys.length === 0}>
+              打印
             </Button>
             <Button onClick={exportSelected} disabled={selectedRowKeys.length === 0}>
               导出下料单
