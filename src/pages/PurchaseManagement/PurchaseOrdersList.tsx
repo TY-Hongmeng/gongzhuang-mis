@@ -427,10 +427,9 @@ export default function PurchaseOrdersList() {
         <head>
           <title></title>
           <style>
-            @page { size: A4 portrait; margin: 10mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
-            .header-title { font-size: 16px; font-weight: 700; text-align: center; }
-            .header-company { font-size: 14px; font-weight: 600; text-align: center; }
+            @page { size: A4 portrait; margin: 0; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; }
+            .header-line { font-size: 16px; font-weight: 700; text-align: center; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
@@ -442,10 +441,7 @@ export default function PurchaseOrdersList() {
           <table>
             <thead>
               <tr>
-                <th colspan="9" class="header-title">临时物资采购清单</th>
-              </tr>
-              <tr>
-                <th colspan="9" class="header-company">吉林省通用机械（集团）有限责任公司</th>
+                <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
               </tr>
               <tr>
                 <th>序号</th>
