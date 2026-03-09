@@ -422,6 +422,21 @@ export default function PurchaseOrdersList() {
         </tr>
       `
     }).join('')
+    const targetRows = 20
+    const emptyCount = Math.max(0, targetRows - rows.length)
+    const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
+      <tr class="empty-row">
+        <td>&nbsp;</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    `).join('')
     const html = `
       <html>
         <head>
@@ -434,6 +449,7 @@ export default function PurchaseOrdersList() {
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
+            .empty-row td { height: 24px; }
             .sign { width: 100%; margin-top: auto; }
             .sign td { height: 48px; vertical-align: middle; font-weight: 600; }
           </style>
@@ -459,6 +475,7 @@ export default function PurchaseOrdersList() {
             </thead>
             <tbody>
               ${rowsHtml}
+              ${emptyRowsHtml}
             </tbody>
           </table>
           <table class="sign">
