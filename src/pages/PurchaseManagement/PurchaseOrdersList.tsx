@@ -390,6 +390,110 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
+  const printApprovalList = () => {
+    if (selectedRowKeys.length === 0) { message.warning('请选择需要打印的审批清单'); return; }
+    const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
+    if (rows.length === 0) { message.warning('没有可打印的审批清单'); return }
+
+    const escapeHtml = (value: any) => {
+      const text = String(value ?? '')
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+    const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
+    const rowsHtml = rows.map((item, idx) => {
+      const cdate = dayjs(item.created_date).format('YYYY-MM-DD')
+      const ddate = item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(item.part_name)}</td>
+          <td>${escapeHtml(item.model || '')}</td>
+          <td>${escapeHtml(qtyText(item))}</td>
+          <td>${escapeHtml(item.project_name || '')}</td>
+          <td>${escapeHtml(item.production_unit || '')}</td>
+          <td>${escapeHtml(cdate)}</td>
+          <td>${escapeHtml(ddate)}</td>
+          <td>${escapeHtml(item.applicant || '')}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      `
+    }).join('')
+    const today = dayjs().format('YYYY-MM-DD')
+    const html = `
+      <html>
+        <head>
+          <title>采购审批清单</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+            .header { display: grid; grid-template-columns: 1fr 1fr; align-items: center; margin-bottom: 8px; }
+            .company { font-size: 14px; font-weight: 600; }
+            .title { font-size: 18px; font-weight: 700; text-align: right; }
+            .meta { font-size: 12px; margin-bottom: 8px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
+            th { background: #f3f3f3; }
+            .sign { width: 100%; margin-top: 12px; }
+            .sign td { height: 48px; vertical-align: middle; font-weight: 600; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company">吉林省通用机器（集团）有限责任公司</div>
+            <div class="title">临时物资采购审批清单</div>
+          </div>
+          <div class="meta">打印日期：${today}　共 ${rows.length} 项</div>
+          <table>
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>名称</th>
+                <th>型号</th>
+                <th>数量</th>
+                <th>项目名称</th>
+                <th>投产单位</th>
+                <th>申请日期</th>
+                <th>需求日期</th>
+                <th>提交人</th>
+                <th>用途</th>
+                <th>拟进货渠道</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <table class="sign">
+            <tr>
+              <td>生产单位领导审批</td>
+              <td>计划部门审批</td>
+            </tr>
+            <tr>
+              <td>公司副总审批</td>
+              <td>公司总经理审批</td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `
+
+    const w = window.open('', '_blank')
+    if (!w) { message.error('无法打开打印窗口，请检查浏览器弹窗设置'); return }
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
   return (
     <div style={{ padding: '16px 0', height: 'calc(100vh - 200px)' }}>
       <StyleInjector />
@@ -487,6 +591,7 @@ export default function PurchaseOrdersList() {
                 message.error('回退失败: ' + (e as Error).message)
               }
             }}>回退</Button>
+            <Button onClick={printApprovalList}>打印审批清单</Button>
             <Button onClick={() => {
               if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批计划');
                 return;
