@@ -419,24 +419,19 @@ export default function PurchaseOrdersList() {
           <td>${escapeHtml(cdate)}</td>
           <td>${escapeHtml(ddate)}</td>
           <td>${escapeHtml(item.applicant || '')}</td>
-          <td></td>
-          <td></td>
-          <td></td>
         </tr>
       `
     }).join('')
-    const today = dayjs().format('YYYY-MM-DD')
     const html = `
       <html>
         <head>
-          <title>采购审批清单</title>
+          <title></title>
           <style>
             @page { size: A4 portrait; margin: 10mm; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
             .header { display: grid; grid-template-columns: 1fr 1fr; align-items: center; margin-bottom: 8px; }
             .company { font-size: 14px; font-weight: 600; }
             .title { font-size: 18px; font-weight: 700; text-align: right; }
-            .meta { font-size: 12px; margin-bottom: 8px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
@@ -449,7 +444,6 @@ export default function PurchaseOrdersList() {
             <div class="company">吉林省通用机器（集团）有限责任公司</div>
             <div class="title">临时物资采购审批清单</div>
           </div>
-          <div class="meta">打印日期：${today}　共 ${rows.length} 项</div>
           <table>
             <thead>
               <tr>
@@ -462,9 +456,6 @@ export default function PurchaseOrdersList() {
                 <th>申请日期</th>
                 <th>需求日期</th>
                 <th>提交人</th>
-                <th>用途</th>
-                <th>拟进货渠道</th>
-                <th>备注</th>
               </tr>
             </thead>
             <tbody>
