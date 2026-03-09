@@ -450,7 +450,7 @@ export default function PurchaseOrdersList() {
             th { background: #f3f3f3; }
             thead th, tbody td { height: 7mm; }
             .empty-row td { height: 7mm; }
-            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; }
+            tfoot td { height: 35mm; vertical-align: top; text-align: left; font-weight: 600; padding: 8px; }
           </style>
         </head>
         <body>
