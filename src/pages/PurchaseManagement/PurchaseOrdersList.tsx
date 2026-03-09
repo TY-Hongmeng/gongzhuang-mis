@@ -428,16 +428,18 @@ export default function PurchaseOrdersList() {
           <title></title>
           <style>
             @page { size: A4 portrait; margin: 0; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
+            .page { min-height: calc(297mm - 20mm); display: flex; flex-direction: column; }
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
-            .sign { width: 100%; margin-top: 12px; }
+            .sign { width: 100%; margin-top: auto; }
             .sign td { height: 48px; vertical-align: middle; font-weight: 600; }
           </style>
         </head>
         <body>
+          <div class="page">
           <table>
             <thead>
               <tr>
@@ -469,6 +471,7 @@ export default function PurchaseOrdersList() {
               <td>公司总经理审批</td>
             </tr>
           </table>
+          </div>
         </body>
       </html>
     `
