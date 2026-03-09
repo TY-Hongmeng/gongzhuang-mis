@@ -422,7 +422,7 @@ export default function PurchaseOrdersList() {
         </tr>
       `
     }).join('')
-    const targetRows = 24
+    const targetRows = 28
     const emptyCount = Math.max(0, targetRows - rows.length)
     const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
       <tr class="empty-row">
@@ -444,15 +444,20 @@ export default function PurchaseOrdersList() {
           <style>
             @page { size: A4 portrait; margin: 0; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
+            .page { min-height: calc(297mm - 20mm); display: flex; flex-direction: column; }
+            .table-wrap { flex: 1 1 auto; }
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
             .empty-row td { height: 24px; }
-            .sign-row td { height: 48px; vertical-align: middle; font-weight: 600; }
+            .sign { width: 100%; margin-top: 0; }
+            .sign td { height: 48px; vertical-align: middle; font-weight: 600; }
           </style>
         </head>
         <body>
+          <div class="page">
+          <div class="table-wrap">
           <table>
             <thead>
               <tr>
@@ -473,16 +478,20 @@ export default function PurchaseOrdersList() {
             <tbody>
               ${rowsHtml}
               ${emptyRowsHtml}
-              <tr class="sign-row">
-                <td colspan="5">生产单位领导审批</td>
-                <td colspan="4">计划部门审批</td>
-              </tr>
-              <tr class="sign-row">
-                <td colspan="5">公司副总审批</td>
-                <td colspan="4">公司总经理审批</td>
-              </tr>
             </tbody>
           </table>
+          </div>
+          <table class="sign">
+            <tr>
+              <td>生产单位领导审批</td>
+              <td>计划部门审批</td>
+            </tr>
+            <tr>
+              <td>公司副总审批</td>
+              <td>公司总经理审批</td>
+            </tr>
+          </table>
+          </div>
         </body>
       </html>
     `
