@@ -405,20 +405,69 @@ export default function PurchaseOrdersList() {
         .replace(/'/g, '&#39;')
     }
     const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
-    const rowsHtml = rows.map((item, idx) => {
-      const cdate = dayjs(item.created_date).format('YYYY-MM-DD')
-      const ddate = item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
+    const printRows = rows.map((item) => ({
+      item,
+      cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
+      ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
+    })).sort((a, b) => {
+      const compare = (x: string, y: string) => x.localeCompare(y, 'zh-CN')
+      const keysA = [
+        String(a.item.project_name || '').trim(),
+        String(a.item.production_unit || '').trim(),
+        String(a.cdate || '').trim(),
+        String(a.ddate || '').trim(),
+        String(a.item.applicant || '').trim(),
+        String(a.item.part_name || '').trim(),
+        String(a.item.model || '').trim(),
+        String(qtyText(a.item)).trim()
+      ]
+      const keysB = [
+        String(b.item.project_name || '').trim(),
+        String(b.item.production_unit || '').trim(),
+        String(b.cdate || '').trim(),
+        String(b.ddate || '').trim(),
+        String(b.item.applicant || '').trim(),
+        String(b.item.part_name || '').trim(),
+        String(b.item.model || '').trim(),
+        String(qtyText(b.item)).trim()
+      ]
+      for (let i = 0; i < keysA.length; i += 1) {
+        const diff = compare(keysA[i], keysB[i])
+        if (diff !== 0) return diff
+      }
+      return 0
+    })
+    const calcRowSpans = (values: string[]) => {
+      const spans = Array(values.length).fill(1)
+      let i = 0
+      while (i < values.length) {
+        const current = values[i]
+        if (!current) { i += 1; continue }
+        let j = i + 1
+        while (j < values.length && values[j] === current) j += 1
+        spans[i] = j - i
+        for (let k = i + 1; k < j; k += 1) spans[k] = 0
+        i = j
+      }
+      return spans
+    }
+    const projectSpans = calcRowSpans(printRows.map(r => String(r.item.project_name || '').trim()))
+    const productionSpans = calcRowSpans(printRows.map(r => String(r.item.production_unit || '').trim()))
+    const createdDateSpans = calcRowSpans(printRows.map(r => String(r.cdate || '').trim()))
+    const demandDateSpans = calcRowSpans(printRows.map(r => String(r.ddate || '').trim()))
+    const applicantSpans = calcRowSpans(printRows.map(r => String(r.item.applicant || '').trim()))
+    const rowsHtml = printRows.map(({ item, cdate, ddate }, idx) => {
       return `
         <tr>
           <td>${idx + 1}</td>
           <td>${escapeHtml(item.part_name)}</td>
           <td>${escapeHtml(item.model || '')}</td>
           <td>${escapeHtml(qtyText(item))}</td>
-          <td>${escapeHtml(item.project_name || '')}</td>
-          <td>${escapeHtml(item.production_unit || '')}</td>
-          <td>${escapeHtml(cdate)}</td>
-          <td>${escapeHtml(ddate)}</td>
-          <td>${escapeHtml(item.applicant || '')}</td>
+          ${projectSpans[idx] > 0 ? `<td rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+          ${productionSpans[idx] > 0 ? `<td rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+          ${createdDateSpans[idx] > 0 ? `<td rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+          ${demandDateSpans[idx] > 0 ? `<td rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+          ${applicantSpans[idx] > 0 ? `<td rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
         </tr>
       `
     }).join('')
