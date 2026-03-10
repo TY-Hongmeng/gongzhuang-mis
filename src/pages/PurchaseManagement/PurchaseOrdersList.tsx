@@ -437,6 +437,49 @@ export default function PurchaseOrdersList() {
       }
       return 0
     })
+    const estimateRowCost = (text: string, charsPerLine: number) => Math.max(1, Math.ceil(text.length / charsPerLine))
+    const rowsWithUnits = printRows.map((row) => {
+      const rowUnits = Math.max(
+        estimateRowCost(String(row.item.part_name || '').trim(), 10),
+        estimateRowCost(String(row.item.model || '').trim(), 12),
+        estimateRowCost(String(qtyText(row.item) || '').trim(), 8)
+      )
+      return { ...row, rowUnits: Math.max(1, rowUnits) }
+    })
+    const pageUnitBudget = 30
+    const minLastPageUnits = 10
+    const pages: Array<typeof rowsWithUnits> = []
+    let currentPage: typeof rowsWithUnits = []
+    let currentUnits = 0
+    rowsWithUnits.forEach((row) => {
+      if (currentPage.length > 0 && currentUnits + row.rowUnits > pageUnitBudget) {
+        pages.push(currentPage)
+        currentPage = [row]
+        currentUnits = row.rowUnits
+      } else {
+        currentPage.push(row)
+        currentUnits += row.rowUnits
+      }
+    })
+    if (currentPage.length > 0) pages.push(currentPage)
+
+    const getUnits = (pageRows: typeof rowsWithUnits) => pageRows.reduce((sum, row) => sum + row.rowUnits, 0)
+    if (pages.length > 1) {
+      const lastPageIndex = pages.length - 1
+      let deficit = minLastPageUnits - getUnits(pages[lastPageIndex])
+      for (let donorIndex = lastPageIndex - 1; donorIndex >= 0 && deficit > 0; donorIndex -= 1) {
+        while (deficit > 0 && pages[donorIndex].length > 1) {
+          const donorPage = pages[donorIndex]
+          const candidate = donorPage[donorPage.length - 1]
+          const donorRemainUnits = getUnits(donorPage) - candidate.rowUnits
+          if (donorRemainUnits < minLastPageUnits) break
+          donorPage.pop()
+          pages[lastPageIndex].unshift(candidate)
+          deficit -= candidate.rowUnits
+        }
+      }
+    }
+
     const calcRowSpans = (values: string[]) => {
       const spans = Array(values.length).fill(1)
       let i = 0
@@ -451,51 +494,81 @@ export default function PurchaseOrdersList() {
       }
       return spans
     }
-    const projectSpans = calcRowSpans(printRows.map(r => String(r.item.project_name || '').trim()))
-    const productionSpans = calcRowSpans(printRows.map(r => String(r.item.production_unit || '').trim()))
-    const createdDateSpans = calcRowSpans(printRows.map(r => String(r.cdate || '').trim()))
-    const demandDateSpans = calcRowSpans(printRows.map(r => String(r.ddate || '').trim()))
-    const applicantSpans = calcRowSpans(printRows.map(r => String(r.item.applicant || '').trim()))
-    const rowsHtml = printRows.map(({ item, cdate, ddate }, idx) => {
-      return `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${escapeHtml(item.part_name)}</td>
-          <td>${escapeHtml(item.model || '')}</td>
-          <td>${escapeHtml(qtyText(item))}</td>
-          ${projectSpans[idx] > 0 ? `<td rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-          ${productionSpans[idx] > 0 ? `<td rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-          ${createdDateSpans[idx] > 0 ? `<td rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-          ${demandDateSpans[idx] > 0 ? `<td rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-          ${applicantSpans[idx] > 0 ? `<td rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+    let serialNo = 1
+    const pagesHtml = pages.map((pageRows, pageIndex) => {
+      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
+      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
+      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
+      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
+      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
+      const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
+        const rowHtml = `
+          <tr>
+            <td>${serialNo}</td>
+            <td>${escapeHtml(item.part_name)}</td>
+            <td>${escapeHtml(item.model || '')}</td>
+            <td>${escapeHtml(qtyText(item))}</td>
+            ${projectSpans[idx] > 0 ? `<td rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+            ${productionSpans[idx] > 0 ? `<td rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+            ${createdDateSpans[idx] > 0 ? `<td rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+            ${demandDateSpans[idx] > 0 ? `<td rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+            ${applicantSpans[idx] > 0 ? `<td rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          </tr>
+        `
+        serialNo += 1
+        return rowHtml
+      }).join('')
+      const usedUnits = getUnits(pageRows)
+      const emptyCount = Math.max(0, pageUnitBudget - usedUnits)
+      const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
+        <tr class="empty-row">
+          <td>&nbsp;</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
         </tr>
+      `).join('')
+      return `
+        <table class="sheet">
+          <thead>
+            <tr>
+              <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
+            </tr>
+            <tr>
+              <th>序号</th>
+              <th>名称</th>
+              <th>型号</th>
+              <th>数量</th>
+              <th>项目名称</th>
+              <th>投产单位</th>
+              <th>申请日期</th>
+              <th>需求日期</th>
+              <th>提交人</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            ${emptyRowsHtml}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5">生产单位领导审批：</td>
+              <td colspan="4">计划部门审批：</td>
+            </tr>
+            <tr>
+              <td colspan="5">公司副总审批：</td>
+              <td colspan="4">公司总经理审批：</td>
+            </tr>
+          </tfoot>
+        </table>
+        ${pageIndex < pages.length - 1 ? '<div class="page-break"></div>' : ''}
       `
     }).join('')
-    const estimateRowCost = (text: string, charsPerLine: number) => Math.max(1, Math.ceil(text.length / charsPerLine))
-    const extraRowCost = printRows.reduce((sum, { item }) => {
-      const cost = Math.max(
-        estimateRowCost(String(item.part_name || '').trim(), 10),
-        estimateRowCost(String(item.model || '').trim(), 12),
-        estimateRowCost(String(qtyText(item) || '').trim(), 8)
-      )
-      return sum + Math.max(0, cost - 1)
-    }, 0)
-    const pageRowBudget = 30
-    const targetRows = Math.max(rows.length, pageRowBudget - Math.min(8, extraRowCost))
-    const emptyCount = Math.max(0, targetRows - rows.length)
-    const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
-      <tr class="empty-row">
-        <td>&nbsp;</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-    `).join('')
     const html = `
       <html>
         <head>
@@ -510,41 +583,11 @@ export default function PurchaseOrdersList() {
             thead th, tbody td { height: 7mm; }
             .empty-row td { height: 7mm; }
             tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; }
+            .page-break { page-break-after: always; break-after: page; height: 0; }
           </style>
         </head>
         <body>
-          <table class="sheet">
-            <thead>
-              <tr>
-                <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
-              </tr>
-              <tr>
-                <th>序号</th>
-                <th>名称</th>
-                <th>型号</th>
-                <th>数量</th>
-                <th>项目名称</th>
-                <th>投产单位</th>
-                <th>申请日期</th>
-                <th>需求日期</th>
-                <th>提交人</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-              ${emptyRowsHtml}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="5">生产单位领导审批：</td>
-                <td colspan="4">计划部门审批：</td>
-              </tr>
-              <tr>
-                <td colspan="5">公司副总审批：</td>
-                <td colspan="4">公司总经理审批：</td>
-              </tr>
-            </tfoot>
-          </table>
+          ${pagesHtml}
         </body>
       </html>
     `
