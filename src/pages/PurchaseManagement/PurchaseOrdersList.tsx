@@ -471,7 +471,17 @@ export default function PurchaseOrdersList() {
         </tr>
       `
     }).join('')
-    const targetRows = 34
+    const estimateRowCost = (text: string, charsPerLine: number) => Math.max(1, Math.ceil(text.length / charsPerLine))
+    const extraRowCost = printRows.reduce((sum, { item }) => {
+      const cost = Math.max(
+        estimateRowCost(String(item.part_name || '').trim(), 10),
+        estimateRowCost(String(item.model || '').trim(), 12),
+        estimateRowCost(String(qtyText(item) || '').trim(), 8)
+      )
+      return sum + Math.max(0, cost - 1)
+    }, 0)
+    const pageRowBudget = 30
+    const targetRows = Math.max(rows.length, pageRowBudget - Math.min(8, extraRowCost))
     const emptyCount = Math.max(0, targetRows - rows.length)
     const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
       <tr class="empty-row">
@@ -494,7 +504,7 @@ export default function PurchaseOrdersList() {
             @page { size: A4 portrait; margin: 0; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
-            table.sheet { width: 100%; height: calc(297mm - 20mm); border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+            table.sheet { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
             thead th, tbody td { height: 7mm; }
