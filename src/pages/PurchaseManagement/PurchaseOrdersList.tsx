@@ -450,7 +450,7 @@ export default function PurchaseOrdersList() {
             th { background: #f3f3f3; }
             thead th, tbody td { height: 7mm; }
             .empty-row td { height: 7mm; }
-            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 10mm; }
+            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; }
           </style>
         </head>
         <body>
@@ -477,12 +477,12 @@ export default function PurchaseOrdersList() {
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="5">生产单位领导审批：__________</td>
-                <td colspan="4">计划部门审批：__________</td>
+                <td colspan="5">生产单位领导审批：</td>
+                <td colspan="4">计划部门审批：</td>
               </tr>
               <tr>
-                <td colspan="5">公司副总审批：__________</td>
-                <td colspan="4">公司总经理审批：__________</td>
+                <td colspan="5">公司副总审批：</td>
+                <td colspan="4">公司总经理审批：</td>
               </tr>
             </tfoot>
           </table>
