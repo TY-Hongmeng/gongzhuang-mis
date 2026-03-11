@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, message, Row, Col, Space, Segmented } from 'antd';
+import { Table, Button, message, Row, Col, Space, Segmented, Select } from 'antd';
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
 import { rollbackPurchaseOrders, updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService';
@@ -71,6 +71,33 @@ interface PurchaseOrder {
   total_price?: number;
 }
 
+const PRINT_DENSITY_LEVEL = 6 as const;
+const PRINT_DENSITY_PROFILES = {
+  1: { pageUnitBudget: 30, minLastPageUnits: 10 },
+  2: { pageUnitBudget: 31, minLastPageUnits: 11 },
+  3: { pageUnitBudget: 32, minLastPageUnits: 11 },
+  4: { pageUnitBudget: 33, minLastPageUnits: 12 },
+  5: { pageUnitBudget: 34, minLastPageUnits: 13 },
+  6: { pageUnitBudget: 34, minLastPageUnits: 14 },
+  7: { pageUnitBudget: 35, minLastPageUnits: 14 },
+  8: { pageUnitBudget: 35, minLastPageUnits: 15 },
+  9: { pageUnitBudget: 36, minLastPageUnits: 15 },
+  10: { pageUnitBudget: 36, minLastPageUnits: 16 }
+} as const;
+type PrintDensityLevel = keyof typeof PRINT_DENSITY_PROFILES
+const PRINT_DENSITY_OPTIONS: Array<{ label: string; value: PrintDensityLevel }> = [
+  { label: '第1档（更宽松）', value: 1 },
+  { label: '第2档', value: 2 },
+  { label: '第3档', value: 3 },
+  { label: '第4档', value: 4 },
+  { label: '第5档', value: 5 },
+  { label: '第6档（默认）', value: 6 },
+  { label: '第7档', value: 7 },
+  { label: '第8档', value: 8 },
+  { label: '第9档', value: 9 },
+  { label: '第10档（更紧凑）', value: 10 }
+]
+
 
 
 export default function PurchaseOrdersList() {
@@ -83,6 +110,7 @@ export default function PurchaseOrdersList() {
   
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
+  const [printDensityLevel, setPrintDensityLevel] = useState<PrintDensityLevel>(PRINT_DENSITY_LEVEL)
   const DEBUG = (import.meta as any)?.env?.DEV === true;
 
   const totals = useMemo(() => {
@@ -446,8 +474,9 @@ export default function PurchaseOrdersList() {
       )
       return { ...row, rowUnits: Math.max(1, rowUnits) }
     })
-    const pageUnitBudget = 30
-    const minLastPageUnits = 10
+    const density = PRINT_DENSITY_PROFILES[printDensityLevel]
+    const pageUnitBudget = density.pageUnitBudget
+    const minLastPageUnits = density.minLastPageUnits
     const pages: Array<typeof rowsWithUnits> = []
     let currentPage: typeof rowsWithUnits = []
     let currentUnits = 0
@@ -534,6 +563,7 @@ export default function PurchaseOrdersList() {
         </tr>
       `).join('')
       return `
+        <div class="print-page">
         <table class="sheet">
           <thead>
             <tr>
@@ -566,6 +596,7 @@ export default function PurchaseOrdersList() {
             </tr>
           </tfoot>
         </table>
+        </div>
         ${pageIndex < pages.length - 1 ? '<div class="page-break"></div>' : ''}
       `
     }).join('')
@@ -577,7 +608,8 @@ export default function PurchaseOrdersList() {
             @page { size: A4 portrait; margin: 0; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
-            table.sheet { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+            .print-page { height: calc(297mm - 20mm); box-sizing: border-box; }
+            table.sheet { width: 100%; height: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
             th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
             th { background: #f3f3f3; }
             thead th, tbody td { height: 7mm; }
@@ -698,6 +730,16 @@ export default function PurchaseOrdersList() {
                 message.error('回退失败: ' + (e as Error).message)
               }
             }}>回退</Button>
+            <Space size={6}>
+              <span style={{ color: '#555' }}>打印密度</span>
+              <Select
+                size="small"
+                style={{ width: 140 }}
+                options={PRINT_DENSITY_OPTIONS}
+                value={printDensityLevel}
+                onChange={(value) => setPrintDensityLevel(value)}
+              />
+            </Space>
             <Button onClick={printApprovalList}>打印审批清单</Button>
             <Button onClick={() => {
               if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批计划');
