@@ -83,11 +83,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     const baseDate = dayjs(shiftDate || undefined)
     if (!baseDate.isValid()) return null
     const isNightShift = String(shift || '') === '夜班'
+    if (!isNightShift) return baseDate
+    const nextDayCutoffMinutes = 12 * 60
+    const toMinutes = (t: any) => (t ? (t.hour() * 60 + t.minute()) : null)
+    const auxStartMinutes = toMinutes(auxStart)
+    const auxEndMinutes = toMinutes(auxEnd)
     const crossMidnight = !!(auxStart && auxEnd && (
       auxEnd.hour() < auxStart.hour() ||
       (auxEnd.hour() === auxStart.hour() && auxEnd.minute() < auxStart.minute())
     ))
-    return isNightShift && crossMidnight ? baseDate.add(1, 'day') : baseDate
+    const isAfterMidnightInNightShift = (auxStartMinutes !== null && auxStartMinutes < nextDayCutoffMinutes)
+      || (auxEndMinutes !== null && auxEndMinutes < nextDayCutoffMinutes)
+    return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
 
