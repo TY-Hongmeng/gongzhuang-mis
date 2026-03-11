@@ -70,7 +70,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 使用Form.useWatch监听所有必要的表单字段，确保组件能及时重新渲染，避免直接调用form.getFieldValue导致的警告
   const wProcMinutes = Form.useWatch('proc_minutes', form)
   const wDeviceNo = Form.useWatch('device_no', form)
-  const wWorkDate = Form.useWatch('work_date', form)
   const wShift = Form.useWatch('shift', form)
   const wProcessName = Form.useWatch('process_name', form)
   const wCompletedQuantity = Form.useWatch('completed_quantity', form)
@@ -80,6 +79,17 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 这会确保当用户选择时间时，组件会重新渲染，触发calculateAuxDuration函数重新计算
   const wAuxStart = Form.useWatch('aux_start', form)
   const wAuxEnd = Form.useWatch('aux_end', form)
+  const resolveWorkDate = React.useCallback((shiftDate: any, shift: any, auxStart: any, auxEnd: any) => {
+    const baseDate = dayjs(shiftDate || undefined)
+    if (!baseDate.isValid()) return null
+    const isNightShift = String(shift || '') === '夜班'
+    const crossMidnight = !!(auxStart && auxEnd && (
+      auxEnd.hour() < auxStart.hour() ||
+      (auxEnd.hour() === auxStart.hour() && auxEnd.minute() < auxStart.minute())
+    ))
+    return isNightShift && crossMidnight ? baseDate.add(1, 'day') : baseDate
+  }, [])
+  const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
 
 
 
@@ -706,6 +716,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   return
                 }
                 if (vals.aux_start) {
+                  const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+                  if (!submitWorkDate) {
+                    message.error('班次日期无效，请重新选择')
+                    return
+                  }
                   const endMin = toMin(lastSame.aux_end_time)
                   const pm = Math.round(Number(lastSame.proc_hours || 0) * 60)
                   const compTotal = endMin + pm
@@ -714,7 +729,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   const hh = Math.floor(comp / 60)
                   const mi = comp % 60
                   const prevEndTs = dayjs(lastSame.work_date).add(daysAdd, 'day').hour(hh).minute(mi).valueOf()
-                  const currStartTs = dayjs(vals.work_date).hour(vals.aux_start.hour()).minute(vals.aux_start.minute()).valueOf()
+                  const currStartTs = dayjs(submitWorkDate).hour(vals.aux_start.hour()).minute(vals.aux_start.minute()).valueOf()
                   if (currStartTs < prevEndTs) {
                     message.error('本次辅助起始时间早于该设备上一次结束时间，请调整后再提交')
                     return
@@ -726,7 +741,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             // Overlap check across devices for same operator (UX-side)
             try {
               const mm = (t: any) => dayjs(t).format('HH:mm')
-              const ws = vals.work_date?.format('YYYY-MM-DD')
+              const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+              const ws = submitWorkDate?.format('YYYY-MM-DD')
               const sstr = vals.aux_start ? mm(vals.aux_start) : ''
               const estr = vals.aux_end ? mm(vals.aux_end) : ''
               if (ws && sstr) {
@@ -767,6 +783,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             const diffMin = (endMin >= startMin) ? (endMin - startMin) : (endMin + 1440 - startMin)
             const auxHours = diffMin > 0 ? diffMin / 60 : 0
             const procHours = Number(vals.proc_minutes || 0) / 60
+            const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+            if (!submitWorkDate) {
+              hide()
+              message.error('班次日期无效，请重新选择')
+              return
+            }
             // 确保payload中的所有属性都是基本类型，避免循环引用警告
             const payload = {
               part_inventory_number: String(selectedInv),
@@ -776,7 +798,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               proc_hours: Number(procHours),
               aux_start_time: String(auxStart || ''),
               aux_end_time: String(auxEnd || ''),
-              work_date: String(vals.work_date?.format('YYYY-MM-DD') || ''),
+              work_date: String(submitWorkDate.format('YYYY-MM-DD')),
               shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
               process_name: String(vals.process_name || ''),
               operator: String(user?.real_name || ''),
@@ -813,7 +835,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   form.resetFields()
                   
                   // 额外清除，确保字段被清空 - 使用适当的空值而非undefined，避免JSON.stringify循环引用警告
-                  form.setFieldValue('work_date', null)
                   form.setFieldValue('aux_start', null)
                   form.setFieldValue('aux_end', null)
                   form.setFieldValue('process_name', '')
@@ -906,9 +927,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
 
           {/* 第四行：加工日期和辅助时长 */}
           <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <Form.Item name="work_date" label="加工日期" rules={[{ required: true, message: '请选择加工日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
-              <DatePicker placeholder="" />
-            </Form.Item>
+            <div className="work-hours-item" style={{ marginBottom: 8 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>加工日期</label>
+              <span>{wWorkDate ? wWorkDate.format('YYYY-MM-DD') : '-'}</span>
+            </div>
             <div className="work-hours-item" style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>辅助时长:</label>
               <span style={{ fontSize: '14px' }}>
@@ -984,7 +1006,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               htmlType="submit" 
               block
               disabled={!
-                wWorkDate || 
                 !wShift || 
                 !selectedInv || 
                 !wProcessName || 
