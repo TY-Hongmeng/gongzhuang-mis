@@ -58,6 +58,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [loadingRecent, setLoadingRecent] = React.useState(false)
   const [selectedRecentKeys, setSelectedRecentKeys] = React.useState<React.Key[]>([])
   const [lastCompletedTime, setLastCompletedTime] = React.useState<string>('')
+  const [shiftConfirmed, setShiftConfirmed] = React.useState(false)
   // 添加 completedTime 状态来替代 form 中的 completed_time 字段
   const [completedTime, setCompletedTime] = React.useState<string>('')
   // 添加零件名称映射
@@ -82,7 +83,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const resolveWorkDate = React.useCallback((shiftDate: any, shift: any, auxStart: any, auxEnd: any) => {
     const baseDate = dayjs(shiftDate || undefined)
     if (!baseDate.isValid()) return null
-    const isNightShift = String(shift || '') === '夜班'
+    const shiftText = String(shift || '')
+    if (!shiftText) return null
+    const isNightShift = shiftText === '夜班'
     if (!isNightShift) return baseDate
     const nextDayCutoffMinutes = 12 * 60
     const toMinutes = (t: any) => (t ? (t.hour() * 60 + t.minute()) : null)
@@ -97,6 +100,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
+  const isSubmitDisabled = !shiftConfirmed || !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || !wCompletedQuantity || !wAuxStart || !wAuxEnd || !wShiftDate
 
 
 
@@ -707,6 +711,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           form={form}
           className="work-hours-form"
           onFinish={async (vals) => {
+            if (!shiftConfirmed || !vals.shift) {
+              message.warning('请先手动点击班次（白班/夜班）后再提交')
+              return
+            }
             if (!selectedInv) {
               message.warning('请先选择盘存编号')
               return
@@ -837,6 +845,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   setProcessOptions([])
                   setDeviceName('')
                   setUseManualProcess(false)
+                  setShiftConfirmed(false)
                   
                   // 强制清空所有表单字段，不依赖setFieldsValue
                   form.resetFields()
@@ -870,8 +879,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
               <DatePicker placeholder="" />
             </Form.Item>
-            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue="白班">
-              <Segmented block options={['白班', '夜班']} />
+            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请手动点击选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
+              <Segmented block options={['白班', '夜班']} onChange={(value) => { form.setFieldValue('shift', value); setShiftConfirmed(true) }} />
             </Form.Item>
           </div>
 
@@ -1012,17 +1021,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               type="primary" 
               htmlType="submit" 
               block
-              disabled={!
-                !wShift || 
-                !selectedInv || 
-                !wProcessName || 
-                !wDeviceNo || 
-                !wProcMinutes || 
-                !wCompletedQuantity || 
-                !wAuxStart || 
-                !wAuxEnd ||
-                !wShiftDate
-              }
+              disabled={isSubmitDisabled}
             >
               提交
             </Button>
