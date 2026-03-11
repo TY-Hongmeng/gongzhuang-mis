@@ -675,6 +675,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
+        .work-hours-form .shift-segmented-unconfirmed .ant-segmented-item-selected {
+          background: #ffffff !important;
+          color: rgba(0, 0, 0, 0.88) !important;
+          box-shadow: none !important;
+        }
         @media (min-width: 768px) {
           .work-hours-container { max-width: 900px; }
           .work-hours-row { gap: 12px; }
@@ -880,7 +885,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <DatePicker placeholder="" />
             </Form.Item>
             <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请手动点击选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <Segmented block options={['白班', '夜班']} onChange={(value) => { form.setFieldValue('shift', value); setShiftConfirmed(true) }} />
+              <Segmented className={shiftConfirmed ? '' : 'shift-segmented-unconfirmed'} block options={['白班', '夜班']} onChange={(value) => { form.setFieldValue('shift', value); setShiftConfirmed(true) }} />
             </Form.Item>
           </div>
 
