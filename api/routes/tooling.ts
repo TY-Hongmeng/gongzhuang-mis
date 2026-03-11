@@ -98,8 +98,8 @@ router.get('/', async (req, res) => {
       try {
         const { data: parts, error: perr } = await supabase
           .from('parts_info')
-          .select('tooling_id, part_inventory_number')
-          .ilike('part_inventory_number', keyword)
+          .select('tooling_id, part_inventory_number, inventory_number')
+          .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
           .limit(1000);
         if (!perr && Array.isArray(parts)) {
           partsToolingIds = Array.from(new Set(parts.map((p: any) => String(p.tooling_id || '')))).filter(Boolean);
@@ -1018,10 +1018,10 @@ router.get('/parts/inventory-list', async (req, res) => {
     const fetchCap = 5000
     let partsQuery = supabase
       .from('parts_info')
-      .select('id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route')
+      .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
 
     if (matchExpr) {
-      partsQuery = partsQuery.or(`part_inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
+      partsQuery = partsQuery.or(`part_inventory_number.ilike.${matchExpr},inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
     }
 
     partsQuery = partsQuery
@@ -1044,7 +1044,7 @@ router.get('/parts/inventory-list', async (req, res) => {
     if (toolingError) throw toolingError
     const mergedMap = new Map<string, any>()
     ;(partsRows || []).forEach((p: any) => {
-      const inv = String(p.part_inventory_number || '').trim()
+      const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
       if (!inv) return
       mergedMap.set(inv.toUpperCase(), {
         id: String(p.id || ''),
@@ -1073,15 +1073,15 @@ router.get('/parts/inventory-list', async (req, res) => {
       const pgLike = `%${keyword}%`
       try {
         const pgParts = await query(
-          `SELECT id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route
+          `SELECT id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route
            FROM parts_info
-           WHERE part_inventory_number ILIKE $1 OR part_name ILIKE $1 OR part_drawing_number ILIKE $1
+           WHERE part_inventory_number ILIKE $1 OR inventory_number ILIKE $1 OR part_name ILIKE $1 OR part_drawing_number ILIKE $1
            ORDER BY part_inventory_number ASC
            LIMIT $2`,
           [pgLike, fetchCap]
         )
         ;(pgParts.rows || []).forEach((p: any) => {
-          const inv = String(p.part_inventory_number || '').trim()
+          const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
           if (!inv) return
           mergedMap.set(inv.toUpperCase(), {
             id: String(p.id || ''),
