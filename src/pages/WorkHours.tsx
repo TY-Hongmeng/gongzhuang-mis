@@ -302,12 +302,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     const meta = option?.meta
     setSelectedInfo({ name: meta?.part_name || '', drawing: meta?.part_drawing_number || '' })
     const isFixed = option?.type === 'fixed' || option?.type === 'maintenance'
-    setUseManualProcess(!!isFixed)
-    if (isFixed) {
+    const route = String(meta?.process_route || '')
+    const items = route.split('→').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    const shouldManual = isFixed || items.length === 0
+    setUseManualProcess(shouldManual)
+    if (shouldManual) {
       setProcessOptions([])
     } else {
-      const route = String(meta?.process_route || '')
-      const items = route.split('→').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean)
       setProcessOptions(items)
     }
   }

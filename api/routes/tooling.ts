@@ -1013,18 +1013,58 @@ router.get('/parts/inventory-list', async (req, res) => {
     const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 200)
     const from = (pageNum - 1) * sizeNum
     const to = from + sizeNum - 1
-    let q = supabase
+    const keyword = String(search || '').trim()
+    const matchExpr = keyword ? `%${keyword}%` : ''
+    const fetchCap = 5000
+    let partsQuery = supabase
       .from('parts_info')
-      .select('id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route', { count: 'exact' })
+      .select('id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route')
       .order('part_inventory_number', { ascending: true })
-    if (search && search.trim()) {
-      const keyword = `%${search.trim()}%`
-      q = q.or(`part_inventory_number.ilike.${keyword},part_name.ilike.${keyword},part_drawing_number.ilike.${keyword}`)
+      .range(0, fetchCap - 1)
+    if (matchExpr) {
+      partsQuery = partsQuery.or(`part_inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
     }
-    q = q.range(from, to)
-    const { data, error, count } = await q
-    if (error) throw error
-    res.json({ success: true, items: data || [], total: count || 0, page: pageNum, pageSize: sizeNum })
+    let toolingQuery = supabase
+      .from('tooling_info')
+      .select('id, inventory_number, project_name')
+      .order('inventory_number', { ascending: true })
+      .range(0, fetchCap - 1)
+    if (matchExpr) {
+      toolingQuery = toolingQuery.or(`inventory_number.ilike.${matchExpr},project_name.ilike.${matchExpr}`)
+    }
+    const [{ data: partsRows, error: partsError }, { data: toolingRows, error: toolingError }] = await Promise.all([partsQuery, toolingQuery])
+    if (partsError) throw partsError
+    if (toolingError) throw toolingError
+    const mergedMap = new Map<string, any>()
+    ;(partsRows || []).forEach((p: any) => {
+      const inv = String(p.part_inventory_number || '').trim()
+      if (!inv) return
+      mergedMap.set(inv.toUpperCase(), {
+        id: String(p.id || ''),
+        part_inventory_number: inv,
+        part_name: String(p.part_name || ''),
+        part_drawing_number: String(p.part_drawing_number || ''),
+        tooling_id: String(p.tooling_id || ''),
+        process_route: String(p.process_route || '')
+      })
+    })
+    ;(toolingRows || []).forEach((t: any) => {
+      const inv = String(t.inventory_number || '').trim()
+      if (!inv) return
+      const key = inv.toUpperCase()
+      if (mergedMap.has(key)) return
+      mergedMap.set(key, {
+        id: String(t.id || ''),
+        part_inventory_number: inv,
+        part_name: String(t.project_name || ''),
+        part_drawing_number: '',
+        tooling_id: String(t.id || ''),
+        process_route: ''
+      })
+    })
+    const merged = Array.from(mergedMap.values()).sort((a: any, b: any) => String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+    const items = merged.slice(from, to + 1)
+    res.json({ success: true, items, total: merged.length, page: pageNum, pageSize: sizeNum })
   } catch (err: any) {
     console.error('Inventory list error:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
