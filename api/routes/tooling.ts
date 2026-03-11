@@ -1010,7 +1010,7 @@ router.get('/parts/inventory-list', async (req, res) => {
   try {
     const { page = '1', pageSize = '50', search = '' } = req.query as Record<string, string>
     const pageNum = Math.max(parseInt(page, 10) || 1, 1)
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 200)
+    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 500)
     const from = (pageNum - 1) * sizeNum
     const to = from + sizeNum - 1
     const keyword = String(search || '').trim()
@@ -1019,19 +1019,26 @@ router.get('/parts/inventory-list', async (req, res) => {
     let partsQuery = supabase
       .from('parts_info')
       .select('id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route')
-      .order('part_inventory_number', { ascending: true })
-      .range(0, fetchCap - 1)
+
     if (matchExpr) {
       partsQuery = partsQuery.or(`part_inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
     }
+
+    partsQuery = partsQuery
+      .order('part_inventory_number', { ascending: true })
+      .range(0, fetchCap - 1)
+
     let toolingQuery = supabase
       .from('tooling_info')
       .select('id, inventory_number, project_name')
-      .order('inventory_number', { ascending: true })
-      .range(0, fetchCap - 1)
+
     if (matchExpr) {
       toolingQuery = toolingQuery.or(`inventory_number.ilike.${matchExpr},project_name.ilike.${matchExpr}`)
     }
+
+    toolingQuery = toolingQuery
+      .order('inventory_number', { ascending: true })
+      .range(0, fetchCap - 1)
     const [{ data: partsRows, error: partsError }, { data: toolingRows, error: toolingError }] = await Promise.all([partsQuery, toolingQuery])
     if (partsError) throw partsError
     if (toolingError) throw toolingError

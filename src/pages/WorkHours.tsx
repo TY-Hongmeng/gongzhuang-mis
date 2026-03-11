@@ -204,7 +204,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       if (invAbortRef.current) invAbortRef.current.abort()
       invAbortRef.current = new AbortController()
       const ts = Date.now()
-      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=50&search=${encodeURIComponent(q || '')}&_ts=${ts}` , { signal: invAbortRef.current.signal })
+      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=500&search=${encodeURIComponent(q || '')}&_ts=${ts}` , { signal: invAbortRef.current.signal })
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
