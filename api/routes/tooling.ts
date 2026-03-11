@@ -1062,6 +1062,55 @@ router.get('/parts/inventory-list', async (req, res) => {
         process_route: ''
       })
     })
+    if (keyword) {
+      const pgLike = `%${keyword}%`
+      try {
+        const pgParts = await query(
+          `SELECT id, part_inventory_number, part_name, part_drawing_number, tooling_id, process_route
+           FROM parts_info
+           WHERE part_inventory_number ILIKE $1 OR part_name ILIKE $1 OR part_drawing_number ILIKE $1
+           ORDER BY part_inventory_number ASC
+           LIMIT $2`,
+          [pgLike, fetchCap]
+        )
+        ;(pgParts.rows || []).forEach((p: any) => {
+          const inv = String(p.part_inventory_number || '').trim()
+          if (!inv) return
+          mergedMap.set(inv.toUpperCase(), {
+            id: String(p.id || ''),
+            part_inventory_number: inv,
+            part_name: String(p.part_name || ''),
+            part_drawing_number: String(p.part_drawing_number || ''),
+            tooling_id: String(p.tooling_id || ''),
+            process_route: String(p.process_route || '')
+          })
+        })
+      } catch {}
+      try {
+        const pgTooling = await query(
+          `SELECT id, inventory_number, project_name
+           FROM tooling_info
+           WHERE inventory_number ILIKE $1 OR project_name ILIKE $1
+           ORDER BY inventory_number ASC
+           LIMIT $2`,
+          [pgLike, fetchCap]
+        )
+        ;(pgTooling.rows || []).forEach((t: any) => {
+          const inv = String(t.inventory_number || '').trim()
+          if (!inv) return
+          const key = inv.toUpperCase()
+          if (mergedMap.has(key)) return
+          mergedMap.set(key, {
+            id: String(t.id || ''),
+            part_inventory_number: inv,
+            part_name: String(t.project_name || ''),
+            part_drawing_number: '',
+            tooling_id: String(t.id || ''),
+            process_route: ''
+          })
+        })
+      } catch {}
+    }
     const merged = Array.from(mergedMap.values()).sort((a: any, b: any) => String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     const items = merged.slice(from, to + 1)
     res.json({ success: true, items, total: merged.length, page: pageNum, pageSize: sizeNum })

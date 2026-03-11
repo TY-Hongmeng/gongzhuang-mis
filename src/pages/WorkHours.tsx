@@ -203,92 +203,111 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       setLoadingInv(true)
       if (invAbortRef.current) invAbortRef.current.abort()
       invAbortRef.current = new AbortController()
-      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=50&search=${encodeURIComponent(q || '')}` , { signal: invAbortRef.current.signal })
+      const ts = Date.now()
+      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=50&search=${encodeURIComponent(q || '')}&_ts=${ts}` , { signal: invAbortRef.current.signal })
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
       const json = await resp.json()
       const invItems = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
-      if (invItems.length > 0 || json?.success) {
-        const invOpts = invItems.map((it: any) => ({
-          value: String(it.part_inventory_number || ''),
-          label: String(it.part_inventory_number || ''),
-          meta: {
-            part_name: String(it.part_name || ''),
-            part_drawing_number: String(it.part_drawing_number || ''),
-            process_route: String(it.process_route || '')
-          },
-          type: 'inventory'
-        }))
-
-        let maintenanceOpts: any[] = []
-        const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-        const isGhPages = /github\.io/i.test(host)
-        const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
-        const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
-        if (isGhPages) {
-          try {
-            const r1 = await fetch(`${restBase}/fixed_inventory_options?select=*`)
-            const d1 = r1.ok ? await r1.json() : []
-            const arr1 = Array.isArray(d1?.data) ? d1.data : (Array.isArray(d1) ? d1 : [])
-            const a = arr1.filter((x:any)=>x?.is_active!==false).map((mo:any)=>({
-              label: String(mo.option_value ?? mo.inventory_number ?? ''),
-              value: String(mo.option_value ?? mo.inventory_number ?? ''),
-              type: 'maintenance',
-              meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
-            })).filter((x:any)=>!!x.value)
-            const ensurePrefix = (s: string) => s.startsWith('维修-') ? s : `维修-${s}`
-            maintenanceOpts = a.map((it:any)=>({
-              ...it,
-              label: ensurePrefix(String(it.label || '')),
-              value: ensurePrefix(String(it.value || ''))
+      const keyword = String(q || '').trim()
+      let toolingFallback: any[] = []
+      if (keyword) {
+        try {
+          const respTooling = await fetchWithFallback(`/api/tooling?page=1&pageSize=100&search=${encodeURIComponent(keyword)}&_ts=${ts}`, { signal: invAbortRef.current.signal })
+          if (respTooling.ok) {
+            const jsonTooling = await respTooling.json()
+            const toolingItems = Array.isArray(jsonTooling?.items) ? jsonTooling.items : (Array.isArray(jsonTooling?.data) ? jsonTooling.data : [])
+            toolingFallback = toolingItems.map((it: any) => ({
+              part_inventory_number: String(it.inventory_number || ''),
+              part_name: String(it.project_name || ''),
+              part_drawing_number: '',
+              process_route: ''
             }))
-          } catch {}
-        } else {
-          try {
-            const respM = await fetchWithFallback(`/api/tooling/fixed-inventory-options`)
-            if (respM.ok) {
-              const jsonM = await respM.json()
-              const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
-              const a = mData
-                .filter((mo: any) => mo?.is_active !== false)
-                .map((mo: any) => ({
-                  label: String(mo.option_value ?? mo.inventory_number ?? ''),
-                  value: String(mo.option_value ?? mo.inventory_number ?? ''),
-                  type: 'maintenance',
-                  meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
-                }))
-                .filter((mo: any) => !!mo.value)
-              maintenanceOpts = [...maintenanceOpts, ...a].map((it:any)=>({
-                ...it,
-                label: it.label.startsWith('维修-') ? it.label : `维修-${it.label}`,
-                value: it.value.startsWith('维修-') ? it.value : `维修-${it.value}`
-              }))
-            }
-          } catch {}
-          // 不再调用 maintenance_options，统一用 fixed_inventory_options
-        }
-
-        // 过滤维修选项
-        if (q) {
-          const lowerQ = q.toLowerCase()
-          maintenanceOpts = maintenanceOpts.filter(opt => 
-            String(opt.value).toLowerCase().includes(lowerQ) || 
-            String(opt.meta.part_name).toLowerCase().includes(lowerQ)
-          )
-        }
-
-        // 合并盘存编号和维修选项，去重（优先保留盘存编号）
-        const combined = [...invOpts];
-        const invValues = new Set(invOpts.map((o:any) => o.value));
-        maintenanceOpts.forEach(mo => {
-          if (!invValues.has(mo.value)) {
-            combined.push(mo);
           }
-        });
-
-        setInvOptions(combined)
+        } catch {}
       }
+      const mergedByInv = new Map<string, any>()
+      ;[...invItems, ...toolingFallback].forEach((it: any) => {
+        const inv = String(it.part_inventory_number || '').trim()
+        if (!inv) return
+        const key = inv.toUpperCase()
+        if (!mergedByInv.has(key)) {
+          mergedByInv.set(key, {
+            value: inv,
+            label: inv,
+            meta: {
+              part_name: String(it.part_name || ''),
+              part_drawing_number: String(it.part_drawing_number || ''),
+              process_route: String(it.process_route || '')
+            },
+            type: 'inventory'
+          })
+        }
+      })
+      const invOpts = Array.from(mergedByInv.values())
+
+      let maintenanceOpts: any[] = []
+      const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+      const isGhPages = /github\.io/i.test(host)
+      const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
+      const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
+      if (isGhPages) {
+        try {
+          const r1 = await fetch(`${restBase}/fixed_inventory_options?select=*`)
+          const d1 = r1.ok ? await r1.json() : []
+          const arr1 = Array.isArray(d1?.data) ? d1.data : (Array.isArray(d1) ? d1 : [])
+          const a = arr1.filter((x:any)=>x?.is_active!==false).map((mo:any)=>({
+            label: String(mo.option_value ?? mo.inventory_number ?? ''),
+            value: String(mo.option_value ?? mo.inventory_number ?? ''),
+            type: 'maintenance',
+            meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
+          })).filter((x:any)=>!!x.value)
+          const ensurePrefix = (s: string) => s.startsWith('维修-') ? s : `维修-${s}`
+          maintenanceOpts = a.map((it:any)=>({
+            ...it,
+            label: ensurePrefix(String(it.label || '')),
+            value: ensurePrefix(String(it.value || ''))
+          }))
+        } catch {}
+      } else {
+        try {
+          const respM = await fetchWithFallback(`/api/tooling/fixed-inventory-options`)
+          if (respM.ok) {
+            const jsonM = await respM.json()
+            const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
+            const a = mData
+              .filter((mo: any) => mo?.is_active !== false)
+              .map((mo: any) => ({
+                label: String(mo.option_value ?? mo.inventory_number ?? ''),
+                value: String(mo.option_value ?? mo.inventory_number ?? ''),
+                type: 'maintenance',
+                meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
+              }))
+              .filter((mo: any) => !!mo.value)
+            maintenanceOpts = [...maintenanceOpts, ...a].map((it:any)=>({
+              ...it,
+              label: it.label.startsWith('维修-') ? it.label : `维修-${it.label}`,
+              value: it.value.startsWith('维修-') ? it.value : `维修-${it.value}`
+            }))
+          }
+        } catch {}
+      }
+      if (q) {
+        const lowerQ = q.toLowerCase()
+        maintenanceOpts = maintenanceOpts.filter(opt =>
+          String(opt.value).toLowerCase().includes(lowerQ) ||
+          String(opt.meta.part_name).toLowerCase().includes(lowerQ)
+        )
+      }
+      const combined = [...invOpts]
+      const invValues = new Set(invOpts.map((o:any) => o.value))
+      maintenanceOpts.forEach(mo => {
+        if (!invValues.has(mo.value)) {
+          combined.push(mo)
+        }
+      })
+      setInvOptions(combined)
     } catch (e: any) {
       console.error('Fetch inventory failed', e)
       message.error(e?.message || '获取盘存编号失败')
