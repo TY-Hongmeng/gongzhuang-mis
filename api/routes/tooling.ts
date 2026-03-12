@@ -1030,6 +1030,7 @@ router.get('/parts/inventory-list', async (req, res) => {
       const all: T[] = []
       let offset = 0
       while (true) {
+        if (!keyword && from + offset > to) break
         const { data, error } = await build(offset, BATCH_SIZE)
         if (error) throw error
         const rows = Array.isArray(data) ? data : []

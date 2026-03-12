@@ -2398,6 +2398,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const all: any[] = []
           let offset = 0
           while (true) {
+            if (!search && from + offset > to) break
             const { data, error } = await build(offset, BATCH_SIZE)
             if (error) return { error }
             const rows = Array.isArray(data) ? data : []
