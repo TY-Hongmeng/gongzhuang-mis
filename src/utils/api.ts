@@ -1145,9 +1145,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           try {
             const ids = new Set<string>()
             const BATCH_SIZE = 1000
-            const MAX_FETCH_ROWS = 20000
             let offset = 0
-            while (offset < MAX_FETCH_ROWS) {
+            while (true) {
               const { data: parts, error: perr } = await supabase
                 .from('parts_info')
                 .select('tooling_id, part_inventory_number, inventory_number')
@@ -2389,17 +2388,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       if (method === 'GET' && path === '/api/tooling/parts/inventory-list') {
         const qs = getQuery(url)
         const page = Math.max(Number(qs.get('page') || 1) || 1, 1)
-        const pageSize = Math.min(Math.max(Number(qs.get('pageSize') || 50) || 50, 1), 5000)
+        const pageSize = Math.max(Number(qs.get('pageSize') || 50) || 50, 1)
         const search = String(qs.get('search') || '').trim()
         const from = (page - 1) * pageSize
         const to = from + pageSize - 1
         const expr = search ? `%${search}%` : ''
         const BATCH_SIZE = 1000
-        const MAX_FETCH_ROWS = 50000
         const fetchBatched = async (build: (offset: number, limit: number) => any) => {
           const all: any[] = []
           let offset = 0
-          while (offset < MAX_FETCH_ROWS) {
+          while (true) {
             const { data, error } = await build(offset, BATCH_SIZE)
             if (error) return { error }
             const rows = Array.isArray(data) ? data : []

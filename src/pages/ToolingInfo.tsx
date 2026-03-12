@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3253,10 +3253,16 @@ const ToolingInfoPage: React.FC = () => {
       // 预先获取系统中已存在的盘存编号，用于重复校验
       let existingInvSet = new Set<string>()
       try {
-        const resp = await fetch('/api/tooling?page=1&pageSize=1000&sortField=created_at&sortOrder=asc', { cache: 'no-store' })
-        const result = await resp.json().catch(() => ({ items: [] }))
-        const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-        items.forEach((it: any) => { const inv = String(it.inventory_number || '').trim(); if (inv) existingInvSet.add(inv) })
+        const pageSize = 1000
+        let page = 1
+        while (true) {
+          const resp = await fetch(`/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`, { cache: 'no-store' })
+          const result = await resp.json().catch(() => ({ items: [] }))
+          const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+          items.forEach((it: any) => { const inv = String(it.inventory_number || '').trim(); if (inv) existingInvSet.add(inv) })
+          if (items.length < pageSize) break
+          page += 1
+        }
       } catch {}
 
       // 文件内重复盘存编号统计
@@ -3266,10 +3272,16 @@ const ToolingInfoPage: React.FC = () => {
       // 预先获取系统中已存在的子表盘存编号（零件盘存编号）
       let existingPartInvSet = new Set<string>()
       try {
-        const resp = await fetch('/api/tooling/parts/inventory-list?page=1&pageSize=5000', { cache: 'no-store' })
-        const result = await resp.json().catch(() => ({ items: [] }))
-        const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-        items.forEach((it: any) => { const pinv = String(it.part_inventory_number || '').trim(); if (pinv) existingPartInvSet.add(pinv) })
+        const pageSize = 1000
+        let page = 1
+        while (true) {
+          const resp = await fetch(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`, { cache: 'no-store' })
+          const result = await resp.json().catch(() => ({ items: [] }))
+          const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+          items.forEach((it: any) => { const pinv = String(it.part_inventory_number || '').trim(); if (pinv) existingPartInvSet.add(pinv) })
+          if (items.length < pageSize) break
+          page += 1
+        }
       } catch {}
 
       // 文件内重复子表盘存编号统计

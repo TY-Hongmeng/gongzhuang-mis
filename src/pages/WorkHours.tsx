@@ -205,13 +205,24 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       invAbortRef.current = new AbortController()
       const ts = Date.now()
       const keyword = String(q || '').trim()
-      const pageSize = keyword ? 5000 : 500
-      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=${pageSize}&search=${encodeURIComponent(keyword)}&_ts=${ts}` , { signal: invAbortRef.current.signal })
-      if (!resp.ok) {
-        throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+      const fetchAllInventoryItems = async (searchText: string, signal?: AbortSignal) => {
+        const pageSize = 1000
+        let page = 1
+        const all: any[] = []
+        while (true) {
+          const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(searchText)}&_ts=${ts}` , { signal })
+          if (!resp.ok) {
+            throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+          }
+          const json = await resp.json()
+          const rows = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+          all.push(...rows)
+          if (rows.length < pageSize) break
+          page += 1
+        }
+        return all
       }
-      const json = await resp.json()
-      const invItems = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+      const invItems = await fetchAllInventoryItems(keyword, invAbortRef.current.signal)
       const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
@@ -333,19 +344,26 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 获取零件名称映射
   const fetchPartNameMap = async () => {
     try {
-      const r = await fetchWithFallback('/api/tooling/parts/inventory-list?page=1&pageSize=500')
-      if (!r.ok) {
-        throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
+      const pageSize = 1000
+      let page = 1
+      const all: any[] = []
+      while (true) {
+        const r = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
+        if (!r.ok) {
+          throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
+        }
+        const j = await r.json()
+        const rows = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
+        all.push(...rows)
+        if (rows.length < pageSize) break
+        page += 1
       }
-      const j = await r.json()
-      if (j?.success) {
-        const map: Record<string, string> = {}
-        ;(j.items || []).forEach((p: any) => {
-          if (p.part_inventory_number) map[p.part_inventory_number] = p.part_name || ''
-          if (p.part_drawing_number && !map[p.part_drawing_number]) map[p.part_drawing_number] = p.part_name || ''
-        })
-        setPartNameMap(map)
-      }
+      const map: Record<string, string> = {}
+      all.forEach((p: any) => {
+        if (p.part_inventory_number) map[p.part_inventory_number] = p.part_name || ''
+        if (p.part_drawing_number && !map[p.part_drawing_number]) map[p.part_drawing_number] = p.part_name || ''
+      })
+      setPartNameMap(map)
     } catch {}
   }
 

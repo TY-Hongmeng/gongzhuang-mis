@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
     } = req.query as Record<string, string>;
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
+    const sizeNum = Math.max(parseInt(pageSize, 10) || 20, 1);
     const from = (pageNum - 1) * sizeNum;
     const to = from + sizeNum - 1;
 
@@ -98,9 +98,8 @@ router.get('/', async (req, res) => {
       try {
         const ids = new Set<string>()
         const BATCH_SIZE = 1000
-        const MAX_FETCH_ROWS = 20000
         let offset = 0
-        while (offset < MAX_FETCH_ROWS) {
+        while (true) {
           const { data: parts, error: perr } = await supabase
             .from('parts_info')
             .select('tooling_id, part_inventory_number, inventory_number')
@@ -1021,17 +1020,16 @@ router.get('/parts/inventory-list', async (req, res) => {
   try {
     const { page = '1', pageSize = '50', search = '' } = req.query as Record<string, string>
     const pageNum = Math.max(parseInt(page, 10) || 1, 1)
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 5000)
+    const sizeNum = Math.max(parseInt(pageSize, 10) || 50, 1)
     const from = (pageNum - 1) * sizeNum
     const to = from + sizeNum - 1
     const keyword = String(search || '').trim()
     const matchExpr = keyword ? `%${keyword}%` : ''
     const BATCH_SIZE = 1000
-    const MAX_FETCH_ROWS = 50000
     const fetchBatched = async <T = any>(build: (offset: number, limit: number) => any): Promise<T[]> => {
       const all: T[] = []
       let offset = 0
-      while (offset < MAX_FETCH_ROWS) {
+      while (true) {
         const { data, error } = await build(offset, BATCH_SIZE)
         if (error) throw error
         const rows = Array.isArray(data) ? data : []
@@ -1075,9 +1073,8 @@ router.get('/parts/inventory-list', async (req, res) => {
           `SELECT id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route
            FROM parts_info
            WHERE part_inventory_number ILIKE $1 OR inventory_number ILIKE $1 OR part_name ILIKE $1 OR part_drawing_number ILIKE $1
-           ORDER BY part_inventory_number ASC
-           LIMIT $2`,
-          [pgLike, MAX_FETCH_ROWS]
+           ORDER BY part_inventory_number ASC`,
+          [pgLike]
         )
         ;(pgParts.rows || []).forEach((p: any) => {
           const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
@@ -1098,9 +1095,8 @@ router.get('/parts/inventory-list', async (req, res) => {
             `SELECT id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route
              FROM parts_info
              WHERE regexp_replace(upper(coalesce(part_inventory_number, inventory_number, '')), '[^A-Z0-9]', '', 'g') LIKE '%' || $1 || '%'
-             ORDER BY part_inventory_number ASC
-             LIMIT $2`,
-            [keywordNorm, MAX_FETCH_ROWS]
+             ORDER BY part_inventory_number ASC`,
+            [keywordNorm]
           )
           ;(pgPartsNormalized.rows || []).forEach((p: any) => {
             const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
@@ -1285,7 +1281,7 @@ router.get('/work-hours', async (req, res) => {
     } = req.query as Record<string, string>
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1)
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 200)
+    const sizeNum = Math.max(parseInt(pageSize, 10) || 50, 1)
     const from = (pageNum - 1) * sizeNum
     const to = from + sizeNum - 1
 
