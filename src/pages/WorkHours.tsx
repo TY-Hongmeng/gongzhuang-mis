@@ -1,6 +1,6 @@
 import React from 'react'
 import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal } from 'antd'
-import { ReloadOutlined, LeftOutlined, ExperimentOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons'
+import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
 import { fetchWithFallback } from '../utils/api'
@@ -1000,14 +1000,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 min={0} 
                 step={5} 
                 controls={false}
-                addonBefore={<MinusOutlined onClick={() => {
-                  const val = form.getFieldValue('proc_minutes') || 0
-                  if (val >= 5) form.setFieldValue('proc_minutes', val - 5)
-                }} />}
-                addonAfter={<PlusOutlined onClick={() => {
-                  const val = form.getFieldValue('proc_minutes') || 0
-                  form.setFieldValue('proc_minutes', val + 5)
-                }} />}
                 inputMode="numeric"
                 style={{ width: '100%' }}
               />
@@ -1017,14 +1009,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 min={0} 
                 step={1} 
                 controls={false}
-                addonBefore={<MinusOutlined onClick={() => {
-                  const val = form.getFieldValue('completed_quantity') || 0
-                  if (val >= 1) form.setFieldValue('completed_quantity', val - 1)
-                }} />}
-                addonAfter={<PlusOutlined onClick={() => {
-                  const val = form.getFieldValue('completed_quantity') || 0
-                  form.setFieldValue('completed_quantity', val + 1)
-                }} />}
                 inputMode="numeric"
                 style={{ width: '100%' }}
               />
