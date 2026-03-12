@@ -214,7 +214,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       let toolingFallback: any[] = []
       if (keyword) {
         try {
-          const respTooling = await fetchWithFallback(`/api/tooling?page=1&pageSize=100&search=${encodeURIComponent(keyword)}&_ts=${ts}`, { signal: invAbortRef.current.signal })
+          const respTooling = await fetchWithFallback(`/api/tooling?page=1&pageSize=500&search=${encodeURIComponent(keyword)}&_ts=${ts}`, { signal: invAbortRef.current.signal })
           if (respTooling.ok) {
             const jsonTooling = await respTooling.json()
             const toolingItems = Array.isArray(jsonTooling?.items) ? jsonTooling.items : (Array.isArray(jsonTooling?.data) ? jsonTooling.data : [])

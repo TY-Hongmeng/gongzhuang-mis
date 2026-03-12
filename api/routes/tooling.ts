@@ -96,14 +96,25 @@ router.get('/', async (req, res) => {
       const keyword = `%${raw}%`;
       let partsToolingIds: string[] = [];
       try {
-        const { data: parts, error: perr } = await supabase
-          .from('parts_info')
-          .select('tooling_id, part_inventory_number, inventory_number')
-          .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
-          .limit(1000);
-        if (!perr && Array.isArray(parts)) {
-          partsToolingIds = Array.from(new Set(parts.map((p: any) => String(p.tooling_id || '')))).filter(Boolean);
+        const ids = new Set<string>()
+        const BATCH_SIZE = 1000
+        const MAX_FETCH_ROWS = 20000
+        let offset = 0
+        while (offset < MAX_FETCH_ROWS) {
+          const { data: parts, error: perr } = await supabase
+            .from('parts_info')
+            .select('tooling_id, part_inventory_number, inventory_number')
+            .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
+            .range(offset, offset + BATCH_SIZE - 1)
+          if (perr || !Array.isArray(parts) || parts.length === 0) break
+          parts.forEach((p: any) => {
+            const tid = String(p.tooling_id || '')
+            if (tid) ids.add(tid)
+          })
+          if (parts.length < BATCH_SIZE) break
+          offset += BATCH_SIZE
         }
+        partsToolingIds = Array.from(ids)
       } catch {}
 
       const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`;
@@ -1015,33 +1026,48 @@ router.get('/parts/inventory-list', async (req, res) => {
     const to = from + sizeNum - 1
     const keyword = String(search || '').trim()
     const matchExpr = keyword ? `%${keyword}%` : ''
-    const fetchCap = 5000
-    let partsQuery = supabase
-      .from('parts_info')
-      .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
-
-    if (matchExpr) {
-      partsQuery = partsQuery.or(`part_inventory_number.ilike.${matchExpr},inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
+    const BATCH_SIZE = 1000
+    const MAX_FETCH_ROWS = 50000
+    const fetchBatched = async <T = any>(build: (offset: number, limit: number) => any): Promise<T[]> => {
+      const all: T[] = []
+      let offset = 0
+      while (offset < MAX_FETCH_ROWS) {
+        const { data, error } = await build(offset, BATCH_SIZE)
+        if (error) throw error
+        const rows = Array.isArray(data) ? data : []
+        all.push(...rows)
+        if (rows.length < BATCH_SIZE) break
+        offset += BATCH_SIZE
+      }
+      return all
     }
 
-    partsQuery = partsQuery
-      .order('part_inventory_number', { ascending: true })
-      .range(0, fetchCap - 1)
-
-    let toolingQuery = supabase
-      .from('tooling_info')
-      .select('id, inventory_number, project_name')
-
-    if (matchExpr) {
-      toolingQuery = toolingQuery.or(`inventory_number.ilike.${matchExpr},project_name.ilike.${matchExpr}`)
-    }
-
-    toolingQuery = toolingQuery
-      .order('inventory_number', { ascending: true })
-      .range(0, fetchCap - 1)
-    const [{ data: partsRows, error: partsError }, { data: toolingRows, error: toolingError }] = await Promise.all([partsQuery, toolingQuery])
-    if (partsError) throw partsError
-    if (toolingError) throw toolingError
+    const [partsRows, toolingRows] = await Promise.all([
+      fetchBatched((offset, limit) => {
+        let q = supabase
+          .from('parts_info')
+          .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
+        if (matchExpr) {
+          q = q.or(`part_inventory_number.ilike.${matchExpr},inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
+        }
+        if (!keyword) {
+          return q.order('part_inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
+        }
+        return q.order('part_inventory_number', { ascending: true }).range(offset, offset + limit - 1)
+      }),
+      fetchBatched((offset, limit) => {
+        let q = supabase
+          .from('tooling_info')
+          .select('id, inventory_number, project_name')
+        if (matchExpr) {
+          q = q.or(`inventory_number.ilike.${matchExpr},project_name.ilike.${matchExpr}`)
+        }
+        if (!keyword) {
+          return q.order('inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
+        }
+        return q.order('inventory_number', { ascending: true }).range(offset, offset + limit - 1)
+      })
+    ])
     const mergedMap = new Map<string, any>()
     ;(partsRows || []).forEach((p: any) => {
       const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
@@ -1078,7 +1104,7 @@ router.get('/parts/inventory-list', async (req, res) => {
            WHERE part_inventory_number ILIKE $1 OR inventory_number ILIKE $1 OR part_name ILIKE $1 OR part_drawing_number ILIKE $1
            ORDER BY part_inventory_number ASC
            LIMIT $2`,
-          [pgLike, fetchCap]
+          [pgLike, MAX_FETCH_ROWS]
         )
         ;(pgParts.rows || []).forEach((p: any) => {
           const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
@@ -1100,7 +1126,7 @@ router.get('/parts/inventory-list', async (req, res) => {
            WHERE inventory_number ILIKE $1 OR project_name ILIKE $1
            ORDER BY inventory_number ASC
            LIMIT $2`,
-          [pgLike, fetchCap]
+          [pgLike, MAX_FETCH_ROWS]
         )
         ;(pgTooling.rows || []).forEach((t: any) => {
           const inv = String(t.inventory_number || '').trim()
