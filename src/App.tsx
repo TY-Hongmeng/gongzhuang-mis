@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Health from "./pages/Health";
+import AppVersionBadge from "./components/AppVersionBadge";
 
 const MainLayout = lazy(() => import("./components/Layout/MainLayout"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <ConfigProvider locale={zhCN}>
       <Router>
+        <AppVersionBadge />
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Spin size="large" /></div>}>
           <Routes>
             <Route path="/health" element={<Health />} />

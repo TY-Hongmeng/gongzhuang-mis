@@ -1,4 +1,6 @@
 const { spawnSync } = require('child_process')
+const fs = require('fs')
+const path = require('path')
 
 function runGit(args) {
   const result = spawnSync('git', args, { stdio: 'inherit', shell: false })
@@ -17,9 +19,13 @@ function getOutput(args) {
 }
 
 function parseArgs(argv) {
-  const out = { message: '', files: [] }
+  const out = { message: '', files: [], auto: false }
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i]
+    if (a === '--auto' || a === '-Auto') {
+      out.auto = true
+      continue
+    }
     if (a === '-Message' || a === '--message' || a === '-m') {
       const parts = []
       i += 1
@@ -45,9 +51,28 @@ function parseArgs(argv) {
   return out
 }
 
-const { message, files } = parseArgs(process.argv.slice(2))
-if (!message) {
-  console.error('Commit message is required. Use -Message "your message".')
+function readVersion() {
+  try {
+    const pkgPath = path.join(process.cwd(), 'package.json')
+    const raw = fs.readFileSync(pkgPath, 'utf8')
+    const pkg = JSON.parse(raw)
+    return String(pkg.version || '').trim()
+  } catch {
+    return ''
+  }
+}
+
+function nowText() {
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const { message, files, auto } = parseArgs(process.argv.slice(2))
+const version = readVersion()
+const commitMessage = message || (auto ? `chore: auto sync ${version ? `v${version} ` : ''}${nowText()}`.trim() : '')
+if (!commitMessage) {
+  console.error('Commit message is required. Use -Message "your message", or run with --auto.')
   process.exit(1)
 }
 
@@ -63,6 +88,6 @@ if (!staged) {
   process.exit(0)
 }
 
-runGit(['commit', '-m', message])
+runGit(['commit', '-m', commitMessage])
 runGit(['pull', '--rebase', '--autostash', 'origin', 'main'])
 runGit(['push', 'origin', 'main'])
