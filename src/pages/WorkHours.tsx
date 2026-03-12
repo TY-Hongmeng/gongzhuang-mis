@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal, Segmented } from 'antd'
+import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal } from 'antd'
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
@@ -58,7 +58,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [loadingRecent, setLoadingRecent] = React.useState(false)
   const [selectedRecentKeys, setSelectedRecentKeys] = React.useState<React.Key[]>([])
   const [lastCompletedTime, setLastCompletedTime] = React.useState<string>('')
-  const [shiftConfirmed, setShiftConfirmed] = React.useState(false)
   // 添加 completedTime 状态来替代 form 中的 completed_time 字段
   const [completedTime, setCompletedTime] = React.useState<string>('')
   // 添加零件名称映射
@@ -100,7 +99,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
-  const isSubmitDisabled = !shiftConfirmed || !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || !wCompletedQuantity || !wAuxStart || !wAuxEnd || !wShiftDate
+  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || !wCompletedQuantity || !wAuxStart || !wAuxEnd || !wShiftDate
 
 
 
@@ -699,11 +698,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
-        .work-hours-form .shift-segmented-unconfirmed .ant-segmented-item-selected {
-          background: #ffffff !important;
-          color: rgba(0, 0, 0, 0.88) !important;
-          box-shadow: none !important;
-        }
         @media (min-width: 768px) {
           .work-hours-container { max-width: 900px; }
           .work-hours-row { gap: 12px; }
@@ -740,8 +734,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           form={form}
           className="work-hours-form"
           onFinish={async (vals) => {
-            if (!shiftConfirmed || !vals.shift) {
-              message.warning('请先手动点击班次（白班/夜班）后再提交')
+            if (!vals.shift) {
+              message.warning('请选择班次后再提交')
               return
             }
             if (!selectedInv) {
@@ -874,7 +868,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   setProcessOptions([])
                   setDeviceName('')
                   setUseManualProcess(false)
-                  setShiftConfirmed(false)
                   
                   // 强制清空所有表单字段，不依赖setFieldsValue
                   form.resetFields()
@@ -908,8 +901,14 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
               <DatePicker placeholder="" />
             </Form.Item>
-            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请手动点击选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <Segmented className={shiftConfirmed ? '' : 'shift-segmented-unconfirmed'} block options={['白班', '夜班']} onChange={(value) => { form.setFieldValue('shift', value); setShiftConfirmed(true) }} />
+            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
+              <Select
+                placeholder="请选择班次"
+                options={[
+                  { label: '白班', value: '白班' },
+                  { label: '夜班', value: '夜班' }
+                ]}
+              />
             </Form.Item>
           </div>
 
