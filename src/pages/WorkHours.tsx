@@ -204,17 +204,20 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       if (invAbortRef.current) invAbortRef.current.abort()
       invAbortRef.current = new AbortController()
       const ts = Date.now()
-      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=500&search=${encodeURIComponent(q || '')}&_ts=${ts}` , { signal: invAbortRef.current.signal })
+      const keyword = String(q || '').trim()
+      const pageSize = keyword ? 5000 : 500
+      const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=${pageSize}&search=${encodeURIComponent(keyword)}&_ts=${ts}` , { signal: invAbortRef.current.signal })
       if (!resp.ok) {
         throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
       }
       const json = await resp.json()
       const invItems = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+      const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
-        const inv = String(it.part_inventory_number || '').trim()
+        const inv = String(it.part_inventory_number || it.inventory_number || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
         if (!inv) return
-        const key = inv.toUpperCase()
+        const key = normalize(inv)
         if (!mergedByInv.has(key)) {
           mergedByInv.set(key, {
             value: inv,
@@ -899,10 +902,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Select
                 showSearch
                 filterOption={(input, option) => {
-                  const q = String(input || '').toLowerCase()
+                  const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+                  const q = normalize(String(input || ''))
                   const label = String(option?.label || '')
                   const value = String(option?.value || '')
-                  return label.toLowerCase().includes(q) || value.toLowerCase().includes(q)
+                  return normalize(label).includes(q) || normalize(value).includes(q)
                 }}
                 onSearch={(val) => {
                   if (invTimerRef.current) clearTimeout(invTimerRef.current)
