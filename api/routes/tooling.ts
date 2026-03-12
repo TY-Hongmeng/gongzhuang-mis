@@ -1123,6 +1123,60 @@ router.get('/parts/inventory-list', async (req, res) => {
   }
 })
 
+// 统计零件完成情况（按父表ID汇总）
+router.post('/parts/summary', async (req, res) => {
+  try {
+    const ids = Array.isArray((req.body || {})?.ids) ? (req.body as any).ids : []
+    const toolingIds = ids.map((x: any) => String(x || '').trim()).filter((x: string) => !!x)
+    if (toolingIds.length === 0) {
+      return res.json({ success: true, items: [] })
+    }
+
+    const sql = `
+      WITH t AS (
+        SELECT unnest($1::text[]) AS tooling_id
+      ),
+      s AS (
+        SELECT
+          p.tooling_id::text AS tooling_id,
+          COUNT(*)::int AS total,
+          SUM(
+            CASE
+              WHEN COALESCE(ts.status, p.purchase_status) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN 1
+              ELSE 0
+            END
+          )::int AS completed
+        FROM parts_info p
+        LEFT JOIN tooling_status ts
+          ON ts.item_type = 'part' AND ts.item_id::text = p.id::text
+        WHERE p.tooling_id::text = ANY($1::text[])
+        GROUP BY p.tooling_id
+      )
+      SELECT
+        t.tooling_id,
+        COALESCE(s.total, 0)::int AS total,
+        COALESCE(s.completed, 0)::int AS completed
+      FROM t
+      LEFT JOIN s ON s.tooling_id = t.tooling_id;
+    `
+    const r = await query(sql, [toolingIds])
+    const items = (r.rows || []).map((row: any) => {
+      const total = Number(row.total || 0) || 0
+      const completed = Number(row.completed || 0) || 0
+      return {
+        tooling_id: String(row.tooling_id || ''),
+        total,
+        completed,
+        incomplete: Math.max(total - completed, 0)
+      }
+    })
+    res.json({ success: true, items })
+  } catch (err: any) {
+    console.error('Parts summary error:', err)
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 // 记录工时
 router.post('/work-hours', async (req, res) => {
   try {

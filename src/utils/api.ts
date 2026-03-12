@@ -1354,6 +1354,74 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         return jsonResponse({ data: items })
       }
 
+      // Tooling parts summary by toolingIds
+      if (method === 'POST' && path === '/api/tooling/parts/summary') {
+        const body = await readBody()
+        const ids = Array.isArray(body?.ids) ? body.ids : []
+        const toolingIds = ids.map((x: any) => String(x || '').trim()).filter(Boolean)
+        if (toolingIds.length === 0) return jsonResponse({ success: true, items: [] })
+
+        const BATCH_SIZE = 1000
+        let offset = 0
+        const parts: any[] = []
+        while (true) {
+          const { data, error } = await supabase
+            .from('parts_info')
+            .select('id, tooling_id, purchase_status')
+            .in('tooling_id', toolingIds as any)
+            .range(offset, offset + BATCH_SIZE - 1)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const rows = Array.isArray(data) ? data : []
+          parts.push(...rows)
+          if (rows.length < BATCH_SIZE) break
+          offset += BATCH_SIZE
+        }
+
+        const missingIds = parts
+          .filter(r => !String(r.purchase_status || '').trim())
+          .map(r => String(r.id || ''))
+          .filter(Boolean)
+        if (missingIds.length > 0) {
+          const statusMap = new Map<string, string>()
+          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + BATCH_SIZE)
+            const { data: statusRows } = await supabase
+              .from('tooling_status')
+              .select('item_id,status')
+              .eq('item_type', 'part')
+              .in('item_id', slice as any)
+            ;(statusRows || []).forEach((r: any) => {
+              const k = String(r.item_id || '')
+              if (k) statusMap.set(k, String(r.status || ''))
+            })
+          }
+          parts.forEach((r: any) => {
+            if (!String(r.purchase_status || '').trim()) {
+              const s = statusMap.get(String(r.id || '')) || ''
+              if (s) r.purchase_status = s
+            }
+          })
+        }
+
+        const isDate = (s: string) => /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(s || '').trim())
+        const map = new Map<string, { total: number; completed: number }>()
+        parts.forEach((p: any) => {
+          const tid = String(p.tooling_id || '')
+          if (!tid) return
+          const cur = map.get(tid) || { total: 0, completed: 0 }
+          cur.total += 1
+          if (isDate(String(p.purchase_status || ''))) cur.completed += 1
+          map.set(tid, cur)
+        })
+        const items = toolingIds.map((tid: string) => {
+          const cur = map.get(tid) || { total: 0, completed: 0 }
+          const total = cur.total
+          const completed = cur.completed
+          return { tooling_id: tid, total, completed, incomplete: Math.max(total - completed, 0) }
+        })
+        return jsonResponse({ success: true, items })
+      }
+
       // Tooling parts by toolingId
       const partsMatch = path.match(/^\/api\/tooling\/([^\/]+)\/parts$/)
       if (method === 'GET' && partsMatch) {

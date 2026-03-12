@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -706,6 +706,50 @@ const ToolingInfoPage: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
+  const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
+  const [partsSummaryMap, setPartsSummaryMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
+  const partsSummaryMapRef = useRef(partsSummaryMap)
+  useEffect(() => { partsSummaryMapRef.current = partsSummaryMap }, [partsSummaryMap])
+
+  useEffect(() => {
+    let cancelled = false
+    const ids = (visibleData || [])
+      .map((r: any) => String(r?.id || ''))
+      .filter((id) => !!id && !id.startsWith('blank-'))
+
+    const missing = ids.filter((id) => !partsSummaryMapRef.current[id])
+    if (missing.length === 0) return
+
+    const run = async () => {
+      const BATCH = 500
+      const next: Record<string, { total: number; completed: number; incomplete: number }> = {}
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return
+        const slice = missing.slice(i, i + BATCH)
+        try {
+          const resp = await fetchWithFallback('/api/tooling/parts/summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: slice })
+          })
+          const js = await resp.json().catch(() => ({} as any))
+          const items = Array.isArray(js?.items) ? js.items : []
+          items.forEach((it: any) => {
+            const tid = String(it.tooling_id || it.toolingId || '')
+            if (!tid) return
+            const total = Number(it.total || 0) || 0
+            const completed = Number(it.completed || 0) || 0
+            const incomplete = Number(it.incomplete || (total - completed)) || 0
+            next[tid] = { total, completed, incomplete }
+          })
+        } catch {}
+      }
+      if (cancelled) return
+      setPartsSummaryMap((prev) => ({ ...prev, ...next }))
+    }
+    run()
+    return () => { cancelled = true }
+  }, [visibleData])
 
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
@@ -729,12 +773,43 @@ const ToolingInfoPage: React.FC = () => {
         return true
       })
     }
+
+    if (partsFilterStatus !== 'all') {
+      result = result.filter((row: any) => {
+        const tid = String(row?.id || '')
+        const s = partsSummaryMap[tid]
+        const total = Number(s?.total || 0) || 0
+        const completed = Number(s?.completed || 0) || 0
+        const isAllCompleted = total > 0 && completed >= total
+        if (partsFilterStatus === 'completed') return isAllCompleted
+        return !isAllCompleted
+      })
+    }
     
     return {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus])
+  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, partsSummaryMap])
+
+  const partsCounts = useMemo(() => {
+    let result = visibleData || []
+    if (filterPriority) {
+      result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
+    }
+    let all = 0
+    let completed = 0
+    result.forEach((row: any) => {
+      const tid = String(row?.id || '')
+      if (!tid || tid.startsWith('blank-')) return
+      const s = partsSummaryMap[tid]
+      if (!s) return
+      all += Number(s.total || 0) || 0
+      completed += Number(s.completed || 0) || 0
+    })
+    const incomplete = Math.max(all - completed, 0)
+    return { all, completed, incomplete }
+  }, [visibleData, filterPriority, partsSummaryMap])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
@@ -4637,15 +4712,26 @@ const ToolingInfoPage: React.FC = () => {
             />
           </div>
         </div>
-        <Segmented
-          options={[
-            { label: `全部 (${counts.all})`, value: 'all' },
-            { label: `完成 (${counts.completed})`, value: 'completed' },
-            { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
-          ]}
-          value={filterStatus}
-          onChange={(v) => setFilterStatus(v as any)}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : undefined }}>
+          <Segmented
+            options={[
+              { label: `零件-全部 (${partsCounts.all})`, value: 'all' },
+              { label: `零件-完成 (${partsCounts.completed})`, value: 'completed' },
+              { label: `零件-未完成 (${partsCounts.incomplete})`, value: 'incomplete' }
+            ]}
+            value={partsFilterStatus}
+            onChange={(v) => setPartsFilterStatus(v as any)}
+          />
+          <Segmented
+            options={[
+              { label: `全部 (${counts.all})`, value: 'all' },
+              { label: `完成 (${counts.completed})`, value: 'completed' },
+              { label: `未完成 (${counts.incomplete})`, value: 'incomplete' }
+            ]}
+            value={filterStatus}
+            onChange={(v) => setFilterStatus(v as any)}
+          />
+        </div>
       </div>
         <div ref={tableWrapRef} style={{ flex: 1, minHeight: 0 }}>
           <style>{`
