@@ -1069,6 +1069,7 @@ router.get('/parts/inventory-list', async (req, res) => {
     })
     if (keyword) {
       const pgLike = `%${keyword}%`
+      const keywordNorm = keyword.toUpperCase().replace(/[^A-Z0-9]/g, '')
       try {
         const pgParts = await query(
           `SELECT id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route
@@ -1091,6 +1092,30 @@ router.get('/parts/inventory-list', async (req, res) => {
           })
         })
       } catch {}
+      if (keywordNorm) {
+        try {
+          const pgPartsNormalized = await query(
+            `SELECT id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route
+             FROM parts_info
+             WHERE regexp_replace(upper(coalesce(part_inventory_number, inventory_number, '')), '[^A-Z0-9]', '', 'g') LIKE '%' || $1 || '%'
+             ORDER BY part_inventory_number ASC
+             LIMIT $2`,
+            [keywordNorm, MAX_FETCH_ROWS]
+          )
+          ;(pgPartsNormalized.rows || []).forEach((p: any) => {
+            const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
+            if (!inv) return
+            mergedMap.set(inv.toUpperCase(), {
+              id: String(p.id || ''),
+              part_inventory_number: inv,
+              part_name: String(p.part_name || ''),
+              part_drawing_number: String(p.part_drawing_number || ''),
+              tooling_id: String(p.tooling_id || ''),
+              process_route: String(p.process_route || '')
+            })
+          })
+        } catch {}
+      }
     }
     const merged = Array.from(mergedMap.values()).sort((a: any, b: any) => String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
     const items = merged.slice(from, to + 1)
