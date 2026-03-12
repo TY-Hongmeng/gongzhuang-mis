@@ -15,6 +15,8 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate, Link } from 'react-router-dom'
 
+declare const __APP_VERSION__: string
+
 const { Title, Text } = Typography
 
 const Dashboard: React.FC = () => {
@@ -76,6 +78,9 @@ const Dashboard: React.FC = () => {
           day: 'numeric',
           weekday: 'long'
         })}
+      </Text>
+      <Text type="secondary" className="text-sm mb-4 block">
+        当前版本：v{__APP_VERSION__}
       </Text>
 
       {/* 快捷操作 */}
