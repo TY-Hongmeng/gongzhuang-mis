@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -210,6 +210,28 @@ const ExpandedSubTables: React.FC<{
     }
   }, [parts, partFilterStatus])
 
+  const [childFilterStatus, setChildFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
+  const { filteredChildItems, childCounts } = useMemo(() => {
+    let result = childItems
+
+    const allCount = childItems.length
+    const completedCount = childItems.filter(p => isChildCompleted(p)).length
+    const incompleteCount = allCount - completedCount
+
+    if (childFilterStatus !== 'all') {
+      result = result.filter(p => {
+        const isCompleted = isChildCompleted(p)
+        if (childFilterStatus === 'completed') return isCompleted
+        return !isCompleted
+      })
+    }
+
+    return {
+      filteredChildItems: result,
+      childCounts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
+    }
+  }, [childItems, childFilterStatus])
+
   return (
     <div style={{ padding: '16px 24px', background: '#fafafa' }} onClick={(e) => e.stopPropagation()}>
       <style>{`
@@ -268,14 +290,24 @@ const ExpandedSubTables: React.FC<{
         />
       </div>
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
+          <Segmented
+            options={[
+              { label: `全部 (${childCounts.all})`, value: 'all' },
+              { label: `完成 (${childCounts.completed})`, value: 'completed' },
+              { label: `未完成 (${childCounts.incomplete})`, value: 'incomplete' }
+            ]}
+            value={childFilterStatus}
+            onChange={(v) => setChildFilterStatus(v as any)}
+            size="small"
+          />
         </div>
         <Table
           className="subtable-no-hover"
           rowKey="id"
           columns={childColumns}
-          dataSource={childItems}
+          dataSource={filteredChildItems}
           loading={childLoading}
           pagination={false}
           bordered={false}
