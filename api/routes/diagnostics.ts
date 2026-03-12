@@ -77,6 +77,52 @@ router.get('/parts-count', async (req, res) => {
   }
 })
 
+router.get('/parts-inventory-check', async (req, res) => {
+  try {
+    const raw = String(req.query.keyword || '').trim()
+    const keyword = raw.toUpperCase()
+    if (!keyword) {
+      return res.status(400).json({ success: false, error: 'keyword is required' })
+    }
+    const dbUrl = process.env.SUPABASE_DB_URL || ''
+    if (!dbUrl) {
+      return res.status(200).json({ success: true, connected: false, keyword, exact_count: 0, like_count: 0, rows: [] })
+    }
+    const mod = await import('pg') as any
+    const PgClient = (mod.Client || mod.default?.Client)
+    const client = new PgClient({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } })
+    await client.connect()
+    const exactSql = `
+      SELECT id, tooling_id, part_inventory_number, inventory_number, part_name, part_drawing_number
+      FROM parts_info
+      WHERE upper(coalesce(part_inventory_number, '')) = $1
+         OR upper(coalesce(inventory_number, '')) = $1
+      ORDER BY id DESC
+      LIMIT 100;
+    `
+    const likeSql = `
+      SELECT COUNT(*)::int AS c
+      FROM parts_info
+      WHERE part_inventory_number ILIKE $1 OR inventory_number ILIKE $1;
+    `
+    const exactRes = await client.query(exactSql, [keyword])
+    const likeRes = await client.query(likeSql, [`%${raw}%`])
+    await client.end()
+    const rows = exactRes.rows || []
+    const likeCount = Number((likeRes.rows || [])[0]?.c || 0)
+    return res.json({
+      success: true,
+      connected: true,
+      keyword: raw,
+      exact_count: rows.length,
+      like_count: likeCount,
+      rows
+    })
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err?.message || String(err) })
+  }
+})
+
 router.get('/cutting-orders/summary', async (req, res) => {
   try {
     const dbUrl = process.env.SUPABASE_DB_URL || ''

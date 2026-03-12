@@ -1141,7 +1141,34 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         
         if (search) {
           const keyword = `%${search}%`
-          query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`)
+          let partsToolingIds: string[] = []
+          try {
+            const ids = new Set<string>()
+            const BATCH_SIZE = 1000
+            const MAX_FETCH_ROWS = 20000
+            let offset = 0
+            while (offset < MAX_FETCH_ROWS) {
+              const { data: parts, error: perr } = await supabase
+                .from('parts_info')
+                .select('tooling_id, part_inventory_number, inventory_number')
+                .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
+                .range(offset, offset + BATCH_SIZE - 1)
+              if (perr || !Array.isArray(parts) || parts.length === 0) break
+              parts.forEach((p: any) => {
+                const tid = String(p.tooling_id || '')
+                if (tid) ids.add(tid)
+              })
+              if (parts.length < BATCH_SIZE) break
+              offset += BATCH_SIZE
+            }
+            partsToolingIds = Array.from(ids)
+          } catch {}
+          const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`
+          if (partsToolingIds.length > 0) {
+            query = query.or(`${baseExpr},id.in.(${partsToolingIds.join(',')})`)
+          } else {
+            query = query.or(baseExpr)
+          }
         }
         if (productionUnit) query = query.eq('production_unit', productionUnit)
         if (category) query = query.eq('category', category)
@@ -2361,21 +2388,56 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Parts inventory list
       if (method === 'GET' && path === '/api/tooling/parts/inventory-list') {
         const qs = getQuery(url)
-        const page = Number(qs.get('page') || 1)
-        const pageSize = Number(qs.get('pageSize') || 500)
-        const { data, error } = await supabase
-          .from('parts_info')
-          .select('*')
-          .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
-        if (error) return jsonResponse({ success: false, error: error.message })
-        const items = (data || []).map((p: any) => ({
-          id: String(p.id ?? p.uuid ?? ''),
-          part_inventory_number: String(p.part_inventory_number ?? ''),
-          part_name: String(p.part_name ?? ''),
-          part_drawing_number: String(p.part_drawing_number ?? ''),
-          process_route: String(p.process_route ?? '')
-        }))
-        return jsonResponse({ success: true, items })
+        const page = Math.max(Number(qs.get('page') || 1) || 1, 1)
+        const pageSize = Math.min(Math.max(Number(qs.get('pageSize') || 50) || 50, 1), 5000)
+        const search = String(qs.get('search') || '').trim()
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
+        const expr = search ? `%${search}%` : ''
+        const BATCH_SIZE = 1000
+        const MAX_FETCH_ROWS = 50000
+        const fetchBatched = async (build: (offset: number, limit: number) => any) => {
+          const all: any[] = []
+          let offset = 0
+          while (offset < MAX_FETCH_ROWS) {
+            const { data, error } = await build(offset, BATCH_SIZE)
+            if (error) return { error }
+            const rows = Array.isArray(data) ? data : []
+            all.push(...rows)
+            if (rows.length < BATCH_SIZE) break
+            offset += BATCH_SIZE
+          }
+          return { data: all as any[] }
+        }
+        const { data: partsData, error: partsError } = await fetchBatched((offset, limit) => {
+          let q = supabase
+            .from('parts_info')
+            .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
+          if (expr) {
+            q = q.or(`part_inventory_number.ilike.${expr},inventory_number.ilike.${expr},part_name.ilike.${expr},part_drawing_number.ilike.${expr}`)
+          }
+          if (!search) {
+            return q.order('part_inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
+          }
+          return q.order('part_inventory_number', { ascending: true }).range(offset, offset + limit - 1)
+        })
+        if (partsError) return jsonResponse({ success: false, error: partsError.message }, 500)
+        const mergedMap = new Map<string, any>()
+        ;(partsData || []).forEach((p: any) => {
+          const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
+          if (!inv) return
+          mergedMap.set(inv.toUpperCase(), {
+            id: String(p.id ?? p.uuid ?? ''),
+            part_inventory_number: inv,
+            part_name: String(p.part_name ?? ''),
+            part_drawing_number: String(p.part_drawing_number ?? ''),
+            tooling_id: String(p.tooling_id ?? ''),
+            process_route: String(p.process_route ?? '')
+          })
+        })
+        const merged = Array.from(mergedMap.values()).sort((a: any, b: any) => String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
+        const items = merged.slice(from, to + 1)
+        return jsonResponse({ success: true, items, total: merged.length, page, pageSize })
       }
 
       // Update parts process routes (client-side fallback)

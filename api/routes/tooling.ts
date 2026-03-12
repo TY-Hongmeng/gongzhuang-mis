@@ -1021,7 +1021,7 @@ router.get('/parts/inventory-list', async (req, res) => {
   try {
     const { page = '1', pageSize = '50', search = '' } = req.query as Record<string, string>
     const pageNum = Math.max(parseInt(page, 10) || 1, 1)
-    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 500)
+    const sizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 5000)
     const from = (pageNum - 1) * sizeNum
     const to = from + sizeNum - 1
     const keyword = String(search || '').trim()

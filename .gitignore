@@ -15,3 +15,5 @@ coverage/
 
 # Windows reserved name artifact
 NUL
+.tmp_git_commit_push.cjs
+.git_status.txt

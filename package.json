@@ -1,7 +1,7 @@
 {
   "name": "trae-project",
   "private": true,
-  "version": "1.18.24",
+  "version": "1.18.26",
   "type": "module",
   "scripts": {
     "client:dev": "vite --port 5182",
@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "server:dev": "nodemon",
-    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
+    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
+    "git:sync": "powershell -ExecutionPolicy Bypass -File scripts/git-sync.ps1"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
