@@ -210,25 +210,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       const json = await resp.json()
       const invItems = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
-      const keyword = String(q || '').trim()
-      let toolingFallback: any[] = []
-      if (keyword) {
-        try {
-          const respTooling = await fetchWithFallback(`/api/tooling?page=1&pageSize=500&search=${encodeURIComponent(keyword)}&_ts=${ts}`, { signal: invAbortRef.current.signal })
-          if (respTooling.ok) {
-            const jsonTooling = await respTooling.json()
-            const toolingItems = Array.isArray(jsonTooling?.items) ? jsonTooling.items : (Array.isArray(jsonTooling?.data) ? jsonTooling.data : [])
-            toolingFallback = toolingItems.map((it: any) => ({
-              part_inventory_number: String(it.inventory_number || ''),
-              part_name: String(it.project_name || ''),
-              part_drawing_number: '',
-              process_route: ''
-            }))
-          }
-        } catch {}
-      }
       const mergedByInv = new Map<string, any>()
-      ;[...invItems, ...toolingFallback].forEach((it: any) => {
+      ;[...invItems].forEach((it: any) => {
         const inv = String(it.part_inventory_number || '').trim()
         if (!inv) return
         const key = inv.toUpperCase()

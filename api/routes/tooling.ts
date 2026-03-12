@@ -1042,32 +1042,18 @@ router.get('/parts/inventory-list', async (req, res) => {
       return all
     }
 
-    const [partsRows, toolingRows] = await Promise.all([
-      fetchBatched((offset, limit) => {
-        let q = supabase
-          .from('parts_info')
-          .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
-        if (matchExpr) {
-          q = q.or(`part_inventory_number.ilike.${matchExpr},inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
-        }
-        if (!keyword) {
-          return q.order('part_inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
-        }
-        return q.order('part_inventory_number', { ascending: true }).range(offset, offset + limit - 1)
-      }),
-      fetchBatched((offset, limit) => {
-        let q = supabase
-          .from('tooling_info')
-          .select('id, inventory_number, project_name')
-        if (matchExpr) {
-          q = q.or(`inventory_number.ilike.${matchExpr},project_name.ilike.${matchExpr}`)
-        }
-        if (!keyword) {
-          return q.order('inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
-        }
-        return q.order('inventory_number', { ascending: true }).range(offset, offset + limit - 1)
-      })
-    ])
+    const partsRows = await fetchBatched((offset, limit) => {
+      let q = supabase
+        .from('parts_info')
+        .select('id, part_inventory_number, inventory_number, part_name, part_drawing_number, tooling_id, process_route')
+      if (matchExpr) {
+        q = q.or(`part_inventory_number.ilike.${matchExpr},inventory_number.ilike.${matchExpr},part_name.ilike.${matchExpr},part_drawing_number.ilike.${matchExpr}`)
+      }
+      if (!keyword) {
+        return q.order('part_inventory_number', { ascending: true }).range(from + offset, Math.min(to, from + offset + limit - 1))
+      }
+      return q.order('part_inventory_number', { ascending: true }).range(offset, offset + limit - 1)
+    })
     const mergedMap = new Map<string, any>()
     ;(partsRows || []).forEach((p: any) => {
       const inv = String(p.part_inventory_number || p.inventory_number || '').trim()
@@ -1079,20 +1065,6 @@ router.get('/parts/inventory-list', async (req, res) => {
         part_drawing_number: String(p.part_drawing_number || ''),
         tooling_id: String(p.tooling_id || ''),
         process_route: String(p.process_route || '')
-      })
-    })
-    ;(toolingRows || []).forEach((t: any) => {
-      const inv = String(t.inventory_number || '').trim()
-      if (!inv) return
-      const key = inv.toUpperCase()
-      if (mergedMap.has(key)) return
-      mergedMap.set(key, {
-        id: String(t.id || ''),
-        part_inventory_number: inv,
-        part_name: String(t.project_name || ''),
-        part_drawing_number: '',
-        tooling_id: String(t.id || ''),
-        process_route: ''
       })
     })
     if (keyword) {
@@ -1116,30 +1088,6 @@ router.get('/parts/inventory-list', async (req, res) => {
             part_drawing_number: String(p.part_drawing_number || ''),
             tooling_id: String(p.tooling_id || ''),
             process_route: String(p.process_route || '')
-          })
-        })
-      } catch {}
-      try {
-        const pgTooling = await query(
-          `SELECT id, inventory_number, project_name
-           FROM tooling_info
-           WHERE inventory_number ILIKE $1 OR project_name ILIKE $1
-           ORDER BY inventory_number ASC
-           LIMIT $2`,
-          [pgLike, MAX_FETCH_ROWS]
-        )
-        ;(pgTooling.rows || []).forEach((t: any) => {
-          const inv = String(t.inventory_number || '').trim()
-          if (!inv) return
-          const key = inv.toUpperCase()
-          if (mergedMap.has(key)) return
-          mergedMap.set(key, {
-            id: String(t.id || ''),
-            part_inventory_number: inv,
-            part_name: String(t.project_name || ''),
-            part_drawing_number: '',
-            tooling_id: String(t.id || ''),
-            process_route: ''
           })
         })
       } catch {}
