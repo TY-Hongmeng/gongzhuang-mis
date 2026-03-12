@@ -689,8 +689,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       <style>{`
         .work-hours-container { padding: 12px; max-width: 520px; margin: 0 auto; }
         .work-hours-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-        .work-hours-row { display: flex; gap: 6px; flex-wrap: wrap; }
-        .work-hours-item { flex: 1 1 160px; min-width: 160px; }
+        .work-hours-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 6px; row-gap: 6px; }
+        .work-hours-item { min-width: 0; }
         .work-hours-card { border-radius: 12px; }
         .work-hours-info { background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 8px 10px; min-height: 56px; }
         .work-hours-form .ant-form-item-label > label { font-weight: 500; }
@@ -700,8 +700,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input-number { width: 100%; }
         @media (min-width: 768px) {
           .work-hours-container { max-width: 900px; }
-          .work-hours-row { gap: 12px; }
-          .work-hours-item { flex: 1 1 240px; min-width: 220px; }
+          .work-hours-row { column-gap: 12px; row-gap: 12px; }
         }
         @media (min-width: 1024px) {
           .work-hours-container { max-width: 980px; }
