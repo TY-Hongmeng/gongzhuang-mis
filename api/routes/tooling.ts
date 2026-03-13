@@ -183,17 +183,21 @@ router.post('/status/batch', async (req, res) => {
     }
     await ensureStatusTable();
     if (list.length === 0) return res.json({ success: true, map: {} });
-    const { data, error } = await supabase
-      .from('tooling_status')
-      .select('item_id,status')
-      .eq('item_type', itemType)
-      .in('item_id', list);
-    if (error) return res.status(500).json({ success: false, error: error.message });
     const map: Record<string, string> = {};
-    (data || []).forEach((row: any) => {
-      const k = String(row.item_id || '');
-      if (k) map[k] = String(row.status || '');
-    });
+    const STATUS_BATCH_SIZE = 120;
+    for (let i = 0; i < list.length; i += STATUS_BATCH_SIZE) {
+      const slice = list.slice(i, i + STATUS_BATCH_SIZE);
+      const { data, error } = await supabase
+        .from('tooling_status')
+        .select('item_id,status')
+        .eq('item_type', itemType)
+        .in('item_id', slice as any);
+      if (error) return res.status(500).json({ success: false, error: error.message });
+      (data || []).forEach((row: any) => {
+        const k = String(row.item_id || '');
+        if (k) map[k] = String(row.status || '');
+      });
+    }
     return res.json({ success: true, map });
   } catch (err) {
     res.status(500).json({ success: false, error: '服务器错误' });
@@ -610,7 +614,7 @@ router.get('/:id/parts', async (req, res) => {
         .filter(Boolean)
       if (missingIds.length > 0) {
         const statusMap = new Map<string, string>()
-        const BATCH_SIZE = 1000
+        const BATCH_SIZE = 120
         for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
           const slice = missingIds.slice(i, i + BATCH_SIZE)
           const { data: statusRows, error: statusErr } = await supabase
@@ -1783,7 +1787,7 @@ router.get('/:id/child-items', async (req, res) => {
           .filter(Boolean)
         if (missingIds.length > 0) {
           const statusMap = new Map<string, string>()
-          const BATCH_SIZE = 1000
+          const BATCH_SIZE = 120
           for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
             const slice = missingIds.slice(i, i + BATCH_SIZE)
             const { data: statusRows, error: statusErr } = await supabase

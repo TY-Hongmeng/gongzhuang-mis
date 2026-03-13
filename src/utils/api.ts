@@ -1213,17 +1213,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const ids = Array.isArray(body.ids) ? body.ids.map((x: any) => String(x || '')).filter(Boolean) : []
         if (!type || (type !== 'part' && type !== 'child')) return jsonResponse({ success: false, error: 'Invalid type' }, 400)
         if (ids.length === 0) return jsonResponse({ success: true, map: {} })
-        const { data, error } = await supabase
-          .from('tooling_status')
-          .select('item_id,status')
-          .eq('item_type', type)
-          .in('item_id', ids)
-        if (error) return jsonResponse({ success: false, error: error.message }, 500)
         const map: Record<string, string> = {}
-        ;(data || []).forEach((row: any) => {
-          const k = String(row.item_id || '')
-          if (k) map[k] = String(row.status || '')
-        })
+        const STATUS_BATCH_SIZE = 120
+        for (let i = 0; i < ids.length; i += STATUS_BATCH_SIZE) {
+          const slice = ids.slice(i, i + STATUS_BATCH_SIZE)
+          const { data, error } = await supabase
+            .from('tooling_status')
+            .select('item_id,status')
+            .eq('item_type', type)
+            .in('item_id', slice as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          ;(data || []).forEach((row: any) => {
+            const k = String(row.item_id || '')
+            if (k) map[k] = String(row.status || '')
+          })
+        }
         return jsonResponse({ success: true, map })
       }
 
@@ -1370,6 +1374,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (toolingIds.length === 0) return jsonResponse({ success: true, items: [] })
 
         const BATCH_SIZE = 1000
+        const STATUS_BATCH_SIZE = 120
         let offset = 0
         const parts: any[] = []
         while (true) {
@@ -1391,8 +1396,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .filter(Boolean)
         if (missingIds.length > 0) {
           const statusMap = new Map<string, string>()
-          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
-            const slice = missingIds.slice(i, i + BATCH_SIZE)
+          for (let i = 0; i < missingIds.length; i += STATUS_BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + STATUS_BATCH_SIZE)
             const { data: statusRows } = await supabase
               .from('tooling_status')
               .select('item_id,status')
@@ -1444,9 +1449,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
         if (missingIds.length > 0) {
           const statusMap = new Map<string, string>()
-          const BATCH_SIZE = 1000
-          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
-            const slice = missingIds.slice(i, i + BATCH_SIZE)
+          const STATUS_BATCH_SIZE = 120
+          for (let i = 0; i < missingIds.length; i += STATUS_BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + STATUS_BATCH_SIZE)
             const { data: statusRows, error: statusErr } = await supabase
               .from('tooling_status')
               .select('item_id,status')
@@ -1592,9 +1597,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
         if (missingIds.length > 0) {
           const statusMap = new Map<string, string>()
-          const BATCH_SIZE = 1000
-          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
-            const slice = missingIds.slice(i, i + BATCH_SIZE)
+          const STATUS_BATCH_SIZE = 120
+          for (let i = 0; i < missingIds.length; i += STATUS_BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + STATUS_BATCH_SIZE)
             const { data: statusRows, error: statusErr } = await supabase
               .from('tooling_status')
               .select('item_id,status')
