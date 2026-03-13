@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -199,7 +199,6 @@ const ExpandedSubTables: React.FC<{
   onAddPart: () => void
   onAddPartBatch: () => void
   onAddChildItem: () => void
-  onAddChildItemBatch: () => void
 }> = React.memo(({
   toolingId,
   parts,
@@ -215,8 +214,7 @@ const ExpandedSubTables: React.FC<{
   setSelectedRowKeys,
   onAddPart,
   onAddPartBatch,
-  onAddChildItem,
-  onAddChildItemBatch
+  onAddChildItem
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
     const v = String((rec as any).purchase_status || '').trim()
@@ -357,10 +355,7 @@ const ExpandedSubTables: React.FC<{
       </div>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Space size={8}>
-            <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
-            <Button type="dashed" size="small" onClick={onAddChildItemBatch}>批量添加</Button>
-          </Space>
+          <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
           <Segmented
             options={[
               { label: `全部 (${childCounts.all})`, value: 'all' },
@@ -503,8 +498,6 @@ const ToolingInfoPage: React.FC = () => {
   const [importSummaryVisible, setImportSummaryVisible] = useState(false)
   const [partBatchModal, setPartBatchModal] = useState<{ toolingId: string; open: boolean }>({ toolingId: '', open: false })
   const [partBatchCount, setPartBatchCount] = useState('5')
-  const [childBatchModal, setChildBatchModal] = useState<{ toolingId: string; open: boolean }>({ toolingId: '', open: false })
-  const [childBatchCount, setChildBatchCount] = useState('5')
   const [importSummary, setImportSummary] = useState({
     tooling: { total: 0, success: 0, failed: 0 },
     parts: { total: 0, success: 0, failed: 0 },
@@ -2495,23 +2488,6 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [setPartsMap])
 
-  const addBlankChildItems = useCallback((toolingId: string, count: number) => {
-    const safeCount = Math.max(1, Math.min(200, Math.floor(Number(count) || 1)))
-    setChildItemsMap(prev => {
-      const list = prev[toolingId] || []
-      const now = Date.now()
-      const added = Array.from({ length: safeCount }).map((_, idx) => ({
-        id: `blank-${toolingId}-${now}-child-${idx}-${Math.random().toString(36).slice(2, 8)}`,
-        tooling_id: toolingId,
-        name: '',
-        model: '',
-        quantity: '',
-        remarks: ''
-      }))
-      return { ...prev, [toolingId]: [...list, ...added] }
-    })
-  }, [setChildItemsMap])
-
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
     const parent = data.find(d => d.id === toolingId) as any
@@ -2583,7 +2559,6 @@ const ToolingInfoPage: React.FC = () => {
         onAddPart={() => addBlankParts(toolingId, 1)}
         onAddPartBatch={() => setPartBatchModal({ toolingId, open: true })}
         onAddChildItem={handleAddChildItem}
-        onAddChildItemBatch={() => setChildBatchModal({ toolingId, open: true })}
       />
     )
   }, [
@@ -2593,11 +2568,9 @@ const ToolingInfoPage: React.FC = () => {
     createPartColumns,
     createChildColumns,
     addBlankParts,
-    addBlankChildItems,
     data,
     setChildItemsMap,
-    setPartBatchModal,
-    setChildBatchModal
+    setPartBatchModal
   ])
 
   const confirmPartBatchAdd = useCallback(() => {
@@ -2618,19 +2591,6 @@ const ToolingInfoPage: React.FC = () => {
     setPartBatchModal({ toolingId: '', open: false })
     setPartBatchCount('5')
   }, [partBatchModal, partBatchCount, addBlankParts])
-
-  const confirmChildBatchAdd = useCallback(() => {
-    const toolingId = String(childBatchModal.toolingId || '')
-    if (!toolingId) return
-    const count = Math.floor(Number(childBatchCount))
-    if (!Number.isFinite(count) || count <= 0) {
-      message.warning('请输入大于0的批量数量')
-      return
-    }
-    addBlankChildItems(toolingId, count)
-    setChildBatchModal({ toolingId: '', open: false })
-    setChildBatchCount('5')
-  }, [childBatchModal, childBatchCount, addBlankChildItems])
 
   // 确保展开的子表至少有一行空白行
   useEffect(() => {
@@ -5036,27 +4996,6 @@ const ToolingInfoPage: React.FC = () => {
           <div style={{ color: '#888', fontSize: 12 }}>系统将自动生成连续零件盘存编号，后续仍可手动修改。</div>
         </div>
       </Modal>
-
-      <Modal
-        title="批量添加标准件"
-        open={childBatchModal.open}
-        onCancel={() => {
-          setChildBatchModal({ toolingId: '', open: false })
-          setChildBatchCount('5')
-        }}
-        onOk={confirmChildBatchAdd}
-        destroyOnHidden
-      >
-        <div style={{ display: 'grid', gap: 8 }}>
-          <div>请输入要批量添加的标准件行数</div>
-          <Input
-            value={childBatchCount}
-            onChange={(e) => setChildBatchCount(String(e.target.value || '').replace(/[^\d]/g, ''))}
-            placeholder="例如：5"
-          />
-          <div style={{ color: '#888', fontSize: 12 }}>批量行创建后可继续逐行填写名称、型号、数量、单位与需求日期。</div>
-        </div>
-      </Modal>
       
       {/* 导入二次弹窗 */}
       <Modal
@@ -5071,13 +5010,11 @@ const ToolingInfoPage: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-2">导入说明</h3>
             <ul className="list-disc list-inside space-y-1 text-gray-600">
-              <li>当前导入模板已同步最新子表结构（零件信息 + 标准件信息）</li>
               <li>请严格按照模板格式填写工装信息</li>
               <li>必填字段不可为空，请参考模板中的示例数据</li>
               <li>日期格式为YYYY-MM-DD</li>
               <li>零件盘存编号格式：父表盘存编号+两位序号（如：LD26010101）</li>
               <li>"父表盘存编号"必须与工装信息表中的"盘存编号"完全一致</li>
-              <li>标准件信息模板字段：名称、型号、数量、单位、需求日期</li>
               <li>材质、材料来源、料型可为空，系统将提示但仍可导入</li>
               <li>批量导入前请先备份现有数据</li>
             </ul>
