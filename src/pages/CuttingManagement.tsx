@@ -33,6 +33,15 @@ interface CuttingOrder {
   };
 }
 
+const normalizeHeatTreatmentText = (value: any) => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  const low = raw.toLowerCase()
+  if (['false', '0', '否', 'no', 'null', 'undefined', 'none', '-'].includes(low)) return ''
+  if (['true', '1', '是', 'yes'].includes(low)) return '需调质'
+  return raw
+}
+
 const CuttingManagement: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -47,6 +56,7 @@ const CuttingManagement: React.FC = () => {
   }, [user, userTeamsMap])
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CuttingOrder[]>([]);
+  const [qtyDraftMap, setQtyDraftMap] = useState<Record<string, string>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [queryTime, setQueryTime] = useState<number>(0); // 查询耗时
   const [groupedData, setGroupedData] = useState<Record<string, CuttingOrder[]>>({}); // 分组数据
@@ -571,6 +581,65 @@ const CuttingManagement: React.FC = () => {
     }
   };
 
+  const updateQuantity = useCallback(async (record: CuttingOrder, rawValue: string) => {
+    const text = String(rawValue ?? '').trim()
+    if (!text) {
+      message.warning('数量不能为空')
+      return
+    }
+    const nextQty = Number(text)
+    if (!Number.isFinite(nextQty) || nextQty <= 0) {
+      message.warning('数量必须大于0')
+      return
+    }
+    const currentQty = Number(record.part_quantity || 0)
+    if (currentQty > 0 && Math.abs(nextQty - currentQty) < 1e-9) {
+      setQtyDraftMap(prev => ({ ...prev, [record.id]: '' }))
+      return
+    }
+
+    const currentWeight = Number(record.total_weight || 0)
+    const nextWeight = (Number.isFinite(currentWeight) && currentQty > 0)
+      ? Math.round((currentWeight / currentQty) * nextQty * 1000) / 1000
+      : currentWeight
+
+    try {
+      const response = await fetchWithFallback(`/api/cutting-orders/${record.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ part_quantity: nextQty, total_weight: nextWeight })
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.error || `更新失败(${response.status})`)
+      }
+
+      const updatedQty = Number(result?.data?.part_quantity ?? nextQty)
+      const updatedWeight = Number(result?.data?.total_weight ?? nextWeight)
+      setData(prev => prev.map(it => it.id === record.id ? {
+        ...it,
+        part_quantity: updatedQty,
+        total_weight: Number.isFinite(updatedWeight) ? updatedWeight : it.total_weight
+      } : it))
+      setGroupedData(prev => {
+        const next: Record<string, CuttingOrder[]> = {}
+        Object.entries(prev).forEach(([key, orders]) => {
+          next[key] = orders.map(it => it.id === record.id ? {
+            ...it,
+            part_quantity: updatedQty,
+            total_weight: Number.isFinite(updatedWeight) ? updatedWeight : it.total_weight
+          } : it)
+        })
+        return next
+      })
+      setQtyDraftMap(prev => ({ ...prev, [record.id]: '' }))
+      message.success('数量已更新')
+    } catch (error) {
+      console.error('更新下料单数量失败:', error)
+      message.error('更新数量失败')
+    }
+  }, [])
+
   const columns: ColumnsType<CuttingOrder> = [
     {
       title: '序号',
@@ -623,8 +692,28 @@ const CuttingManagement: React.FC = () => {
       title: '数量',
       dataIndex: 'part_quantity',
       key: 'part_quantity',
-      width: 80,
-      align: 'center'
+      width: 100,
+      align: 'center',
+      render: (qty: number, record: CuttingOrder) => (
+        <Input
+          value={Object.prototype.hasOwnProperty.call(qtyDraftMap, record.id) && qtyDraftMap[record.id] !== '' ? qtyDraftMap[record.id] : String(qty ?? '')}
+          onChange={(e) => {
+            const v = e.target.value
+            setQtyDraftMap(prev => ({ ...prev, [record.id]: v }))
+          }}
+          onPressEnter={(e) => {
+            e.preventDefault()
+            void updateQuantity(record, qtyDraftMap[record.id] ?? String(qty ?? ''))
+          }}
+          onBlur={() => {
+            void updateQuantity(record, qtyDraftMap[record.id] ?? String(qty ?? ''))
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          size="small"
+          style={{ textAlign: 'center' }}
+        />
+      )
     },
     {
       title: '重量(kg)',
@@ -639,13 +728,13 @@ const CuttingManagement: React.FC = () => {
       }
     },
     {
-      title: '调质',
+      title: '热处理',
       dataIndex: 'remarks',
       key: 'remarks',
       width: 140,
       align: 'center',
       render: (remarks: string | undefined) => {
-        return <span>{String(remarks || '').trim() || '-'}</span>
+        return <span>{normalizeHeatTreatmentText(remarks) || '-'}</span>
       }
     }
   ];
@@ -672,7 +761,7 @@ const CuttingManagement: React.FC = () => {
     const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
     const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '
 
-    const headers = ['序号','盘存编号','项目名称','图号','零件名称','材质','规格','数量','重量(kg)','调质']
+    const headers = ['序号','盘存编号','项目名称','图号','零件名称','材质','规格','数量','重量(kg)','热处理']
     const aoa: any[][] = []
     aoa.push([dateText, sourceText, compiledText, `共 ${sortedRows.length} 条记录`])
     aoa.push([])
@@ -689,7 +778,7 @@ const CuttingManagement: React.FC = () => {
         o.specifications,
         o.part_quantity,
         Number.isFinite(weightNum) ? Number(weightNum.toFixed(3)) : '',
-        String(o.remarks || '').trim()
+        normalizeHeatTreatmentText(o.remarks)
       ])
     })
     const ws = XLSX.utils.aoa_to_sheet(aoa)
@@ -743,7 +832,7 @@ const CuttingManagement: React.FC = () => {
           <td>${escapeHtml(o.specifications)}</td>
           <td>${escapeHtml(o.part_quantity)}</td>
           <td>${Number.isFinite(weightNum) ? weightNum.toFixed(3) : ''}</td>
-          <td>${escapeHtml(String(o.remarks || '').trim())}</td>
+          <td>${escapeHtml(normalizeHeatTreatmentText(o.remarks))}</td>
         </tr>
       `
     }).join('')
@@ -777,7 +866,7 @@ const CuttingManagement: React.FC = () => {
                 <th>规格</th>
                 <th>数量</th>
                 <th>重量(kg)</th>
-                <th>调质</th>
+                <th>热处理</th>
               </tr>
             </thead>
             <tbody>

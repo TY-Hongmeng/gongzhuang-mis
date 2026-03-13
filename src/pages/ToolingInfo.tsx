@@ -121,6 +121,13 @@ const normalizeDateInput = (value: string) => {
 const parsePartRemarkFields = (remarks: string) => {
   const raw = String(remarks || '').trim()
   if (!raw) return { heatTreatment: '', demandDate: '' }
+  const low = raw.toLowerCase()
+  if (['false', '0', '否', 'no', 'null', 'undefined', 'none', '-'].includes(low)) {
+    return { heatTreatment: '', demandDate: '' }
+  }
+  if (['true', '1', '是', 'yes'].includes(low)) {
+    return { heatTreatment: '需调质', demandDate: '' }
+  }
   const heatMatch = raw.match(/(?:^|;)\s*热处理[:：]\s*([^;]+)/)
   const demandMatch = raw.match(/(?:^|;)\s*需求日期[:：]\s*([^;]+)/)
   if (heatMatch || demandMatch) {

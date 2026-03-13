@@ -305,6 +305,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
     required_date,
     completed_date,
     notes,
+    part_quantity,
+    total_weight,
     status,
     items
   } = req.body
@@ -348,6 +350,17 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (required_date !== undefined) updateData.required_date = required_date
   if (completed_date !== undefined) updateData.completed_date = completed_date
   if (notes !== undefined) updateData.notes = notes
+  if (part_quantity !== undefined) {
+    const qtyNum = Number(part_quantity)
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+      return sendError(res, '数量必须为大于0的数字', 'INVALID_PART_QUANTITY', null, 400)
+    }
+    updateData.part_quantity = qtyNum
+  }
+  if (total_weight !== undefined) {
+    const weightNum = Number(total_weight)
+    updateData.total_weight = Number.isFinite(weightNum) ? weightNum : null
+  }
   // 后端数据库当前无 status 列，忽略该字段更新
 
   // 如果更新了明细，重新计算总重量和总价格
