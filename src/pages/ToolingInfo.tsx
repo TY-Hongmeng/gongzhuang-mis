@@ -153,6 +153,27 @@ const composePartRemarkFields = (heatTreatment: string, demandDate: string) => {
   return ''
 }
 
+const getNextPartInventoryNumbers = (
+  parentInventoryNumber: string,
+  parts: Array<Pick<PartItem, 'part_inventory_number'>>,
+  count: number
+) => {
+  const parentInv = String(parentInventoryNumber || '').trim().toUpperCase()
+  if (!parentInv) return Array.from({ length: count }).map(() => '')
+  let maxSeq = 0
+  ;(parts || []).forEach((item) => {
+    const inv = String(item?.part_inventory_number || '').trim().toUpperCase()
+    if (!inv || !inv.startsWith(parentInv)) return
+    const suffix = inv.slice(parentInv.length)
+    if (!/^\d+$/.test(suffix)) return
+    const seq = Number(suffix)
+    if (Number.isFinite(seq) && seq > maxSeq) maxSeq = seq
+  })
+  const start = maxSeq + 1
+  const width = Math.max(2, String(start + Math.max(0, count - 1)).length)
+  return Array.from({ length: count }).map((_, idx) => `${parentInv}${String(start + idx).padStart(width, '0')}`)
+}
+
 const getPartTypeColor = (partType?: string) => {
   const t = String(partType || '').replace(/\s+/g, '')
   if (!t) return '#000000'
@@ -176,6 +197,7 @@ const ExpandedSubTables: React.FC<{
   selectedRowKeys: string[]
   setSelectedRowKeys: (keys: string[] | ((prev: string[]) => string[])) => void
   onAddPart: () => void
+  onAddPartBatch: () => void
   onAddChildItem: () => void
 }> = React.memo(({
   toolingId,
@@ -191,6 +213,7 @@ const ExpandedSubTables: React.FC<{
   selectedRowKeys,
   setSelectedRowKeys,
   onAddPart,
+  onAddPartBatch,
   onAddChildItem
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
@@ -278,7 +301,10 @@ const ExpandedSubTables: React.FC<{
       `}</style>
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
+          <Space size={8}>
+            <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
+            <Button type="dashed" size="small" onClick={onAddPartBatch}>批量添加</Button>
+          </Space>
           <Segmented
             options={[
               { label: `全部 (${counts.all})`, value: 'all' },
@@ -470,6 +496,8 @@ const ToolingInfoPage: React.FC = () => {
   const [importPreviewData, setImportPreviewData] = useState<any[]>([])
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importSummaryVisible, setImportSummaryVisible] = useState(false)
+  const [partBatchModal, setPartBatchModal] = useState<{ toolingId: string; open: boolean }>({ toolingId: '', open: false })
+  const [partBatchCount, setPartBatchCount] = useState('5')
   const [importSummary, setImportSummary] = useState({
     tooling: { total: 0, success: 0, failed: 0 },
     parts: { total: 0, success: 0, failed: 0 },
@@ -1587,6 +1615,24 @@ const ToolingInfoPage: React.FC = () => {
             const parent = dataRef.current.find(d => d.id === toolingId)
             const parentReceivedDate = String(parent?.received_date || '')
             const metrics = calcPartMetrics(nextRow, parentReceivedDate)
+            let nextInventoryNumber = String(nextRow.part_inventory_number || '').trim().toUpperCase()
+            if (!nextInventoryNumber) {
+              const generated = getNextPartInventoryNumbers(
+                String(parent?.inventory_number || ''),
+                (list || []).filter((r: any) => String(r.id || '') !== String(id)),
+                1
+              )[0] || ''
+              nextInventoryNumber = generated
+              if (nextInventoryNumber) {
+                setPartsMap(prev => {
+                  const rows = prev[toolingId] || []
+                  return {
+                    ...prev,
+                    [toolingId]: rows.map(r => r.id === id ? { ...r, part_inventory_number: nextInventoryNumber } : r)
+                  }
+                })
+              }
+            }
             
             const postData: any = { 
               part_drawing_number: nextRow.part_drawing_number || '', 
@@ -1599,8 +1645,8 @@ const ToolingInfoPage: React.FC = () => {
             }
             
             // 只有在盘存编号不为空时才添加该字段
-            if (nextRow.part_inventory_number && nextRow.part_inventory_number.trim() !== '') {
-              postData.part_inventory_number = nextRow.part_inventory_number.trim()
+            if (nextInventoryNumber) {
+              postData.part_inventory_number = nextInventoryNumber
             }
             
             if (nextRow.material_id && nextRow.material_id.trim() !== '') {
@@ -2416,6 +2462,32 @@ const ToolingInfoPage: React.FC = () => {
     ]
   }, [renderStatusText, saveStatusInput])
 
+  const addBlankParts = useCallback((toolingId: string, count: number) => {
+    const safeCount = Math.max(1, Math.min(200, Math.floor(Number(count) || 1)))
+    setPartsMap(prev => {
+      const list = prev[toolingId] || []
+      const parent = dataRef.current.find(d => d.id === toolingId)
+      const parentInv = String(parent?.inventory_number || '')
+      const generated = getNextPartInventoryNumbers(parentInv, list, safeCount)
+      const now = Date.now()
+      const added = Array.from({ length: safeCount }).map((_, idx) => ({
+        id: `blank-${toolingId}-${now}-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        tooling_id: toolingId,
+        part_inventory_number: generated[idx] || '',
+        part_drawing_number: '',
+        part_name: '',
+        part_quantity: '',
+        material_id: '',
+        material_source_id: '',
+        part_category: '',
+        specifications: {},
+        weight: 0,
+        remarks: ''
+      }))
+      return { ...prev, [toolingId]: [...list, ...added] }
+    })
+  }, [setPartsMap])
+
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
     const parent = data.find(d => d.id === toolingId) as any
@@ -2454,27 +2526,6 @@ const ToolingInfoPage: React.FC = () => {
       }
     }
 
-    // 手动添加零件行
-    const handleAddPart = () => {
-      const newPart = {
-        id: `blank-${toolingId}-${Date.now()}`,
-        tooling_id: toolingId,
-        part_drawing_number: '',
-        part_name: '',
-        part_quantity: '',
-        material_id: '',
-        material_source_id: '',
-        part_category: '',
-        specifications: {},
-        weight: 0,
-        remarks: ''
-      }
-      setPartsMap(prev => ({
-        ...prev,
-        [toolingId]: [...(prev[toolingId] || []), newPart]
-      }))
-    }
-
     // 手动添加标准件行
     const handleAddChildItem = () => {
       const newChild = {
@@ -2505,7 +2556,8 @@ const ToolingInfoPage: React.FC = () => {
         childColumns={childCols}
         selectedRowKeys={selectedRowKeys}
         setSelectedRowKeys={setSelectedRowKeys}
-        onAddPart={handleAddPart}
+        onAddPart={() => addBlankParts(toolingId, 1)}
+        onAddPartBatch={() => setPartBatchModal({ toolingId, open: true })}
         onAddChildItem={handleAddChildItem}
       />
     )
@@ -2515,17 +2567,30 @@ const ToolingInfoPage: React.FC = () => {
     selectedRowKeys,
     createPartColumns,
     createChildColumns,
+    addBlankParts,
     data,
-    setPartsMap,
     setChildItemsMap,
-    materials,
-    materialSources,
-    partTypes,
-    materialOptions,
-    materialSourceOptions,
-    materialSourceNameMap,
-    partTypeOptions
+    setPartBatchModal
   ])
+
+  const confirmPartBatchAdd = useCallback(() => {
+    const toolingId = String(partBatchModal.toolingId || '')
+    if (!toolingId) return
+    const count = Math.floor(Number(partBatchCount))
+    if (!Number.isFinite(count) || count <= 0) {
+      message.warning('请输入大于0的批量数量')
+      return
+    }
+    const parent = dataRef.current.find(d => d.id === toolingId)
+    const parentInv = String(parent?.inventory_number || '').trim()
+    if (!parentInv) {
+      message.warning('请先填写父表盘存编号后再批量添加')
+      return
+    }
+    addBlankParts(toolingId, count)
+    setPartBatchModal({ toolingId: '', open: false })
+    setPartBatchCount('5')
+  }, [partBatchModal, partBatchCount, addBlankParts])
 
   // 确保展开的子表至少有一行空白行
   useEffect(() => {
@@ -2539,9 +2604,13 @@ const ToolingInfoPage: React.FC = () => {
         const list = next[tid]
         // 仅当明确为数组且长度为0时（已加载但无数据），添加空白行
         if (Array.isArray(list) && list.length === 0) {
+          const parent = dataRef.current.find(d => d.id === tid)
+          const parentInv = String(parent?.inventory_number || '')
+          const nextInv = getNextPartInventoryNumbers(parentInv, [], 1)[0] || ''
           next[tid] = [{
             id: `blank-${tid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             tooling_id: tid,
+            part_inventory_number: nextInv,
             part_drawing_number: '',
             part_name: '',
             part_quantity: '',
@@ -4906,6 +4975,27 @@ const ToolingInfoPage: React.FC = () => {
           }}
         />
       </div>
+
+      <Modal
+        title="批量添加零件"
+        open={partBatchModal.open}
+        onCancel={() => {
+          setPartBatchModal({ toolingId: '', open: false })
+          setPartBatchCount('5')
+        }}
+        onOk={confirmPartBatchAdd}
+        destroyOnHidden
+      >
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div>请输入要批量添加的零件行数</div>
+          <Input
+            value={partBatchCount}
+            onChange={(e) => setPartBatchCount(String(e.target.value || '').replace(/[^\d]/g, ''))}
+            placeholder="例如：5"
+          />
+          <div style={{ color: '#888', fontSize: 12 }}>系统将自动生成连续零件盘存编号，后续仍可手动修改。</div>
+        </div>
+      </Modal>
       
       {/* 导入二次弹窗 */}
       <Modal
