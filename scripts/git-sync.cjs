@@ -18,14 +18,6 @@ function getOutput(args) {
   return String(result.stdout || '')
 }
 
-function tryGetOutput(args) {
-  const result = spawnSync('git', args, { encoding: 'utf8', shell: false })
-  if (result.status !== 0) {
-    return ''
-  }
-  return String(result.stdout || '')
-}
-
 function parseArgs(argv) {
   const out = { message: '', files: [], auto: false }
   for (let i = 0; i < argv.length; i += 1) {
@@ -76,22 +68,8 @@ function nowText() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-function detectTargetBranch() {
-  const sym = tryGetOutput(['symbolic-ref', 'refs/remotes/origin/HEAD']).trim()
-  if (sym.startsWith('refs/remotes/origin/')) {
-    const b = sym.slice('refs/remotes/origin/'.length).trim()
-    if (b) return b
-  }
-  const hasMain = tryGetOutput(['ls-remote', '--heads', 'origin', 'main']).trim()
-  if (hasMain) return 'main'
-  const hasMaster = tryGetOutput(['ls-remote', '--heads', 'origin', 'master']).trim()
-  if (hasMaster) return 'master'
-  return 'main'
-}
-
 const { message, files, auto } = parseArgs(process.argv.slice(2))
 const version = readVersion()
-const targetBranch = detectTargetBranch()
 const commitMessage = message || (auto ? `chore: auto sync ${version ? `v${version} ` : ''}${nowText()}`.trim() : '')
 if (!commitMessage) {
   console.error('Commit message is required. Use -Message "your message", or run with --auto.')
@@ -109,13 +87,13 @@ if (staged) {
   runGit(['commit', '-m', commitMessage])
 }
 
-runGit(['pull', '--rebase', '--autostash', 'origin', targetBranch])
-runGit(['push', 'origin', `HEAD:${targetBranch}`])
+runGit(['pull', '--rebase', '--autostash', 'origin', 'main'])
+runGit(['push', 'origin', 'main'])
 const localHead = getOutput(['rev-parse', 'HEAD']).trim()
-const remoteInfo = getOutput(['ls-remote', 'origin', `refs/heads/${targetBranch}`]).trim()
+const remoteInfo = getOutput(['ls-remote', 'origin', 'refs/heads/main']).trim()
 const remoteHead = String(remoteInfo.split(/\s+/)[0] || '').trim()
 if (!localHead || !remoteHead || localHead !== remoteHead) {
-  console.error(`Git sync verify failed: branch=${targetBranch} local=${localHead} remote=${remoteHead}`)
+  console.error(`Git sync verify failed: local=${localHead} remote=${remoteHead}`)
   process.exit(2)
 }
-console.log(`Git sync verified: branch=${targetBranch} head=${localHead}`)
+console.log(`Git sync verified: ${localHead}`)
