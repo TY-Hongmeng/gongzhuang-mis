@@ -56,8 +56,21 @@ interface RowItem {
   sets_count?: number
   recorder?: string
 }
+const createBlankToolingRow = (id: string): RowItem => ({
+  id,
+  inventory_number: '',
+  production_unit: '',
+  category: '',
+  priority_level: 0,
+  received_date: '',
+  demand_date: '',
+  completed_date: '',
+  project_name: '',
+  production_date: '',
+  sets_count: 1,
+  recorder: ''
+})
 
-interface PartItem {
   id: string
   tooling_id: string
   inventory_number?: string
@@ -199,6 +212,7 @@ const ExpandedSubTables: React.FC<{
   onAddPart: () => void
   onAddPartBatch: () => void
   onAddChildItem: () => void
+  onAddChildItemBatch: () => void
 }> = React.memo(({
   toolingId,
   parts,
@@ -214,7 +228,8 @@ const ExpandedSubTables: React.FC<{
   setSelectedRowKeys,
   onAddPart,
   onAddPartBatch,
-  onAddChildItem
+  onAddChildItem,
+  onAddChildItemBatch
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
     const v = String((rec as any).purchase_status || '').trim()
@@ -355,7 +370,10 @@ const ExpandedSubTables: React.FC<{
       </div>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
+          <Space size={8}>
+            <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
+            <Button type="dashed" size="small" onClick={onAddChildItemBatch}>批量添加</Button>
+          </Space>
           <Segmented
             options={[
               { label: `全部 (${childCounts.all})`, value: 'all' },
@@ -426,15 +444,12 @@ const ToolingInfoPage: React.FC = () => {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-  const [blankPartDisabledMap, setBlankPartDisabledMap] = useState<Record<string, boolean>>({})
-  const [blankChildDisabledMap, setBlankChildDisabledMap] = useState<Record<string, boolean>>({})
-  const blankPartDisabledMapRef = useRef(blankPartDisabledMap)
-  const blankChildDisabledMapRef = useRef(blankChildDisabledMap)
-  useEffect(() => { blankPartDisabledMapRef.current = blankPartDisabledMap }, [blankPartDisabledMap])
-  useEffect(() => { blankChildDisabledMapRef.current = blankChildDisabledMap }, [blankChildDisabledMap])
-  const [extraRows, setExtraRows] = useState(2)
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef<number>(0)
+  const uiBlankToolingRowsRef = useRef<RowItem[]>([
+    createBlankToolingRow('blank-ui-0'),
+    createBlankToolingRow('blank-ui-1')
+  ])
   const [tableScrollY, setTableScrollY] = useState(600)
   const statusColorMap: Record<string, string> = {
     '审批中': '#faad14',
@@ -498,6 +513,8 @@ const ToolingInfoPage: React.FC = () => {
   const [importSummaryVisible, setImportSummaryVisible] = useState(false)
   const [partBatchModal, setPartBatchModal] = useState<{ toolingId: string; open: boolean }>({ toolingId: '', open: false })
   const [partBatchCount, setPartBatchCount] = useState('5')
+  const [childBatchModal, setChildBatchModal] = useState<{ toolingId: string; open: boolean }>({ toolingId: '', open: false })
+  const [childBatchCount, setChildBatchCount] = useState('5')
   const [importSummary, setImportSummary] = useState({
     tooling: { total: 0, success: 0, failed: 0 },
     parts: { total: 0, success: 0, failed: 0 },
@@ -1116,22 +1133,13 @@ const ToolingInfoPage: React.FC = () => {
       if (inv && existedInv.has(inv)) return false
       return true
     })
-    const blanks = arr.filter(x => String(x.id || '').startsWith('blank-')).length
-    for (let i = blanks; i < 2; i++) {
-      arr.push({
-        id: `blank-${Date.now()}-${i}`,
-        inventory_number: '',
-        production_unit: '',
-        category: '',
-        priority_level: 0,
-        received_date: '',
-        demand_date: '',
-        completed_date: '',
-        project_name: '',
-        production_date: '',
-        sets_count: 1,
-        recorder: ''
-      })
+    const existingIds = new Set(arr.map(r => String(r.id || '')))
+    for (const blankRow of uiBlankToolingRowsRef.current) {
+      const blankCount = arr.filter(x => String(x.id || '').startsWith('blank-')).length
+      if (blankCount >= 2) break
+      if (existingIds.has(blankRow.id)) continue
+      arr.push({ ...blankRow })
+      existingIds.add(blankRow.id)
     }
     return arr
   }
@@ -2488,6 +2496,23 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [setPartsMap])
 
+  const addBlankChildItems = useCallback((toolingId: string, count: number) => {
+    const safeCount = Math.max(1, Math.min(200, Math.floor(Number(count) || 1)))
+    setChildItemsMap(prev => {
+      const list = prev[toolingId] || []
+      const now = Date.now()
+      const added = Array.from({ length: safeCount }).map((_, idx) => ({
+        id: `blank-${toolingId}-${now}-child-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+        tooling_id: toolingId,
+        name: '',
+        model: '',
+        quantity: '',
+        remarks: ''
+      }))
+      return { ...prev, [toolingId]: [...list, ...added] }
+    })
+  }, [setChildItemsMap])
+
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
     const parent = data.find(d => d.id === toolingId) as any
@@ -2559,6 +2584,7 @@ const ToolingInfoPage: React.FC = () => {
         onAddPart={() => addBlankParts(toolingId, 1)}
         onAddPartBatch={() => setPartBatchModal({ toolingId, open: true })}
         onAddChildItem={handleAddChildItem}
+        onAddChildItemBatch={() => setChildBatchModal({ toolingId, open: true })}
       />
     )
   }, [
@@ -2568,9 +2594,11 @@ const ToolingInfoPage: React.FC = () => {
     createPartColumns,
     createChildColumns,
     addBlankParts,
+    addBlankChildItems,
     data,
     setChildItemsMap,
-    setPartBatchModal
+    setPartBatchModal,
+    setChildBatchModal
   ])
 
   const confirmPartBatchAdd = useCallback(() => {
@@ -2591,6 +2619,19 @@ const ToolingInfoPage: React.FC = () => {
     setPartBatchModal({ toolingId: '', open: false })
     setPartBatchCount('5')
   }, [partBatchModal, partBatchCount, addBlankParts])
+
+  const confirmChildBatchAdd = useCallback(() => {
+    const toolingId = String(childBatchModal.toolingId || '')
+    if (!toolingId) return
+    const count = Math.floor(Number(childBatchCount))
+    if (!Number.isFinite(count) || count <= 0) {
+      message.warning('请输入大于0的批量数量')
+      return
+    }
+    addBlankChildItems(toolingId, count)
+    setChildBatchModal({ toolingId: '', open: false })
+    setChildBatchCount('5')
+  }, [childBatchModal, childBatchCount, addBlankChildItems])
 
   // 确保展开的子表至少有一行空白行
   useEffect(() => {
@@ -2646,7 +2687,7 @@ const ToolingInfoPage: React.FC = () => {
       })
       return hasChange ? next : prev
     })
-  }, [expandedRowKeys, expandedChildKeys, partsMap, childItemsMap, setPartsMap, setChildItemsMap])
+  }, [expandedRowKeys, expandedChildKeys, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
@@ -3159,167 +3200,6 @@ const ToolingInfoPage: React.FC = () => {
       )
     }
   ], [handleSave, data, fetchPartsData, fetchChildItemsData])
-
-  // 导出工装信息为Excel
-  const handleExport = async () => {
-    try {
-      // 确保元数据与子表均已加载
-      if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
-        await fetchAllMeta()
-      }
-      const parentIds = data.filter(item => !String(item.id || '').startsWith('blank-')).map(i => String(i.id))
-      const needPartsFetch = parentIds.filter(id => !partsMap[id] || partsMap[id].length === 0)
-      const needChildFetch = parentIds.filter(id => !childItemsMap[id] || childItemsMap[id].length === 0)
-      const chunk = (arr: string[], size: number) => {
-        const res: string[][] = []
-        for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size))
-        return res
-      }
-      const size = getBatchSize()
-      const perf: { ts: number; size: number; parts: Array<{ len: number; ms: number }>; child: Array<{ len: number; ms: number }>; totalMs: number } = { ts: Date.now(), size, parts: [], child: [], totalMs: 0 }
-      const t0 = Date.now()
-      for (const group of chunk(needPartsFetch, size)) {
-        const s = Date.now()
-        await Promise.all(group.map(id => fetchPartsData(id)))
-        perf.parts.push({ len: group.length, ms: Date.now() - s })
-      }
-      for (const group of chunk(needChildFetch, size)) {
-        const s = Date.now()
-        await Promise.all(group.map(id => fetchChildItemsData(id)))
-        perf.child.push({ len: group.length, ms: Date.now() - s })
-      }
-      perf.totalMs = Date.now() - t0
-      try { safeLocalStorage.setItem('parts_fetch_perf', JSON.stringify(perf)) } catch {}
-
-      // 创建工作簿
-      const wb = XLSX.utils.book_new()
-      
-      // 1. 导出工装信息（父表）
-      const toolingExportData = data.filter(item => !String(item.id || '').startsWith('blank-')).map(item => ({
-        '盘存编号': item.inventory_number || '',
-        '项目名称': item.project_name || '',
-        '投产单位': item.production_unit || '',
-        '工装类别': item.category || '',
-        '接收日期': item.received_date || '',
-        '需求日期': item.demand_date || '',
-        '完成日期': item.completed_date || '',
-        '责任人': item.recorder || ''
-      }))
-      const toolingWs = XLSX.utils.json_to_sheet(toolingExportData)
-      XLSX.utils.book_append_sheet(wb, toolingWs, '工装信息')
-      
-      // 2. 导出零件信息（子表）
-      const partsExportData: any[] = []
-      data.filter(item => !String(item.id || '').startsWith('blank-')).forEach(item => {
-        const parts = partsMap[item.id] || []
-        parts.filter(part => !String(part.id || '').startsWith('blank-')).forEach((part: any) => {
-          // 查找材质名称
-          const material = materials.find(m => String(m.id) === String(part.material_id))?.name || ''
-          // 查找材料来源名称
-          const materialSource = materialSources.find(ms => String(ms.id) === String(part.material_source_id))?.name || ''
-          const parsed = parsePartRemarkFields(String(part.remarks || ''))
-          
-          partsExportData.push({
-            '父表盘存编号': item.inventory_number || '',
-            '盘存编号': part.part_inventory_number || '',
-            '图号': part.part_drawing_number || '',
-            '零件名称': part.part_name || '',
-            '数量': part.part_quantity || '',
-            '材质': material,
-            '材料来源': materialSource,
-            '料型': part.part_category || '',
-            '规格': formatSpecificationsForProduction(part.specifications, part.part_category),
-            '热处理': parsed.heatTreatment || '',
-            '需求日期': parsed.demandDate || ''
-          })
-        })
-      })
-      const partsWs = XLSX.utils.json_to_sheet(partsExportData)
-      XLSX.utils.book_append_sheet(wb, partsWs, '零件信息')
-      
-      // 3. 导出标准件信息（子表）
-      const childItemsExportData: any[] = []
-      data.filter(item => !String(item.id || '').startsWith('blank-')).forEach(item => {
-        const childItems = childItemsMap[item.id] || []
-        childItems.filter(childItem => !String(childItem.id || '').startsWith('blank-')).forEach((childItem: any) => {
-          childItemsExportData.push({
-            '父表盘存编号': item.inventory_number || '',
-            '名称': childItem.name || '',
-            '型号': childItem.model || '',
-            '数量': childItem.quantity || '',
-            '单位': childItem.unit || '',
-            '需求日期': childItem.required_date || ''
-          })
-        })
-      })
-      const childItemsWs = XLSX.utils.json_to_sheet(childItemsExportData)
-      XLSX.utils.book_append_sheet(wb, childItemsWs, '标准件信息')
-      const findHeaderCol = (ws: any, headerName: string) => {
-        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
-        for (let c = range.s.c; c <= range.e.c; c++) {
-          const addr = XLSX.utils.encode_cell({ c, r: range.s.r })
-          const cell = ws[addr]
-          if (cell && String(cell.v) === headerName) return c
-        }
-        return 0
-      }
-      const toolingColInv = findHeaderCol(toolingWs as any, '盘存编号')
-      const partsColParentInv = findHeaderCol(partsWs as any, '父表盘存编号')
-      const childColParentInv = findHeaderCol(childItemsWs as any, '父表盘存编号')
-      const parentRowIndexMap: Record<string, number> = {}
-      toolingExportData.forEach((it, idx) => { parentRowIndexMap[String((it as any)['盘存编号'] || '')] = idx + 2 })
-      const partsFirstIndexMap: Record<string, number> = {}
-      partsExportData.forEach((it, idx) => {
-        const k = String((it as any)['父表盘存编号'] || '')
-        if (!partsFirstIndexMap[k]) partsFirstIndexMap[k] = idx + 2
-      })
-      const childFirstIndexMap: Record<string, number> = {}
-      childItemsExportData.forEach((it, idx) => {
-        const k = String((it as any)['父表盘存编号'] || '')
-        if (!childFirstIndexMap[k]) childFirstIndexMap[k] = idx + 2
-      })
-      toolingExportData.forEach((it: any, idx) => {
-        const inv = String(it['盘存编号'] || '')
-        const targetRow = partsFirstIndexMap[inv] || childFirstIndexMap[inv]
-        if (targetRow) {
-          const srcAddr = XLSX.utils.encode_cell({ c: toolingColInv, r: idx + 1 })
-          const targetAddr = XLSX.utils.encode_cell({ c: partsColParentInv, r: targetRow - 1 })
-          const cell = (toolingWs as any)[srcAddr] || { t: 's', v: inv }
-          ;(cell as any).l = { Target: "#'零件信息'!" + targetAddr }
-          ;(toolingWs as any)[srcAddr] = cell
-        }
-      })
-      partsExportData.forEach((it: any, idx) => {
-        const inv = String(it['父表盘存编号'] || '')
-        const parentRow = parentRowIndexMap[inv]
-        if (parentRow) {
-          const srcAddr = XLSX.utils.encode_cell({ c: partsColParentInv, r: idx + 1 })
-          const targetAddr = XLSX.utils.encode_cell({ c: toolingColInv, r: parentRow - 1 })
-          const cell = (partsWs as any)[srcAddr] || { t: 's', v: inv }
-          ;(cell as any).l = { Target: "#'工装信息'!" + targetAddr }
-          ;(partsWs as any)[srcAddr] = cell
-        }
-      })
-      childItemsExportData.forEach((it: any, idx) => {
-        const inv = String(it['父表盘存编号'] || '')
-        const parentRow = parentRowIndexMap[inv]
-        if (parentRow) {
-          const srcAddr = XLSX.utils.encode_cell({ c: childColParentInv, r: idx + 1 })
-          const targetAddr = XLSX.utils.encode_cell({ c: toolingColInv, r: parentRow - 1 })
-          const cell = (childItemsWs as any)[srcAddr] || { t: 's', v: inv }
-          ;(cell as any).l = { Target: "#'工装信息'!" + targetAddr }
-          ;(childItemsWs as any)[srcAddr] = cell
-        }
-      })
-      
-      // 导出文件
-      XLSX.writeFile(wb, `工装信息_${new Date().toISOString().slice(0, 10)}.xlsx`)
-      message.success('导出成功')
-    } catch (error) {
-      console.error('导出失败:', error)
-      message.error('导出失败，请重试')
-    }
-  }
 
   // 下载导入模板
   const downloadImportTemplate = () => {
@@ -4996,6 +4876,27 @@ const ToolingInfoPage: React.FC = () => {
           <div style={{ color: '#888', fontSize: 12 }}>系统将自动生成连续零件盘存编号，后续仍可手动修改。</div>
         </div>
       </Modal>
+
+      <Modal
+        title="批量添加标准件"
+        open={childBatchModal.open}
+        onCancel={() => {
+          setChildBatchModal({ toolingId: '', open: false })
+          setChildBatchCount('5')
+        }}
+        onOk={confirmChildBatchAdd}
+        destroyOnHidden
+      >
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div>请输入要批量添加的标准件行数</div>
+          <Input
+            value={childBatchCount}
+            onChange={(e) => setChildBatchCount(String(e.target.value || '').replace(/[^\d]/g, ''))}
+            placeholder="例如：5"
+          />
+          <div style={{ color: '#888', fontSize: 12 }}>批量行创建后可继续逐行填写名称、型号、数量、单位与需求日期。</div>
+        </div>
+      </Modal>
       
       {/* 导入二次弹窗 */}
       <Modal
@@ -5010,11 +4911,13 @@ const ToolingInfoPage: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-2">导入说明</h3>
             <ul className="list-disc list-inside space-y-1 text-gray-600">
+              <li>当前导入模板已同步最新子表结构（零件信息 + 标准件信息）</li>
               <li>请严格按照模板格式填写工装信息</li>
               <li>必填字段不可为空，请参考模板中的示例数据</li>
               <li>日期格式为YYYY-MM-DD</li>
               <li>零件盘存编号格式：父表盘存编号+两位序号（如：LD26010101）</li>
               <li>"父表盘存编号"必须与工装信息表中的"盘存编号"完全一致</li>
+              <li>标准件信息模板字段：名称、型号、数量、单位、需求日期</li>
               <li>材质、材料来源、料型可为空，系统将提示但仍可导入</li>
               <li>批量导入前请先备份现有数据</li>
             </ul>
