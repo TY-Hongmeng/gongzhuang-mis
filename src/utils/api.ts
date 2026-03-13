@@ -2053,6 +2053,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Cutting orders delete (single -> soft delete)
       {
         const m = path.match(/^\/api\/cutting-orders\/([^\/]+)$/)
+        if (m && method === 'PUT') {
+          const id = m[1]
+          const body = await readBody()
+          const payload: any = {}
+          if (Object.prototype.hasOwnProperty.call(body, 'part_quantity')) {
+            const qtyNum = Number(body.part_quantity)
+            if (!Number.isFinite(qtyNum) || qtyNum <= 0) return jsonResponse({ success: false, error: '数量必须为大于0的数字' }, 400)
+            payload.part_quantity = qtyNum
+          }
+          if (Object.prototype.hasOwnProperty.call(body, 'total_weight')) {
+            const weightNum = Number(body.total_weight)
+            payload.total_weight = Number.isFinite(weightNum) ? weightNum : null
+          }
+          if (Object.prototype.hasOwnProperty.call(body, 'notes')) {
+            payload.notes = String(body.notes ?? '').trim() || null
+          }
+          if (Object.keys(payload).length === 0) return jsonResponse({ success: false, error: '缺少可更新字段' }, 400)
+          payload.updated_date = new Date().toISOString()
+          const { data, error } = await supabase
+            .from('cutting_orders')
+            .update(payload)
+            .eq('id', id)
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
         if (m && method === 'DELETE') {
           const id = m[1]
           if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
