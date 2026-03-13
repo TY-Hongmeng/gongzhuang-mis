@@ -146,6 +146,14 @@ export function installApiInterceptor() {
 
       // 1. 本地环境检测：如果是本地 localhost 且请求 /api/ 开头，直接放行，走 Vite 代理到本地 Express 后端
       const isDev = (import.meta as any).env?.DEV === true
+      const debugLog = (() => {
+        if (isDev) return true
+        try {
+          return (typeof localStorage !== 'undefined' && localStorage.getItem('debug_api') === '1')
+        } catch {
+          return false
+        }
+      })()
       const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
       const isGhPages = /github\.io/i.test(host)
       
@@ -164,17 +172,17 @@ export function installApiInterceptor() {
         // 在本地环境或开发模式下，强制优先走本地后端
         if ((isLocal || isDev) && !isGhPages) {
           try {
-            console.log(`[API Interceptor] Local/Dev env detected (host: ${host}), routing ${cleanUrl} to backend.`)
+            if (debugLog) console.log(`[API Interceptor] Local/Dev env detected (host: ${host}), routing ${cleanUrl} to backend.`)
             const res = await originalFetch(input, init)
             // 如果后端返回 502/504，说明代理目标（后端服务）可能未启动
             if (res.status === 502 || res.status === 504) {
-              console.warn(`[API Interceptor] Backend gateway error (${res.status}) for ${cleanUrl}, falling back to client-side Supabase.`)
+              if (debugLog) console.warn(`[API Interceptor] Backend gateway error (${res.status}) for ${cleanUrl}, falling back to client-side Supabase.`)
               return await handleClientSideApi(cleanUrl, init)
             }
             return res
           } catch (err) {
             // 捕获 ERR_CONNECTION_REFUSED 等网络错误，并自动回退到客户端直接连接 Supabase
-            console.warn(`[API Interceptor] Backend connection failed for ${cleanUrl}, falling back to client-side Supabase. Error:`, err)
+            if (debugLog) console.warn(`[API Interceptor] Backend connection failed for ${cleanUrl}, falling back to client-side Supabase. Error:`, err)
             return await handleClientSideApi(cleanUrl, init)
           }
         }
@@ -215,7 +223,7 @@ export function installApiInterceptor() {
           headers.set('authorization', `Bearer ${anon}`)
           headers.set('Authorization', `Bearer ${anon}`)
         }
-        console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
+        if (debugLog) console.log('[API Interceptor] Adding API key to Supabase request:', cleanUrl)
         const patchedInit: RequestInit = { ...(init || {}), headers, method: (init as any)?.method || baseReq?.method || (init as any)?.method }
         const method = ((init as any)?.method || baseReq?.method || 'GET').toUpperCase()
         // rewrite resource names if needed
@@ -1435,16 +1443,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const items = (data || []) as any[]
         const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
         if (missingIds.length > 0) {
-          const { data: statusRows } = await supabase
-            .from('tooling_status')
-            .select('item_id,status')
-            .eq('item_type', 'part')
-            .in('item_id', missingIds)
           const statusMap = new Map<string, string>()
-          ;(statusRows || []).forEach((r: any) => {
-            const k = String(r.item_id || '')
-            if (k) statusMap.set(k, String(r.status || ''))
-          })
+          const BATCH_SIZE = 1000
+          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + BATCH_SIZE)
+            const { data: statusRows, error: statusErr } = await supabase
+              .from('tooling_status')
+              .select('item_id,status')
+              .eq('item_type', 'part')
+              .in('item_id', slice as any)
+            if (statusErr) break
+            ;(statusRows || []).forEach((r: any) => {
+              const k = String(r.item_id || '')
+              if (k) statusMap.set(k, String(r.status || ''))
+            })
+          }
           items.forEach((r: any) => {
             if (!String(r.purchase_status || '').trim()) {
               const s = statusMap.get(String(r.id || '')) || ''
@@ -1578,16 +1591,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const items = (data || []) as any[]
         const missingIds = items.filter(r => !String(r.purchase_status || '').trim()).map(r => String(r.id || '')).filter(Boolean)
         if (missingIds.length > 0) {
-          const { data: statusRows } = await supabase
-            .from('tooling_status')
-            .select('item_id,status')
-            .eq('item_type', 'child')
-            .in('item_id', missingIds)
           const statusMap = new Map<string, string>()
-          ;(statusRows || []).forEach((r: any) => {
-            const k = String(r.item_id || '')
-            if (k) statusMap.set(k, String(r.status || ''))
-          })
+          const BATCH_SIZE = 1000
+          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + BATCH_SIZE)
+            const { data: statusRows, error: statusErr } = await supabase
+              .from('tooling_status')
+              .select('item_id,status')
+              .eq('item_type', 'child')
+              .in('item_id', slice as any)
+            if (statusErr) break
+            ;(statusRows || []).forEach((r: any) => {
+              const k = String(r.item_id || '')
+              if (k) statusMap.set(k, String(r.status || ''))
+            })
+          }
           items.forEach((r: any) => {
             if (!String(r.purchase_status || '').trim()) {
               const s = statusMap.get(String(r.id || '')) || ''

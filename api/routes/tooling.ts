@@ -609,16 +609,21 @@ router.get('/:id/parts', async (req, res) => {
         .map(r => String(r.id || ''))
         .filter(Boolean)
       if (missingIds.length > 0) {
-        const { data: statusRows } = await supabase
-          .from('tooling_status')
-          .select('item_id,status')
-          .eq('item_type', 'part')
-          .in('item_id', missingIds)
         const statusMap = new Map<string, string>()
-        ;(statusRows || []).forEach((r: any) => {
-          const k = String(r.item_id || '')
-          if (k) statusMap.set(k, String(r.status || ''))
-        })
+        const BATCH_SIZE = 1000
+        for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+          const slice = missingIds.slice(i, i + BATCH_SIZE)
+          const { data: statusRows, error: statusErr } = await supabase
+            .from('tooling_status')
+            .select('item_id,status')
+            .eq('item_type', 'part')
+            .in('item_id', slice as any)
+          if (statusErr) break
+          ;(statusRows || []).forEach((r: any) => {
+            const k = String(r.item_id || '')
+            if (k) statusMap.set(k, String(r.status || ''))
+          })
+        }
         items.forEach((r: any) => {
           if (!String(r.purchase_status || '').trim()) {
             const s = statusMap.get(String(r.id || '')) || ''
@@ -1777,16 +1782,21 @@ router.get('/:id/child-items', async (req, res) => {
           .map(r => String(r.id || ''))
           .filter(Boolean)
         if (missingIds.length > 0) {
-          const { data: statusRows } = await supabase
-            .from('tooling_status')
-            .select('item_id,status')
-            .eq('item_type', 'child')
-            .in('item_id', missingIds)
           const statusMap = new Map<string, string>()
-          ;(statusRows || []).forEach((r: any) => {
-            const k = String(r.item_id || '')
-            if (k) statusMap.set(k, String(r.status || ''))
-          })
+          const BATCH_SIZE = 1000
+          for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+            const slice = missingIds.slice(i, i + BATCH_SIZE)
+            const { data: statusRows, error: statusErr } = await supabase
+              .from('tooling_status')
+              .select('item_id,status')
+              .eq('item_type', 'child')
+              .in('item_id', slice as any)
+            if (statusErr) break
+            ;(statusRows || []).forEach((r: any) => {
+              const k = String(r.item_id || '')
+              if (k) statusMap.set(k, String(r.status || ''))
+            })
+          }
           items.forEach((r: any) => {
             if (!String(r.purchase_status || '').trim()) {
               const s = statusMap.get(String(r.id || '')) || ''

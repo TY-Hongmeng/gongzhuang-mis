@@ -507,7 +507,9 @@ const ToolingInfoPage: React.FC = () => {
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
-    console.log('[partsMap] updated, keys:', Object.keys(partsMap), 'total items:', Object.values(partsMap).reduce((sum, list) => sum + list.length, 0), 'timestamp:', Date.now())
+    if ((import.meta as any).env?.DEV === true) {
+      console.log('[partsMap] updated, keys:', Object.keys(partsMap), 'total items:', Object.values(partsMap).reduce((sum, list) => sum + list.length, 0), 'timestamp:', Date.now())
+    }
     partsMapRef.current = partsMap
   }, [partsMap])
   
@@ -891,7 +893,7 @@ const ToolingInfoPage: React.FC = () => {
       })()
       
       setWorkHoursData(hoursByInventoryNo)
-      console.log('成功获取工时数据:', hoursByInventoryNo)
+      if ((import.meta as any).env?.DEV === true) console.log('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
       console.error('获取工时数据失败:', error)
       // 即使发生异常，也不影响页面其他功能
@@ -1072,48 +1074,6 @@ const ToolingInfoPage: React.FC = () => {
       ])))
     }
   }, [fetchAllMeta, fetchToolingData, fetchPartsData, fetchChildItemsData, expandedRowKeys, expandedChildKeys])
-
-  const handleExpandAll = useCallback(async () => {
-    const list = ensureBlankToolings(filteredVisibleData).filter(r => !String(r.id || '').startsWith('blank-'))
-    const ids = list.map(r => String(r.id || '')).filter(Boolean)
-    setExpandedRowKeys(ids)
-    setExpandedChildKeys(ids)
-
-    const partsNeed = ids.filter((id) => !partsMap[id] || (partsMap[id] || []).length === 0)
-    const childNeed = ids.filter((id) => !childItemsMap[id] || (childItemsMap[id] || []).length === 0)
-
-    if (partsNeed.length > 0) {
-      setPartsLoadingMap(prev => {
-        const next = { ...prev }
-        partsNeed.forEach(id => { next[id] = true })
-        return next
-      })
-    }
-    if (childNeed.length > 0) {
-      setChildLoadingMap(prev => {
-        const next = { ...prev }
-        childNeed.forEach(id => { next[id] = true })
-        return next
-      })
-    }
-
-    const tasks = ids.map((id) => async () => {
-      await Promise.all([
-        fetchPartsData(id),
-        fetchChildItemsData(id)
-      ])
-    })
-    const limit = 6
-    let idx = 0
-    const runNext = async (): Promise<void> => {
-      if (idx >= tasks.length) return
-      const cur = idx
-      idx += 1
-      await tasks[cur]()
-      return await runNext()
-    }
-    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => runNext()))
-  }, [childItemsMap, expandedChildKeys, expandedRowKeys, fetchChildItemsData, fetchPartsData, filteredVisibleData, partsMap, setChildLoadingMap, setExpandedChildKeys, setExpandedRowKeys, setPartsLoadingMap])
 
   const handleCollapseAll = useCallback(() => {
     setExpandedRowKeys([])
@@ -4759,7 +4719,6 @@ const ToolingInfoPage: React.FC = () => {
             />
           </div>
           <Space size={6}>
-            <Button size="small" onClick={() => handleExternalAction(handleExpandAll)}>全部展开</Button>
             <Button size="small" onClick={() => handleExternalAction(handleCollapseAll)}>全部折叠</Button>
           </Space>
         </div>
