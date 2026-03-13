@@ -1507,7 +1507,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const t = typeof body.total_price === 'number' ? body.total_price : Number(body.total_price)
           payload.total_price = Number.isNaN(t) ? null : t
         }
-        const { data, error } = await supabase.from('parts_info').insert(payload).select('*').single()
+        let { data, error } = await supabase.from('parts_info').insert(payload).select('*').single()
+        if (error) {
+          const msg = String(error.message || '')
+          if (Object.prototype.hasOwnProperty.call(payload, 'total_price') && msg.includes('total_price')) {
+            const retryPayload = { ...payload }
+            delete retryPayload.total_price
+            const retry = await supabase.from('parts_info').insert(retryPayload).select('*').single()
+            data = retry.data as any
+            error = retry.error as any
+          }
+        }
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true, data })
       }
@@ -1574,6 +1584,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const hasOtherFields = Object.keys(payload).length > 0
         if (hasOtherFields) {
           let { error } = await supabase.from('parts_info').update(payload).eq('id', id)
+          if (error && Object.prototype.hasOwnProperty.call(payload, 'total_price')) {
+            const msg = String(error.message || '')
+            if (msg.includes('total_price')) {
+              const retryPayload = { ...payload }
+              delete retryPayload.total_price
+              const retry = await supabase.from('parts_info').update(retryPayload).eq('id', id)
+              error = retry.error
+            }
+          }
           if (error && hasStatus && Object.prototype.hasOwnProperty.call(payload, 'purchase_status')) {
             const msg = String(error.message || '')
             if (msg.includes('purchase_status')) {

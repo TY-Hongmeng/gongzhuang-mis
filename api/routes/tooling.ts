@@ -690,6 +690,9 @@ router.post('/:id/parts', async (req, res) => {
     if (payload.part_category === '' || payload.part_category === null) {
       delete payload.part_category;
     }
+    if (Object.prototype.hasOwnProperty.call(payload, 'total_price')) {
+      delete (payload as any).total_price;
+    }
 
     // 补齐材料来源：如果没有提供 material_source_id，但提供了 source 名称，则按名称匹配 material_sources 的 id
     try {
@@ -800,6 +803,9 @@ router.post('/:id/parts', async (req, res) => {
     }
     if (cleanedPayload.weight === '' || cleanedPayload.weight === null) {
       delete cleanedPayload.weight;
+    }
+    if (Object.prototype.hasOwnProperty.call(cleanedPayload, 'total_price')) {
+      delete (cleanedPayload as any).total_price;
     }
     if (hasStatus) {
       delete cleanedPayload.purchase_status

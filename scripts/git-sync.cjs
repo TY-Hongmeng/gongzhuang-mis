@@ -83,11 +83,17 @@ if (files.length > 0) {
 }
 
 const staged = getOutput(['diff', '--cached', '--name-only']).trim()
-if (!staged) {
-  console.log('No staged changes. Exit.')
-  process.exit(0)
+if (staged) {
+  runGit(['commit', '-m', commitMessage])
 }
 
-runGit(['commit', '-m', commitMessage])
 runGit(['pull', '--rebase', '--autostash', 'origin', 'main'])
 runGit(['push', 'origin', 'main'])
+const localHead = getOutput(['rev-parse', 'HEAD']).trim()
+const remoteInfo = getOutput(['ls-remote', 'origin', 'refs/heads/main']).trim()
+const remoteHead = String(remoteInfo.split(/\s+/)[0] || '').trim()
+if (!localHead || !remoteHead || localHead !== remoteHead) {
+  console.error(`Git sync verify failed: local=${localHead} remote=${remoteHead}`)
+  process.exit(2)
+}
+console.log(`Git sync verified: ${localHead}`)
