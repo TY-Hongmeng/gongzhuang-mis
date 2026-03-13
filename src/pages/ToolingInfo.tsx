@@ -1051,6 +1051,24 @@ const ToolingInfoPage: React.FC = () => {
     calculateTotalPriceRef.current = calculateTotalPrice
   }, [calculateTotalPrice])
 
+  const calcPartMetrics = useCallback((row: PartItem, parentReceivedDate: string) => {
+    const unitWeightRaw = Number(row.weight ?? 0)
+    const unitWeight = unitWeightRaw > 0
+      ? unitWeightRaw
+      : calculatePartWeightRef.current(row.specifications || {}, row.material_id || '', row.part_category || '', partTypesRef.current, materialsRef.current)
+    const qty = Number(row.part_quantity || 0)
+    const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
+    const material = materialsRef.current.find(m => String(m.id) === String(row.material_id || ''))
+    const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
+    const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
+    const totalPrice = totalWeight > 0 && unitPrice > 0 ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice)) : 0
+    return {
+      unitWeight: Number.isFinite(unitWeight) ? unitWeight : 0,
+      totalWeight: Number.isFinite(totalWeight) ? totalWeight : 0,
+      totalPrice: Number.isFinite(totalPrice) ? totalPrice : 0
+    }
+  }, [])
+
   // 空白行数据
   const ensureBlankToolings = (list: RowItem[]) => {
     const seenIds = new Set<string>()
@@ -1419,26 +1437,22 @@ const ToolingInfoPage: React.FC = () => {
       
       setPartsMap(prev => {
         const list = prev[toolingId] || []
+        const parent = dataRef.current.find(d => d.id === toolingId)
+        const parentReceivedDate = String(parent?.received_date || '')
         let updated = list.map(r => {
           if (r.id !== id) return r
           const nextVal = key === 'part_quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value
-          const updatedRow = { ...r, [key]: nextVal }
+          const updatedRow = { ...r, [key]: nextVal } as PartItem
+          if (key === 'specifications' || key === 'material_id' || key === 'part_category' || key === 'part_quantity' || key === 'weight') {
+            const metrics = calcPartMetrics(updatedRow, parentReceivedDate)
+            updatedRow.weight = metrics.unitWeight
+            updatedRow.total_price = metrics.totalPrice
+          }
           if (r.id === id) {
             updatedPartData = updatedRow
           }
           return updatedRow
         })
-        
-        // 如果更新的是规格、材质或料型，重新计算重量
-        if (key === 'specifications' || key === 'material_id' || key === 'part_category') {
-          updated = updated.map(r => {
-            if (r.id === id) {
-              const weight = calculatePartWeight(r.specifications, r.material_id, r.part_category, partTypes, materials)
-              return { ...r, weight }
-            }
-            return r
-          })
-        }
         
         // 非空白行编辑不再主动补充空白行，避免状态长度在普通编辑时增长
         return { ...prev, [toolingId]: updated }
@@ -1504,11 +1518,14 @@ const ToolingInfoPage: React.FC = () => {
           }
         }
 
-        // 规格、材质或料型更新需要联动重量
-        if (key === 'specifications' || key === 'material_id' || key === 'part_category') {
+        // 关键字段更新需要联动重量与金额并持久化
+        if (key === 'specifications' || key === 'material_id' || key === 'part_category' || key === 'part_quantity' || key === 'weight') {
           const nextRow = { ...(current || {}), [key]: value }
-          const newWeight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
-          payload.weight = newWeight
+          const parent = dataRef.current.find(d => d.id === toolingId)
+          const parentReceivedDate = String(parent?.received_date || '')
+          const metrics = calcPartMetrics(nextRow, parentReceivedDate)
+          payload.weight = metrics.unitWeight
+          payload.total_price = metrics.totalPrice
         }
 
         const success = await savePartData(id, payload)
@@ -1567,14 +1584,17 @@ const ToolingInfoPage: React.FC = () => {
             )
             if (!anyHas) return
             
-            const weight = calculatePartWeight(nextRow.specifications, nextRow.material_id, nextRow.part_category, partTypes, materials)
+            const parent = dataRef.current.find(d => d.id === toolingId)
+            const parentReceivedDate = String(parent?.received_date || '')
+            const metrics = calcPartMetrics(nextRow, parentReceivedDate)
             
             const postData: any = { 
               part_drawing_number: nextRow.part_drawing_number || '', 
               part_name: nextRow.part_name || '',
               source: '自备',
               specifications: nextRow.specifications || {},
-              weight: weight,
+              weight: metrics.unitWeight,
+              total_price: metrics.totalPrice,
               remarks: nextRow.remarks || ''
             }
             
@@ -1612,6 +1632,7 @@ const ToolingInfoPage: React.FC = () => {
                   part_category: created.part_category ?? r.part_category ?? '',
                   specifications: created.specifications ?? r.specifications ?? {},
                   weight: created.weight ?? r.weight ?? 0,
+                  total_price: created.total_price ?? r.total_price ?? 0,
                   remarks: created.remarks ?? r.remarks ?? '',
                   part_inventory_number: created.part_inventory_number ?? r.part_inventory_number ?? ''
                 } : r)
@@ -1631,7 +1652,7 @@ const ToolingInfoPage: React.FC = () => {
     } finally {
       partSaveLockRef.current.delete(lockKey)
     }
-  }, [partTypes, materials, savePartData, createPart])
+  }, [savePartData, createPart, calcPartMetrics])
 
 
   const handlePartBatchSave = useCallback(async (toolingId: string, id: string, updates: Partial<PartItem>) => {
@@ -1649,25 +1670,21 @@ const ToolingInfoPage: React.FC = () => {
       
       setPartsMap(prev => {
         const list = prev[toolingId] || []
+        const parent = dataRef.current.find(d => d.id === toolingId)
+        const parentReceivedDate = String(parent?.received_date || '')
         let updated = list.map(r => {
           if (r.id !== id) return r
-          const updatedRow = { ...r, ...updates }
+          const updatedRow = { ...r, ...updates } as PartItem
+          if ('specifications' in updates || 'material_id' in updates || 'part_category' in updates || 'part_quantity' in updates || 'weight' in updates) {
+            const metrics = calcPartMetrics(updatedRow, parentReceivedDate)
+            updatedRow.weight = metrics.unitWeight
+            updatedRow.total_price = metrics.totalPrice
+          }
           if (r.id === id) {
             updatedPartData = updatedRow
           }
           return updatedRow
         })
-        
-        // 如果更新包含规格等字段，重新计算重量（只更新当前修改的零件，避免遍历所有零件）
-        if ('specifications' in updates || 'material_id' in updates || 'part_category' in updates) {
-          updated = updated.map(r => {
-            if (r.id === id) {
-              const weight = calculatePartWeight(r.specifications, r.material_id, r.part_category, partTypes, materials)
-              return { ...r, weight }
-            }
-            return r
-          })
-        }
         
         return { ...prev, [toolingId]: updated }
       })
@@ -1686,7 +1703,8 @@ const ToolingInfoPage: React.FC = () => {
             part_category: updatedPartData.part_category,
             specifications: updatedPartData.specifications,
             remarks: updatedPartData.remarks,
-            weight: updatedPartData.weight
+            weight: updatedPartData.weight,
+            total_price: updatedPartData.total_price
         }
         
         const success = await savePartData(id, payload)
@@ -1701,7 +1719,7 @@ const ToolingInfoPage: React.FC = () => {
     } finally {
       partSaveLockRef.current.delete(lockKey)
     }
-  }, [partTypes, materials, savePartData])
+  }, [savePartData, calcPartMetrics])
 
   // 保存标准件数据
   const handleChildItemSave = useCallback(async (toolingId: string, id: string, key: keyof ChildItem, value: any) => {
@@ -1911,12 +1929,15 @@ const ToolingInfoPage: React.FC = () => {
     const WEIGHT_CACHE_LIMIT = 500
     const PRICE_CACHE_LIMIT = 500
     const getWeightCached = (rec: PartItem) => {
+      const qty = Number(rec.part_quantity) || 0
+      const storedUnitWeight = Number(rec.weight || 0)
+      if (storedUnitWeight > 0) {
+        return { unitWeight: storedUnitWeight, totalWeight: storedUnitWeight * qty }
+      }
       const key = `${rec.material_id}|${rec.part_category}|${JSON.stringify(rec.specifications||{})}|${rec.part_quantity}|${rec.weight||''}`
       const cached = weightCacheRef.current.get(key)
       if (cached) return cached
-      const w = rec.weight
-      const unitWeight = w && w > 0 ? w : calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
-      const qty = Number(rec.part_quantity) || 0
+      const unitWeight = calculatePartWeightRef.current(rec.specifications || {}, rec.material_id || '', rec.part_category || '', partTypesRef.current, materialsRef.current)
       const totalWeight = unitWeight * qty
       const val = { unitWeight, totalWeight }
       weightCacheRef.current.set(key, val)
@@ -1927,14 +1948,16 @@ const ToolingInfoPage: React.FC = () => {
       return val
     }
     const getPriceCached = (rec: PartItem) => {
+      const storedTotalPrice = Number(rec.total_price || 0)
+      if (storedTotalPrice > 0) return { total: storedTotalPrice }
       const dep = getWeightCached(rec)
       const material = materialsRef.current.find(m => m.id === rec.material_id)
       const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
       const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
-      const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
       const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}`
       const cached = priceCacheRef.current.get(key)
       if (cached) return cached
+      const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
       const val = { total }
       priceCacheRef.current.set(key, val)
       if (priceCacheRef.current.size > PRICE_CACHE_LIMIT) {

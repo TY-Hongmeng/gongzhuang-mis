@@ -1499,6 +1499,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           remarks: body.remarks ?? '',
           source
         }
+        if (Object.prototype.hasOwnProperty.call(body, 'weight')) {
+          const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
+          payload.weight = Number.isNaN(w) ? null : w
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'total_price')) {
+          const t = typeof body.total_price === 'number' ? body.total_price : Number(body.total_price)
+          payload.total_price = Number.isNaN(t) ? null : t
+        }
         const { data, error } = await supabase.from('parts_info').insert(payload).select('*').single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true, data })
@@ -1545,6 +1553,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (Object.prototype.hasOwnProperty.call(body, 'weight')) {
           const w = typeof body.weight === 'number' ? body.weight : Number(body.weight)
           payload.weight = Number.isNaN(w) ? null : w
+        }
+        if (Object.prototype.hasOwnProperty.call(body, 'total_price')) {
+          const t = typeof body.total_price === 'number' ? body.total_price : Number(body.total_price)
+          payload.total_price = Number.isNaN(t) ? null : t
         }
         const updateStatus = async () => {
           if (!hasStatus) return
