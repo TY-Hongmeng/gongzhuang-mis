@@ -33,12 +33,6 @@ interface CuttingOrder {
   };
 }
 
-const isHeatRemark = (remarks?: string) => {
-  if (!remarks) return false
-  const v = String(remarks).trim().toLowerCase()
-  return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
-}
-
 const CuttingManagement: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -648,15 +642,10 @@ const CuttingManagement: React.FC = () => {
       title: '调质',
       dataIndex: 'remarks',
       key: 'remarks',
-      width: 80,
+      width: 140,
       align: 'center',
       render: (remarks: string | undefined) => {
-        const isHeat = isHeatRemark(remarks)
-        return (
-          <Tag color={isHeat ? 'green' : 'default'}>
-            {isHeat ? '是' : '否'}
-          </Tag>
-        )
+        return <span>{String(remarks || '').trim() || '-'}</span>
       }
     }
   ];
@@ -700,7 +689,7 @@ const CuttingManagement: React.FC = () => {
         o.specifications,
         o.part_quantity,
         Number.isFinite(weightNum) ? Number(weightNum.toFixed(3)) : '',
-        isHeatRemark(o.remarks) ? '是' : '否'
+        String(o.remarks || '').trim()
       ])
     })
     const ws = XLSX.utils.aoa_to_sheet(aoa)
@@ -754,7 +743,7 @@ const CuttingManagement: React.FC = () => {
           <td>${escapeHtml(o.specifications)}</td>
           <td>${escapeHtml(o.part_quantity)}</td>
           <td>${Number.isFinite(weightNum) ? weightNum.toFixed(3) : ''}</td>
-          <td>${isHeatRemark(o.remarks) ? '是' : '否'}</td>
+          <td>${escapeHtml(String(o.remarks || '').trim())}</td>
         </tr>
       `
     }).join('')

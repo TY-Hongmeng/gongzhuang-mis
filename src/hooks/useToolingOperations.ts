@@ -5,6 +5,33 @@ import { calculateTotalPrice } from '../utils/priceCalculator'
 import { supabase } from '../lib/supabase'
 import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../services/toolingService'
 
+const normalizeDateInput = (value: string) => {
+  const v = String(value || '').trim()
+  const m = v.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/)
+  if (!m) return v
+  const mm = String(Number(m[2])).padStart(2, '0')
+  const dd = String(Number(m[3])).padStart(2, '0')
+  return `${m[1]}-${mm}-${dd}`
+}
+
+const parsePartRemarkFields = (remarks: string) => {
+  const raw = String(remarks || '').trim()
+  if (!raw) return { heatTreatment: '', demandDate: '' }
+  const heatMatch = raw.match(/(?:^|;)\s*热处理[:：]\s*([^;]+)/)
+  const demandMatch = raw.match(/(?:^|;)\s*需求日期[:：]\s*([^;]+)/)
+  if (heatMatch || demandMatch) {
+    const heatTreatment = String((heatMatch?.[1] || '')).trim()
+    const normalizedDemand = normalizeDateInput(String((demandMatch?.[1] || '')).trim())
+    const demandDate = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDemand) ? normalizedDemand : ''
+    return { heatTreatment, demandDate }
+  }
+  const normalizedRaw = normalizeDateInput(raw)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedRaw)) {
+    return { heatTreatment: '', demandDate: normalizedRaw }
+  }
+  return { heatTreatment: raw, demandDate: '' }
+}
+
 // 工装业务逻辑Hook
 export const useToolingOperations = () => {
   // 生成下料单
@@ -45,16 +72,8 @@ export const useToolingOperations = () => {
           ? String(part.part_inventory_number).trim()
           : `CO-${part.tooling_id || 'T'}-${part.id || 'P'}-${dateStr}`
         const rawRemark = typeof part.remarks === 'string' ? String(part.remarks).trim() : ''
-        const isHeat = (() => {
-          if (!rawRemark) return false
-          const v = rawRemark.toLowerCase()
-          return v.includes('调质') || v.includes('热处理') || v === '是' || v === '1' || v === 'yes' || v === 'true'
-        })()
-        const heatFlag = isHeat ||
-          String((part as any).heat_treatment || '').trim() === '1' ||
-          String((part as any).heat_treatment || '').trim().toLowerCase() === 'true'
-        // 特别强制：如果原始备注包含调质，就强制为“需调质”，忽略其他情况
-        const finalRemark = heatFlag ? '需调质' : rawRemark
+        const parsedRemark = parsePartRemarkFields(rawRemark)
+        const finalRemark = String(parsedRemark.heatTreatment || '').trim()
         return {
           inventory_number: inv,
           project_name: part.project_name || '',
@@ -204,14 +223,7 @@ export const useToolingOperations = () => {
           const specsText = part.specifications_text || ''
           const model = `${material?.name || ''}${specsText ? '  (' + specsText + ')' : ''}`
 
-          // 从备注中解析需求日期
-          let requiredDate = ''
-          if (part.remarks && part.remarks.trim()) {
-            const dateMatch = part.remarks.match(/\d{4}-\d{2}-\d{2}/)
-            if (dateMatch) {
-              requiredDate = dateMatch[0]
-            }
-          }
+          const requiredDate = parsePartRemarkFields(String(part.remarks || '')).demandDate
 
           const invPart = (part.part_inventory_number && String(part.part_inventory_number).trim()) 
             ? String(part.part_inventory_number) 

@@ -74,6 +74,8 @@ interface PartItem {
   unit_price?: number
   total_price?: number
   remarks?: string
+  heat_treatment?: string
+  required_date?: string
   material?: any
   specifications_text?: string
   process_route?: string
@@ -114,6 +116,34 @@ const normalizeDateInput = (value: string) => {
   const mm = String(Number(m[2])).padStart(2, '0')
   const dd = String(Number(m[3])).padStart(2, '0')
   return `${m[1]}-${mm}-${dd}`
+}
+
+const parsePartRemarkFields = (remarks: string) => {
+  const raw = String(remarks || '').trim()
+  if (!raw) return { heatTreatment: '', demandDate: '' }
+  const heatMatch = raw.match(/(?:^|;)\s*热处理[:：]\s*([^;]+)/)
+  const demandMatch = raw.match(/(?:^|;)\s*需求日期[:：]\s*([^;]+)/)
+  if (heatMatch || demandMatch) {
+    const heatTreatment = String((heatMatch?.[1] || '')).trim()
+    const normalizedDemand = normalizeDateInput(String((demandMatch?.[1] || '')).trim())
+    const demandDate = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDemand) ? normalizedDemand : ''
+    return { heatTreatment, demandDate }
+  }
+  const normalizedRaw = normalizeDateInput(raw)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedRaw)) {
+    return { heatTreatment: '', demandDate: normalizedRaw }
+  }
+  return { heatTreatment: raw, demandDate: '' }
+}
+
+const composePartRemarkFields = (heatTreatment: string, demandDate: string) => {
+  const heat = String(heatTreatment || '').trim()
+  const normalizedDemand = normalizeDateInput(String(demandDate || '').trim())
+  const demand = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDemand) ? normalizedDemand : ''
+  if (heat && demand) return `热处理:${heat};需求日期:${demand}`
+  if (heat) return heat
+  if (demand) return demand
+  return ''
 }
 
 const getPartTypeColor = (partType?: string) => {
@@ -164,7 +194,8 @@ const ExpandedSubTables: React.FC<{
     const nameOk = !!String(rec.part_name || '').trim()
     const q = rec.part_quantity
     const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
-    const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
+    const partFields = parsePartRemarkFields(String(rec.remarks || ''))
+    const demandDateOk = !!partFields.demandDate
     const projectOk = !!String(parentProject).trim()
     const prodUnitOk = !!String(parentUnit).trim()
     const applicantOk = !!String(parentApplicant).trim()
@@ -2009,11 +2040,10 @@ const ToolingInfoPage: React.FC = () => {
               }
 
               if (oldSource === '外购' && newSource !== '外购') {
-                if (rec.remarks && rec.remarks.includes('-')) {
-                  handlePartSaveRef.current(toolingId, rec.id, 'remarks', '需调质')
+                const parsed = parsePartRemarkFields(String(rec.remarks || ''))
+                if (parsed.demandDate) {
+                  handlePartSaveRef.current(toolingId, rec.id, 'remarks', composePartRemarkFields(parsed.heatTreatment, ''))
                 }
-              } else if (newSource === '外购' && oldSource !== '外购') {
-                handlePartSaveRef.current(toolingId, rec.id, 'remarks', '')
               }
             }}
           />
@@ -2050,38 +2080,49 @@ const ToolingInfoPage: React.FC = () => {
         )
       },
       {
-        title: '备注',
-        dataIndex: 'remarks',
+        title: '热处理',
+        dataIndex: '__heat_treatment',
         width: 160,
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
-        render: (text: string, rec: PartItem) => {
-          const materialSource = materialSourceNameMapRef.current[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
-          
-          if (materialSource === '外购') {
-            return (
-              <EditableCell
-                value={text || ''}
-                record={rec as any}
-                dataIndex={'remarks' as any}
-                onSave={(pid, _k, v) => handlePartSaveRef.current(toolingId, pid, 'remarks', normalizeDateInput(v))}
-                renderDisplay={(val) => {
-                  const normalized = normalizeDateInput(String(val || '').trim())
-                  return normalized || '\u00A0'
-                }}
-              />
-            )
-          }
-          
-          if (materialSource === '') {
-            return null
-          }
-          
+        render: (_text: string, rec: PartItem) => {
+          const parsed = parsePartRemarkFields(String(rec.remarks || ''))
           return (
-            <input
-              type="checkbox"
-              checked={['需调质', '是', '1', 'yes', 'true'].includes(String(text || '').toLowerCase()) || text?.includes('需调质') || text?.includes('调质')}
-              onChange={(e) => handlePartSaveRef.current(toolingId, rec.id, 'remarks', e.target.checked ? '需调质' : '')}
-              style={{ cursor: 'pointer' }}
+            <EditableCell
+              value={parsed.heatTreatment}
+              record={rec as any}
+              dataIndex={'__heat_treatment' as any}
+              onSave={(pid, _k, v) => {
+                const nextHeat = String(v || '').trim()
+                const merged = composePartRemarkFields(nextHeat, parsed.demandDate)
+                handlePartSaveRef.current(toolingId, pid, 'remarks', merged)
+              }}
+            />
+          )
+        }
+      },
+      {
+        title: '需求日期',
+        dataIndex: '__required_date',
+        width: 120,
+        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
+        render: (_text: string, rec: PartItem) => {
+          const materialSource = materialSourceNameMapRef.current[String(rec.material_source_id)] || (rec as any)?.material_source?.name || ''
+          const parsed = parsePartRemarkFields(String(rec.remarks || ''))
+          if (materialSource !== '外购') return <span style={{ color: '#999' }}>-</span>
+          return (
+            <EditableCell
+              value={parsed.demandDate}
+              record={rec as any}
+              dataIndex={'__required_date' as any}
+              onSave={(pid, _k, v) => {
+                const nextDemand = normalizeDateInput(String(v || '').trim())
+                const merged = composePartRemarkFields(parsed.heatTreatment, nextDemand)
+                handlePartSaveRef.current(toolingId, pid, 'remarks', merged)
+              }}
+              renderDisplay={(val) => {
+                const normalized = normalizeDateInput(String(val || '').trim())
+                return normalized || '\u00A0'
+              }}
             />
           )
         }
@@ -2113,7 +2154,8 @@ const ToolingInfoPage: React.FC = () => {
           const nameOk = !!String(rec.part_name || '').trim()
           const q = rec.part_quantity
           const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
-          const demandDateOk = !!String(rec.remarks || '').match(/\d{4}-\d{2}-\d{2}/)
+          const partFields = parsePartRemarkFields(String(rec.remarks || ''))
+          const demandDateOk = !!partFields.demandDate
           const projectOk = !!String(parentProject).trim()
           const prodUnitOk = !!String(parentUnit).trim()
           const applicantOk = !!String(parentApplicant).trim()
@@ -3076,6 +3118,7 @@ const ToolingInfoPage: React.FC = () => {
           const material = materials.find(m => String(m.id) === String(part.material_id))?.name || ''
           // 查找材料来源名称
           const materialSource = materialSources.find(ms => String(ms.id) === String(part.material_source_id))?.name || ''
+          const parsed = parsePartRemarkFields(String(part.remarks || ''))
           
           partsExportData.push({
             '父表盘存编号': item.inventory_number || '',
@@ -3087,7 +3130,8 @@ const ToolingInfoPage: React.FC = () => {
             '材料来源': materialSource,
             '料型': part.part_category || '',
             '规格': formatSpecificationsForProduction(part.specifications, part.part_category),
-            '备注': part.remarks || ''
+            '热处理': parsed.heatTreatment || '',
+            '需求日期': parsed.demandDate || ''
           })
         })
       })
@@ -3863,7 +3907,7 @@ const ToolingInfoPage: React.FC = () => {
             part_quantity: Number(row['数量']),
             part_category: partCategory || null,
             specifications: parseSpecifications(normalizedSpecText, partCategory),
-            remarks: String(row['备注'] || '').trim(),
+            remarks: '',
             source: '自备' // 添加工厂要求的source字段
           }
           
@@ -3875,37 +3919,17 @@ const ToolingInfoPage: React.FC = () => {
             payload.material_source_id = selectedSource.id
           }
 
-          // 备注规范化：外购填日期(YYYY-MM-DD)，其他情况保留原始备注或设置为“需调质/空”
+          // 备注规范化：拆分为“热处理 + 需求日期”后统一回写到备注字段
           const srcName = selectedSource?.name || (materialSources.find(ms => ms.id === payload.material_source_id)?.name) || ''
-          // 先将Excel日期数字转换为正确的日期格式
-          const formattedRemark = formatExcelDate(row['备注'])
-          const rawRemark = String(formattedRemark || '').trim()
-          const normalizeDateHyphen = (v: string) => {
-            const m = v.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/)
-            if (m) {
-              const y = m[1]
-              const mm = String(Number(m[2])).padStart(2, '0')
-              const dd = String(Number(m[3])).padStart(2, '0')
-              return `${y}-${mm}-${dd}`
-            }
-            return v
-          }
-          if (srcName === '外购') {
-            let rr = rawRemark
-            if (/^\d{4}[\/-]\d{1,2}[\/-]\d{1,2}$/.test(rr)) {
-              rr = normalizeDateHyphen(rr)
-            }
-            payload.remarks = rr
-          } else {
-            // 非外购情况下，如果原始备注不是需调质相关，保留原始备注
-            if (/需调质|^是$|^1$|^yes$/i.test(rawRemark)) {
-              payload.remarks = '需调质'
-            } else if (rawRemark) {
-              payload.remarks = rawRemark
-            } else {
-              payload.remarks = ''
-            }
-          }
+          const formattedLegacyRemark = formatExcelDate(row['备注'])
+          const rawLegacyRemark = String(formattedLegacyRemark || '').trim()
+          const rawHeat = String(row['热处理'] || '').trim()
+          const rawDemand = normalizeDateInput(String(formatExcelDate(row['需求日期']) || '').trim())
+          const parsedLegacy = parsePartRemarkFields(rawLegacyRemark)
+          const heatTreatment = rawHeat || parsedLegacy.heatTreatment
+          let demandDate = rawDemand || parsedLegacy.demandDate
+          if (srcName !== '外购') demandDate = ''
+          payload.remarks = composePartRemarkFields(heatTreatment, demandDate)
           
           try {
             const created = await createPart(toolingId, payload)
@@ -4603,7 +4627,7 @@ const ToolingInfoPage: React.FC = () => {
                   const nameOk = !!String(it.part_name || '').trim()
                   const qtyVal = (it.part_quantity === '' || it.part_quantity === null || typeof it.part_quantity === 'undefined') ? 0 : Number(it.part_quantity)
                   const qtyOk = qtyVal > 0
-                  const demandDateOk = dateOk(it.remarks)
+                  const demandDateOk = dateOk(parsePartRemarkFields(String(it.remarks || '')).demandDate)
                   return nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk
                 }
                 selectedItems.forEach((it: any) => {
