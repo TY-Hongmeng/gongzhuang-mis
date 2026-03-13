@@ -1073,6 +1073,53 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [fetchAllMeta, fetchToolingData, fetchPartsData, fetchChildItemsData, expandedRowKeys, expandedChildKeys])
 
+  const handleExpandAll = useCallback(async () => {
+    const list = ensureBlankToolings(filteredVisibleData).filter(r => !String(r.id || '').startsWith('blank-'))
+    const ids = list.map(r => String(r.id || '')).filter(Boolean)
+    setExpandedRowKeys(ids)
+    setExpandedChildKeys(ids)
+
+    const partsNeed = ids.filter((id) => !partsMap[id] || (partsMap[id] || []).length === 0)
+    const childNeed = ids.filter((id) => !childItemsMap[id] || (childItemsMap[id] || []).length === 0)
+
+    if (partsNeed.length > 0) {
+      setPartsLoadingMap(prev => {
+        const next = { ...prev }
+        partsNeed.forEach(id => { next[id] = true })
+        return next
+      })
+    }
+    if (childNeed.length > 0) {
+      setChildLoadingMap(prev => {
+        const next = { ...prev }
+        childNeed.forEach(id => { next[id] = true })
+        return next
+      })
+    }
+
+    const tasks = ids.map((id) => async () => {
+      await Promise.all([
+        fetchPartsData(id),
+        fetchChildItemsData(id)
+      ])
+    })
+    const limit = 6
+    let idx = 0
+    const runNext = async (): Promise<void> => {
+      if (idx >= tasks.length) return
+      const cur = idx
+      idx += 1
+      await tasks[cur]()
+      return await runNext()
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => runNext()))
+  }, [childItemsMap, expandedChildKeys, expandedRowKeys, fetchChildItemsData, fetchPartsData, filteredVisibleData, partsMap, setChildLoadingMap, setExpandedChildKeys, setExpandedRowKeys, setPartsLoadingMap])
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedRowKeys([])
+    setExpandedChildKeys([])
+  }, [setExpandedChildKeys, setExpandedRowKeys])
+
   // 为指定行生成盘存编号
   const generateInventoryNumberForRow = async (rowId: string) => {
     const rowData = data.find(r => r.id === rowId)
@@ -4711,8 +4758,12 @@ const ToolingInfoPage: React.FC = () => {
               onChange={(v) => setFilterPriority(v ? v : undefined)}
             />
           </div>
+          <Space size={6}>
+            <Button size="small" onClick={() => handleExternalAction(handleExpandAll)}>全部展开</Button>
+            <Button size="small" onClick={() => handleExternalAction(handleCollapseAll)}>全部折叠</Button>
+          </Space>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isMobile ? 'stretch' : 'flex-end', width: isMobile ? '100%' : undefined }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : undefined }}>
           <Segmented
             options={[
               { label: `零件-全部 (${partsCounts.all})`, value: 'all' },
