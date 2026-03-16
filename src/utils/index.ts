@@ -13,7 +13,6 @@ export {
 
 // Price Calculator
 export {
-  getApplicableMaterialPrice,
   calculateTotalPrice
 } from './priceCalculator'
 

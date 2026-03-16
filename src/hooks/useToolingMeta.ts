@@ -51,18 +51,8 @@ const loadToolingMeta = async (force = false): Promise<ToolingMetaData> => {
     const categoryNames = parseItems(catsRes).map((x: any) => x.name).filter(Boolean)
 
     const mats = parseItems(materialsRes)
-      .map((x: any) => ({ id: x.id, name: x.name, density: x.density, unit_price: x.unit_price ?? 0, prices: [] }))
+      .map((x: any) => ({ id: x.id, name: x.name, density: x.density, unit_price: x.unit_price ?? 0 }))
       .filter((x: any) => x.name)
-
-    await Promise.all(mats.map(async (mat: any) => {
-      try {
-        const pricesRes = await fetch(`/api/materials/${mat.id}/prices`)
-        if (pricesRes.ok) {
-          const pricesJson = await pricesRes.json()
-          mat.prices = pricesJson.data || []
-        }
-      } catch {}
-    }))
 
     const pts = parseItems(partTypesRes)
       .map((x: any) => ({ id: x.id, name: x.name, volume_formula: x.volume_formula, input_format: x.input_format }))

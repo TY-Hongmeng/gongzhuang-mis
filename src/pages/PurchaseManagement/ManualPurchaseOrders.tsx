@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { formatSpecificationsForProduction, parseProductionSpecifications } from '../../utils/productionFormat';
 import { getProductionFormatHint } from '../../utils/productionHint';
-import { getApplicableMaterialPrice, calculateTotalPrice } from '../../utils/priceCalculator';
+import { calculateTotalPrice } from '../../utils/priceCalculator';
 import SpecificationsInput from '../../components/SpecificationsInput';
 import EditableCell from '../../components/EditableCell';
 import { useToolingOperations } from '../../hooks/useToolingOperations';
@@ -178,7 +178,7 @@ export default function ManualPurchaseOrders() {
   const [backupData, setBackupData] = useState<BackupMaterial[]>([]);
   const [selectedBackupRowKeys, setSelectedBackupRowKeys] = useState<React.Key[]>([]);
   const [suppliers, setSuppliers] = useState<string[]>([]);
-  const [materials, setMaterials] = useState<{id: string, name: string, density?: number}[]>([]);
+  const [materials, setMaterials] = useState<{id: string, name: string, density?: number, unit_price?: number}[]>([]);
   const [hiddenTick, setHiddenTick] = useState(0)
   const [manualAll, setManualAll] = useState<ManualPurchaseOrder[]>([])
   const [backupAll, setBackupAll] = useState<BackupMaterial[]>([])
@@ -237,18 +237,6 @@ export default function ManualPurchaseOrders() {
   }
 
   const [partTypes, setPartTypes] = useState<{id: string, name: string, volume_formula?: string, input_format?: string}[]>([]);
-  const [materialPrices, setMaterialPrices] = useState<Record<string, any[]>>({});
-  const ensureMaterialPriceLoaded = useCallback(async (materialId: string) => {
-    if (!materialId) return;
-    if (Array.isArray(materialPrices[materialId]) && materialPrices[materialId].length > 0) return;
-    try {
-      const resp = await fetch(`/api/materials/${materialId}/prices`);
-      if (!resp.ok) return;
-      const js = await resp.json();
-      const list = js?.data || [];
-      setMaterialPrices(prev => ({ ...prev, [materialId]: list }));
-    } catch {}
-  }, [materialPrices]);
 
   const handleGeneratePurchaseAll = async () => {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
@@ -330,9 +318,7 @@ export default function ManualPurchaseOrders() {
       })()
       const unitW = calculatePartWeight(specsObj, materialId, r.material_type || '', partTypes, materials)
       const totalW = qty > 0 && unitW > 0 ? unitW * qty : 0
-      const prices = materialPrices[materialId] || []
-      const dateKey = (r.demand_date && /^\d{4}-\d{2}-\d{2}$/.test(String(r.demand_date))) ? String(r.demand_date) : new Date().toISOString().split('T')[0]
-      const unitPrice = getApplicableMaterialPrice(prices, dateKey) || 0
+      const unitPrice = Number((currentMaterial as any)?.unit_price || 0)
       const totalPrice = calculateTotalPrice(totalW, unitPrice)
 
       orders.push({
@@ -490,7 +476,6 @@ export default function ManualPurchaseOrders() {
         const result = await response.json();
         if (result && result.data) {
           setMaterials(result.data);
-          setMaterialPrices({});
         }
       }
     } catch (error) {
@@ -992,11 +977,7 @@ export default function ManualPurchaseOrders() {
         const quantityNum = parseInt(updatedRow.quantity || '0') || 0;
         const totalWeight = quantityNum > 0 ? weight * quantityNum : 0;
         const mat = materials.find(m => m.name === updatedRow.material)
-        const materialIdForPrice = mat?.id || ''
-        await ensureMaterialPriceLoaded(materialIdForPrice);
-        const prices = materialPrices[materialIdForPrice] || [];
-        const applicablePrice = getApplicableMaterialPrice(prices, new Date().toISOString().split('T')[0]);
-        const unitPrice = applicablePrice || 0;
+        const unitPrice = Number((mat as any)?.unit_price || 0)
         const totalPrice = calculateTotalPrice(totalWeight, unitPrice);
         
         updatedRow.weight = weight;
@@ -1518,9 +1499,7 @@ export default function ManualPurchaseOrders() {
             const weight = calculatePartWeight(newSpecs, materialId, record.material_type || '', partTypes, materials);
             const qty = Number(record.quantity || 0);
             const totalWeight = qty > 0 ? weight * qty : 0;
-            await ensureMaterialPriceLoaded(materialId);
-            const prices = materialPrices[materialId] || [];
-            const unitPrice = getApplicableMaterialPrice(prices, new Date().toISOString().split('T')[0]) || 0;
+            const unitPrice = Number((currentMaterial as any)?.unit_price || 0);
             const totalPrice = calculateTotalPrice(totalWeight, unitPrice);
             const formatted = formatSpecificationsForProduction(newSpecs as any, record.material_type || '');
             setBackupDataPreserveScroll(prev => prev.map(r => r.id === record.id ? {
