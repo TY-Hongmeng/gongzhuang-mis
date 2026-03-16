@@ -10,20 +10,39 @@ import Health from "./pages/Health";
 import AppVersionBadge from "./components/AppVersionBadge";
 import { useAuthStore } from './stores/authStore';
 
-const MainLayout = lazy(() => import("./components/Layout/MainLayout"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Companies = lazy(() => import("./pages/Companies"));
-const CompanyOrg = lazy(() => import("./pages/CompanyOrg"));
-const Users = lazy(() => import("./pages/Users"));
-const Permissions = lazy(() => import("./pages/Permissions"));
-const ToolingInfo = lazy(() => import("./pages/ToolingInfo"));
-const Materials = lazy(() => import("./pages/Materials"));
-const OptionsManagement = lazy(() => import("./pages/OptionsManagement"));
-const PartTypes = lazy(() => import("./pages/PartTypes"));
-const CuttingManagement = lazy(() => import("./pages/CuttingManagement"));
-const PurchaseManagement = lazy(() => import("./pages/PurchaseManagement"));
-const WorkHours = lazy(() => import("./pages/WorkHours"));
-const WorkHoursManagement = lazy(() => import("./pages/WorkHoursManagement"));
+const lazyDebugEnabled = (() => {
+  const isDev = (import.meta as any).env?.DEV === true
+  const manualEnabled = typeof window !== 'undefined' && window.localStorage?.getItem('debug_lazy') === '1'
+  return isDev || manualEnabled
+})()
+
+const lazyWithTrace = (moduleName: string, loader: () => Promise<any>) => lazy(async () => {
+  const start = performance.now()
+  if (lazyDebugEnabled) {
+    console.log(`[LazyLoad] start: ${moduleName}`)
+  }
+  const mod = await loader()
+  if (lazyDebugEnabled) {
+    const elapsed = Math.round(performance.now() - start)
+    console.log(`[LazyLoad] done: ${moduleName} (${elapsed}ms)`)
+  }
+  return mod
+})
+
+const MainLayout = lazyWithTrace("MainLayout", () => import("./components/Layout/MainLayout"));
+const Dashboard = lazyWithTrace("Dashboard", () => import("./pages/Dashboard"));
+const Companies = lazyWithTrace("Companies", () => import("./pages/Companies"));
+const CompanyOrg = lazyWithTrace("CompanyOrg", () => import("./pages/CompanyOrg"));
+const Users = lazyWithTrace("Users", () => import("./pages/Users"));
+const Permissions = lazyWithTrace("Permissions", () => import("./pages/Permissions"));
+const ToolingInfo = lazyWithTrace("ToolingInfo", () => import("./pages/ToolingInfo"));
+const Materials = lazyWithTrace("Materials", () => import("./pages/Materials"));
+const OptionsManagement = lazyWithTrace("OptionsManagement", () => import("./pages/OptionsManagement"));
+const PartTypes = lazyWithTrace("PartTypes", () => import("./pages/PartTypes"));
+const CuttingManagement = lazyWithTrace("CuttingManagement", () => import("./pages/CuttingManagement"));
+const PurchaseManagement = lazyWithTrace("PurchaseManagement", () => import("./pages/PurchaseManagement"));
+const WorkHours = lazyWithTrace("WorkHours", () => import("./pages/WorkHours"));
+const WorkHoursManagement = lazyWithTrace("WorkHoursManagement", () => import("./pages/WorkHoursManagement"));
 
 export default function App() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore()
