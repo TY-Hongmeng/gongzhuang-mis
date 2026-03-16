@@ -2577,18 +2577,9 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [setPartsMap])
 
-  const toolingById = useMemo(() => {
-    const map: Record<string, any> = {}
-    ;(data || []).forEach((item: any) => {
-      const id = String(item?.id || '')
-      if (id) map[id] = item
-    })
-    return map
-  }, [data])
-
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
-    const parent = toolingById[toolingId] as any
+    const parent = data.find(d => d.id === toolingId) as any
     const parentProject = parent?.project_name || ''
     const parentUnit = parent?.production_unit || ''
     const parentApplicant = parent?.recorder || ''
@@ -2666,7 +2657,7 @@ const ToolingInfoPage: React.FC = () => {
     createPartColumns,
     createChildColumns,
     addBlankParts,
-    toolingById,
+    data,
     setChildItemsMap,
     setPartBatchModal
   ])
@@ -2744,7 +2735,7 @@ const ToolingInfoPage: React.FC = () => {
       })
       return hasChange ? next : prev
     })
-  }, [expandedRowKeys, expandedChildKeys, setPartsMap, setChildItemsMap])
+  }, [expandedRowKeys, expandedChildKeys, partsMap, childItemsMap, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
@@ -3255,7 +3246,7 @@ const ToolingInfoPage: React.FC = () => {
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
-  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories])
+  ], [handleSave, data, fetchPartsData, fetchChildItemsData])
 
   // 导出工装信息为Excel
   const handleExport = async () => {
