@@ -41,6 +41,14 @@ const getBatchSize = () => {
     return Math.min(20, Math.max(2, n))
   } catch { return 10 }
 }
+const getImportConcurrency = () => {
+  try {
+    const raw = safeLocalStorage.getItem('tooling_import_concurrency') || ''
+    const n = parseInt(raw, 10)
+    if (!Number.isFinite(n) || Number.isNaN(n)) return 4
+    return Math.min(8, Math.max(1, n))
+  } catch { return 4 }
+}
 
 // 防抖函数
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -3764,6 +3772,7 @@ const ToolingInfoPage: React.FC = () => {
     if (!importFile) return
     
     try {
+      const importConcurrency = getImportConcurrency()
       if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
         await fetchAllMeta(true)
       }
@@ -3832,7 +3841,7 @@ const ToolingInfoPage: React.FC = () => {
       // 收集工装导入错误信息
       const toolingImportErrors: string[] = []
       
-      const toolingImportResults = await runWithConcurrency(validToolingRows, 4, async (row) => {
+      const toolingImportResults = await runWithConcurrency(validToolingRows, importConcurrency, async (row) => {
         const formattedReceivedDate = formatExcelDate(row['接收日期'])
         const formattedDemandDate = row['需求日期'] ? formatExcelDate(row['需求日期']) : undefined
         const formattedCompletedDate = row['完成日期'] ? formatExcelDate(row['完成日期']) : undefined
@@ -3917,153 +3926,116 @@ const ToolingInfoPage: React.FC = () => {
           return requiredFields.every(field => row[field] && String(row[field]).trim() !== '')
         })
         
-        // 收集零件导入错误信息
         const partImportErrors: string[] = []
         let missingMaterialCount = 0
         let missingSourceCount = 0
         let missingPartTypeCount = 0
-        
-        for (const row of validPartsRows) {
+        const materialByName = new Map<string, any>()
+        materials.forEach((m: any) => {
+          const key = String(m?.name || '').trim().toLowerCase()
+          if (key) materialByName.set(key, m)
+        })
+        const sourceByName = new Map<string, any>()
+        const sourceNameById = new Map<string, string>()
+        materialSources.forEach((ms: any) => {
+          const name = String(ms?.name || '').trim()
+          if (name) sourceByName.set(name.toLowerCase(), ms)
+          if (ms?.id !== undefined && ms?.id !== null) sourceNameById.set(String(ms.id), name)
+        })
+        const partTypeSet = new Set(partTypes.map((pt: any) => String(pt?.name || '').trim()).filter(Boolean))
+        const creatingSourceTask = new Map<string, Promise<any | null>>()
+        const normalizeSource = (s: string) => {
+          const normalized = s.replace(/\s+/g, '').toLowerCase()
+          if (!normalized) return ''
+          if (['自备','钢料自备','含料自备'].some(source => s.includes(source))) return '自备'
+          if (['含料','hanliao'].some(source => normalized.includes(source))) return '含料'
+          if (['waigou','采购','外购'].some(source => normalized.includes(source))) return '外购'
+          if (['火切','huoqie','切割'].some(source => normalized.includes(source))) return '火切'
+          if (['锯切','jvqie','锯床割方','割方'].some(source => normalized.includes(source))) return '锯切'
+          return s
+        }
+        const getOrCreateSource = async (normSource: string, rawSource: string) => {
+          const byNorm = sourceByName.get(normSource.toLowerCase())
+          if (byNorm) return byNorm
+          const byRaw = rawSource ? sourceByName.get(rawSource.toLowerCase()) : null
+          if (byRaw) return byRaw
+          if (!normSource) return null
+          const sourceKey = normSource.toLowerCase()
+          let task = creatingSourceTask.get(sourceKey)
+          if (!task) {
+            task = (async () => {
+              try {
+                const resp = await fetchWithFallback('/api/options/material-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: normSource, description: '', is_active: true }) })
+                const j = await resp.json().catch(() => ({}))
+                if (j?.success && j?.data?.id) {
+                  const created = { id: j.data.id, name: normSource } as any
+                  sourceByName.set(sourceKey, created)
+                  sourceNameById.set(String(j.data.id), normSource)
+                  return created
+                }
+              } catch {}
+              return null
+            })()
+            creatingSourceTask.set(sourceKey, task)
+          }
+          return await task
+        }
+        const parseSpecifications = (spec: string, partCategory: string) => {
+          const numbers = spec.match(/[0-9]+\.?[0-9]*/g)?.map(Number) || []
+          switch (partCategory) {
+            case '板料':
+            case '锯床割方':
+              return { 长: numbers[0] || 0, 宽: numbers[1] || 0, 高: numbers[2] || 0, A: numbers[0] || 0, B: numbers[1] || 0, C: numbers[2] || 0 }
+            case '圆料':
+              return { 直径: numbers[0] || 0, 高: numbers[1] || 0, φA: numbers[0] || 0, B: numbers[1] || 0 }
+            case '圆环':
+              return { 外径: numbers[0] || 0, 内径: numbers[1] || 0, 高: numbers[2] || 0, φA: numbers[0] || 0, φB: numbers[1] || 0, C: numbers[2] || 0 }
+            case '板料割圆':
+              return { 直径: numbers[0] || 0, 厚: numbers[1] || 0, φA: numbers[0] || 0, B: numbers[1] || 0 }
+            case '圆管':
+            default:
+              return { 规格: spec }
+          }
+        }
+        const partImportResults = await runWithConcurrency(validPartsRows, importConcurrency, async (row) => {
           const parentInventoryNumber = row['父表盘存编号']
           debugLog('查找零件关联工装:', parentInventoryNumber)
           const toolingId = inventoryNumberMap[parentInventoryNumber]
           if (!toolingId) {
-            partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`)
-            console.error('未找到关联工装，父表盘存编号:', parentInventoryNumber, '当前映射表:', inventoryNumberMap)
-            continue // 跳过没有关联工装的零件
+            return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`, missingMaterial: 0, missingSource: 0, missingPartType: 0 }
           }
           debugLog('找到零件关联工装:', parentInventoryNumber, '->', toolingId)
-          
-          // 验证零件盘存编号格式是否符合父级盘存编号+数字
           const partInventoryNumber = String(row['盘存编号'] || '').trim()
           if (parentInventoryNumber && partInventoryNumber) {
-            // 放宽验证规则，允许零件盘存编号为父级盘存编号+任意数字，不要求必须两位
             const expectedFormat = new RegExp(`^${parentInventoryNumber}[0-9]+$`)
             if (!expectedFormat.test(partInventoryNumber)) {
-              partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：盘存编号格式不符合要求，应为父级盘存编号+数字（如：${parentInventoryNumber}01）`)
-              continue
+              return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：盘存编号格式不符合要求，应为父级盘存编号+数字（如：${parentInventoryNumber}01）`, missingMaterial: 0, missingSource: 0, missingPartType: 0 }
             }
           }
-          
-          // 查找材质ID，允许材质为空
           const materialName = String(row['材质'] || '').trim()
-          let selectedMaterial = materials.find(m => m.name === materialName) || materials.find(m => m.name.toLowerCase() === materialName.toLowerCase())
-          // 如果未找到材质且材质字段有值，跳过该零件
+          const selectedMaterial = materialName ? (materialByName.get(materialName.toLowerCase()) || null) : null
           if (materialName && !selectedMaterial) {
-            partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到材质“${materialName}”`)
-            continue
+            return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：未找到材质“${materialName}”`, missingMaterial: 0, missingSource: 0, missingPartType: 0 }
           }
-          if (!materialName) missingMaterialCount++
-          
-          // 查找材料来源ID，允许材料来源为空；支持同义词
           const rawSource = String(row['材料来源'] || '').trim()
-          const normalizeSource = (s: string) => {
-            const normalized = s.replace(/\s+/g, '').toLowerCase()
-            if (!normalized) return ''
-            if (['自备','钢料自备','含料自备'].some(source => s.includes(source))) return '自备'
-            // 保留“含料”为独立来源名称，不强制归并到自备
-            if (['含料','hanliao'].some(source => normalized.includes(source))) return '含料'
-            if (['waigou','采购','外购'].some(source => normalized.includes(source))) return '外购'
-            if (['火切','huoqie','切割'].some(source => normalized.includes(source))) return '火切'
-            if (['锯切','jvqie','锯床割方','割方'].some(source => normalized.includes(source))) return '锯切'
-            return s
-          }
           const normSource = normalizeSource(rawSource)
-          let selectedSource = materialSources.find(ms => ms.name === normSource) || materialSources.find(ms => ms.name === rawSource) || materialSources.find(ms => ms.name.toLowerCase() === normSource.toLowerCase())
-          if (!selectedSource && normSource) {
-            try {
-              const resp = await fetchWithFallback('/api/options/material-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: normSource, description: '', is_active: true }) })
-              const j = await resp.json().catch(()=>({}))
-              if (j?.success && j?.data?.id) {
-                selectedSource = { id: j.data.id, name: normSource } as any
-              }
-            } catch {}
-          }
-          // 如果未找到材料来源且材料来源字段有值，跳过该零件
+          let selectedSource: any = await getOrCreateSource(normSource, rawSource)
           if (rawSource && !selectedSource) {
-            // 若Excel提供“自备”列，则尝试按该列回填
             const zibeiFlag = row['自备']
             const zibeiTruth = typeof zibeiFlag === 'boolean' ? zibeiFlag : /^(是|yes|y|1)$/i.test(String(zibeiFlag || '').trim())
             if (zibeiTruth) {
-              selectedSource = materialSources.find(ms => ms.name === '自备') || null as any
+              selectedSource = sourceByName.get('自备') || null
             }
             if (!selectedSource) {
-              partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到材料来源“${row['材料来源']}”`)
-              continue
+              return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：未找到材料来源“${row['材料来源']}”`, missingMaterial: materialName ? 0 : 1, missingSource: 0, missingPartType: 0 }
             }
           }
-          if (!rawSource) missingSourceCount++
-          
-          // 验证料型是否在允许的列表中
           const partCategory = String(row['料型'] || '').trim()
-          if (partCategory) {
-            const isValidPartCategory = partTypes.some(pt => pt.name === partCategory)
-            if (!isValidPartCategory) {
-              partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到料型“${partCategory}”`)
-              continue
-            }
-          } else {
-            missingPartTypeCount++
+          if (partCategory && !partTypeSet.has(partCategory)) {
+            return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：未找到料型“${partCategory}”`, missingMaterial: materialName ? 0 : 1, missingSource: rawSource ? 0 : 1, missingPartType: 0 }
           }
-          
-          // 处理规格中的乘号，将×或x转换为*号
           const specText = String(row['规格'] || '').trim()
           const normalizedSpecText = specText.replace(/[×x]/g, '*')
-          
-          // 根据料型解析规格文本为正确的规格对象
-          const parseSpecifications = (spec: string, partCategory: string) => {
-            // 提取规格中的数字
-            const numbers = spec.match(/[0-9]+\.?[0-9]*/g)?.map(Number) || []
-            
-            // 根据料型设置不同的规格字段
-            switch (partCategory) {
-              case '板料':
-              case '锯床割方':
-                // 格式: A*B*C 或 长*宽*高
-                return {
-                  长: numbers[0] || 0,
-                  宽: numbers[1] || 0,
-                  高: numbers[2] || 0,
-                  A: numbers[0] || 0,
-                  B: numbers[1] || 0,
-                  C: numbers[2] || 0
-                }
-              case '圆料':
-                // 格式: Φ50×200 或 φ50*200
-                return {
-                  直径: numbers[0] || 0,
-                  高: numbers[1] || 0,
-                  φA: numbers[0] || 0,
-                  B: numbers[1] || 0
-                }
-              case '圆环':
-                // 格式: Φ100-50×20 或 φ100-50*20
-                return {
-                  外径: numbers[0] || 0,
-                  内径: numbers[1] || 0,
-                  高: numbers[2] || 0,
-                  φA: numbers[0] || 0,
-                  φB: numbers[1] || 0,
-                  C: numbers[2] || 0
-                }
-              case '板料割圆':
-                // 格式: Φ50×10 或 φ50*10
-                return {
-                  直径: numbers[0] || 0,
-                  厚: numbers[1] || 0,
-                  φA: numbers[0] || 0,
-                  B: numbers[1] || 0
-                }
-              case '圆管':
-              default:
-                // 默认格式，直接返回原始规格文本作为单个字段
-                return {
-                  规格: spec
-                }
-            }
-          }
-          
-          // 构建零件payload，料型字段是数据库必填字段
           const payload: any = {
             part_inventory_number: partInventoryNumber,
             part_drawing_number: String(row['图号'] || '').trim(),
@@ -4072,19 +4044,11 @@ const ToolingInfoPage: React.FC = () => {
             part_category: partCategory || null,
             specifications: parseSpecifications(normalizedSpecText, partCategory),
             remarks: '',
-            source: '自备' // 添加工厂要求的source字段
+            source: '自备'
           }
-          
-          // 只在有值时添加可选字段
-          if (selectedMaterial) {
-            payload.material_id = selectedMaterial.id
-          }
-          if (selectedSource) {
-            payload.material_source_id = selectedSource.id
-          }
-
-          // 备注规范化：拆分为“热处理 + 需求日期”后统一回写到备注字段
-          const srcName = selectedSource?.name || (materialSources.find(ms => String(ms.id) === String(payload.material_source_id))?.name) || ''
+          if (selectedMaterial) payload.material_id = selectedMaterial.id
+          if (selectedSource) payload.material_source_id = selectedSource.id
+          const sourceName = selectedSource?.name || (payload.material_source_id ? sourceNameById.get(String(payload.material_source_id)) || '' : '')
           const formattedLegacyRemark = formatExcelDate(row['备注'])
           const rawLegacyRemark = String(formattedLegacyRemark || '').trim()
           const rawHeat = String(row['热处理'] || '').trim()
@@ -4092,23 +4056,30 @@ const ToolingInfoPage: React.FC = () => {
           const parsedLegacy = parsePartRemarkFields(rawLegacyRemark)
           const heatTreatment = rawHeat || parsedLegacy.heatTreatment
           let demandDate = rawDemand || parsedLegacy.demandDate
-          if (srcName !== '外购') demandDate = ''
+          if (sourceName !== '外购') demandDate = ''
           payload.remarks = composePartRemarkFields(heatTreatment, demandDate)
-          
           try {
             const created = await createPart(toolingId, payload)
-            if (created) {
-              successCount++
-              partSuccessCount++
-            } else {
-              partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：创建失败，服务器返回空数据`)
+            if (!created) {
+              return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：创建失败，服务器返回空数据`, missingMaterial: materialName ? 0 : 1, missingSource: rawSource ? 0 : 1, missingPartType: partCategory ? 0 : 1 }
             }
+            return { ok: true as const, missingMaterial: materialName ? 0 : 1, missingSource: rawSource ? 0 : 1, missingPartType: partCategory ? 0 : 1 }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error)
-            partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：创建失败，错误信息：${errorMsg}`)
-            console.error('创建零件失败：', error)
+            return { ok: false as const, error: `零件“${row['零件名称']}”（${row['盘存编号']}）：创建失败，错误信息：${errorMsg}`, missingMaterial: materialName ? 0 : 1, missingSource: rawSource ? 0 : 1, missingPartType: partCategory ? 0 : 1 }
           }
-        }
+        })
+        partImportResults.forEach((result) => {
+          missingMaterialCount += result.missingMaterial
+          missingSourceCount += result.missingSource
+          missingPartTypeCount += result.missingPartType
+          if (result.ok) {
+            successCount++
+            partSuccessCount++
+            return
+          }
+          partImportErrors.push(result.error)
+        })
         
         // 如果有零件导入错误，显示给用户
         if (partImportErrors.length > 0) {
@@ -4144,7 +4115,7 @@ const ToolingInfoPage: React.FC = () => {
         // 收集标准件导入错误信息
         const childImportErrors: string[] = []
         
-        const childImportResults = await runWithConcurrency(validChildItemsRows, 4, async (row) => {
+        const childImportResults = await runWithConcurrency(validChildItemsRows, importConcurrency, async (row) => {
           const parentInventoryNumber = row['父表盘存编号']
           debugLog('查找标准件关联工装:', parentInventoryNumber)
           const toolingId = inventoryNumberMap[parentInventoryNumber]
@@ -4198,6 +4169,7 @@ const ToolingInfoPage: React.FC = () => {
       // 刷新数据：只刷新工装列表，不刷新零件数据
       // 因为导入时已经在本地状态中更新了数据，不需要再次刷新
       await fetchToolingData()
+      importValidationCacheRef.current = null
       
       // 移除对每个工装都调用 fetchPartsData 和 fetchChildItemsData 的逻辑
       // 这样可以避免大量请求导致页面卡死
