@@ -35,7 +35,7 @@ const Companies = lazyWithTrace("Companies", () => import("./pages/Companies"));
 const CompanyOrg = lazyWithTrace("CompanyOrg", () => import("./pages/CompanyOrg"));
 const Users = lazyWithTrace("Users", () => import("./pages/Users"));
 const Permissions = lazyWithTrace("Permissions", () => import("./pages/Permissions"));
-const ToolingInfo = lazyWithTrace("ToolingInfo", () => import("./pages/ToolingInfo"));
+const ToolingInfo = lazyWithTrace("ToolingInfo", () => import("./pages/ToolingInfo.tsx"));
 const Materials = lazyWithTrace("Materials", () => import("./pages/Materials"));
 const OptionsManagement = lazyWithTrace("OptionsManagement", () => import("./pages/OptionsManagement"));
 const PartTypes = lazyWithTrace("PartTypes", () => import("./pages/PartTypes"));
