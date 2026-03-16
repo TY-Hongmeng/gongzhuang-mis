@@ -682,6 +682,21 @@ const ToolingInfoPage: React.FC = () => {
     selectedRowKeysRef.current = selectedRowKeys
   }, [selectedRowKeys])
   
+  useEffect(() => {
+    const parentKeys = selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
+    const existingChildKeys = selectedRowKeys.filter(k => k.startsWith('part-') || k.startsWith('child-'))
+    const derivedChildKeys: string[] = []
+    parentKeys.forEach(pid => {
+      const parts = (partsMap[String(pid)] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+      derivedChildKeys.push(...parts.map(p => 'part-' + p.id))
+      const childItems = (childItemsMap[String(pid)] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+      derivedChildKeys.push(...childItems.map(c => 'child-' + c.id))
+    })
+    const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
+    const diff = next.length !== selectedRowKeys.length || next.some(k => !selectedRowKeys.includes(k))
+    if (diff) setSelectedRowKeys(next)
+  }, [partsMap, childItemsMap, selectedRowKeys])
+  
   // 防抖保存空白行的定时器
   const partSaveTimersRef = useRef<Record<string, NodeJS.Timeout>>({})
   // 子表防抖保存定时器
@@ -874,55 +889,6 @@ const ToolingInfoPage: React.FC = () => {
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
   }, [visibleData, filterPriority, filterStatus, partsFilterStatus, partsSummaryMap])
-  const filteredRowsWithBlank = useMemo(() => ensureBlankToolings(filteredVisibleData), [filteredVisibleData])
-  const currentVisibleParentIds = useMemo(
-    () => filteredRowsWithBlank.filter(r => !String(r.id || '').startsWith('blank-')).map(r => String(r.id)),
-    [filteredRowsWithBlank]
-  )
-  const selectedParentRowKeys = useMemo(
-    () => selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
-    [selectedRowKeys]
-  )
-  const childKeysByParent = useMemo(() => {
-    const map: Record<string, string[]> = {}
-    const append = (pid: string, keys: string[]) => {
-      if (!map[pid]) map[pid] = []
-      if (keys.length > 0) map[pid].push(...keys)
-    }
-    Object.entries(partsMap).forEach(([pid, list]) => {
-      const keys = (list || [])
-        .filter((p: any) => !String(p.id || '').startsWith('blank-'))
-        .map((p: any) => `part-${String(p.id)}`)
-      append(String(pid), keys)
-    })
-    Object.entries(childItemsMap).forEach(([pid, list]) => {
-      const keys = (list || [])
-        .filter((c: any) => !String(c.id || '').startsWith('blank-'))
-        .map((c: any) => `child-${String(c.id)}`)
-      append(String(pid), keys)
-    })
-    return map
-  }, [partsMap, childItemsMap])
-  const collectChildKeysForParents = useCallback((parentIds: string[]) => {
-    const result: string[] = []
-    parentIds.forEach(pid => {
-      const keys = childKeysByParent[String(pid)]
-      if (keys && keys.length > 0) result.push(...keys)
-    })
-    return result
-  }, [childKeysByParent])
-  useEffect(() => {
-    setSelectedRowKeys(prev => {
-      const parentKeys = prev.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
-      if (parentKeys.length === 0) return prev
-      const existingChildKeys = prev.filter(k => k.startsWith('part-') || k.startsWith('child-'))
-      const derivedChildKeys = collectChildKeysForParents(parentKeys)
-      const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
-      if (next.length === prev.length && next.every(k => prev.includes(k))) return prev
-      return next
-    })
-  }, [collectChildKeysForParents, setSelectedRowKeys])
-
   const partsCounts = useMemo(() => {
     let result = visibleData || []
     if (filterPriority) {
@@ -4964,7 +4930,7 @@ const ToolingInfoPage: React.FC = () => {
           rowKey="id"
           loading={loading}
           components={{ header: { cell: HeaderCell } }}
-          dataSource={filteredRowsWithBlank}
+          dataSource={ensureBlankToolings(filteredVisibleData)}
           columns={columns}
           pagination={false}
           bordered={false}
@@ -4978,26 +4944,46 @@ const ToolingInfoPage: React.FC = () => {
             return hasCompletedDate ? 'row-completed' : ''
           }}
           rowSelection={{
-            selectedRowKeys: selectedParentRowKeys,
+            selectedRowKeys: selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-')),
             onChange: (keys) => {
               const parentKeys = (keys as (string | number)[]).map(k => String(k))
-              const childKeys = collectChildKeysForParents(parentKeys)
+              const childKeys: string[] = []
+              parentKeys.forEach(pid => {
+                const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+                childKeys.push(...parts.map(p => 'part-' + p.id))
+                const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+                childKeys.push(...childItems.map(c => 'child-' + c.id))
+              })
               setSelectedRowKeys(prev => {
                 const prevChild = prev.filter(k => k.startsWith('part-') || k.startsWith('child-'))
                 return Array.from(new Set([...prevChild, ...parentKeys, ...childKeys]))
               })
             },
             onSelectAll: (selected) => {
-              const currentList = currentVisibleParentIds
+              const currentList = ensureBlankToolings(filteredVisibleData).filter(r => !String(r.id || '').startsWith('blank-'))
               if (selected) {
                 // 仅针对当前列表的父级行选择，以及其已加载子项
-                const allKeys = [...currentList, ...collectChildKeysForParents(currentList)]
+                const allKeys: string[] = []
+                currentList.forEach(parent => {
+                  const pid = String(parent.id)
+                  allKeys.push(pid)
+                  const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+                  allKeys.push(...parts.map(p => 'part-' + p.id))
+                  const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+                  allKeys.push(...childItems.map(c => 'child-' + c.id))
+                })
                 setSelectedRowKeys(prev => Array.from(new Set([...prev, ...allKeys])))
               } else {
                 // 仅取消当前列表父级及其已加载子项，不影响其它已选内容
                 const removeSet = new Set<string>()
-                currentList.forEach(pid => removeSet.add(pid))
-                collectChildKeysForParents(currentList).forEach(k => removeSet.add(k))
+                currentList.forEach(parent => {
+                  const pid = String(parent.id)
+                  removeSet.add(pid)
+                  const parts = (partsMap[pid] || []).filter(p => !String(p.id || '').startsWith('blank-'))
+                  parts.forEach(p => removeSet.add('part-' + p.id))
+                  const childItems = (childItemsMap[pid] || []).filter(c => !String(c.id || '').startsWith('blank-'))
+                  childItems.forEach(c => removeSet.add('child-' + c.id))
+                })
                 setSelectedRowKeys(prev => prev.filter(k => !removeSet.has(k)))
               }
             },
