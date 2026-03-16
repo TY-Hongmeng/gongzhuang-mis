@@ -656,6 +656,16 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     fetchChildItemsDataRef.current = fetchChildItemsData
   }, [fetchChildItemsData])
+  
+  const expandedRowKeysRef = useRef(expandedRowKeys)
+  useEffect(() => {
+    expandedRowKeysRef.current = expandedRowKeys
+  }, [expandedRowKeys])
+
+  const expandedChildKeysRef = useRef(expandedChildKeys)
+  useEffect(() => {
+    expandedChildKeysRef.current = expandedChildKeys
+  }, [expandedChildKeys])
 
   const partsLoadingMapRef = useRef(partsLoadingMap)
   useEffect(() => {
@@ -666,8 +676,14 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     childLoadingMapRef.current = childLoadingMap
   }, [childLoadingMap])
+  
+  const expandedLoadInflightRef = useRef<Set<string>>(new Set())
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string) => {
+    const isExpandedNow = () => expandedRowKeysRef.current.includes(toolingId) || expandedChildKeysRef.current.includes(toolingId)
+    if (!isExpandedNow()) return
+    if (expandedLoadInflightRef.current.has(toolingId)) return
+    expandedLoadInflightRef.current.add(toolingId)
     const tasks: Promise<any>[] = []
 
     const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
@@ -675,18 +691,22 @@ const ToolingInfoPage: React.FC = () => {
     const partsLoading = !!partsLoadingMapRef.current[toolingId]
     const childLoading = !!childLoadingMapRef.current[toolingId]
 
-    if (!hasPartsLoaded && !partsLoading) {
-      setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
-      tasks.push(fetchPartsDataRef.current(toolingId))
-    }
+    try {
+      if (!hasPartsLoaded && !partsLoading && isExpandedNow()) {
+        setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+        tasks.push(fetchPartsDataRef.current(toolingId))
+      }
 
-    if (!hasChildLoaded && !childLoading) {
-      setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
-      tasks.push(fetchChildItemsDataRef.current(toolingId))
-    }
+      if (!hasChildLoaded && !childLoading && isExpandedNow()) {
+        setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+        tasks.push(fetchChildItemsDataRef.current(toolingId))
+      }
 
-    if (tasks.length > 0) {
-      await Promise.all(tasks)
+      if (tasks.length > 0) {
+        await Promise.all(tasks)
+      }
+    } finally {
+      expandedLoadInflightRef.current.delete(toolingId)
     }
   }, [setPartsLoadingMap, setChildLoadingMap])
   
@@ -1218,10 +1238,13 @@ const ToolingInfoPage: React.FC = () => {
     await fetchToolingData()
     const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
     if (expandedIds.length > 0) {
-      await Promise.all(expandedIds.map(id => Promise.all([
+      const concurrency = Math.max(1, Math.min(6, getBatchSize()))
+      await runWithConcurrency(expandedIds, concurrency, async (id) => {
+        await Promise.all([
         fetchPartsData(id, true),
         fetchChildItemsData(id, true)
-      ])))
+        ])
+      })
     }
   }, [fetchAllMeta, fetchToolingData, fetchPartsData, fetchChildItemsData, expandedRowKeys, expandedChildKeys])
 
@@ -2554,9 +2577,18 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [setPartsMap])
 
+  const toolingById = useMemo(() => {
+    const map: Record<string, any> = {}
+    ;(data || []).forEach((item: any) => {
+      const id = String(item?.id || '')
+      if (id) map[id] = item
+    })
+    return map
+  }, [data])
+
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
-    const parent = data.find(d => d.id === toolingId) as any
+    const parent = toolingById[toolingId] as any
     const parentProject = parent?.project_name || ''
     const parentUnit = parent?.production_unit || ''
     const parentApplicant = parent?.recorder || ''
@@ -2634,7 +2666,7 @@ const ToolingInfoPage: React.FC = () => {
     createPartColumns,
     createChildColumns,
     addBlankParts,
-    data,
+    toolingById,
     setChildItemsMap,
     setPartBatchModal
   ])
@@ -2712,7 +2744,7 @@ const ToolingInfoPage: React.FC = () => {
       })
       return hasChange ? next : prev
     })
-  }, [expandedRowKeys, expandedChildKeys, partsMap, childItemsMap, setPartsMap, setChildItemsMap])
+  }, [expandedRowKeys, expandedChildKeys, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
@@ -3223,7 +3255,7 @@ const ToolingInfoPage: React.FC = () => {
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
-  ], [handleSave, data, fetchPartsData, fetchChildItemsData])
+  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories])
 
   // 导出工装信息为Excel
   const handleExport = async () => {
