@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { CATEGORY_CODE_MAP } from '../types/tooling'
 import { formatSpecificationsForProduction } from '../utils/productionFormat'
-import { getApplicableMaterialPrice, calculateTotalPrice } from '../utils/priceCalculator'
+import { calculateTotalPrice } from '../utils/priceCalculator'
 import { generateInventoryNumber, canGenerateInventoryNumber } from '../utils/toolingCalculations'
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
@@ -1099,11 +1099,6 @@ const ToolingInfoPage: React.FC = () => {
     calculatePartWeightRef.current = calculatePartWeight
   }, [calculatePartWeight])
   
-  const getApplicableMaterialPriceRef = useRef(getApplicableMaterialPrice)
-  useEffect(() => {
-    getApplicableMaterialPriceRef.current = getApplicableMaterialPrice
-  }, [getApplicableMaterialPrice])
-  
   const calculateTotalPriceRef = useRef(calculateTotalPrice)
   useEffect(() => {
     calculateTotalPriceRef.current = calculateTotalPrice
@@ -1117,8 +1112,7 @@ const ToolingInfoPage: React.FC = () => {
     const qty = Number(row.part_quantity || 0)
     const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
     const material = materialsRef.current.find(m => String(m.id) === String(row.material_id || ''))
-    const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
-    const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
+    const unitPrice = Number((material as any)?.unit_price || 0)
     const totalPrice = totalWeight > 0 && unitPrice > 0 ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice)) : 0
     return {
       unitWeight: Number.isFinite(unitWeight) ? unitWeight : 0,
@@ -1178,7 +1172,7 @@ const ToolingInfoPage: React.FC = () => {
     await handleExternalAction(action)
   }
   const handleRefresh = useCallback(async () => {
-    await fetchAllMeta()
+    await fetchAllMeta(true)
     await fetchToolingData()
     const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
     if (expandedIds.length > 0) {
@@ -2026,8 +2020,7 @@ const ToolingInfoPage: React.FC = () => {
     const getPriceCached = (rec: PartItem) => {
       const dep = getWeightCached(rec)
       const material = materialsRef.current.find(m => String(m.id) === String(rec.material_id))
-      const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
-      const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
+      const unitPrice = Number((material as any)?.unit_price || 0)
       const storedTotalPrice = Number(rec.total_price || 0)
       const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}|${unitPrice}|${storedTotalPrice}`
       const cached = priceCacheRef.current.get(key)
@@ -2681,7 +2674,7 @@ const ToolingInfoPage: React.FC = () => {
 
   // 初始化数据
   useEffect(() => {
-    fetchAllMeta()
+    fetchAllMeta(true)
     fetchToolingData()
     return () => {
       // 清理所有定时器
@@ -3195,7 +3188,7 @@ const ToolingInfoPage: React.FC = () => {
     try {
       // 确保元数据与子表均已加载
       if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
-        await fetchAllMeta()
+        await fetchAllMeta(true)
       }
       const parentIds = data.filter(item => !String(item.id || '').startsWith('blank-')).map(i => String(i.id))
       const needPartsFetch = parentIds.filter(id => !partsMap[id] || partsMap[id].length === 0)
@@ -3757,7 +3750,7 @@ const ToolingInfoPage: React.FC = () => {
     
     try {
       if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
-        await fetchAllMeta()
+        await fetchAllMeta(true)
       }
       console.log('开始导入文件:', importFile.name, '大小:', importFile.size)
       const buf = await importFile.arrayBuffer()
@@ -4214,7 +4207,7 @@ const ToolingInfoPage: React.FC = () => {
       
       // 确保元数据与子表均已加载
       if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
-        await fetchAllMeta()
+        await fetchAllMeta(true)
       }
       const parentIds2 = data.filter(t => !String(t.id || '').startsWith('blank-')).map(t => String(t.id))
       const localPartsMap: Record<string, any[]> = {}
@@ -4400,7 +4393,7 @@ const ToolingInfoPage: React.FC = () => {
       try {
         // 确保元数据已经加载完成
         if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
-          await fetchAllMeta()
+          await fetchAllMeta(true)
         }
         await parseImportFile(file)
         // 关闭当前弹窗，打开预览弹窗
