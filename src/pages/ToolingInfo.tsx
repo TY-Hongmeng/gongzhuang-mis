@@ -679,9 +679,9 @@ const ToolingInfoPage: React.FC = () => {
   
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
 
-  const ensureExpandedDataLoaded = useCallback(async (toolingId: string) => {
+  const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     const isExpandedNow = () => expandedRowKeysRef.current.includes(toolingId) || expandedChildKeysRef.current.includes(toolingId)
-    if (!isExpandedNow()) return
+    if (!force && !isExpandedNow()) return
     if (expandedLoadInflightRef.current.has(toolingId)) return
     expandedLoadInflightRef.current.add(toolingId)
     const tasks: Promise<any>[] = []
@@ -2577,9 +2577,18 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [setPartsMap])
 
+  const toolingById = useMemo(() => {
+    const map: Record<string, any> = {}
+    ;(data || []).forEach((item: any) => {
+      const id = String(item?.id || '')
+      if (id) map[id] = item
+    })
+    return map
+  }, [data])
+
   const expandedRowRender = useCallback((record: any) => {
     const toolingId = record.id as string
-    const parent = data.find(d => d.id === toolingId) as any
+    const parent = toolingById[toolingId] as any
     const parentProject = parent?.project_name || ''
     const parentUnit = parent?.production_unit || ''
     const parentApplicant = parent?.recorder || ''
@@ -2657,7 +2666,7 @@ const ToolingInfoPage: React.FC = () => {
     createPartColumns,
     createChildColumns,
     addBlankParts,
-    data,
+    toolingById,
     setChildItemsMap,
     setPartBatchModal
   ])
@@ -2735,7 +2744,7 @@ const ToolingInfoPage: React.FC = () => {
       })
       return hasChange ? next : prev
     })
-  }, [expandedRowKeys, expandedChildKeys, partsMap, childItemsMap, setPartsMap, setChildItemsMap])
+  }, [expandedRowKeys, expandedChildKeys, setPartsMap, setChildItemsMap])
 
   // 初始化数据
   useEffect(() => {
@@ -3109,8 +3118,8 @@ const ToolingInfoPage: React.FC = () => {
                 const isChildExpanded = expandedChildKeys.includes(id)
                 const childNext = isChildExpanded ? expandedChildKeys.filter(k => k !== id) : [...expandedChildKeys, id]
                 setExpandedChildKeys(childNext)
-                if (!isExpanded || !isChildExpanded) {
-                  ensureExpandedDataLoaded(id)
+              if (!isExpanded || !isChildExpanded) {
+                  ensureExpandedDataLoaded(id, true)
                 }
               }}
               style={{ cursor: 'pointer', color: '#000000', fontWeight: 600, fontSize: '26px' }}
@@ -3246,7 +3255,7 @@ const ToolingInfoPage: React.FC = () => {
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
-  ], [handleSave, data, fetchPartsData, fetchChildItemsData])
+  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories])
 
   // 导出工装信息为Excel
   const handleExport = async () => {
@@ -5041,7 +5050,7 @@ const ToolingInfoPage: React.FC = () => {
                 return prev.filter(k => k !== id)
               })
               if (expanded) {
-                ensureExpandedDataLoaded(id)
+                ensureExpandedDataLoaded(id, true)
               }
             },
             expandRowByClick: false,
