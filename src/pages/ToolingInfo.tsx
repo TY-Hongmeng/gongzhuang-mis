@@ -524,6 +524,7 @@ const ToolingInfoPage: React.FC = () => {
   const [processDoneMap, setProcessDoneMap] = useState<Record<string, { done: string[]; last?: string; time?: number }>>(() => ({}))
   const fileInputRef = useRef<HTMLInputElement>(null)
   const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
+  const workHoursFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number; lastKey: string }>({ timer: null, lastFetchTime: 0, lastKey: '' })
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   useEffect(() => {
@@ -734,8 +735,10 @@ const ToolingInfoPage: React.FC = () => {
       const childItems = (childItemsMap[String(pid)] || []).filter(c => !String(c.id || '').startsWith('blank-'))
       derivedChildKeys.push(...childItems.map(c => 'child-' + c.id))
     })
-    const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
-    const diff = next.length !== selectedRowKeys.length || next.some(k => !selectedRowKeys.includes(k))
+    const nextSet = new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys])
+    const prevSet = new Set(selectedRowKeys)
+    const next = Array.from(nextSet)
+    const diff = nextSet.size !== prevSet.size || next.some(k => !prevSet.has(k))
     if (diff) setSelectedRowKeys(next)
   }, [partsMap, childItemsMap, selectedRowKeys])
   
@@ -849,15 +852,21 @@ const ToolingInfoPage: React.FC = () => {
   const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsSummaryMap, setPartsSummaryMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
   const partsSummaryMapRef = useRef(partsSummaryMap)
+  const partsSummaryInflightRef = useRef<Set<string>>(new Set())
+  const partsSummaryTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => { partsSummaryMapRef.current = partsSummaryMap }, [partsSummaryMap])
 
   useEffect(() => {
     let cancelled = false
+    if (partsSummaryTimerRef.current) {
+      clearTimeout(partsSummaryTimerRef.current)
+      partsSummaryTimerRef.current = null
+    }
     const ids = (visibleData || [])
       .map((r: any) => String(r?.id || ''))
       .filter((id) => !!id && !id.startsWith('blank-'))
 
-    const missing = ids.filter((id) => !partsSummaryMapRef.current[id])
+    const missing = ids.filter((id) => !partsSummaryMapRef.current[id] && !partsSummaryInflightRef.current.has(id))
     if (missing.length === 0) return
 
     const run = async () => {
@@ -866,6 +875,7 @@ const ToolingInfoPage: React.FC = () => {
       for (let i = 0; i < missing.length; i += BATCH) {
         if (cancelled) return
         const slice = missing.slice(i, i + BATCH)
+        slice.forEach((id) => partsSummaryInflightRef.current.add(id))
         try {
           const resp = await fetchWithFallback('/api/tooling/parts/summary', {
             method: 'POST',
@@ -882,13 +892,23 @@ const ToolingInfoPage: React.FC = () => {
             const incomplete = Number(it.incomplete || (total - completed)) || 0
             next[tid] = { total, completed, incomplete }
           })
-        } catch {}
+        } catch {} finally {
+          slice.forEach((id) => partsSummaryInflightRef.current.delete(id))
+        }
       }
       if (cancelled) return
       setPartsSummaryMap((prev) => ({ ...prev, ...next }))
     }
-    run()
-    return () => { cancelled = true }
+    partsSummaryTimerRef.current = setTimeout(() => {
+      run()
+    }, 180)
+    return () => {
+      cancelled = true
+      if (partsSummaryTimerRef.current) {
+        clearTimeout(partsSummaryTimerRef.current)
+        partsSummaryTimerRef.current = null
+      }
+    }
   }, [visibleData])
 
   const { filteredVisibleData, counts } = useMemo(() => {
@@ -989,8 +1009,12 @@ const ToolingInfoPage: React.FC = () => {
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
     try {
-      const hasInvs = invs && invs.length
-      const url = hasInvs ? `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}` : '/api/tooling/work-hours?page=1&pageSize=200'
+      const hasInvs = Array.isArray(invs) && invs.length > 0
+      if (!hasInvs) {
+        setWorkHoursData({})
+        return
+      }
+      const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
       const response = await fetchWithFallback(url, { cache: 'no-store' })
       if (!response.ok) {
         console.error('获取工时数据失败，HTTP状态:', response.status)
@@ -1014,20 +1038,7 @@ const ToolingInfoPage: React.FC = () => {
       }
       
       // 提取工时数据
-      const hoursByInventoryNo: Record<string, string[]> = hasInvs ? (result?.data || {}) : (() => {
-        const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-        const map: Record<string, string[]> = {}
-        rawItems.forEach((item: any) => {
-          const inventoryNo = String(item.part_inventory_number || '').trim().toUpperCase()
-          const processName = String(item.process_name || '').trim()
-          if (!inventoryNo || !processName) return
-          const norm = processName.trim().toLowerCase()
-          const arr = map[inventoryNo] || []
-          if (!arr.some(p => String(p).trim().toLowerCase() === norm)) arr.push(processName)
-          map[inventoryNo] = arr
-        })
-        return map
-      })()
+      const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
       
       setWorkHoursData(hoursByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
@@ -1038,46 +1049,36 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [])
   
-  // 初始加载和刷新时获取工时数据
-  useEffect(() => {
-    fetchWorkHoursData()
-  }, [fetchWorkHoursData])
-
   // 当展开/子表加载或筛选变更时，按当前页面相关盘存编号按需拉取工时数据（500ms 防抖）
   useEffect(() => {
+    const invsSet = new Set<string>()
+    ensureBlankToolings(data).forEach(d => {
+      const inv = String(d.inventory_number || '').trim().toUpperCase()
+      if (inv) invsSet.add(inv)
+    })
+    Object.values(partsMap).forEach(list => (list || []).forEach(p => {
+      const inv = String(p.part_inventory_number || '').trim().toUpperCase()
+      if (inv) invsSet.add(inv)
+    }))
+    const invs = Array.from(invsSet)
     const now = Date.now()
-    const last = processDoneFetchRef.current.lastFetchTime || 0
+    const last = workHoursFetchRef.current.lastFetchTime || 0
+    const nextKey = invs.slice().sort().join('|')
+    if (nextKey === workHoursFetchRef.current.lastKey && now - last < 3000) return
+    workHoursFetchRef.current.lastKey = nextKey
     if (now - last < 500) {
-      if (processDoneFetchRef.current.timer) clearTimeout(processDoneFetchRef.current.timer)
-      processDoneFetchRef.current.timer = setTimeout(() => {
-        const invsSet = new Set<string>()
-        ensureBlankToolings(data).forEach(d => {
-          const inv = String(d.inventory_number || '').trim().toUpperCase()
-          if (inv) invsSet.add(inv)
-        })
-        Object.values(partsMap).forEach(list => (list || []).forEach(p => {
-          const inv = String(p.part_inventory_number || '').trim().toUpperCase()
-          if (inv) invsSet.add(inv)
-        }))
-        fetchWorkHoursData(Array.from(invsSet))
-        processDoneFetchRef.current.lastFetchTime = Date.now()
+      if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
+      workHoursFetchRef.current.timer = setTimeout(() => {
+        fetchWorkHoursData(invs)
+        workHoursFetchRef.current.lastFetchTime = Date.now()
       }, 500)
     } else {
-      const invsSet = new Set<string>()
-      ensureBlankToolings(data).forEach(d => {
-        const inv = String(d.inventory_number || '').trim().toUpperCase()
-        if (inv) invsSet.add(inv)
-      })
-      Object.values(partsMap).forEach(list => (list || []).forEach(p => {
-        const inv = String(p.part_inventory_number || '').trim().toUpperCase()
-        if (inv) invsSet.add(inv)
-      }))
-      fetchWorkHoursData(Array.from(invsSet))
-      processDoneFetchRef.current.lastFetchTime = Date.now()
+      fetchWorkHoursData(invs)
+      workHoursFetchRef.current.lastFetchTime = Date.now()
     }
     return () => {
-      if (processDoneFetchRef.current.timer) clearTimeout(processDoneFetchRef.current.timer)
-      processDoneFetchRef.current.timer = null
+      if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
+      workHoursFetchRef.current.timer = null
     }
   }, [data, partsMap, expandedRowKeys, expandedChildKeys, filterSearch, filterUnit, filterCategory, filterPriority])
   
