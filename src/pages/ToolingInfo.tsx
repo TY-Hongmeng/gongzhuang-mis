@@ -24,6 +24,14 @@ const debugLog = (...args: any[]) => {
     console.log(...args)
   }
 }
+const summarizeImportErrors = (errors: string[], maxItems = 8, maxLength = 360) => {
+  if (!Array.isArray(errors) || errors.length === 0) return ''
+  const items = errors.slice(0, maxItems).map((item) => String(item || '').trim()).filter(Boolean)
+  const remain = Math.max(errors.length - items.length, 0)
+  const summary = items.join('；')
+  const trimmed = summary.length > maxLength ? `${summary.slice(0, maxLength)}...` : summary
+  return remain > 0 ? `${trimmed}；其余${remain}条请查看导入源数据` : trimmed
+}
 
 const getBatchSize = () => {
   try {
@@ -3876,7 +3884,7 @@ const ToolingInfoPage: React.FC = () => {
       
       // 如果有工装导入错误，显示给用户
       if (toolingImportErrors.length > 0) {
-        message.warning(`工装信息导入完成，成功${toolingSuccessCount}条，失败${toolingImportErrors.length}条。失败原因：${toolingImportErrors.join('； ')}`)
+        message.warning(`工装信息导入完成，成功${toolingSuccessCount}条，失败${toolingImportErrors.length}条。失败原因：${summarizeImportErrors(toolingImportErrors)}`)
       }
       
       // 2. 解析零件信息工作表（如果存在）
@@ -4104,7 +4112,7 @@ const ToolingInfoPage: React.FC = () => {
         
         // 如果有零件导入错误，显示给用户
         if (partImportErrors.length > 0) {
-          message.warning(`零件信息导入完成，成功${partSuccessCount}条，失败${partImportErrors.length}条。失败原因：${partImportErrors.join('； ')}`)
+          message.warning(`零件信息导入完成，成功${partSuccessCount}条，失败${partImportErrors.length}条。失败原因：${summarizeImportErrors(partImportErrors)}`)
         }
         if (missingMaterialCount + missingSourceCount + missingPartTypeCount > 0) {
           message.warning(`零件信息存在空字段提示：材质为空${missingMaterialCount}条，材料来源为空${missingSourceCount}条，料型为空${missingPartTypeCount}条`)
@@ -4181,7 +4189,7 @@ const ToolingInfoPage: React.FC = () => {
         
         // 如果有标准件导入错误，显示给用户
         if (childImportErrors.length > 0) {
-          message.warning(`标准件信息导入完成，成功${childSuccessCount}条，失败${childImportErrors.length}条。失败原因：${childImportErrors.join('； ')}`)
+          message.warning(`标准件信息导入完成，成功${childSuccessCount}条，失败${childImportErrors.length}条。失败原因：${summarizeImportErrors(childImportErrors)}`)
         }
       }
       
