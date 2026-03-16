@@ -42,6 +42,26 @@ function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (..
   }
 }
 
+async function runWithConcurrency<T, R>(
+  items: T[],
+  maxConcurrency: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  if (items.length === 0) return []
+  const concurrency = Math.max(1, Math.min(maxConcurrency, items.length))
+  const results: R[] = new Array(items.length)
+  let cursor = 0
+  const runners = Array.from({ length: concurrency }).map(async () => {
+    while (true) {
+      const index = cursor++
+      if (index >= items.length) break
+      results[index] = await worker(items[index], index)
+    }
+  })
+  await Promise.all(runners)
+  return results
+}
+
 interface RowItem {
   id: string
   inventory_number?: string
@@ -503,6 +523,9 @@ const ToolingInfoPage: React.FC = () => {
     parts: { total: 0, success: 0, failed: 0 },
     childItems: { total: 0, success: 0, failed: 0 }
   })
+  const importValidationCacheRef = useRef<{ ts: number; existingInvSet: Set<string>; existingPartInvSet: Set<string> } | null>(null)
+  const importValidationInflightRef = useRef<Promise<{ existingInvSet: Set<string>; existingPartInvSet: Set<string> }> | null>(null)
+  const IMPORT_VALIDATION_CACHE_TTL = 60 * 1000
 
   // 使用自定义Hooks
   const {
@@ -3416,7 +3439,73 @@ const ToolingInfoPage: React.FC = () => {
     }
   }
 
-  // 解析导入文件，显示预览
+  const getImportValidationData = useCallback(async () => {
+    const now = Date.now()
+    const cached = importValidationCacheRef.current
+    if (cached && now - cached.ts < IMPORT_VALIDATION_CACHE_TTL) {
+      return {
+        existingInvSet: new Set(cached.existingInvSet),
+        existingPartInvSet: new Set(cached.existingPartInvSet)
+      }
+    }
+    if (importValidationInflightRef.current) {
+      const data = await importValidationInflightRef.current
+      return {
+        existingInvSet: new Set(data.existingInvSet),
+        existingPartInvSet: new Set(data.existingPartInvSet)
+      }
+    }
+    const promise = (async () => {
+      const getItems = (result: any) => Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+      const fetchPaginatedItems = async (buildUrl: (page: number, pageSize: number) => string) => {
+        const pageSize = 1000
+        let page = 1
+        const all: any[] = []
+        while (true) {
+          const resp = await fetchWithFallback(buildUrl(page, pageSize), { cache: 'no-store' })
+          const result = await resp.json().catch(() => ({ items: [] }))
+          const items = getItems(result)
+          all.push(...items)
+          if (items.length < pageSize) break
+          page += 1
+        }
+        return all
+      }
+      const normalizeText = (value: any) => String(value ?? '').trim()
+      const existingInvSet = new Set<string>()
+      const existingPartInvSet = new Set<string>()
+      try {
+        const allToolingItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`)
+        allToolingItems.forEach((it: any) => {
+          const inv = normalizeText(it?.inventory_number)
+          if (inv) existingInvSet.add(inv)
+        })
+      } catch {}
+      try {
+        const allPartInventoryItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
+        allPartInventoryItems.forEach((it: any) => {
+          const pinv = normalizeText(it?.part_inventory_number)
+          if (pinv) existingPartInvSet.add(pinv)
+        })
+      } catch {}
+      importValidationCacheRef.current = {
+        ts: Date.now(),
+        existingInvSet,
+        existingPartInvSet
+      }
+      return {
+        existingInvSet: new Set(existingInvSet),
+        existingPartInvSet: new Set(existingPartInvSet)
+      }
+    })()
+    importValidationInflightRef.current = promise
+    try {
+      return await promise
+    } finally {
+      importValidationInflightRef.current = null
+    }
+  }, [IMPORT_VALIDATION_CACHE_TTL])
+
   const parseImportFile = async (file: File) => {
     try {
       // 检查文件大小，避免空文件
@@ -3474,23 +3563,6 @@ const ToolingInfoPage: React.FC = () => {
 
       const normalizeText = (value: any) => String(value ?? '').trim()
 
-      const getItems = (result: any) => Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-
-      const fetchPaginatedItems = async (buildUrl: (page: number, pageSize: number) => string) => {
-        const pageSize = 1000
-        let page = 1
-        const all: any[] = []
-        while (true) {
-          const resp = await fetch(buildUrl(page, pageSize), { cache: 'no-store' })
-          const result = await resp.json().catch(() => ({ items: [] }))
-          const items = getItems(result)
-          all.push(...items)
-          if (items.length < pageSize) break
-          page += 1
-        }
-        return all
-      }
-
       const buildCountMap = (rows: any[], field: string) => {
         const counts: Record<string, number> = {}
         rows.forEach((row) => {
@@ -3515,28 +3587,10 @@ const ToolingInfoPage: React.FC = () => {
         return grouped
       }
       
-      // 预先获取系统中已存在的盘存编号，用于重复校验
-      let existingInvSet = new Set<string>()
-      try {
-        const allToolingItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`)
-        allToolingItems.forEach((it: any) => {
-          const inv = normalizeText(it?.inventory_number)
-          if (inv) existingInvSet.add(inv)
-        })
-      } catch {}
-
       // 文件内重复盘存编号统计
       const fileInvCounts = buildCountMap(toolingData, '盘存编号')
 
-      // 预先获取系统中已存在的子表盘存编号（零件盘存编号）
-      let existingPartInvSet = new Set<string>()
-      try {
-        const allPartInventoryItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
-        allPartInventoryItems.forEach((it: any) => {
-          const pinv = normalizeText(it?.part_inventory_number)
-          if (pinv) existingPartInvSet.add(pinv)
-        })
-      } catch {}
+      const { existingInvSet, existingPartInvSet } = await getImportValidationData()
 
       // 文件内重复子表盘存编号统计
       const filePartInvCounts = buildCountMap(partsData, '盘存编号')
@@ -3767,12 +3821,10 @@ const ToolingInfoPage: React.FC = () => {
       // 收集工装导入错误信息
       const toolingImportErrors: string[] = []
       
-      for (const row of validToolingRows) {
-        // 格式化工装数据中的日期字段
+      const toolingImportResults = await runWithConcurrency(validToolingRows, 4, async (row) => {
         const formattedReceivedDate = formatExcelDate(row['接收日期'])
         const formattedDemandDate = row['需求日期'] ? formatExcelDate(row['需求日期']) : undefined
         const formattedCompletedDate = row['完成日期'] ? formatExcelDate(row['完成日期']) : undefined
-        
         const payload = {
           inventory_number: String(row['盘存编号']).trim(),
           project_name: String(row['项目名称']).trim(),
@@ -3784,29 +3836,37 @@ const ToolingInfoPage: React.FC = () => {
           recorder: row['责任人'] ? String(row['责任人']).trim() : undefined,
           sets_count: 1
         }
-        
         console.log('创建工装payload:', payload)
         try {
           const created = await createTooling(payload)
           if (created && created.success && created.data) {
-            successCount++
-            toolingSuccessCount++
-            // 建立盘存编号映射：使用父表盘存编号作为键
-            inventoryNumberMap[payload.inventory_number] = created.data.id
-            console.log('工装创建成功:', created.data)
-            console.log('工装映射关系:', payload.inventory_number, '->', created.data.id)
-          } else {
-            const errorMsg = `工装“${row['盘存编号']}”（${row['项目名称']}）：创建失败，错误：${created?.error || '服务器返回空数据'}`
-            toolingImportErrors.push(errorMsg)
-            console.error(errorMsg)
+            return {
+              ok: true as const,
+              inventoryNumber: payload.inventory_number,
+              toolingId: String(created.data.id)
+            }
+          }
+          return {
+            ok: false as const,
+            error: `工装“${row['盘存编号']}”（${row['项目名称']}）：创建失败，错误：${created?.error || '服务器返回空数据'}`
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : String(error)
-          const fullErrorMsg = `工装“${row['盘存编号']}”（${row['项目名称']}）：创建失败，错误信息：${errorMsg}`
-          toolingImportErrors.push(fullErrorMsg)
-          console.error('创建工装失败，盘存编号:', row['盘存编号'], '错误:', error)
+          return {
+            ok: false as const,
+            error: `工装“${row['盘存编号']}”（${row['项目名称']}）：创建失败，错误信息：${errorMsg}`
+          }
         }
-      }
+      })
+      toolingImportResults.forEach((result) => {
+        if (result.ok) {
+          successCount++
+          toolingSuccessCount++
+          inventoryNumberMap[result.inventoryNumber] = result.toolingId
+          return
+        }
+        toolingImportErrors.push(result.error)
+      })
       
       // 打印映射关系
       console.log('工装映射关系表:', inventoryNumberMap)
@@ -4073,20 +4133,18 @@ const ToolingInfoPage: React.FC = () => {
         // 收集标准件导入错误信息
         const childImportErrors: string[] = []
         
-        for (const row of validChildItemsRows) {
+        const childImportResults = await runWithConcurrency(validChildItemsRows, 4, async (row) => {
           const parentInventoryNumber = row['父表盘存编号']
           console.log('查找标准件关联工装:', parentInventoryNumber)
           const toolingId = inventoryNumberMap[parentInventoryNumber]
           if (!toolingId) {
-            childImportErrors.push(`标准件“${row['名称']}”（${row['型号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`)
-            console.error('未找到关联工装，父表盘存编号:', parentInventoryNumber, '当前映射表:', inventoryNumberMap)
-            continue // 跳过没有关联工装的标准件
+            return {
+              ok: false as const,
+              error: `标准件“${row['名称']}”（${row['型号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`
+            }
           }
           console.log('找到标准件关联工装:', parentInventoryNumber, '->', toolingId)
-          
-          // 格式化标准件数据中的日期字段
           const formattedRequiredDate = formatExcelDate(row['需求日期'])
-          
           const payload = {
             name: String(row['名称']).trim(),
             model: String(row['型号']).trim(),
@@ -4094,21 +4152,29 @@ const ToolingInfoPage: React.FC = () => {
             unit: String(row['单位']).trim(),
             required_date: formattedRequiredDate
           }
-          
           try {
             const created = await createChildItem(toolingId, payload)
-            if (created) {
-              successCount++
-              childSuccessCount++
-            } else {
-              childImportErrors.push(`标准件“${row['名称']}”（${row['型号']}）：创建失败，服务器返回空数据`)
+            if (created) return { ok: true as const }
+            return {
+              ok: false as const,
+              error: `标准件“${row['名称']}”（${row['型号']}）：创建失败，服务器返回空数据`
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error)
-            childImportErrors.push(`标准件“${row['名称']}”（${row['型号']}）：创建失败，错误信息：${errorMsg}`)
-            console.error('创建标准件失败：', error)
+            return {
+              ok: false as const,
+              error: `标准件“${row['名称']}”（${row['型号']}）：创建失败，错误信息：${errorMsg}`
+            }
           }
-        }
+        })
+        childImportResults.forEach((result) => {
+          if (result.ok) {
+            successCount++
+            childSuccessCount++
+            return
+          }
+          childImportErrors.push(result.error)
+        })
         
         // 如果有标准件导入错误，显示给用户
         if (childImportErrors.length > 0) {
