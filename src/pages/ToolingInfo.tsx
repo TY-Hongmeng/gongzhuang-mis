@@ -3346,91 +3346,27 @@ const ToolingInfoPage: React.FC = () => {
   // 下载导入模板
   const downloadImportTemplate = () => {
     try {
-      // 创建工作簿
       const wb = XLSX.utils.book_new()
-      
-      // 1. 父表：工装信息模板
-      const toolingTemplateData = [
-        {
-          '盘存编号': 'LD260101',
-          '项目名称': '示例项目',
-          '投产单位': '生产一部',
-          '工装类别': '夹具',
-          '接收日期': '2024-01-01',
-          '需求日期': '2024-02-01',
-          '完成日期': '2024-01-15',
-          '责任人': '张三'
-        },
-        {
-          '盘存编号': 'LD260102',
-          '项目名称': '示例项目2',
-          '投产单位': '生产二部',
-          '工装类别': '模具',
-          '接收日期': '2024-01-02',
-          '需求日期': '',
-          '完成日期': '',
-          '责任人': '李四'
-        }
-      ]
-      
-      const toolingWs = XLSX.utils.json_to_sheet(toolingTemplateData)
+
+      const toolingHeaders = ['盘存编号', '项目名称', '投产单位', '工装类别', '接收日期', '需求日期', '完成日期', '责任人']
+      const partsHeaders = ['父表盘存编号', '盘存编号', '图号', '零件名称', '数量', '材质', '材料来源', '料型', '规格', '热处理', '需求日期']
+      const childHeaders = ['父表盘存编号', '名称', '型号', '数量', '单位', '需求日期']
+
+      const toolingWs = XLSX.utils.aoa_to_sheet([toolingHeaders])
       XLSX.utils.book_append_sheet(wb, toolingWs, '工装信息')
-      
-      // 2. 子表1：零件信息模板
-      const partsTemplateData = [
-        {
-          '父表盘存编号': 'LD260101',
-          '盘存编号': 'LD26010101',
-          '图号': 'DWG-001',
-          '零件名称': '示例零件1',
-          '数量': 2,
-          '材质': '45#钢',
-          '材料来源': '自备',
-          '料型': '圆钢',
-          '规格': 'Φ50×200',
-          '备注': '需调质'
-        },
-        {
-          '父表盘存编号': 'LD260101',
-          '盘存编号': 'LD26010102',
-          '图号': 'DWG-002',
-          '零件名称': '示例零件2',
-          '数量': 1,
-          '材质': '铝合金',
-          '材料来源': '外购',
-          '料型': '板材',
-          '规格': '100×100×10',
-          '备注': '2024-01-10'
-        }
-      ]
-      
-      const partsWs = XLSX.utils.json_to_sheet(partsTemplateData)
+
+      const partsWs = XLSX.utils.aoa_to_sheet([partsHeaders])
       XLSX.utils.book_append_sheet(wb, partsWs, '零件信息')
-      
-      // 3. 子表2：标准件信息模板
-      const childItemsTemplateData = [
-        {
-          '父表盘存编号': 'LD260101',
-          '名称': '螺栓',
-          '型号': 'M12×50',
-          '数量': 4,
-          '单位': '个',
-          '需求日期': '2024-01-05'
-        },
-        {
-          '父表盘存编号': 'LD260101',
-          '名称': '螺母',
-          '型号': 'M12',
-          '数量': 4,
-          '单位': '个',
-          '需求日期': '2024-01-05'
-        }
-      ]
-      
-      const childItemsWs = XLSX.utils.json_to_sheet(childItemsTemplateData)
+
+      const childItemsWs = XLSX.utils.aoa_to_sheet([childHeaders])
       XLSX.utils.book_append_sheet(wb, childItemsWs, '标准件信息')
-      
-      // 4. 添加说明工作表
+
+      const unitSamples = productionUnits.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 8).join('、') || '请先在基础数据中维护'
+      const categorySamples = toolingCategories.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 8).join('、') || '请先在基础数据中维护'
+      const materialSamples = materials.map((x: any) => String(x?.name || '').trim()).filter(Boolean).slice(0, 8).join('、') || '请先在基础数据中维护'
+      const sourceSamples = materialSources.map((x: any) => String(x?.name || '').trim()).filter(Boolean).slice(0, 8).join('、') || '请先在基础数据中维护'
+      const partTypeSamples = partTypes.map((x: any) => String(x?.name || '').trim()).filter(Boolean).slice(0, 8).join('、') || '请先在基础数据中维护'
+
       const instructionsData = [
         ['工装信息导入模板说明'],
         [''],
@@ -3457,14 +3393,21 @@ const ToolingInfoPage: React.FC = () => {
         ['   - 批量导入前请先备份现有数据'],
         ['   - 零件信息和标准件信息可以为空，不影响工装信息的导入'],
         ['   - 导入时会自动创建关联关系'],
+        ['   - 零件信息建议使用“热处理”和“需求日期”列，不再建议填写“备注”列'],
         ['   - 材质、材料来源、料型可为空，系统将提示但仍可导入'],
-        ['   - 无效记录（如缺少必填字段）会被跳过，不会影响其他记录的导入']
+        ['   - 无效记录（如缺少必填字段）会被跳过，不会影响其他记录的导入'],
+        [''],
+        ['5. 当前系统可用基础数据示例：'],
+        [`   - 投产单位：${unitSamples}`],
+        [`   - 工装类别：${categorySamples}`],
+        [`   - 材质：${materialSamples}`],
+        [`   - 材料来源：${sourceSamples}`],
+        [`   - 料型：${partTypeSamples}`]
       ]
-      
+
       const instructionsWs = XLSX.utils.aoa_to_sheet(instructionsData)
       XLSX.utils.book_append_sheet(wb, instructionsWs, '导入说明')
-      
-      // 导出模板文件
+
       XLSX.writeFile(wb, '工装信息导入模板.xlsx')
       message.success('模板下载成功')
     } catch (error) {
@@ -3663,9 +3606,17 @@ const ToolingInfoPage: React.FC = () => {
           if ((filePartInvCounts[partInventoryNumber] || 0) > 1) errors.push(`零件盘存编号“${partInventoryNumber}”在导入文件中重复出现`)
         }
 
+        const normalizedPartDemandDate = normalizeDateInput(String(formatExcelDate(part['需求日期']) || '').trim())
+        const legacyRemark = String(part['备注'] || '').trim()
+        const parsedLegacyRemark = parsePartRemarkFields(legacyRemark)
+        const partHeatTreatment = String(part['热处理'] || parsedLegacyRemark.heatTreatment || '').trim()
+        const partDemandDate = /^\d{4}-\d{2}-\d{2}$/.test(normalizedPartDemandDate)
+          ? normalizedPartDemandDate
+          : String(parsedLegacyRemark.demandDate || '')
         const formattedPart = {
           ...part,
-          '备注': formatExcelDate(part['备注'])
+          '热处理': partHeatTreatment,
+          '需求日期': partDemandDate
         }
 
         return {
@@ -3884,6 +3835,8 @@ const ToolingInfoPage: React.FC = () => {
           '材料来源': string
           '料型': string
           '规格': string
+          '热处理'?: string
+          '需求日期'?: string
           '备注': string
           '自备'?: string | number | boolean
         }
@@ -4565,9 +4518,14 @@ const ToolingInfoPage: React.FC = () => {
       width: 150
     },
     {
-      title: '备注',
-      dataIndex: '备注',
+      title: '热处理',
+      dataIndex: '热处理',
       width: 150
+    },
+    {
+      title: '需求日期',
+      dataIndex: '需求日期',
+      width: 120
     },
     {
       title: '状态',
