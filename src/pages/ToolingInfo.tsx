@@ -2107,7 +2107,7 @@ const ToolingInfoPage: React.FC = () => {
         onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (text: string, rec: PartItem) => (
           <EditableCell
-            value={materialsRef.current.find(m => m.id === text)?.name || ''}
+            value={materialsRef.current.find(m => String(m.id) === String(text))?.name || ''}
             record={rec as any}
             dataIndex={'material_id' as any}
             options={materialOptionsRef.current}
@@ -4068,7 +4068,7 @@ const ToolingInfoPage: React.FC = () => {
           }
 
           // 备注规范化：拆分为“热处理 + 需求日期”后统一回写到备注字段
-          const srcName = selectedSource?.name || (materialSources.find(ms => ms.id === payload.material_source_id)?.name) || ''
+          const srcName = selectedSource?.name || (materialSources.find(ms => String(ms.id) === String(payload.material_source_id))?.name) || ''
           const formattedLegacyRemark = formatExcelDate(row['备注'])
           const rawLegacyRemark = String(formattedLegacyRemark || '').trim()
           const rawHeat = String(row['热处理'] || '').trim()

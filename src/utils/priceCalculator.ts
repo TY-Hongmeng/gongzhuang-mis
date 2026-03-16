@@ -11,36 +11,34 @@ export function getApplicableMaterialPrice(prices: MaterialPrice[], receivingDat
     return 0;
   }
 
-  // 如果没有接收日期，返回最近的价格（生效开始日期最大的）
+  const list = [...prices]
+    .filter((p) => p && p.unit_price != null && p.effective_start_date)
+    .sort((a, b) => new Date(b.effective_start_date).getTime() - new Date(a.effective_start_date).getTime())
+  if (list.length === 0) return 0
+
   if (!receivingDate) {
-    const latestPrice = prices.reduce((latest, current) => {
-      return new Date(current.effective_start_date) > new Date(latest.effective_start_date) ? current : latest;
-    });
-    return latestPrice.unit_price;
+    return Number(list[0].unit_price || 0);
   }
 
   const targetDate = new Date(receivingDate);
+  if (Number.isNaN(targetDate.getTime())) {
+    return Number(list[0].unit_price || 0)
+  }
   
-  // 查找适用的价格：生效开始日期 <= 接收日期，且（生效结束日期为空或 >= 接收日期）
-  const applicablePrice = prices.find(price => {
+  const applicablePrice = list.find(price => {
     const startDate = new Date(price.effective_start_date);
     const endDate = price.effective_end_date ? new Date(price.effective_end_date) : null;
     
     return startDate <= targetDate && (!endDate || endDate >= targetDate);
   });
 
-  // 如果没找到精确匹配的价格，返回最近的生效价格
   if (!applicablePrice) {
-    const validPrices = prices.filter(price => new Date(price.effective_start_date) <= targetDate);
+    const validPrices = list.filter(price => new Date(price.effective_start_date) <= targetDate);
     if (validPrices.length === 0) return 0;
-    
-    const latestValidPrice = validPrices.reduce((latest, current) => {
-      return new Date(current.effective_start_date) > new Date(latest.effective_start_date) ? current : latest;
-    });
-    return latestValidPrice.unit_price;
+    return Number(validPrices[0].unit_price || 0);
   }
 
-  return applicablePrice.unit_price;
+  return Number(applicablePrice.unit_price || 0);
 }
 
 /**

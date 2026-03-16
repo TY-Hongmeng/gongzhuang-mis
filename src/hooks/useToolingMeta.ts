@@ -60,8 +60,15 @@ const loadToolingMeta = async (): Promise<ToolingMetaData> => {
         if (pricesRes.ok) {
           const pricesJson = await pricesRes.json()
           mat.prices = pricesJson.data || []
-          if (Array.isArray(mat.prices) && mat.prices.length > 0 && mat.prices[0]?.unit_price != null) {
-            mat.unit_price = Number(mat.prices[0].unit_price)
+          if (Array.isArray(mat.prices) && mat.prices.length > 0) {
+            const latest = [...mat.prices].sort((a: any, b: any) => {
+              const at = new Date(String(a?.effective_start_date || '')).getTime()
+              const bt = new Date(String(b?.effective_start_date || '')).getTime()
+              return bt - at
+            })[0]
+            if (latest?.unit_price != null) {
+              mat.unit_price = Number(latest.unit_price)
+            }
           }
         }
       } catch {}
