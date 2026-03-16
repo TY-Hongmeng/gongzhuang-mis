@@ -1,13 +1,11 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
-import { Card, Space, Button, message, Modal, Input, DatePicker, Tabs, Spin, Alert, Statistic, Row, Col, Dropdown } from 'antd'
-import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, PlusOutlined, CheckCircleOutlined, WarningOutlined, FileExcelOutlined, CloudDownloadOutlined, SaveOutlined, DatabaseOutlined, MoreOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { Card, Space, Button, message, Modal, Tabs, Spin, Alert, Statistic, Row, Col, Dropdown } from 'antd'
+import { LeftOutlined, ToolOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, WarningOutlined, FileExcelOutlined, CloudDownloadOutlined, SaveOutlined, DatabaseOutlined, MoreOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
 import { useToolingOperations } from '../hooks/useToolingOperations'
 import { useDataBackup } from '../hooks/useDataBackup'
-import { DataBackupManager } from '../utils/dataBackup'
 import { ToolingFilters } from './components/ToolingFilters'
 import { ToolingTable } from './components/ToolingTable'
 import { PartTable } from './components/PartTable'
@@ -15,9 +13,6 @@ import { ChildItemTable } from './components/ChildItemTable'
 import { PartInfoPage } from './components/PartInfoPage'
 import { RequestCleaner } from '../utils/dataSerializer'
 import * as XLSX from 'xlsx'
-import { debounce } from 'lodash-es'
-
-const { RangePicker } = DatePicker
 
 interface ToolingInfoPageProps {
   onBack?: () => void
@@ -25,18 +20,25 @@ interface ToolingInfoPageProps {
 
 const StatisticsPanel = memo(({ data }: { data: any[] }) => {
   const statistics = useMemo(() => {
-    const total = data.length
-    const complete = data.filter(item => {
+    let complete = 0
+    let blank = 0
+    for (const item of data) {
+      if (String(item.id || '').startsWith('blank-')) {
+        blank += 1
+        continue
+      }
       const hasInventoryNumber = !!item.inventory_number && item.inventory_number.trim() !== ''
       const hasProductionUnit = !!item.production_unit && item.production_unit.trim() !== ''
       const hasCategory = !!item.category && item.category.trim() !== ''
       const hasProjectName = !!item.project_name && item.project_name.trim() !== ''
       const hasReceivedDate = !!item.received_date && item.received_date.trim() !== ''
       const hasProductionDate = !!item.production_date && item.production_date.trim() !== ''
-      return hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate
-    }).length
-    const incomplete = total - complete - data.filter(item => item.id.startsWith('blank-')).length
-    
+      if (hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate) {
+        complete += 1
+      }
+    }
+    const total = data.length
+    const incomplete = total - complete - blank
     return { total, complete, incomplete }
   }, [data])
 
@@ -164,7 +166,6 @@ const ActionButtons = memo(({
 ActionButtons.displayName = 'ActionButtons'
 
 export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
-  const navigate = useNavigate()
   const { user } = useAuthStore()
   
   const {
@@ -190,8 +191,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
   } = useToolingData()
 
   const {
-    productionUnits,
-    toolingCategories,
     materials,
     partTypes,
     materialSources,
@@ -214,7 +213,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
   const [exportModalVisible, setExportModalVisible] = useState(false)
   const [backupModalVisible, setBackupModalVisible] = useState(false)
   const [restoreModalVisible, setRestoreModalVisible] = useState(false)
-  const [selectedToolingId, setSelectedToolingId] = useState<string | null>(null)
+  const [selectedToolingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'tooling' | 'parts' | 'childItems'>('tooling')
   const [error, setError] = useState<string | null>(null)
 
@@ -228,6 +227,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
   const handleToolingEdit = useCallback(async (id: string, key: string, value: any) => {
     try {
+      const previousRecord = data.find(r => r.id === id)
       setData(prev => prev.map(r => 
         r.id === id ? { ...r, [key]: value } : r
       ))
@@ -236,7 +236,9 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
         const cleanedParams = RequestCleaner.cleanToolingParams({ [key]: value })
         const success = await saveToolingData(id, cleanedParams)
         if (!success) {
-          setData(prev => prev.map(r => r.id === id ? r : { ...r, [key]: value }))
+          if (previousRecord) {
+            setData(prev => prev.map(r => r.id === id ? previousRecord : r))
+          }
           message.error('保存失败，请重试')
         } else {
           message.success('保存成功')
@@ -246,7 +248,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       setError(error instanceof Error ? error.message : '保存失败')
       message.error('保存失败')
     }
-  }, [saveToolingData, setData])
+  }, [data, saveToolingData, setData])
 
   const handlePartEdit = useCallback(async (toolingId: string, partId: string, key: string, value: any) => {
     try {
@@ -721,56 +723,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
     }
   }, [importExcelBackup])
 
-  const backupMenuItems = [
-    {
-      key: 'json',
-      label: 'JSON格式备份',
-      icon: <SaveOutlined />,
-      onClick: () => handleBackup('json')
-    },
-    {
-      key: 'excel',
-      label: 'Excel格式备份',
-      icon: <FileExcelOutlined />,
-      onClick: () => handleBackup('excel')
-    }
-  ]
-
-  const restoreMenuItems = [
-    {
-      key: 'json',
-      label: '从JSON备份恢复',
-      onClick: () => {
-        const input = document.createElement('input')
-        input.type = 'file'
-        input.accept = '.json'
-        input.onchange = (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0]
-          if (file) {
-            handleRestore(file)
-          }
-        }
-        input.click()
-      }
-    },
-    {
-      key: 'excel',
-      label: '从Excel备份恢复',
-      onClick: () => {
-        const input = document.createElement('input')
-        input.type = 'file'
-        input.accept = '.xlsx,.xls'
-        input.onchange = (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0]
-          if (file) {
-            handleExcelRestore(file)
-          }
-        }
-        input.click()
-      }
-    }
-  ]
-
   const expandedContent = useCallback((record: any) => {
     const parts = partsMap[record.id] || []
     const childItems = childItemsMap[record.id] || []
@@ -893,11 +845,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
                   createTooling(newTooling)
                 }}
                 onDelete={handleToolingDelete}
-                onGenerateInventoryNumber={(id) => {
-                  const tooling = data.find(t => t.id === id)
-                  if (!tooling) return
-                  handleToolingEdit(id, 'inventory_number', tooling.inventory_number || '')
-                }}
               />
             </Spin>
           )}

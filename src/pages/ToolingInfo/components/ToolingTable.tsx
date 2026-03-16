@@ -1,11 +1,8 @@
-import React, { useMemo, useCallback, useRef, memo, useState, useEffect } from 'react'
-import { Table, Button, Space, message, Modal, Tag, Tooltip, Badge } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons'
+import React, { useMemo, useCallback, memo, useState, useEffect } from 'react'
+import { Table, Button, Space, message, Modal, Tooltip, Badge } from 'antd'
+import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined, DownloadOutlined } from '@ant-design/icons'
 import { useToolingTable } from '@/hooks/useToolingTable'
-import { useAdvancedSearch } from '@/hooks/useAdvancedSearch'
 import EditableCell from '@/components/EditableCell'
-import { useToolingOperations } from '@/hooks/useToolingOperations'
-import { useToolingFilters } from '@/hooks/useToolingFilters'
 
 interface ToolingTableProps {
   data: any[]
@@ -19,7 +16,6 @@ interface ToolingTableProps {
   onDelete?: (id: string) => void
   onBatchDelete?: (ids: string[]) => void
   onExport?: () => void
-  onGenerateInventoryNumber?: (id: string) => void
 }
 
 interface ToolingItem {
@@ -59,45 +55,15 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
   onCreate,
   onDelete,
   onBatchDelete,
-  onExport,
-  onGenerateInventoryNumber
+  onExport
 }) => {
   const { 
     columns, 
     productionUnitOptions, 
     categoryOptions,
-    validateInventoryNumber,
-    validateSetsCount,
     getToolingStatus
-  } = useToolingTable(onEdit)
-
-  // 接收外部传入的筛选状态
-  const { filterStatus } = useToolingFilters()
-
-  const {
-    filteredData: baseFilteredData,
-    activeFiltersCount,
-    hasActiveFilters,
-    applyFilters,
-    resetFilters
-  } = useAdvancedSearch(data)
-
-  // 二次筛选：处理完成/未完成状态
-  const filteredData = useMemo(() => {
-    if (!filterStatus || filterStatus === 'all') return baseFilteredData
-    
-    return baseFilteredData.filter(item => {
-      // 判断是否完成的逻辑：
-      // 只要有完成日期，就视为完成
-      const hasCompletedDate = !!item.completed_date && String(item.completed_date).trim() !== ''
-      
-      if (filterStatus === 'completed') return hasCompletedDate
-      if (filterStatus === 'incomplete') return !hasCompletedDate
-      return true
-    })
-  }, [baseFilteredData, filterStatus])
-
-  const tableRef = useRef<any>(null)
+  } = useToolingTable({ onEdit })
+  const filteredData = data
   const [pageSize, setPageSize] = useState<number>(() => {
     const v = parseInt(localStorage.getItem('tooling_table_ps') || '20', 10)
     return Number.isFinite(v) && v > 0 ? v : 20
@@ -107,16 +73,6 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
     const t = performance.now()
     return () => { if (DEBUG) console.log('[ToolingTable] render', Math.round(performance.now() - t), 'ms') }
   }, [filteredData, loading, selectedRowKeys])
-
-  const getRowClassName = (record: ToolingItem) => {
-    // 只要有完成日期，就显示绿色背景
-    const hasCompletedDate = !!record.completed_date && String(record.completed_date).trim() !== ''
-    
-    if (hasCompletedDate) {
-      return 'tooling-row-complete'
-    }
-    return ''
-  }
 
   const handleDelete = useCallback((record: ToolingItem) => {
     Modal.confirm({
@@ -156,12 +112,6 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
       onExport()
     }
   }, [onExport])
-
-  const handleGenerateInventoryNumber = useCallback((record: ToolingItem) => {
-    if (onGenerateInventoryNumber) {
-      onGenerateInventoryNumber(record.id)
-    }
-  }, [onGenerateInventoryNumber])
 
   const getRowClassName = useCallback((record: ToolingItem) => {
     const { status } = getToolingStatus(record)
@@ -227,6 +177,14 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
     return { total, complete, warning, incomplete }
   }, [filteredData, getToolingStatus])
 
+  const rowSelection = useMemo(() => ({
+    selectedRowKeys,
+    onChange: onSelectChange,
+    getCheckboxProps: (record: any) => ({
+      disabled: String(record.id || '').startsWith('blank-')
+    })
+  }), [selectedRowKeys, onSelectChange])
+
   return (
     <div>
       <div style={{ 
@@ -240,11 +198,6 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
       }}>
         <div style={{ fontWeight: 600, color: '#1890ff' }}>
           工装信息
-          {hasActiveFilters && (
-            <Tag color="blue" style={{ marginLeft: 8 }}>
-              <FilterOutlined /> 已筛选 {activeFiltersCount} 项
-            </Tag>
-          )}
           <span style={{ marginLeft: 12, fontSize: 12, color: '#666' }}>
             显示 {statistics.total} 项 | 
             <span style={{ color: '#52c41a' }}> 完整 {statistics.complete}</span> | 
@@ -278,19 +231,10 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
           >
             批量删除
           </Button>
-          {hasActiveFilters && (
-            <Button
-              size="small"
-              onClick={resetFilters}
-            >
-              清除筛选
-            </Button>
-          )}
         </Space>
       </div>
       
       <Table
-        ref={tableRef}
         rowKey="id"
         columns={fullColumns}
         dataSource={filteredData}
@@ -316,13 +260,7 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
           }
         }}
         rowClassName={getRowClassName}
-        rowSelection={useMemo(() => ({
-          selectedRowKeys,
-          onChange: onSelectChange,
-          getCheckboxProps: (record: any) => ({
-            disabled: String(record.id || '').startsWith('blank-')
-          })
-        }), [selectedRowKeys, onSelectChange])}
+        rowSelection={rowSelection}
         components={{
           body: {
             cell: (props: any) => (

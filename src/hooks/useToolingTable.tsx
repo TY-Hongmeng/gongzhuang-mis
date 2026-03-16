@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from 'react'
 import { Tag, Tooltip } from 'antd'
-import { CheckCircleOutlined, WarningOutlined, ClockCircleOutlined } from '@ant-design/icons'
-import { useToolingMeta } from '../useToolingMeta'
+import { CheckCircleOutlined, WarningOutlined } from '@ant-design/icons'
+import { useToolingMeta } from './useToolingMeta'
 
 interface ToolingTableProps {
   onEdit: (id: string, key: string, value: any) => void
@@ -21,7 +21,7 @@ interface ToolingItem {
   recorder?: string
 }
 
-export const useToolingTable = ({ onEdit }: ToolingTableProps) => {
+export const useToolingTable = ({ onEdit: _onEdit }: ToolingTableProps) => {
   const { productionUnits, toolingCategories } = useToolingMeta()
 
   const productionUnitOptions = useMemo(() => 
@@ -211,13 +211,7 @@ export const useToolingTable = ({ onEdit }: ToolingTableProps) => {
         return <Tag color="cyan">{text}</Tag>
       }
     }
-  ], [
-    productionUnits,
-    toolingCategories,
-    validateInventoryNumber,
-    validateSetsCount,
-    getToolingStatus
-  ])
+  ], [validateInventoryNumber, validateSetsCount, getToolingStatus])
 
   return {
     columns,

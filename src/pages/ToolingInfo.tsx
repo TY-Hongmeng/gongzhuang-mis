@@ -649,9 +649,6 @@ const ToolingInfoPage: React.FC = () => {
     selectedRowKeysRef.current = selectedRowKeys
   }, [selectedRowKeys])
   
-  const stableExpandedRowKeys = useMemo(() => expandedRowKeys, [expandedRowKeys])
-  const stableExpandedChildKeys = useMemo(() => expandedChildKeys, [expandedChildKeys])
-
   useEffect(() => {
     const parentKeys = selectedRowKeys.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
     const existingChildKeys = selectedRowKeys.filter(k => k.startsWith('part-') || k.startsWith('child-'))
@@ -3506,44 +3503,167 @@ const ToolingInfoPage: React.FC = () => {
         }
         return String(dateValue || '')
       }
+
+      const normalizeText = (value: any) => String(value ?? '').trim()
+
+      const getItems = (result: any) => Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
+
+      const fetchPaginatedItems = async (buildUrl: (page: number, pageSize: number) => string) => {
+        const pageSize = 1000
+        let page = 1
+        const all: any[] = []
+        while (true) {
+          const resp = await fetch(buildUrl(page, pageSize), { cache: 'no-store' })
+          const result = await resp.json().catch(() => ({ items: [] }))
+          const items = getItems(result)
+          all.push(...items)
+          if (items.length < pageSize) break
+          page += 1
+        }
+        return all
+      }
+
+      const buildCountMap = (rows: any[], field: string) => {
+        const counts: Record<string, number> = {}
+        rows.forEach((row) => {
+          const value = normalizeText(row?.[field])
+          if (value) counts[value] = (counts[value] || 0) + 1
+        })
+        return counts
+      }
+
+      const groupByParentInventory = (rows: any[]) => {
+        const grouped = new Map<string, any[]>()
+        for (const row of rows) {
+          const parentInv = normalizeText(row?.['父表盘存编号'])
+          if (!parentInv) continue
+          const list = grouped.get(parentInv)
+          if (list) {
+            list.push(row)
+          } else {
+            grouped.set(parentInv, [row])
+          }
+        }
+        return grouped
+      }
       
       // 预先获取系统中已存在的盘存编号，用于重复校验
       let existingInvSet = new Set<string>()
       try {
-        const pageSize = 1000
-        let page = 1
-        while (true) {
-          const resp = await fetch(`/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`, { cache: 'no-store' })
-          const result = await resp.json().catch(() => ({ items: [] }))
-          const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-          items.forEach((it: any) => { const inv = String(it.inventory_number || '').trim(); if (inv) existingInvSet.add(inv) })
-          if (items.length < pageSize) break
-          page += 1
-        }
+        const allToolingItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling?page=${page}&pageSize=${pageSize}&sortField=created_at&sortOrder=asc`)
+        allToolingItems.forEach((it: any) => {
+          const inv = normalizeText(it?.inventory_number)
+          if (inv) existingInvSet.add(inv)
+        })
       } catch {}
 
       // 文件内重复盘存编号统计
-      const fileInvCounts: Record<string, number> = {}
-      toolingData.forEach((t: any) => { const inv = String(t['盘存编号'] || '').trim(); if (inv) fileInvCounts[inv] = (fileInvCounts[inv] || 0) + 1 })
+      const fileInvCounts = buildCountMap(toolingData, '盘存编号')
 
       // 预先获取系统中已存在的子表盘存编号（零件盘存编号）
       let existingPartInvSet = new Set<string>()
       try {
-        const pageSize = 1000
-        let page = 1
-        while (true) {
-          const resp = await fetch(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`, { cache: 'no-store' })
-          const result = await resp.json().catch(() => ({ items: [] }))
-          const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-          items.forEach((it: any) => { const pinv = String(it.part_inventory_number || '').trim(); if (pinv) existingPartInvSet.add(pinv) })
-          if (items.length < pageSize) break
-          page += 1
-        }
+        const allPartInventoryItems = await fetchPaginatedItems((page, pageSize) => `/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
+        allPartInventoryItems.forEach((it: any) => {
+          const pinv = normalizeText(it?.part_inventory_number)
+          if (pinv) existingPartInvSet.add(pinv)
+        })
       } catch {}
 
       // 文件内重复子表盘存编号统计
-      const filePartInvCounts: Record<string, number> = {}
-      partsData.forEach((p: any) => { const pinv = String(p['盘存编号'] || '').trim(); if (pinv) filePartInvCounts[pinv] = (filePartInvCounts[pinv] || 0) + 1 })
+      const filePartInvCounts = buildCountMap(partsData, '盘存编号')
+      const partsByParentInventory = groupByParentInventory(partsData)
+      const childItemsByParentInventory = groupByParentInventory(childItemsData)
+
+      const materialNameSet = new Set(materials.map((m: any) => normalizeText(m?.name)).filter(Boolean))
+      const sourceNameSet = new Set(materialSources.map((m: any) => normalizeText(m?.name)).filter(Boolean))
+      const partTypeNameSet = new Set(partTypes.map((m: any) => normalizeText(m?.name)).filter(Boolean))
+
+      const appendMissingRequiredErrors = (target: string[], row: any, fields: string[]) => {
+        for (const field of fields) {
+          if (!row[field] || normalizeText(row[field]) === '') {
+            target.push(`缺少必填字段${field}`)
+          }
+        }
+      }
+
+      const validatePreviewPartRow = (part: any) => {
+        const errors: string[] = []
+        const warnings: string[] = []
+        appendMissingRequiredErrors(errors, part, ['父表盘存编号', '零件名称', '数量'])
+
+        const materialName = normalizeText(part['材质'])
+        if (materialName) {
+          if (!materialNameSet.has(materialName)) {
+            errors.push(`材质“${materialName}”不存在`)
+          }
+        } else {
+          warnings.push('材质为空')
+        }
+
+        const sourceName = normalizeText(part['材料来源'])
+        if (sourceName) {
+          if (!sourceNameSet.has(sourceName)) {
+            errors.push(`材料来源“${sourceName}”不存在`)
+          }
+        } else {
+          warnings.push('材料来源为空')
+        }
+
+        const partCategory = normalizeText(part['料型'])
+        if (partCategory) {
+          if (!partTypeNameSet.has(partCategory)) {
+            errors.push(`料型“${partCategory}”不存在`)
+          }
+        } else {
+          warnings.push('料型为空')
+        }
+
+        const specText = normalizeText(part['规格'])
+        if (specText && (specText.includes('×') || specText.includes('x'))) {
+          errors.push(`规格中使用了乘号(×或x)作为乘号，请使用星号(*)格式`)
+        }
+
+        const parentInventoryNumber = normalizeText(part['父表盘存编号'])
+        const partInventoryNumber = normalizeText(part['盘存编号'])
+        if (parentInventoryNumber && partInventoryNumber) {
+          const expectedFormat = new RegExp(`^${parentInventoryNumber}[0-9]+$`)
+          if (!expectedFormat.test(partInventoryNumber)) {
+            errors.push(`零件盘存编号“${partInventoryNumber}”不符合格式要求，应为父级盘存编号+数字（如：${parentInventoryNumber}01）`)
+          }
+        }
+
+        if (partInventoryNumber) {
+          if (existingPartInvSet.has(partInventoryNumber)) errors.push(`零件盘存编号“${partInventoryNumber}”已存在于系统中`)
+          if ((filePartInvCounts[partInventoryNumber] || 0) > 1) errors.push(`零件盘存编号“${partInventoryNumber}”在导入文件中重复出现`)
+        }
+
+        const formattedPart = {
+          ...part,
+          '备注': formatExcelDate(part['备注'])
+        }
+
+        return {
+          ...formattedPart,
+          _errors: errors,
+          _warnings: warnings,
+          _valid: errors.length === 0
+        }
+      }
+
+      const validatePreviewChildRow = (child: any) => {
+        const formattedChild = {
+          ...child,
+          '需求日期': formatExcelDate(child['需求日期'])
+        }
+        const errors: string[] = []
+        appendMissingRequiredErrors(errors, formattedChild, ['父表盘存编号', '名称', '型号', '数量', '单位', '需求日期'])
+        return {
+          ...formattedChild,
+          _errors: errors,
+          _valid: errors.length === 0
+        }
+      }
 
       // 验证并组织预览数据，按照父表子表结构组织
       const previewData = toolingData.map((tooling, index) => {
@@ -3557,130 +3677,26 @@ const ToolingInfoPage: React.FC = () => {
         
         // 验证工装信息
         const toolingErrors: string[] = []
-        const toolingRequiredFields = ['盘存编号', '项目名称', '投产单位', '工装类别', '接收日期']
-        for (const field of toolingRequiredFields) {
-          if (!formattedTooling[field] || String(formattedTooling[field]).trim() === '') {
-            toolingErrors.push(`缺少必填字段${field}`)
-          }
-        }
+        appendMissingRequiredErrors(toolingErrors, formattedTooling, ['盘存编号', '项目名称', '投产单位', '工装类别', '接收日期'])
 
         // 盘存编号重复校验（系统内、文件内）
-        const inv = String(formattedTooling['盘存编号'] || '').trim()
+        const inv = normalizeText(formattedTooling['盘存编号'])
         if (inv) {
           if (existingInvSet.has(inv)) toolingErrors.push(`盘存编号“${inv}”已存在于系统中`)
           if ((fileInvCounts[inv] || 0) > 1) toolingErrors.push(`盘存编号“${inv}”在导入文件中重复出现`)
         }
         
         // 查找关联的零件信息
-        const associatedParts = partsData.filter(part => part['父表盘存编号'] === formattedTooling['盘存编号'])
+        const toolingInv = normalizeText(formattedTooling['盘存编号'])
+        const associatedParts = toolingInv ? (partsByParentInventory.get(toolingInv) || []) : []
         // 查找关联的标准件信息
-        const associatedChildItems = childItemsData.filter(child => child['父表盘存编号'] === formattedTooling['盘存编号'])
+        const associatedChildItems = toolingInv ? (childItemsByParentInventory.get(toolingInv) || []) : []
         
         // 验证零件信息
-        const validatedParts = associatedParts.map(part => {
-          const errors: string[] = []
-          const warnings: string[] = []
-          const requiredFields = ['父表盘存编号', '零件名称', '数量']
-          for (const field of requiredFields) {
-            if (!part[field] || String(part[field]).trim() === '') {
-              errors.push(`缺少必填字段${field}`)
-            }
-          }
-          
-          // 验证材质是否存在
-          const materialName = String(part['材质'] || '').trim()
-          if (materialName) {
-            const materialExists = materials.some(m => m.name === materialName)
-            if (!materialExists) {
-              errors.push(`材质“${materialName}”不存在`)
-            }
-          } else {
-            warnings.push('材质为空')
-          }
-          
-          // 验证材料来源是否存在
-          const sourceName = String(part['材料来源'] || '').trim()
-          if (sourceName) {
-            const sourceExists = materialSources.some(ms => ms.name === sourceName)
-            if (!sourceExists) {
-              errors.push(`材料来源“${sourceName}”不存在`)
-            }
-          } else {
-            warnings.push('材料来源为空')
-          }
-          
-          // 验证料型是否存在
-          const partCategory = String(part['料型'] || '').trim()
-          if (partCategory) {
-            const partTypeExists = partTypes.some(pt => pt.name === partCategory)
-            if (!partTypeExists) {
-              errors.push(`料型“${partCategory}”不存在`)
-            }
-          } else {
-            warnings.push('料型为空')
-          }
-          
-          // 验证规格中的乘号格式
-          const specText = String(part['规格'] || '').trim()
-          if (specText) {
-            // 检查是否使用了×作为乘号，应该使用*号
-            if (specText.includes('×') || specText.includes('x')) {
-              errors.push(`规格中使用了乘号(×或x)作为乘号，请使用星号(*)格式`)
-            }
-          }
-          
-          // 验证零件盘存编号格式是否符合父级盘存编号+两位数字
-          const parentInventoryNumber = part['父表盘存编号'] || ''
-          const partInventoryNumber = String(part['盘存编号'] || '').trim()
-          if (parentInventoryNumber && partInventoryNumber) {
-            // 放宽验证规则，允许零件盘存编号为父级盘存编号+任意数字，不要求必须两位
-            const expectedFormat = new RegExp(`^${parentInventoryNumber}[0-9]+$`)
-            if (!expectedFormat.test(partInventoryNumber)) {
-              errors.push(`零件盘存编号“${partInventoryNumber}”不符合格式要求，应为父级盘存编号+数字（如：${parentInventoryNumber}01）`)
-            }
-          }
-
-          // 子表盘存编号重复校验（系统内、文件内）
-          if (partInventoryNumber) {
-            if (existingPartInvSet.has(partInventoryNumber)) errors.push(`零件盘存编号“${partInventoryNumber}”已存在于系统中`)
-            if ((filePartInvCounts[partInventoryNumber] || 0) > 1) errors.push(`零件盘存编号“${partInventoryNumber}”在导入文件中重复出现`)
-          }
-          
-          // 格式化工件信息，将Excel日期数字转换为正确的日期格式
-          const formattedPart = {
-            ...part,
-            '备注': formatExcelDate(part['备注'])
-          }
-          
-          return {
-            ...formattedPart,
-            _errors: errors,
-            _warnings: warnings,
-            _valid: errors.length === 0
-          }
-        })
+        const validatedParts = associatedParts.map(validatePreviewPartRow)
         
         // 验证标准件信息
-        const validatedChildItems = associatedChildItems.map(child => {
-          // 格式化标准件信息中的日期字段
-          const formattedChild = {
-            ...child,
-            '需求日期': formatExcelDate(child['需求日期'])
-          }
-          
-          const errors: string[] = []
-          const requiredFields = ['父表盘存编号', '名称', '型号', '数量', '单位', '需求日期']
-          for (const field of requiredFields) {
-            if (!formattedChild[field] || String(formattedChild[field]).trim() === '') {
-              errors.push(`缺少必填字段${field}`)
-            }
-          }
-          return {
-            ...formattedChild,
-            _errors: errors,
-            _valid: errors.length === 0
-          }
-        })
+        const validatedChildItems = associatedChildItems.map(validatePreviewChildRow)
         
         return {
           ...formattedTooling,
@@ -4952,11 +4968,16 @@ const ToolingInfoPage: React.FC = () => {
           }}
           expandIconColumnIndex={-1}
           expandable={{
-            expandedRowKeys: stableExpandedRowKeys,
+            expandedRowKeys,
             rowExpandable: (record: any) => !String(record.id || '').startsWith('blank-'),
             onExpand: (expanded, record: any) => {
               const id = record.id as string
-              setExpandedRowKeys(prev => expanded ? [...prev, id] : prev.filter(k => k !== id))
+              setExpandedRowKeys(prev => {
+                if (expanded) {
+                  return prev.includes(id) ? prev : [...prev, id]
+                }
+                return prev.filter(k => k !== id)
+              })
               if (expanded) {
                 if (!partsMap[id] || partsMap[id].length === 0) {
                   setPartsLoadingMap(prev => ({ ...prev, [id]: true }))

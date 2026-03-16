@@ -1,6 +1,98 @@
 import { useState, useCallback } from 'react'
 import { message } from 'antd'
 
+type ToolingMetaData = {
+  productionUnits: string[]
+  toolingCategories: string[]
+  materials: any[]
+  partTypes: any[]
+  materialSources: any[]
+}
+
+const META_CACHE_TTL = 5 * 60 * 1000
+let metaCache: { ts: number; data: ToolingMetaData } | null = null
+let inflightMetaPromise: Promise<ToolingMetaData> | null = null
+
+const EMPTY_META: ToolingMetaData = {
+  productionUnits: [],
+  toolingCategories: [],
+  materials: [],
+  partTypes: [],
+  materialSources: []
+}
+
+const parseItems = (res: any) => Array.isArray(res?.data) ? res.data : (Array.isArray(res?.items) ? res.items : [])
+
+const loadToolingMeta = async (): Promise<ToolingMetaData> => {
+  const now = Date.now()
+  if (metaCache && now - metaCache.ts < META_CACHE_TTL) {
+    return metaCache.data
+  }
+  if (inflightMetaPromise) {
+    return inflightMetaPromise
+  }
+
+  inflightMetaPromise = (async () => {
+    const [
+      unitsRes,
+      catsRes,
+      materialsRes,
+      partTypesRes,
+      materialSourcesRes
+    ] = await Promise.all([
+      fetch('/api/options/production-units').then(r => r.json()),
+      fetch('/api/options/tooling-categories').then(r => r.json()),
+      fetch('/api/materials', { cache: 'no-store' }).then(r => r.json()),
+      fetch('/api/part-types', { cache: 'no-store' }).then(r => r.json()),
+      fetch('/api/options/material-sources', { cache: 'no-store' }).then(r => r.json())
+    ])
+
+    const unitNames = parseItems(unitsRes).map((x: any) => x.name).filter(Boolean)
+    const categoryNames = parseItems(catsRes).map((x: any) => x.name).filter(Boolean)
+
+    const mats = parseItems(materialsRes)
+      .map((x: any) => ({ id: x.id, name: x.name, density: x.density, unit_price: x.unit_price ?? 0, prices: [] }))
+      .filter((x: any) => x.name)
+
+    await Promise.all(mats.map(async (mat: any) => {
+      try {
+        const pricesRes = await fetch(`/api/materials/${mat.id}/prices`)
+        if (pricesRes.ok) {
+          const pricesJson = await pricesRes.json()
+          mat.prices = pricesJson.data || []
+          if (Array.isArray(mat.prices) && mat.prices.length > 0 && mat.prices[0]?.unit_price != null) {
+            mat.unit_price = Number(mat.prices[0].unit_price)
+          }
+        }
+      } catch {}
+    }))
+
+    const pts = parseItems(partTypesRes)
+      .map((x: any) => ({ id: x.id, name: x.name, volume_formula: x.volume_formula, input_format: x.input_format }))
+      .filter((x: any) => x.name)
+
+    const sources = parseItems(materialSourcesRes)
+      .map((x: any) => ({ id: x.id, name: x.name }))
+      .filter((x: any) => x.name)
+
+    const data: ToolingMetaData = {
+      productionUnits: unitNames,
+      toolingCategories: categoryNames,
+      materials: mats,
+      partTypes: pts,
+      materialSources: sources
+    }
+    metaCache = { ts: Date.now(), data }
+    return data
+  })()
+
+  try {
+    return await inflightMetaPromise
+  } finally {
+    inflightMetaPromise = null
+  }
+}
+
 // 元数据管理Hook
 export const useToolingMeta = () => {
   const [productionUnits, setProductionUnits] = useState<string[]>([])
@@ -14,76 +106,16 @@ export const useToolingMeta = () => {
   const fetchAllMeta = useCallback(async () => {
     setLoading(true)
     try {
-      const [
-        unitsRes, 
-        catsRes, 
-        materialsRes, 
-        partTypesRes, 
-        materialSourcesRes
-      ] = await Promise.all([
-        fetch('/api/options/production-units').then(r => r.json()),
-        fetch('/api/options/tooling-categories').then(r => r.json()),
-        fetch('/api/materials', { cache: 'no-store' }).then(r => r.json()),
-        fetch('/api/part-types', { cache: 'no-store' }).then(r => r.json()),
-        fetch('/api/options/material-sources', { cache: 'no-store' }).then(r => r.json())
-      ])
-      
-      // 兼容 data 和 items 两种格式
-      const getItems = (res: any) => Array.isArray(res?.data) ? res.data : (Array.isArray(res?.items) ? res.items : [])
-      
-      const unitNames = getItems(unitsRes).map((x: any) => x.name).filter(Boolean)
-      const categoryNames = getItems(catsRes).map((x: any) => x.name).filter(Boolean)
-      setProductionUnits(unitNames)
-      setToolingCategories(categoryNames)
-      
-      const mats = getItems(materialsRes)
-        .map((x: any) => ({id: x.id, name: x.name, density: x.density, unit_price: x.unit_price ?? 0, prices: []}))
-        .filter((x: any) => x.name)
-      
-      // 并行获取所有材料的价格信息
-      await Promise.all(mats.map(async (mat: any) => {
-        try {
-          const pricesRes = await fetch(`/api/materials/${mat.id}/prices`)
-          if (pricesRes.ok) {
-            const pricesJson = await pricesRes.json()
-            mat.prices = pricesJson.data || []
-            if (Array.isArray(mat.prices) && mat.prices.length > 0 && mat.prices[0]?.unit_price != null) {
-              mat.unit_price = Number(mat.prices[0].unit_price)
-            }
-          }
-        } catch (e) {
-          console.error(`Failed to fetch prices for material ${mat.id}`, e)
-        }
-      }))
-
-      setMaterials(mats)
-      
-      const pts = getItems(partTypesRes)
-        .map((x: any) => ({id: x.id, name: x.name, volume_formula: x.volume_formula, input_format: x.input_format}))
-        .filter((x: any) => x.name)
-      setPartTypes(pts)
-      
-      const sources = getItems(materialSourcesRes)
-        .map((x: any) => ({id: x.id, name: x.name}))
-        .filter((x: any) => x.name)
-      setMaterialSources(sources)
-      
-      return {
-        productionUnits: unitNames,
-        toolingCategories: categoryNames,
-        materials: mats,
-        partTypes: pts,
-        materialSources: sources
-      }
+      const meta = await loadToolingMeta()
+      setProductionUnits(meta.productionUnits)
+      setToolingCategories(meta.toolingCategories)
+      setMaterials(meta.materials)
+      setPartTypes(meta.partTypes)
+      setMaterialSources(meta.materialSources)
+      return meta
     } catch (error) {
       message.error('获取基础数据失败')
-      return {
-        productionUnits: [],
-        toolingCategories: [],
-        materials: [],
-        partTypes: [],
-        materialSources: []
-      }
+      return EMPTY_META
     } finally {
       setLoading(false)
     }

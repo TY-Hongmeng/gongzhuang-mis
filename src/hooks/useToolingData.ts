@@ -30,6 +30,7 @@ export const useToolingData = () => {
     search?: string
     production_unit?: string
     category?: string
+    priority_level?: number | string
     start_date?: string
     end_date?: string
     sortField?: string
@@ -228,10 +229,8 @@ export const useToolingData = () => {
       })
       
       if (!response.ok) throw new Error('保存失败')
-      message.success('保存成功')
       return true
     } catch (error) {
-      message.error('保存失败')
       return false
     }
   }, [])
