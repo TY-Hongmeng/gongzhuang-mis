@@ -682,18 +682,6 @@ const ToolingInfoPage: React.FC = () => {
     selectedRowKeysRef.current = selectedRowKeys
   }, [selectedRowKeys])
   
-  useEffect(() => {
-    setSelectedRowKeys(prev => {
-      const parentKeys = prev.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
-      if (parentKeys.length === 0) return prev
-      const existingChildKeys = prev.filter(k => k.startsWith('part-') || k.startsWith('child-'))
-      const derivedChildKeys = collectChildKeysForParents(parentKeys)
-      const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
-      if (next.length === prev.length && next.every(k => prev.includes(k))) return prev
-      return next
-    })
-  }, [collectChildKeysForParents, setSelectedRowKeys])
-  
   // 防抖保存空白行的定时器
   const partSaveTimersRef = useRef<Record<string, NodeJS.Timeout>>({})
   // 子表防抖保存定时器
@@ -923,6 +911,17 @@ const ToolingInfoPage: React.FC = () => {
     })
     return result
   }, [childKeysByParent])
+  useEffect(() => {
+    setSelectedRowKeys(prev => {
+      const parentKeys = prev.filter(k => !k.startsWith('part-') && !k.startsWith('child-'))
+      if (parentKeys.length === 0) return prev
+      const existingChildKeys = prev.filter(k => k.startsWith('part-') || k.startsWith('child-'))
+      const derivedChildKeys = collectChildKeysForParents(parentKeys)
+      const next = Array.from(new Set([...parentKeys, ...existingChildKeys, ...derivedChildKeys]))
+      if (next.length === prev.length && next.every(k => prev.includes(k))) return prev
+      return next
+    })
+  }, [collectChildKeysForParents, setSelectedRowKeys])
 
   const partsCounts = useMemo(() => {
     let result = visibleData || []
