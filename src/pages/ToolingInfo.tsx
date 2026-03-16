@@ -2028,10 +2028,13 @@ const ToolingInfoPage: React.FC = () => {
       const material = materialsRef.current.find(m => String(m.id) === String(rec.material_id))
       const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
       const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
-      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}|${unitPrice}`
+      const storedTotalPrice = Number(rec.total_price || 0)
+      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}|${unitPrice}|${storedTotalPrice}`
       const cached = priceCacheRef.current.get(key)
       if (cached) return cached
-      const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
+      const total = (dep.totalWeight > 0 && unitPrice > 0)
+        ? calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
+        : (storedTotalPrice > 0 ? storedTotalPrice : 0)
       const val = { total }
       priceCacheRef.current.set(key, val)
       if (priceCacheRef.current.size > PRICE_CACHE_LIMIT) {
