@@ -579,7 +579,7 @@ const ToolingInfoPage: React.FC = () => {
       return { ...prev, [toolingId]: updated }
     })
     try {
-      const response = await fetch(`/api/tooling/child-items/${id}`, {
+      const response = await fetchWithFallback(`/api/tooling/child-items/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purchase_status: nextValue })
@@ -972,7 +972,7 @@ const ToolingInfoPage: React.FC = () => {
     try {
       const hasInvs = invs && invs.length
       const url = hasInvs ? `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}` : '/api/tooling/work-hours?page=1&pageSize=200'
-      const response = await fetch(url, { cache: 'no-store' })
+      const response = await fetchWithFallback(url, { cache: 'no-store' })
       if (!response.ok) {
         console.error('获取工时数据失败，HTTP状态:', response.status)
         throw new Error('获取工时数据失败')
@@ -1481,7 +1481,7 @@ const ToolingInfoPage: React.FC = () => {
           // 远端数据去重（快速检索）
           if (shouldProceed) {
             try {
-              const resp = await fetch(`/api/tooling/parts/inventory-list?page=1&pageSize=1&search=${encodeURIComponent(newInv)}`, { cache: 'no-store' })
+              const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=1&search=${encodeURIComponent(newInv)}`, { cache: 'no-store' })
               const result = await resp.json().catch(() => ({ items: [] }))
               const items = Array.isArray(result?.items) ? result.items : []
               const hit = items.find((it: any) => String(it.part_inventory_number || '').trim().toUpperCase() === newInv)
@@ -1900,7 +1900,7 @@ const ToolingInfoPage: React.FC = () => {
           updateData[key] = txt !== '' ? txt : null
         }
 
-        const response = await fetch(`/api/tooling/child-items/${id}`, {
+        const response = await fetchWithFallback(`/api/tooling/child-items/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData)
@@ -1929,7 +1929,7 @@ const ToolingInfoPage: React.FC = () => {
         setSelectedRowKeys(prev => prev.filter(k => k !== ('part-' + id)))
         return
       }
-      const resp = await fetch(`/api/tooling/parts/${id}`, { method: 'DELETE' })
+      const resp = await fetchWithFallback(`/api/tooling/parts/${id}`, { method: 'DELETE' })
       if (resp.ok) {
         // 关键修复：立即清空该工装的缓存，强制重新获取最新数据
         setPartsMap(prev => {
@@ -1974,7 +1974,7 @@ const ToolingInfoPage: React.FC = () => {
         setSelectedRowKeys(prev => prev.filter(k => k !== ('child-' + id)))
         return
       }
-      const resp = await fetch(`/api/tooling/child-items/${id}`, { method: 'DELETE' })
+      const resp = await fetchWithFallback(`/api/tooling/child-items/${id}`, { method: 'DELETE' })
       if (resp.ok) {
         // 关键修复：立即清空该工装的标准件缓存，强制重新获取最新数据
         setChildItemsMap(prev => {
@@ -3961,7 +3961,7 @@ const ToolingInfoPage: React.FC = () => {
           let selectedSource = materialSources.find(ms => ms.name === normSource) || materialSources.find(ms => ms.name === rawSource) || materialSources.find(ms => ms.name.toLowerCase() === normSource.toLowerCase())
           if (!selectedSource && normSource) {
             try {
-              const resp = await fetch('/api/options/material-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: normSource, description: '', is_active: true }) })
+              const resp = await fetchWithFallback('/api/options/material-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: normSource, description: '', is_active: true }) })
               const j = await resp.json().catch(()=>({}))
               if (j?.success && j?.data?.id) {
                 selectedSource = { id: j.data.id, name: normSource } as any
