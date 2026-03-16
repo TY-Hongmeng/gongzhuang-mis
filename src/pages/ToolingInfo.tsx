@@ -19,6 +19,11 @@ import SpecificationsInput from '../components/SpecificationsInput'
 import type { Material } from '../types/tooling'
 
 const { Title } = Typography
+const debugLog = (...args: any[]) => {
+  if ((import.meta as any).env?.DEV === true) {
+    console.log(...args)
+  }
+}
 
 const getBatchSize = () => {
   try {
@@ -596,9 +601,7 @@ const ToolingInfoPage: React.FC = () => {
 
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
-    if ((import.meta as any).env?.DEV === true) {
-      console.log('[partsMap] updated, keys:', Object.keys(partsMap), 'total items:', Object.values(partsMap).reduce((sum, list) => sum + list.length, 0), 'timestamp:', Date.now())
-    }
+    debugLog('[partsMap] updated, keys:', Object.keys(partsMap), 'total items:', Object.values(partsMap).reduce((sum, list) => sum + list.length, 0), 'timestamp:', Date.now())
     partsMapRef.current = partsMap
   }, [partsMap])
   
@@ -1011,7 +1014,7 @@ const ToolingInfoPage: React.FC = () => {
       })()
       
       setWorkHoursData(hoursByInventoryNo)
-      if ((import.meta as any).env?.DEV === true) console.log('成功获取工时数据:', hoursByInventoryNo)
+      debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
       console.error('获取工时数据失败:', error)
       // 即使发生异常，也不影响页面其他功能
@@ -1445,7 +1448,7 @@ const ToolingInfoPage: React.FC = () => {
 
   // 保存零件数据
   const handlePartSave = useCallback(async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
-    console.log('[handlePartSave] called:', { toolingId, id, key, value }, 'timestamp:', Date.now())
+    debugLog('[handlePartSave] called:', { toolingId, id, key, value }, 'timestamp:', Date.now())
     const lockKey = `${toolingId}-${id}-${key}`
     
     if (partSaveLockRef.current.has(lockKey)) {
@@ -1748,7 +1751,7 @@ const ToolingInfoPage: React.FC = () => {
 
 
   const handlePartBatchSave = useCallback(async (toolingId: string, id: string, updates: Partial<PartItem>) => {
-    console.log('[handlePartBatchSave] called:', { toolingId, id, updates }, 'timestamp:', Date.now())
+    debugLog('[handlePartBatchSave] called:', { toolingId, id, updates }, 'timestamp:', Date.now())
     const lockKey = `${toolingId}-${id}-batch`
     
     if (partSaveLockRef.current.has(lockKey)) {
@@ -2890,7 +2893,7 @@ const ToolingInfoPage: React.FC = () => {
         buildRouteForRange(h.headerRow, nextHeaderRow)
       })
     }
-    console.log('[ProcessImport] segments:', segments.length, 'routes(inv):', Object.keys(cardRoutes), 'routes(drawing):', Object.keys(cardRoutesByDrawing))
+    debugLog('[ProcessImport] segments:', segments.length, 'routes(inv):', Object.keys(cardRoutes), 'routes(drawing):', Object.keys(cardRoutesByDrawing))
 
     // 为每个卡片的 inv 生成映射与匹配
     const allChildKeysOnPage: string[] = []
@@ -3756,9 +3759,9 @@ const ToolingInfoPage: React.FC = () => {
       if (materialSources.length === 0 || materials.length === 0 || partTypes.length === 0) {
         await fetchAllMeta(true)
       }
-      console.log('开始导入文件:', importFile.name, '大小:', importFile.size)
+      debugLog('开始导入文件:', importFile.name, '大小:', importFile.size)
       const buf = await importFile.arrayBuffer()
-      console.log('文件读取完成，开始解析')
+      debugLog('文件读取完成，开始解析')
       const wb = XLSX.read(buf, { type: 'array' })
       
       // 1. 解析工装信息工作表
@@ -3811,7 +3814,7 @@ const ToolingInfoPage: React.FC = () => {
         return isValid
       })
       
-      console.log('工装数据解析完成，有效行:', validToolingRows.length)
+      debugLog('工装数据解析完成，有效行:', validToolingRows.length)
       
       // 导入工装数据
       let successCount = 0
@@ -3836,7 +3839,7 @@ const ToolingInfoPage: React.FC = () => {
           recorder: row['责任人'] ? String(row['责任人']).trim() : undefined,
           sets_count: 1
         }
-        console.log('创建工装payload:', payload)
+        debugLog('创建工装payload:', payload)
         try {
           const created = await createTooling(payload)
           if (created && created.success && created.data) {
@@ -3869,7 +3872,7 @@ const ToolingInfoPage: React.FC = () => {
       })
       
       // 打印映射关系
-      console.log('工装映射关系表:', inventoryNumberMap)
+      debugLog('工装映射关系表:', inventoryNumberMap)
       
       // 如果有工装导入错误，显示给用户
       if (toolingImportErrors.length > 0) {
@@ -3914,14 +3917,14 @@ const ToolingInfoPage: React.FC = () => {
         
         for (const row of validPartsRows) {
           const parentInventoryNumber = row['父表盘存编号']
-          console.log('查找零件关联工装:', parentInventoryNumber)
+          debugLog('查找零件关联工装:', parentInventoryNumber)
           const toolingId = inventoryNumberMap[parentInventoryNumber]
           if (!toolingId) {
             partImportErrors.push(`零件“${row['零件名称']}”（${row['盘存编号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`)
             console.error('未找到关联工装，父表盘存编号:', parentInventoryNumber, '当前映射表:', inventoryNumberMap)
             continue // 跳过没有关联工装的零件
           }
-          console.log('找到零件关联工装:', parentInventoryNumber, '->', toolingId)
+          debugLog('找到零件关联工装:', parentInventoryNumber, '->', toolingId)
           
           // 验证零件盘存编号格式是否符合父级盘存编号+数字
           const partInventoryNumber = String(row['盘存编号'] || '').trim()
@@ -4135,7 +4138,7 @@ const ToolingInfoPage: React.FC = () => {
         
         const childImportResults = await runWithConcurrency(validChildItemsRows, 4, async (row) => {
           const parentInventoryNumber = row['父表盘存编号']
-          console.log('查找标准件关联工装:', parentInventoryNumber)
+          debugLog('查找标准件关联工装:', parentInventoryNumber)
           const toolingId = inventoryNumberMap[parentInventoryNumber]
           if (!toolingId) {
             return {
@@ -4143,7 +4146,7 @@ const ToolingInfoPage: React.FC = () => {
               error: `标准件“${row['名称']}”（${row['型号']}）：未找到关联的工装（父表盘存编号：${parentInventoryNumber}）`
             }
           }
-          console.log('找到标准件关联工装:', parentInventoryNumber, '->', toolingId)
+          debugLog('找到标准件关联工装:', parentInventoryNumber, '->', toolingId)
           const formattedRequiredDate = formatExcelDate(row['需求日期'])
           const payload = {
             name: String(row['名称']).trim(),
@@ -4182,7 +4185,7 @@ const ToolingInfoPage: React.FC = () => {
         }
       }
       
-      console.log('导入完成，成功条数:', successCount)
+      debugLog('导入完成，成功条数:', successCount)
       
       // 刷新数据：只刷新工装列表，不刷新零件数据
       // 因为导入时已经在本地状态中更新了数据，不需要再次刷新
