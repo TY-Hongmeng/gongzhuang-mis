@@ -613,6 +613,39 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     fetchChildItemsDataRef.current = fetchChildItemsData
   }, [fetchChildItemsData])
+
+  const partsLoadingMapRef = useRef(partsLoadingMap)
+  useEffect(() => {
+    partsLoadingMapRef.current = partsLoadingMap
+  }, [partsLoadingMap])
+
+  const childLoadingMapRef = useRef(childLoadingMap)
+  useEffect(() => {
+    childLoadingMapRef.current = childLoadingMap
+  }, [childLoadingMap])
+
+  const ensureExpandedDataLoaded = useCallback(async (toolingId: string) => {
+    const tasks: Promise<any>[] = []
+
+    const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
+    const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMapRef.current, toolingId)
+    const partsLoading = !!partsLoadingMapRef.current[toolingId]
+    const childLoading = !!childLoadingMapRef.current[toolingId]
+
+    if (!hasPartsLoaded && !partsLoading) {
+      setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+      tasks.push(fetchPartsDataRef.current(toolingId))
+    }
+
+    if (!hasChildLoaded && !childLoading) {
+      setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+      tasks.push(fetchChildItemsDataRef.current(toolingId))
+    }
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks)
+    }
+  }, [setPartsLoadingMap, setChildLoadingMap])
   
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
@@ -1991,13 +2024,11 @@ const ToolingInfoPage: React.FC = () => {
       return val
     }
     const getPriceCached = (rec: PartItem) => {
-      const storedTotalPrice = Number(rec.total_price || 0)
-      if (storedTotalPrice > 0) return { total: storedTotalPrice }
       const dep = getWeightCached(rec)
-      const material = materialsRef.current.find(m => m.id === rec.material_id)
+      const material = materialsRef.current.find(m => String(m.id) === String(rec.material_id))
       const candidate = getApplicableMaterialPriceRef.current(material?.prices || [], parentReceivedDate)
       const unitPrice = candidate > 0 ? candidate : Number((material as any)?.unit_price || 0)
-      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}`
+      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}|${unitPrice}`
       const cached = priceCacheRef.current.get(key)
       if (cached) return cached
       const total = calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
@@ -3012,14 +3043,13 @@ const ToolingInfoPage: React.FC = () => {
                 const isExpanded = expandedRowKeys.includes(id)
                 const partsNext = isExpanded ? expandedRowKeys.filter(k => k !== id) : [...expandedRowKeys, id]
                 setExpandedRowKeys(partsNext)
-                if (!isExpanded && !partsMap[id]) fetchPartsData(id)
                 
                 // 同时控制标准件信息展开
                 const isChildExpanded = expandedChildKeys.includes(id)
                 const childNext = isChildExpanded ? expandedChildKeys.filter(k => k !== id) : [...expandedChildKeys, id]
                 setExpandedChildKeys(childNext)
-                if (!isChildExpanded && !childItemsMap[id]) {
-                  fetchChildItemsData(id)
+                if (!isExpanded || !isChildExpanded) {
+                  ensureExpandedDataLoaded(id)
                 }
               }}
               style={{ cursor: 'pointer', color: '#000000', fontWeight: 600, fontSize: '26px' }}
@@ -4978,15 +5008,14 @@ const ToolingInfoPage: React.FC = () => {
                 }
                 return prev.filter(k => k !== id)
               })
+              setExpandedChildKeys(prev => {
+                if (expanded) {
+                  return prev.includes(id) ? prev : [...prev, id]
+                }
+                return prev.filter(k => k !== id)
+              })
               if (expanded) {
-                if (!partsMap[id] || partsMap[id].length === 0) {
-                  setPartsLoadingMap(prev => ({ ...prev, [id]: true }))
-                  fetchPartsData(id)
-                }
-                if (!childItemsMap[id] || childItemsMap[id].length === 0) {
-                  setChildLoadingMap(prev => ({ ...prev, [id]: true }))
-                  fetchChildItemsData(id)
-                }
+                ensureExpandedDataLoaded(id)
               }
             },
             expandRowByClick: false,
