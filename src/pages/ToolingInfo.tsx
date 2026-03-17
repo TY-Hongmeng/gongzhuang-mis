@@ -872,28 +872,44 @@ const ToolingInfoPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const partsPrefetchInflightRef = useRef<Set<string>>(new Set())
+  const [partsSummarySnapshotMap, setPartsSummarySnapshotMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
 
   useEffect(() => {
     let cancelled = false
     const ids = (visibleData || [])
       .map((r: any) => String(r?.id || ''))
       .filter((id) => !!id && !id.startsWith('blank-'))
+    if (ids.length === 0) {
+      setPartsSummarySnapshotMap({})
+      return
+    }
     const needPrefetch = ids.filter((id) => {
       if (Object.prototype.hasOwnProperty.call(partsMapRef.current, id)) return false
       if (partsPrefetchInflightRef.current.has(id)) return false
       return true
     })
-    if (needPrefetch.length === 0) return
     const run = async () => {
-      await runWithConcurrency(needPrefetch.slice(0, 80), 8, async (toolingId) => {
-        if (cancelled) return
-        partsPrefetchInflightRef.current.add(toolingId)
-        try {
-          await fetchPartsData(toolingId)
-        } finally {
-          partsPrefetchInflightRef.current.delete(toolingId)
-        }
+      if (needPrefetch.length > 0) {
+        await runWithConcurrency(needPrefetch.slice(0, 80), 8, async (toolingId) => {
+          if (cancelled) return
+          partsPrefetchInflightRef.current.add(toolingId)
+          try {
+            await fetchPartsData(toolingId)
+          } finally {
+            partsPrefetchInflightRef.current.delete(toolingId)
+          }
+        })
+      }
+      if (cancelled) return
+      const map: Record<string, { total: number; completed: number; incomplete: number }> = {}
+      ids.forEach((id) => {
+        const list = Array.isArray(partsMapRef.current[id]) ? partsMapRef.current[id] : []
+        const valid = list.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+        const total = valid.length
+        const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
+        map[id] = { total, completed, incomplete: Math.max(total - completed, 0) }
       })
+      setPartsSummarySnapshotMap(map)
     }
     run()
     return () => {
@@ -901,24 +917,29 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [visibleData, fetchPartsData])
 
-  const partsSummaryLocalMap = useMemo(() => {
+  useEffect(() => {
     const ids = (visibleData || [])
       .map((r: any) => String(r?.id || ''))
       .filter((id) => !!id && !id.startsWith('blank-'))
+    if (ids.length === 0) return
+    const hasInflight = ids.some((id) => partsPrefetchInflightRef.current.has(id))
+    if (hasInflight) return
+    const allLoaded = ids.every((id) => Object.prototype.hasOwnProperty.call(partsMapRef.current, id))
+    if (!allLoaded) return
     const map: Record<string, { total: number; completed: number; incomplete: number }> = {}
     ids.forEach((id) => {
-      const list = Array.isArray(partsMap[id]) ? partsMap[id] : []
+      const list = Array.isArray(partsMapRef.current[id]) ? partsMapRef.current[id] : []
       const valid = list.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
       const total = valid.length
       const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
       map[id] = { total, completed, incomplete: Math.max(total - completed, 0) }
     })
-    return map
+    setPartsSummarySnapshotMap(map)
   }, [visibleData, partsMap])
 
   const getPartSummaryByToolingId = useCallback((toolingId: string) => {
-    return partsSummaryLocalMap[toolingId] || { total: 0, completed: 0, incomplete: 0 }
-  }, [partsSummaryLocalMap])
+    return partsSummarySnapshotMap[toolingId] || { total: 0, completed: 0, incomplete: 0 }
+  }, [partsSummarySnapshotMap])
 
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
