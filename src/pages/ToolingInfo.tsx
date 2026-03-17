@@ -938,14 +938,21 @@ const ToolingInfoPage: React.FC = () => {
           const js = await resp.json().catch(() => ({} as any))
           if (js?.success === false) throw new Error(String(js?.error || 'parts summary failed'))
           const items = Array.isArray(js?.items) ? js.items : (Array.isArray(js?.data) ? js.data : [])
+          let hasAnyPositive = false
           items.forEach((it: any) => {
             const tid = String(it.tooling_id || it.toolingId || '')
             if (!tid) return
             const total = Number(it.total || 0) || 0
             const completed = Number(it.completed || 0) || 0
             const incomplete = Number(it.incomplete || (total - completed)) || 0
+            if (total > 0 || completed > 0 || incomplete > 0) hasAnyPositive = true
             next[tid] = { total, completed, incomplete }
           })
+          const shouldFallbackWholeSlice = items.length === 0 || !hasAnyPositive
+          if (shouldFallbackWholeSlice) {
+            await fillByPartsList(slice)
+            continue
+          }
           const unresolved = slice.filter((id) => !Object.prototype.hasOwnProperty.call(next, id))
           if (unresolved.length > 0) {
             await fillByPartsList(unresolved)
