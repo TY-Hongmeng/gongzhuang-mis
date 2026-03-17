@@ -950,17 +950,21 @@ const ToolingInfoPage: React.FC = () => {
   }, [visibleData, partsSummaryRetrySeq])
 
   const getPartSummaryByToolingId = useCallback((toolingId: string) => {
+    const hasLocal = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
+    if (hasLocal) {
+      const localList = Array.isArray(partsMapRef.current[toolingId]) ? partsMapRef.current[toolingId] : []
+      const valid = localList.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+      const total = valid.length
+      const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
+      return { total, completed, incomplete: Math.max(total - completed, 0) }
+    }
     const remote = partsSummaryMapRef.current[toolingId]
     if (remote) {
       const total = Number(remote.total || 0) || 0
       const completed = Number(remote.completed || 0) || 0
       return { total, completed, incomplete: Math.max(total - completed, 0) }
     }
-    const localList = Array.isArray(partsMapRef.current[toolingId]) ? partsMapRef.current[toolingId] : []
-    const valid = localList.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-    const total = valid.length
-    const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
-    return { total, completed, incomplete: Math.max(total - completed, 0) }
+    return { total: 0, completed: 0, incomplete: 0 }
   }, [])
 
   const { filteredVisibleData, counts } = useMemo(() => {
