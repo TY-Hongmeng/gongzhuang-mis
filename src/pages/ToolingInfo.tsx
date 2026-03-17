@@ -896,6 +896,34 @@ const ToolingInfoPage: React.FC = () => {
       const BATCH = 500
       const next: Record<string, { total: number; completed: number; incomplete: number }> = {}
       let hasError = false
+      const fillByPartsList = async (toolingIds: string[]) => {
+        if (!Array.isArray(toolingIds) || toolingIds.length === 0) return
+        const results = await runWithConcurrency(toolingIds, 4, async (toolingId) => {
+          try {
+            const resp = await fetchWithFallback(`/api/tooling/${toolingId}/parts`, { cache: 'no-store' })
+            if (!resp.ok) return { toolingId, ok: false as const }
+            const js = await resp.json().catch(() => ({} as any))
+            const rawItems = Array.isArray(js?.items) ? js.items : (Array.isArray(js?.data) ? js.data : [])
+            const valid = rawItems.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+            const total = valid.length
+            const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
+            return { toolingId, ok: true as const, total, completed }
+          } catch {
+            return { toolingId, ok: false as const }
+          }
+        })
+        results.forEach((item) => {
+          if (item.ok) {
+            next[item.toolingId] = {
+              total: item.total,
+              completed: item.completed,
+              incomplete: Math.max(item.total - item.completed, 0)
+            }
+          } else {
+            hasError = true
+          }
+        })
+      }
       for (let i = 0; i < missing.length; i += BATCH) {
         if (cancelled) return
         const slice = missing.slice(i, i + BATCH)
@@ -909,7 +937,7 @@ const ToolingInfoPage: React.FC = () => {
           if (!resp.ok) throw new Error(`parts summary http ${resp.status}`)
           const js = await resp.json().catch(() => ({} as any))
           if (js?.success === false) throw new Error(String(js?.error || 'parts summary failed'))
-          const items = Array.isArray(js?.items) ? js.items : []
+          const items = Array.isArray(js?.items) ? js.items : (Array.isArray(js?.data) ? js.data : [])
           items.forEach((it: any) => {
             const tid = String(it.tooling_id || it.toolingId || '')
             if (!tid) return
@@ -918,8 +946,13 @@ const ToolingInfoPage: React.FC = () => {
             const incomplete = Number(it.incomplete || (total - completed)) || 0
             next[tid] = { total, completed, incomplete }
           })
+          const unresolved = slice.filter((id) => !Object.prototype.hasOwnProperty.call(next, id))
+          if (unresolved.length > 0) {
+            await fillByPartsList(unresolved)
+          }
         } catch {
           hasError = true
+          await fillByPartsList(slice)
         } finally {
           slice.forEach((id) => partsSummaryInflightRef.current.delete(id))
         }
