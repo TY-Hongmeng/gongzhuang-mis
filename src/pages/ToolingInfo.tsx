@@ -949,6 +949,20 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [visibleData, partsSummaryRetrySeq])
 
+  const getPartSummaryByToolingId = useCallback((toolingId: string) => {
+    const remote = partsSummaryMapRef.current[toolingId]
+    if (remote) {
+      const total = Number(remote.total || 0) || 0
+      const completed = Number(remote.completed || 0) || 0
+      return { total, completed, incomplete: Math.max(total - completed, 0) }
+    }
+    const localList = Array.isArray(partsMapRef.current[toolingId]) ? partsMapRef.current[toolingId] : []
+    const valid = localList.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+    const total = valid.length
+    const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
+    return { total, completed, incomplete: Math.max(total - completed, 0) }
+  }, [])
+
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
     
@@ -975,9 +989,9 @@ const ToolingInfoPage: React.FC = () => {
     if (partsFilterStatus !== 'all') {
       result = result.filter((row: any) => {
         const tid = String(row?.id || '')
-        const s = partsSummaryMap[tid]
-        const total = Number(s?.total || 0) || 0
-        const completed = Number(s?.completed || 0) || 0
+        const s = getPartSummaryByToolingId(tid)
+        const total = Number(s.total || 0) || 0
+        const completed = Number(s.completed || 0) || 0
         const isAllCompleted = total > 0 && completed >= total
         if (partsFilterStatus === 'completed') return isAllCompleted
         return !isAllCompleted
@@ -988,7 +1002,7 @@ const ToolingInfoPage: React.FC = () => {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, partsSummaryMap])
+  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId])
   const partsCounts = useMemo(() => {
     let result = visibleData || []
     if (filterPriority) {
@@ -999,14 +1013,13 @@ const ToolingInfoPage: React.FC = () => {
     result.forEach((row: any) => {
       const tid = String(row?.id || '')
       if (!tid || tid.startsWith('blank-')) return
-      const s = partsSummaryMap[tid]
-      if (!s) return
+      const s = getPartSummaryByToolingId(tid)
       all += Number(s.total || 0) || 0
       completed += Number(s.completed || 0) || 0
     })
     const incomplete = Math.max(all - completed, 0)
     return { all, completed, incomplete }
-  }, [visibleData, filterPriority, partsSummaryMap])
+  }, [visibleData, filterPriority, getPartSummaryByToolingId])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
