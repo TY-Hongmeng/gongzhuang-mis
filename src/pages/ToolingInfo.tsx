@@ -681,6 +681,7 @@ const ToolingInfoPage: React.FC = () => {
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     const isExpandedNow = () => expandedRowKeysRef.current.includes(toolingId) || expandedChildKeysRef.current.includes(toolingId)
+    const canLoadNow = () => force || isExpandedNow()
     if (!force && !isExpandedNow()) return
     if (expandedLoadInflightRef.current.has(toolingId)) return
     expandedLoadInflightRef.current.add(toolingId)
@@ -692,12 +693,12 @@ const ToolingInfoPage: React.FC = () => {
     const childLoading = !!childLoadingMapRef.current[toolingId]
 
     try {
-      if (!hasPartsLoaded && !partsLoading && isExpandedNow()) {
+      if (!hasPartsLoaded && !partsLoading && canLoadNow()) {
         setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
         tasks.push(fetchPartsDataRef.current(toolingId))
       }
 
-      if (!hasChildLoaded && !childLoading && isExpandedNow()) {
+      if (!hasChildLoaded && !childLoading && canLoadNow()) {
         setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
         tasks.push(fetchChildItemsDataRef.current(toolingId))
       }
