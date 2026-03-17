@@ -871,100 +871,54 @@ const ToolingInfoPage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
-  const [partsSummaryMap, setPartsSummaryMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
-  const [partsSummaryRetrySeq, setPartsSummaryRetrySeq] = useState(0)
-  const partsSummaryMapRef = useRef(partsSummaryMap)
-  const partsSummaryTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const partsSummaryRetryTimerRef = useRef<NodeJS.Timeout | null>(null)
-  useEffect(() => { partsSummaryMapRef.current = partsSummaryMap }, [partsSummaryMap])
+  const partsPrefetchInflightRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     let cancelled = false
-    if (partsSummaryTimerRef.current) {
-      clearTimeout(partsSummaryTimerRef.current)
-      partsSummaryTimerRef.current = null
-    }
     const ids = (visibleData || [])
       .map((r: any) => String(r?.id || ''))
       .filter((id) => !!id && !id.startsWith('blank-'))
-    if (ids.length === 0) return
-
+    const needPrefetch = ids.filter((id) => {
+      if (Object.prototype.hasOwnProperty.call(partsMapRef.current, id)) return false
+      if (partsPrefetchInflightRef.current.has(id)) return false
+      return true
+    })
+    if (needPrefetch.length === 0) return
     const run = async () => {
-      const next: Record<string, { total: number; completed: number; incomplete: number }> = {}
-      let hasError = false
-      try {
-        const resp = await fetchWithFallback('/api/tooling/parts/summary', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids })
-        })
-        if (!resp.ok) throw new Error(`parts summary http ${resp.status}`)
-        const js = await resp.json().catch(() => ({} as any))
-        if (js?.success === false) throw new Error(String(js?.error || 'parts summary failed'))
-        const items = Array.isArray(js?.items) ? js.items : (Array.isArray(js?.data) ? js.data : [])
-        items.forEach((it: any) => {
-          const tid = String(it.tooling_id || it.toolingId || '')
-          if (!tid) return
-          const total = Number(it.total || 0) || 0
-          const completed = Number(it.completed || 0) || 0
-          next[tid] = { total, completed, incomplete: Math.max(total - completed, 0) }
-        })
-        ids.forEach((id) => {
-          if (!Object.prototype.hasOwnProperty.call(next, id)) {
-            next[id] = { total: 0, completed: 0, incomplete: 0 }
-          }
-        })
-      } catch {
-        hasError = true
-      }
-      if (cancelled) return
-      if (Object.keys(next).length > 0) {
-        setPartsSummaryMap((prev) => {
-          const merged = { ...prev }
-          ids.forEach((id) => { delete merged[id] })
-          return { ...merged, ...next }
-        })
-      }
-      if (hasError && !cancelled) {
-        if (partsSummaryRetryTimerRef.current) clearTimeout(partsSummaryRetryTimerRef.current)
-        partsSummaryRetryTimerRef.current = setTimeout(() => {
-          setPartsSummaryRetrySeq((v) => v + 1)
-        }, 1200)
-      }
+      await runWithConcurrency(needPrefetch.slice(0, 80), 8, async (toolingId) => {
+        if (cancelled) return
+        partsPrefetchInflightRef.current.add(toolingId)
+        try {
+          await fetchPartsData(toolingId)
+        } finally {
+          partsPrefetchInflightRef.current.delete(toolingId)
+        }
+      })
     }
-    partsSummaryTimerRef.current = setTimeout(() => {
-      run()
-    }, 180)
+    run()
     return () => {
       cancelled = true
-      if (partsSummaryTimerRef.current) {
-        clearTimeout(partsSummaryTimerRef.current)
-        partsSummaryTimerRef.current = null
-      }
-      if (partsSummaryRetryTimerRef.current) {
-        clearTimeout(partsSummaryRetryTimerRef.current)
-        partsSummaryRetryTimerRef.current = null
-      }
     }
-  }, [visibleData, partsSummaryRetrySeq])
+  }, [visibleData, fetchPartsData])
 
-  const getPartSummaryByToolingId = useCallback((toolingId: string) => {
-    const remote = partsSummaryMapRef.current[toolingId]
-    if (remote) {
-      const total = Number(remote.total || 0) || 0
-      const completed = Number(remote.completed || 0) || 0
-      return { total, completed, incomplete: Math.max(total - completed, 0) }
-    }
-    const hasLocal = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
-    if (hasLocal) {
-      const localList = Array.isArray(partsMapRef.current[toolingId]) ? partsMapRef.current[toolingId] : []
-      const valid = localList.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+  const partsSummaryLocalMap = useMemo(() => {
+    const ids = (visibleData || [])
+      .map((r: any) => String(r?.id || ''))
+      .filter((id) => !!id && !id.startsWith('blank-'))
+    const map: Record<string, { total: number; completed: number; incomplete: number }> = {}
+    ids.forEach((id) => {
+      const list = Array.isArray(partsMap[id]) ? partsMap[id] : []
+      const valid = list.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
       const total = valid.length
       const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
-      return { total, completed, incomplete: Math.max(total - completed, 0) }
-    }
-    return { total: 0, completed: 0, incomplete: 0 }
-  }, [])
+      map[id] = { total, completed, incomplete: Math.max(total - completed, 0) }
+    })
+    return map
+  }, [visibleData, partsMap])
+
+  const getPartSummaryByToolingId = useCallback((toolingId: string) => {
+    return partsSummaryLocalMap[toolingId] || { total: 0, completed: 0, incomplete: 0 }
+  }, [partsSummaryLocalMap])
 
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
@@ -1005,7 +959,7 @@ const ToolingInfoPage: React.FC = () => {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId, partsSummaryMap, partsMap])
+  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId])
   const partsCounts = useMemo(() => {
     let result = visibleData || []
     if (filterPriority) {
@@ -1022,7 +976,7 @@ const ToolingInfoPage: React.FC = () => {
     })
     const incomplete = Math.max(all - completed, 0)
     return { all, completed, incomplete }
-  }, [visibleData, filterPriority, getPartSummaryByToolingId, partsSummaryMap, partsMap])
+  }, [visibleData, filterPriority, getPartSummaryByToolingId])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
