@@ -872,9 +872,11 @@ const ToolingInfoPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsSummaryMap, setPartsSummaryMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
+  const [partsSummaryRetrySeq, setPartsSummaryRetrySeq] = useState(0)
   const partsSummaryMapRef = useRef(partsSummaryMap)
   const partsSummaryInflightRef = useRef<Set<string>>(new Set())
   const partsSummaryTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const partsSummaryRetryTimerRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => { partsSummaryMapRef.current = partsSummaryMap }, [partsSummaryMap])
 
   useEffect(() => {
@@ -893,6 +895,7 @@ const ToolingInfoPage: React.FC = () => {
     const run = async () => {
       const BATCH = 500
       const next: Record<string, { total: number; completed: number; incomplete: number }> = {}
+      let hasError = false
       for (let i = 0; i < missing.length; i += BATCH) {
         if (cancelled) return
         const slice = missing.slice(i, i + BATCH)
@@ -903,7 +906,9 @@ const ToolingInfoPage: React.FC = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: slice })
           })
+          if (!resp.ok) throw new Error(`parts summary http ${resp.status}`)
           const js = await resp.json().catch(() => ({} as any))
+          if (js?.success === false) throw new Error(String(js?.error || 'parts summary failed'))
           const items = Array.isArray(js?.items) ? js.items : []
           items.forEach((it: any) => {
             const tid = String(it.tooling_id || it.toolingId || '')
@@ -913,12 +918,20 @@ const ToolingInfoPage: React.FC = () => {
             const incomplete = Number(it.incomplete || (total - completed)) || 0
             next[tid] = { total, completed, incomplete }
           })
-        } catch {} finally {
+        } catch {
+          hasError = true
+        } finally {
           slice.forEach((id) => partsSummaryInflightRef.current.delete(id))
         }
       }
       if (cancelled) return
       setPartsSummaryMap((prev) => ({ ...prev, ...next }))
+      if (hasError && !cancelled) {
+        if (partsSummaryRetryTimerRef.current) clearTimeout(partsSummaryRetryTimerRef.current)
+        partsSummaryRetryTimerRef.current = setTimeout(() => {
+          setPartsSummaryRetrySeq((v) => v + 1)
+        }, 1200)
+      }
     }
     partsSummaryTimerRef.current = setTimeout(() => {
       run()
@@ -929,8 +942,12 @@ const ToolingInfoPage: React.FC = () => {
         clearTimeout(partsSummaryTimerRef.current)
         partsSummaryTimerRef.current = null
       }
+      if (partsSummaryRetryTimerRef.current) {
+        clearTimeout(partsSummaryRetryTimerRef.current)
+        partsSummaryRetryTimerRef.current = null
+      }
     }
-  }, [visibleData])
+  }, [visibleData, partsSummaryRetrySeq])
 
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
