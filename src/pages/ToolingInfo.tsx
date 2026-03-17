@@ -1006,7 +1006,7 @@ const ToolingInfoPage: React.FC = () => {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId])
+  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId, partsSummaryMap, partsMap])
   const partsCounts = useMemo(() => {
     let result = visibleData || []
     if (filterPriority) {
@@ -1023,7 +1023,7 @@ const ToolingInfoPage: React.FC = () => {
     })
     const incomplete = Math.max(all - completed, 0)
     return { all, completed, incomplete }
-  }, [visibleData, filterPriority, getPartSummaryByToolingId])
+  }, [visibleData, filterPriority, getPartSummaryByToolingId, partsSummaryMap, partsMap])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
