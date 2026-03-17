@@ -62,6 +62,14 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [completedTime, setCompletedTime] = React.useState<string>('')
   // 添加零件名称映射
   const [partNameMap, setPartNameMap] = React.useState<Record<string, string>>({})
+  const normalizePartKey = React.useCallback((v: any) => String(v || '').trim().toUpperCase(), [])
+  const resolvePartName = React.useCallback((row: any) => {
+    const direct = String(row?.part_name || '').trim()
+    if (direct) return direct
+    const inv = normalizePartKey(row?.part_inventory_number)
+    const draw = normalizePartKey(row?.part_drawing_number)
+    return (inv && partNameMap[inv]) || (draw && partNameMap[draw]) || '-'
+  }, [partNameMap, normalizePartKey])
   const invAbortRef = React.useRef<AbortController | null>(null)
   const invTimerRef = React.useRef<any>(null)
   
@@ -359,8 +367,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       const map: Record<string, string> = {}
       all.forEach((p: any) => {
-        if (p.part_inventory_number) map[p.part_inventory_number] = p.part_name || ''
-        if (p.part_drawing_number && !map[p.part_drawing_number]) map[p.part_drawing_number] = p.part_name || ''
+        const name = String(p.part_name || '').trim()
+        if (!name) return
+        const inv = normalizePartKey(p.part_inventory_number)
+        const draw = normalizePartKey(p.part_drawing_number)
+        if (inv) map[inv] = name
+        if (draw && !map[draw]) map[draw] = name
       })
       setPartNameMap(map)
     } catch {}
@@ -455,6 +467,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           id: String(item.id || ''),
           part_inventory_number: String(item.part_inventory_number || ''),
           part_drawing_number: String(item.part_drawing_number || ''),
+          part_name: String(item.part_name || ''),
           hours: Number(item.hours || 0),
           aux_hours: Number(item.aux_hours || 0),
           proc_hours: Number(item.proc_hours || 0),
@@ -578,12 +591,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }, width: 50, align: 'center' },
       { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
       { title: '图号', dataIndex: 'part_drawing_number', align: 'center' },
-      { title: '零件名称', key: 'part_name', render: (_: any, r: any) => {
-        const inv = String(r.part_inventory_number || '')
-        const draw = String(r.part_drawing_number || '')
-        // 通过盘存编号或图号从映射中获取零件名称
-        return (inv && partNameMap[inv]) || (draw && partNameMap[draw]) || '-';
-      }, align: 'center' },
+      { title: '零件名称', key: 'part_name', render: (_: any, r: any) => resolvePartName(r), align: 'center' },
       { title: '工序', dataIndex: 'process_name', align: 'center' },
       { title: '设备编号', key: 'device', render: (_: any, r: any) => {
         return r.device_no || '-' 
@@ -680,7 +688,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       return col;
     });
-  }, [recentItems, recentStats, partNameMap, showRecent])
+  }, [recentItems, recentStats, resolvePartName, showRecent])
 
   const titleText = showRecent ? '最近提交' : '工时录入'
 

@@ -47,6 +47,14 @@ const WorkHoursManagement: React.FC = () => {
   const [selectedKeys, setSelectedKeys] = React.useState<React.Key[]>([])
   const [partNameMap, setPartNameMap] = React.useState<Record<string, string>>({})
   const [deviceMap, setDeviceMap] = React.useState<Record<string, { name: string; max_aux_minutes?: number }>>({})
+  const normalizePartKey = React.useCallback((v: any) => String(v || '').trim().toUpperCase(), [])
+  const resolvePartName = React.useCallback((row: any) => {
+    const direct = String(row?.part_name || '').trim()
+    if (direct) return direct
+    const inv = normalizePartKey(row?.part_inventory_number)
+    const draw = normalizePartKey(row?.part_drawing_number)
+    return (inv && partNameMap[inv]) || (draw && partNameMap[draw]) || '-'
+  }, [partNameMap, normalizePartKey])
 
   // 获取唯一的操作者列表
   const uniqueOperators = React.useMemo(() => {
@@ -84,15 +92,13 @@ const WorkHoursManagement: React.FC = () => {
     const partNames = new Set<string>()
     // 从items中获取所有零件名称
     allItems.forEach(item => {
-      const invNo = item.part_inventory_number
-      const drawNo = item.part_drawing_number
-      const nameFromMap = invNo ? partNameMap[invNo] : (drawNo ? partNameMap[drawNo] : '')
+      const nameFromMap = resolvePartName(item)
       if (nameFromMap) {
         partNames.add(nameFromMap)
       }
     })
     return Array.from(partNames)
-  }, [allItems, partNameMap])
+  }, [allItems, resolvePartName])
 
   const fetchData = async () => {
     try {
@@ -207,10 +213,7 @@ const WorkHoursManagement: React.FC = () => {
         // 零件名称筛选
         if (partName) {
           filteredData = filteredData.filter(item => {
-            const invNo = item.part_inventory_number
-            const drawNo = item.part_drawing_number
-            const nameFromMap = invNo ? partNameMap[invNo] : (drawNo ? partNameMap[drawNo] : '')
-            return nameFromMap === partName
+            return resolvePartName(item) === partName
           })
         }
         
@@ -230,27 +233,36 @@ const WorkHoursManagement: React.FC = () => {
   // 当筛选条件变化时，重新获取数据并在客户端进行筛选
   React.useEffect(() => {
     fetchData()
-  }, [range, yearMonth, operator, workshop, team, shift, deviceNo, partInventoryNo, partDrawingNo, partName])
+  }, [range, yearMonth, operator, workshop, team, shift, deviceNo, partInventoryNo, partDrawingNo, partName, resolvePartName])
 
   React.useEffect(() => {
     (async () => {
       try {
-        const r = await fetchWithFallback('/api/tooling/parts/inventory-list?page=1&pageSize=500')
-        if (!r.ok) {
-          throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
-        }
-        const j = await r.json()
-        if (j?.success) {
-          const map: Record<string, string> = {}
-          ;(j.items || []).forEach((p: any) => {
-            if (p.part_inventory_number) map[p.part_inventory_number] = p.part_name || ''
-            if (p.part_drawing_number && !map[p.part_drawing_number]) map[p.part_drawing_number] = p.part_name || ''
+        const pageSize = 1000
+        let page = 1
+        const map: Record<string, string> = {}
+        while (true) {
+          const r = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
+          if (!r.ok) {
+            throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
+          }
+          const j = await r.json()
+          const rows = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
+          rows.forEach((p: any) => {
+            const name = String(p.part_name || '').trim()
+            if (!name) return
+            const inv = normalizePartKey(p.part_inventory_number)
+            const draw = normalizePartKey(p.part_drawing_number)
+            if (inv) map[inv] = name
+            if (draw && !map[draw]) map[draw] = name
           })
-          setPartNameMap(map)
+          if (rows.length < pageSize) break
+          page += 1
         }
+        setPartNameMap(map)
       } catch {}
     })()
-  }, [])
+  }, [normalizePartKey])
 
   React.useEffect(() => {
     (async () => {
@@ -442,12 +454,7 @@ const WorkHoursManagement: React.FC = () => {
     }, width: 50, align: 'center' },
     { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
     { title: '图号', dataIndex: 'part_drawing_number', align: 'center' },
-    { title: '零件名称', key: 'part_name', render: (_: any, r: any) => {
-      const inv = String(r.part_inventory_number || '')
-      const draw = String(r.part_drawing_number || '')
-      // 通过最近加载的父级数据中可能的扩展字段或后续补齐映射（未来可优化为后端返回）
-      return (inv && (partNameMap as any)?.[inv]) || (draw && (partNameMap as any)?.[draw]) || '-' 
-    }, align: 'center' },
+    { title: '零件名称', key: 'part_name', render: (_: any, r: any) => resolvePartName(r), align: 'center' },
     { title: '工序', dataIndex: 'process_name', align: 'center' },
     { title: '设备编号', key: 'device', render: (_: any, r: any) => {
       const no = String(r.device_no || '')
@@ -539,7 +546,7 @@ const WorkHoursManagement: React.FC = () => {
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
     { title: '加工数量', dataIndex: 'completed_quantity', align: 'center' }
-  ], [partNameMap, deviceMap, userMap, items, dailyHoursSum])
+  ], [resolvePartName, deviceMap, userMap, items, dailyHoursSum])
 
   const expandColumnWidth = 48
   const parentColumnWidths = [90, 70, 70, 140, 140, 140, 140, 140, 140, 90, 120, 160]
@@ -825,9 +832,7 @@ const WorkHoursManagement: React.FC = () => {
             const effMinutes = typeof maxm === 'number' && auxMinutes > maxm ? maxm : auxMinutes;
             
             // 获取零件名称
-            const invNo = row.part_inventory_number;
-            const drawNo = row.part_drawing_number;
-            const partNameDisplay = invNo ? partNameMap[invNo] : (drawNo ? partNameMap[drawNo] : '');
+            const partNameDisplay = resolvePartName(row);
             
             // 计算日统计、日辅助、日程序（小时）
             const dailyKey = `${group.operator}-${row.shift}-${row.work_date}`;
