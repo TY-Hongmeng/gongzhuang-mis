@@ -873,6 +873,7 @@ const ToolingInfoPage: React.FC = () => {
   const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
   const [partsSummaryMap, setPartsSummaryMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
   const [partsSummaryRetrySeq, setPartsSummaryRetrySeq] = useState(0)
+  const partsPrefetchInflightRef = useRef<Set<string>>(new Set())
   const partsSummaryMapRef = useRef(partsSummaryMap)
   const partsSummaryInflightRef = useRef<Set<string>>(new Set())
   const partsSummaryTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -988,6 +989,34 @@ const ToolingInfoPage: React.FC = () => {
       }
     }
   }, [visibleData, partsSummaryRetrySeq])
+
+  useEffect(() => {
+    let cancelled = false
+    const ids = (visibleData || [])
+      .map((r: any) => String(r?.id || ''))
+      .filter((id) => !!id && !id.startsWith('blank-'))
+    const needPrefetch = ids.filter((id) => {
+      if (Object.prototype.hasOwnProperty.call(partsMapRef.current, id)) return false
+      if (partsPrefetchInflightRef.current.has(id)) return false
+      return true
+    })
+    if (needPrefetch.length === 0) return
+    const run = async () => {
+      await runWithConcurrency(needPrefetch.slice(0, 80), 4, async (toolingId) => {
+        if (cancelled) return
+        partsPrefetchInflightRef.current.add(toolingId)
+        try {
+          await fetchPartsData(toolingId)
+        } finally {
+          partsPrefetchInflightRef.current.delete(toolingId)
+        }
+      })
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [visibleData, fetchPartsData])
 
   const getPartSummaryByToolingId = useCallback((toolingId: string) => {
     const hasLocal = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
