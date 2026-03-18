@@ -374,6 +374,7 @@ const ExpandedSubTables: React.FC<{
           size="small"
           tableLayout="fixed"
           scroll={{ x: 1400 }}
+          sticky={{ offsetScroll: 0 }}
           locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
@@ -427,6 +428,7 @@ const ExpandedSubTables: React.FC<{
           size="small"
           tableLayout="fixed"
           scroll={{ x: 1200 }}
+          sticky={{ offsetScroll: 0 }}
           locale={{ emptyText: childLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
@@ -5000,7 +5002,8 @@ const ToolingInfoPage: React.FC = () => {
           pagination={false}
           bordered={false}
           tableLayout="fixed"
-          scroll={{ x: 2200, y: tableScrollY }}
+          scroll={{ x: 2200 }}
+          sticky={{ offsetScroll: 0 }}
           locale={{ emptyText: '' }}
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
