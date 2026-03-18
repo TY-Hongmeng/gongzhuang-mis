@@ -2066,7 +2066,7 @@ const ToolingInfoPage: React.FC = () => {
       if (!el) return
       const rect = el.getBoundingClientRect()
       const h = window.innerHeight - rect.top - 16
-      setTableScrollY(Math.max(320, Math.floor(h)))
+      setTableScrollY(Math.max(320, Math.floor(h) - 40))
     }
     const raf = requestAnimationFrame(calc)
     window.addEventListener('resize', calc)
@@ -5002,8 +5002,7 @@ const ToolingInfoPage: React.FC = () => {
           pagination={false}
           bordered={false}
           tableLayout="fixed"
-          scroll={{ x: 2200 }}
-          sticky={{ offsetScroll: 0 }}
+          scroll={{ x: 2200, y: tableScrollY }}
           locale={{ emptyText: '' }}
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
