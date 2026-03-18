@@ -5002,7 +5002,7 @@ const ToolingInfoPage: React.FC = () => {
           pagination={false}
           bordered={false}
           tableLayout="fixed"
-          scroll={{ x: 2200, y: tableScrollY }}
+          scroll={{ y: tableScrollY }}
           locale={{ emptyText: '' }}
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
