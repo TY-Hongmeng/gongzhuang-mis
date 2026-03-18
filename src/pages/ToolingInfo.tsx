@@ -345,6 +345,12 @@ const ExpandedSubTables: React.FC<{
           overflow: hidden !important;
           text-overflow: ellipsis !important;
         }
+        .subtable-no-hover .ant-table-tbody > tr > td.process-route-cell {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          line-height: 1.4 !important;
+        }
       `}</style>
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -373,7 +379,7 @@ const ExpandedSubTables: React.FC<{
           bordered={false}
           size="small"
           tableLayout="fixed"
-          scroll={{ x: 1400 }}
+          scroll={{ x: 1700 }}
           sticky={{ offsetScroll: 0 }}
           locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
@@ -2367,8 +2373,8 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '工艺路线',
         dataIndex: 'process_route',
-        width: 320,
-        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
+        width: 520,
+        onCell: () => ({ className: 'process-route-cell', onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (_t: any, rec: PartItem) => {
           const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           let currentRoute = String((rec as any).process_route || '')
