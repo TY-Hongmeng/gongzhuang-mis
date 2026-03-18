@@ -339,6 +339,8 @@ const ExpandedSubTables: React.FC<{
       <style>{`
         .subtable-no-hover .ant-table-tbody > tr:hover > td { background: inherit !important; }
         .subtable-no-hover .ant-table-tbody > tr.row-completed:hover > td { background: #2f8f4e !important; }
+        .subtable-no-hover .ant-table-thead > tr > th,
+        .subtable-no-hover .ant-table-tbody > tr > td { white-space: nowrap !important; }
       `}</style>
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -366,6 +368,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
@@ -417,6 +420,7 @@ const ExpandedSubTables: React.FC<{
           pagination={false}
           bordered={false}
           size="small"
+          scroll={{ x: 'max-content' }}
           locale={{ emptyText: childLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
@@ -4961,6 +4965,8 @@ const ToolingInfoPage: React.FC = () => {
           .excel-table { --row-h: 32px; }
           .excel-table .ant-table-thead > tr > th { height: var(--row-h) !important; }
           .excel-table .ant-table-tbody > tr > td { height: var(--row-h) !important; padding: 0 8px; }
+          .excel-table .ant-table-thead > tr > th,
+          .excel-table .ant-table-tbody > tr > td { white-space: nowrap !important; }
           .excel-table .ant-table-tbody > tr:hover > td { background: inherit !important; }
           .editing-input { border: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
           .editing-input.ant-input:focus { border: none !important; box-shadow: none !important; outline: none !important; }
@@ -4983,7 +4989,7 @@ const ToolingInfoPage: React.FC = () => {
           columns={columns}
           pagination={false}
           bordered={false}
-          scroll={{ x: isMobile ? 1300 : undefined, y: tableScrollY }}
+          scroll={{ x: 'max-content', y: tableScrollY }}
           locale={{ emptyText: '' }}
           rowClassName={(record: any) => {
             const isBlank = String(record?.id || '').startsWith('blank-')
