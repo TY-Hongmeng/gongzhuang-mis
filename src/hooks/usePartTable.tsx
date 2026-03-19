@@ -109,16 +109,16 @@ export const usePartTable = ({ toolingId, onEdit }: PartTableProps) => {
       }
     },
     {
-      title: '零件图号',
-      dataIndex: 'part_drawing_number',
-      width: 140,
+      title: '零件名称',
+      dataIndex: 'part_name',
+      width: 150,
       editable: true,
       render: (text: string) => text || ''
     },
     {
-      title: '零件名称',
-      dataIndex: 'part_name',
-      width: 150,
+      title: '零件图号',
+      dataIndex: 'part_drawing_number',
+      width: 140,
       editable: true,
       render: (text: string) => text || ''
     },
