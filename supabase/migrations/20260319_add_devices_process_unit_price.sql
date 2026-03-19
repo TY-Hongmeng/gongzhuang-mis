@@ -1,0 +1,2 @@
+ALTER TABLE devices
+ADD COLUMN IF NOT EXISTS process_unit_price NUMERIC;

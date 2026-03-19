@@ -870,7 +870,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       if (path.startsWith('/api/tooling/devices')) {
         if (method === 'POST' && path === '/api/tooling/devices') {
           const body = await readBody()
-          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const payload = {
+            device_no: String(body.device_no || ''),
+            device_name: String(body.device_name || ''),
+            max_aux_minutes: body.max_aux_minutes ?? null,
+            process_unit_price: body.process_unit_price ?? null
+          }
           const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
@@ -878,7 +883,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (method === 'POST' && path === '/api/tooling/devices/update') {
           const body = await readBody()
           const id = String(body.id || '')
-          const payload = { device_no: String(body.device_no || ''), device_name: String(body.device_name || ''), max_aux_minutes: body.max_aux_minutes ?? null }
+          const payload = {
+            device_no: String(body.device_no || ''),
+            device_name: String(body.device_name || ''),
+            max_aux_minutes: body.max_aux_minutes ?? null,
+            process_unit_price: body.process_unit_price ?? null
+          }
           const { error } = await supabase.from('devices').update(payload).eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })

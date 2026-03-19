@@ -39,6 +39,7 @@ interface DeviceItem {
   device_no: string;
   device_name: string;
   max_aux_minutes?: number | null;
+  process_unit_price?: number | null;
 }
 
 interface FixedOptionItem {
@@ -163,7 +164,7 @@ export default function OptionsManagement() {
         case 'devices':
           const devicesData = await createTimedFetch('/api/tooling/devices', 'devices');
           const devicesResult = getArr(devicesData);
-          const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null }));
+          const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null, process_unit_price: x.process_unit_price ?? null }));
           console.log('normDevices:', normDevices);
           setDevices(normDevices);
           break;
@@ -200,7 +201,7 @@ export default function OptionsManagement() {
   const handleEditMaterial = (material: any) => setEditingMaterial({ ...material });
   const handleCreatePartType = () => setEditingPartType({ id: '', name: '', description: '', volume_formula: '', created_at: '', updated_at: '' });
   const handleCreateMaterialSource = () => setEditingMaterialSource({ id: null, name: '', description: '', is_active: true, created_at: '', updated_at: '' });
-  const handleCreateDevice = () => setEditingDevice({ id: null as any, device_no: '', device_name: '', max_aux_minutes: null } as any);
+  const handleCreateDevice = () => setEditingDevice({ id: null as any, device_no: '', device_name: '', max_aux_minutes: null, process_unit_price: null } as any);
   const handleCreateFixedOption = () => setEditingFixedOption({ id: null as any, option_value: '', option_label: '', is_active: true } as any);
 
   const handleEditPartType = (partType: any) => setEditingPartType({ ...partType });
@@ -298,7 +299,8 @@ export default function OptionsManagement() {
     const templateData = [{
       设备编号: 'CNC-001',
       设备名称: '数控加工中心',
-      '最大辅助时间(分钟)': 30
+      '最大辅助时间(分钟)': 30,
+      工序单价: 1.5
     }]
     const ws = XLSX.utils.json_to_sheet(templateData)
     const wb = XLSX.utils.book_new()
@@ -339,6 +341,7 @@ export default function OptionsManagement() {
         device_no: string
         device_name: string
         max_aux_minutes: number | null
+        process_unit_price: number | null
         existing?: DeviceItem
       }> = []
 
@@ -350,6 +353,7 @@ export default function OptionsManagement() {
           row['设备名称'] ?? row['name'] ?? row['device_name'] ?? row['deviceName'] ?? ''
         ).trim()
         const maxRaw = row['最大辅助时间(分钟)'] ?? row['最大辅助时间'] ?? row['max_aux_minutes'] ?? row['maxAuxMinutes'] ?? ''
+        const processPriceRaw = row['工序单价'] ?? row['process_unit_price'] ?? row['processUnitPrice'] ?? ''
 
         if (!device_no) {
           skipped++
@@ -366,9 +370,16 @@ export default function OptionsManagement() {
           errors.push(`${device_no} 最大辅助时间无效`)
           continue
         }
+        const process_unit_price = (processPriceRaw === '' || processPriceRaw === null || processPriceRaw === undefined)
+          ? null
+          : Number(processPriceRaw)
+        if (process_unit_price !== null && (Number.isNaN(process_unit_price) || process_unit_price < 0)) {
+          errors.push(`${device_no} 工序单价无效`)
+          continue
+        }
 
         const existing = deviceMap.get(normalizeDeviceNo(device_no))
-        candidates.push({ device_no, device_name, max_aux_minutes, existing })
+        candidates.push({ device_no, device_name, max_aux_minutes, process_unit_price, existing })
       }
 
       const chunkSize = 6
@@ -383,7 +394,8 @@ export default function OptionsManagement() {
               id: item.existing ? String(item.existing.id) : undefined,
               device_no: item.device_no,
               device_name: item.device_name,
-              max_aux_minutes: item.max_aux_minutes
+              max_aux_minutes: item.max_aux_minutes,
+              process_unit_price: item.process_unit_price
             })
           })
           if (!response.ok) {
@@ -592,7 +604,8 @@ export default function OptionsManagement() {
           id: isUpdate ? String(editingDevice.id) : undefined,
           device_no: editingDevice.device_no.trim(),
           device_name: editingDevice.device_name.trim(),
-          max_aux_minutes: (editingDevice.max_aux_minutes === '' || editingDevice.max_aux_minutes === undefined) ? null : Number(editingDevice.max_aux_minutes)
+          max_aux_minutes: (editingDevice.max_aux_minutes === '' || editingDevice.max_aux_minutes === undefined) ? null : Number(editingDevice.max_aux_minutes),
+          process_unit_price: (editingDevice.process_unit_price === '' || editingDevice.process_unit_price === undefined) ? null : Number(editingDevice.process_unit_price)
         })
       });
       if (!response.ok) throw new Error('保存失败');
@@ -1200,6 +1213,7 @@ export default function OptionsManagement() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工序单价</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
@@ -1217,6 +1231,9 @@ export default function OptionsManagement() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {device.max_aux_minutes ?? '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {device.process_unit_price ?? '-'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
@@ -1259,6 +1276,10 @@ export default function OptionsManagement() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时间(分钟)</label>
                         <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入最大辅助时间" />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">工序单价</label>
+                        <input type="number" value={editingDevice.process_unit_price ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, process_unit_price: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工序单价" />
+                      </div>
                     </div>
                     <div className="mt-4 flex justify-end space-x-3">
                       <button onClick={() => setEditingDevice(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
@@ -1276,6 +1297,7 @@ export default function OptionsManagement() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工序单价</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
                       </thead>
@@ -1288,6 +1310,7 @@ export default function OptionsManagement() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{device.device_no}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.device_name}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.max_aux_minutes ?? '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.process_unit_price ?? '-'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
                                 <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
@@ -1443,6 +1466,7 @@ export default function OptionsManagement() {
             <li>设备编号</li>
             <li>设备名称</li>
             <li>最大辅助时间(分钟)</li>
+            <li>工序单价</li>
           </ul>
         </div>
       </Modal>
