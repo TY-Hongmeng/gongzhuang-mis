@@ -389,7 +389,7 @@ export default function OptionsManagement() {
           const url = item.existing ? '/api/tooling/devices/update' : '/api/tooling/devices'
           const response = await fetchWithFallback(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: item.existing ? String(item.existing.id) : undefined,
               device_no: item.device_no,
@@ -599,7 +599,7 @@ export default function OptionsManagement() {
       const url = isUpdate ? '/api/tooling/devices/update' : '/api/tooling/devices'
       const response = await fetchWithFallback(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: isUpdate ? String(editingDevice.id) : undefined,
           device_no: editingDevice.device_no.trim(),
@@ -622,7 +622,7 @@ export default function OptionsManagement() {
   const handleDeleteDevice = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetchWithFallback('/api/tooling/devices/delete', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id }) });
+      const response = await fetchWithFallback('/api/tooling/devices/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (!response.ok) throw new Error('删除失败');
       await fetchTabData('devices');
     } catch (err) {
