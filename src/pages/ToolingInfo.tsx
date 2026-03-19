@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -546,9 +546,9 @@ const ToolingInfoPage: React.FC = () => {
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   useEffect(() => {
-    // 材料价格加载完成后清空价格缓存，避免早期0价缓存导致金额长期显示0.00
+    weightCacheRef.current.clear()
     priceCacheRef.current.clear()
-  }, [materials])
+  }, [materials, partTypes])
   
   // 导入相关状态
   const [importModalVisible, setImportModalVisible] = useState(false)
@@ -648,6 +648,17 @@ const ToolingInfoPage: React.FC = () => {
   const materialsRef = useRef(materials)
   useEffect(() => {
     materialsRef.current = materials
+  }, [materials])
+  const materialUnitPriceMapRef = useRef<Record<string, number>>({})
+  useEffect(() => {
+    const map: Record<string, number> = {}
+    ;(materials || []).forEach((m: any) => {
+      const id = String(m?.id || '')
+      if (!id) return
+      const unitPrice = Number(m?.unit_price || 0)
+      map[id] = Number.isFinite(unitPrice) ? unitPrice : 0
+    })
+    materialUnitPriceMapRef.current = map
   }, [materials])
   
   const materialSourcesRef = useRef(materialSources)
@@ -1193,15 +1204,14 @@ const ToolingInfoPage: React.FC = () => {
     calculateTotalPriceRef.current = calculateTotalPrice
   }, [calculateTotalPrice])
 
-  const calcPartMetrics = useCallback((row: PartItem, parentReceivedDate: string) => {
+  const calcPartMetrics = useCallback((row: PartItem) => {
     const unitWeightRaw = Number(row.weight ?? 0)
     const unitWeight = unitWeightRaw > 0
       ? unitWeightRaw
       : calculatePartWeightRef.current(row.specifications || {}, row.material_id || '', row.part_category || '', partTypesRef.current, materialsRef.current)
     const qty = Number(row.part_quantity || 0)
     const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
-    const material = materialsRef.current.find(m => String(m.id) === String(row.material_id || ''))
-    const unitPrice = Number((material as any)?.unit_price || 0)
+    const unitPrice = Number(materialUnitPriceMapRef.current[String(row.material_id || '')] || 0)
     const totalPrice = totalWeight > 0 && unitPrice > 0 ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice)) : 0
     return {
       unitWeight: Number.isFinite(unitWeight) ? unitWeight : 0,
@@ -1581,14 +1591,12 @@ const ToolingInfoPage: React.FC = () => {
       
       setPartsMap(prev => {
         const list = prev[toolingId] || []
-        const parent = dataRef.current.find(d => d.id === toolingId)
-        const parentReceivedDate = String(parent?.received_date || '')
         let updated = list.map(r => {
           if (r.id !== id) return r
           const nextVal = key === 'part_quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value
           const updatedRow = { ...r, [key]: nextVal } as PartItem
           if (key === 'specifications' || key === 'material_id' || key === 'part_category' || key === 'part_quantity' || key === 'weight') {
-            const metrics = calcPartMetrics(updatedRow, parentReceivedDate)
+            const metrics = calcPartMetrics(updatedRow)
             updatedRow.weight = metrics.unitWeight
             updatedRow.total_price = metrics.totalPrice
           }
@@ -1665,9 +1673,7 @@ const ToolingInfoPage: React.FC = () => {
         // 关键字段更新需要联动重量与金额并持久化
         if (key === 'specifications' || key === 'material_id' || key === 'part_category' || key === 'part_quantity' || key === 'weight') {
           const nextRow = { ...(current || {}), [key]: value }
-          const parent = dataRef.current.find(d => d.id === toolingId)
-          const parentReceivedDate = String(parent?.received_date || '')
-          const metrics = calcPartMetrics(nextRow, parentReceivedDate)
+          const metrics = calcPartMetrics(nextRow)
           payload.weight = metrics.unitWeight
           payload.total_price = metrics.totalPrice
         }
@@ -1729,8 +1735,7 @@ const ToolingInfoPage: React.FC = () => {
             if (!anyHas) return
             
             const parent = dataRef.current.find(d => d.id === toolingId)
-            const parentReceivedDate = String(parent?.received_date || '')
-            const metrics = calcPartMetrics(nextRow, parentReceivedDate)
+            const metrics = calcPartMetrics(nextRow)
             let nextInventoryNumber = String(nextRow.part_inventory_number || '').trim().toUpperCase()
             if (!nextInventoryNumber) {
               const generated = getNextPartInventoryNumbers(
@@ -1832,13 +1837,11 @@ const ToolingInfoPage: React.FC = () => {
       
       setPartsMap(prev => {
         const list = prev[toolingId] || []
-        const parent = dataRef.current.find(d => d.id === toolingId)
-        const parentReceivedDate = String(parent?.received_date || '')
         let updated = list.map(r => {
           if (r.id !== id) return r
           const updatedRow = { ...r, ...updates } as PartItem
           if ('specifications' in updates || 'material_id' in updates || 'part_category' in updates || 'part_quantity' in updates || 'weight' in updates) {
-            const metrics = calcPartMetrics(updatedRow, parentReceivedDate)
+            const metrics = calcPartMetrics(updatedRow)
             updatedRow.weight = metrics.unitWeight
             updatedRow.total_price = metrics.totalPrice
           }
@@ -2087,7 +2090,7 @@ const ToolingInfoPage: React.FC = () => {
     handleDeleteChildItemRef.current = handleDeleteChildItem
   }, [handleDeleteChildItem])
 
-  const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string, parentReceivedDate: string) => {
+  const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     const WEIGHT_CACHE_LIMIT = 500
     const PRICE_CACHE_LIMIT = 500
     const getWeightCached = (rec: PartItem) => {
@@ -2111,15 +2114,13 @@ const ToolingInfoPage: React.FC = () => {
     }
     const getPriceCached = (rec: PartItem) => {
       const dep = getWeightCached(rec)
-      const material = materialsRef.current.find(m => String(m.id) === String(rec.material_id))
-      const unitPrice = Number((material as any)?.unit_price || 0)
-      const storedTotalPrice = Number(rec.total_price || 0)
-      const key = `${rec.material_id}|${dep.totalWeight}|${parentReceivedDate}|${unitPrice}|${storedTotalPrice}`
+      const unitPrice = Number(materialUnitPriceMapRef.current[String(rec.material_id || '')] || 0)
+      const key = `${rec.id}|${rec.material_id}|${dep.totalWeight}|${unitPrice}`
       const cached = priceCacheRef.current.get(key)
       if (cached) return cached
       const total = (dep.totalWeight > 0 && unitPrice > 0)
         ? calculateTotalPriceRef.current(dep.totalWeight, unitPrice)
-        : (storedTotalPrice > 0 ? storedTotalPrice : 0)
+        : 0
       const val = { total }
       priceCacheRef.current.set(key, val)
       if (priceCacheRef.current.size > PRICE_CACHE_LIMIT) {
@@ -2619,7 +2620,6 @@ const ToolingInfoPage: React.FC = () => {
     const parentProject = parent?.project_name || ''
     const parentUnit = parent?.production_unit || ''
     const parentApplicant = parent?.recorder || ''
-    const parentReceivedDate = parent?.received_date || ''
     
     // 获取当前数据，不再自动添加空白行
     const partsList = partsMap[toolingId] || []
@@ -2629,10 +2629,10 @@ const ToolingInfoPage: React.FC = () => {
     const partsLoading = partsLoadingMap[toolingId] || !hasPartsLoaded
     const childLoading = childLoadingMap[toolingId] || !hasChildLoaded
 
-    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${parentReceivedDate}`
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
     if (!cols) {
-      cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant, parentReceivedDate)
+      cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
       partColumnsCacheRef.current.set(cacheKey, cols)
       while (partColumnsCacheRef.current.size > MAX_COLUMN_CACHE) {
         const k = partColumnsCacheRef.current.keys().next().value
