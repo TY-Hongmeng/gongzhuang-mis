@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Save, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Popconfirm, Modal, Button, Typography, Space, message } from 'antd';
+import { Popconfirm, Modal, Button, Typography, Space, message, Table } from 'antd';
 import { DatabaseOutlined, ReloadOutlined, LeftOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import { PartType } from '../types/tooling';
 import { fetchWithFallback } from '../utils/api'
@@ -616,8 +616,8 @@ export default function OptionsManagement() {
           id: isUpdate ? String(editingDevice.id) : undefined,
           device_no: editingDevice.device_no.trim(),
           device_name: editingDevice.device_name.trim(),
-          max_aux_minutes: (editingDevice.max_aux_minutes === '' || editingDevice.max_aux_minutes === undefined) ? null : Number(editingDevice.max_aux_minutes),
-          process_unit_price: (editingDevice.process_unit_price === '' || editingDevice.process_unit_price === undefined) ? null : Number(editingDevice.process_unit_price)
+          max_aux_minutes: editingDevice.max_aux_minutes == null ? null : Number(editingDevice.max_aux_minutes),
+          process_unit_price: editingDevice.process_unit_price == null ? null : Number(editingDevice.process_unit_price)
         })
       });
       if (!response.ok) {
@@ -767,21 +767,6 @@ export default function OptionsManagement() {
     }
   };
 
-  
-
-  const handleEditPrice = (price: any) => {
-    setSelectedMaterialId(price.material_id);
-    setEditingPrice({ 
-      id: price.id, 
-      material_id: price.material_id,
-      unit_price: price.unit_price,
-      effective_start_date: price.effective_start_date,
-      effective_end_date: price.effective_end_date || ''
-    });
-  };
-
-  
-
   const handleDeletePrice = async (materialId: string, priceId: string) => {
     setLoading(true);
     setError(null);
@@ -801,75 +786,78 @@ export default function OptionsManagement() {
 
   // 渲染表格的辅助函数
   const renderTable = (items: any[], editingItem: EditableItem | null, onEdit: (item: any) => void, onSave: () => void, onCancel: () => void, deleteHandler?: (id: any) => void) => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {items.map((item, index) => (
-            <tr 
-              key={item.id} 
-              draggable={false}
-              className={`transition-colors duration-200`}
-            >
-              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                <span className="font-medium">{index + 1}</span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {editingItem?.id === item.id ? (
-                  <input
-                    type="text"
-                    value={editingItem.name}
-                    onChange={(e) => {
-                      if (activeTab === 'units') setEditingUnit({ ...editingItem, name: e.target.value });
-                      else if (activeTab === 'categories') setEditingCategory({ ...editingItem, name: e.target.value });
-                      else if (activeTab === 'materialSources') setEditingMaterialSource({ ...item, name: e.target.value });
-                    }}
-                    className="border border-gray-300 rounded px-2 py-1 w-full"
-                    placeholder="请输入名称"
-                  />
-                ) : (
-                  item.name
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                {editingItem?.id === item.id ? (
-                  <div className="flex space-x-2">
-                    <button onClick={onSave} className="text-green-600 hover:text-green-900" disabled={loading}>
-                      <Save className="w-4 h-4" />
-                    </button>
-                    <button onClick={onCancel} className="text-gray-600 hover:text-gray-900" disabled={loading}>
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <Popconfirm
-                      title={`确定要删除"${item.name}"吗？`}
-                      okText="确定"
-                      cancelText="取消"
-                      onConfirm={() => item.id && deleteHandler && deleteHandler(item.id)}
-                    >
-                      <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </Popconfirm>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      rowKey="id"
+      pagination={false}
+      dataSource={items}
+      columns={[
+        {
+          title: '序号',
+          key: 'index',
+          width: 70,
+          align: 'center',
+          render: (_: any, __: any, index: number) => index + 1
+        },
+        {
+          title: '名称',
+          dataIndex: 'name',
+          key: 'name',
+          render: (_: any, item: any) => (
+            editingItem?.id === item.id ? (
+              <input
+                type="text"
+                value={editingItem.name}
+                onChange={(e) => {
+                  if (activeTab === 'units') setEditingUnit({ ...editingItem, name: e.target.value });
+                  else if (activeTab === 'categories') setEditingCategory({ ...editingItem, name: e.target.value });
+                  else if (activeTab === 'materialSources') setEditingMaterialSource({ ...item, name: e.target.value });
+                }}
+                className="border border-gray-300 rounded px-2 py-1 w-full"
+                placeholder="请输入名称"
+              />
+            ) : item.name
+          )
+        },
+        {
+          title: '操作',
+          key: 'actions',
+          width: 120,
+          render: (_: any, item: any) => (
+            editingItem?.id === item.id ? (
+              <div className="flex space-x-2">
+                <button onClick={onSave} className="text-green-600 hover:text-green-900" disabled={loading}>
+                  <Save className="w-4 h-4" />
+                </button>
+                <button onClick={onCancel} className="text-gray-600 hover:text-gray-900" disabled={loading}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex space-x-2">
+                <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <Popconfirm
+                  title={`确定要删除"${item.name}"吗？`}
+                  okText="确定"
+                  cancelText="取消"
+                  onConfirm={() => item.id && deleteHandler && deleteHandler(item.id)}
+                >
+                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </Popconfirm>
+              </div>
+            )
+          )
+        }
+      ]}
+      title={() => (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+          <span>总数：{items.length}</span>
+        </div>
+      )}
+    />
   );
 
   // 主组件渲染
@@ -1014,45 +1002,44 @@ export default function OptionsManagement() {
                         新增材料
                       </button>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">材料名称</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">密度(g/cm³)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">单价(元/kg)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {materials.map((material, index) => (
-                            <tr key={material.id}>
-                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="font-medium">{index + 1}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{material.name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{material.density}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                ¥{material.unit_price ? Number(material.unit_price).toFixed(2) : '0.00'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex space-x-2">
-                                  <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
-                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </Popconfirm>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <Table
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={materials}
+                      columns={[
+                        { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+                        { title: '材料名称', dataIndex: 'name', key: 'name' },
+                        { title: '密度(g/cm³)', dataIndex: 'density', key: 'density' },
+                        {
+                          title: '单价(元/kg)',
+                          dataIndex: 'unit_price',
+                          key: 'unit_price',
+                          render: (v: any) => `¥${v ? Number(v).toFixed(2) : '0.00'}`
+                        },
+                        {
+                          title: '操作',
+                          key: 'actions',
+                          width: 120,
+                          render: (_: any, material: any) => (
+                            <div className="flex space-x-2">
+                              <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
+                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Popconfirm>
+                            </div>
+                          )
+                        }
+                      ]}
+                      title={() => (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                          <span>总数：{materials.length}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                 )}
 
@@ -1099,50 +1086,43 @@ export default function OptionsManagement() {
                         新增料型
                       </button>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">体积公式</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {partTypes.map((partType, index) => (
-                            <tr key={partType.id}>
-                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="font-medium">{index + 1}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {partType.name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {partType.volume_formula || '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex space-x-2">
-                                  <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <Popconfirm
-                                    title={`确定要删除"${partType.name}"吗？`}
-                                    okText="确定"
-                                    cancelText="取消"
-                                    onConfirm={() => handleDeletePartType(partType.id)}
-                                  >
-                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </Popconfirm>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <Table
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={partTypes}
+                      columns={[
+                        { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+                        { title: '名称', dataIndex: 'name', key: 'name' },
+                        { title: '体积公式', dataIndex: 'volume_formula', key: 'volume_formula', render: (v: any) => v || '-' },
+                        {
+                          title: '操作',
+                          key: 'actions',
+                          width: 120,
+                          render: (_: any, partType: any) => (
+                            <div className="flex space-x-2">
+                              <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <Popconfirm
+                                title={`确定要删除"${partType.name}"吗？`}
+                                okText="确定"
+                                cancelText="取消"
+                                onConfirm={() => handleDeletePartType(partType.id)}
+                              >
+                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Popconfirm>
+                            </div>
+                          )
+                        }
+                      ]}
+                      title={() => (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                          <span>总数：{partTypes.length}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                 )}
 
@@ -1203,10 +1183,8 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
-                {/* 设备管理 */}
-                {activeTab === 'devices' && !editingDevice && (
+                {activeTab === 'devices' && (
                   <div>
-                    {/* 新增按钮 */}
                     <div className="mb-4 flex justify-end space-x-2">
                       <Button icon={<DownloadOutlined />} onClick={handleDownloadDeviceTemplate} disabled={loading}>
                         下载模板
@@ -1214,8 +1192,8 @@ export default function OptionsManagement() {
                       <Button icon={<UploadOutlined />} onClick={() => setDeviceImportVisible(true)} disabled={loading}>
                         导入
                       </Button>
-                      <button 
-                        onClick={handleCreateDevice} 
+                      <button
+                        onClick={handleCreateDevice}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         disabled={loading}
                       >
@@ -1223,134 +1201,75 @@ export default function OptionsManagement() {
                         新增设备
                       </button>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工序单价</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {devices.map((device, index) => (
-                            <tr key={device.id}>
-                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="font-medium">{index + 1}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {device.device_no}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {device.device_name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {device.max_aux_minutes ?? '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {device.process_unit_price ?? '-'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex space-x-2">
-                                  <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <Popconfirm
-                                    title={`确定要删除"${device.device_name}"吗？`}
-                                    okText="确定"
-                                    cancelText="取消"
-                                    onConfirm={() => handleDeleteDevice(device.id)}
-                                  >
-                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </Popconfirm>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {editingDevice && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingDevice.id ? '编辑设备' : '新增设备'}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">设备编号 *</label>
+                            <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备编号" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">设备名称 *</label>
+                            <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备名称" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时间(分钟)</label>
+                            <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入最大辅助时间" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">工序单价</label>
+                            <input type="number" value={editingDevice.process_unit_price ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, process_unit_price: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工序单价" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-end space-x-3">
+                          <button onClick={() => setEditingDevice(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                          <button onClick={handleSaveDevice} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                        </div>
+                      </div>
+                    )}
+                    <Table
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={devices}
+                      columns={[
+                        { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+                        { title: '设备编号', dataIndex: 'device_no', key: 'device_no' },
+                        { title: '设备名称', dataIndex: 'device_name', key: 'device_name' },
+                        { title: '最大辅助时间(分钟)', dataIndex: 'max_aux_minutes', key: 'max_aux_minutes', render: (v: any) => v ?? '-' },
+                        { title: '工序单价', dataIndex: 'process_unit_price', key: 'process_unit_price', render: (v: any) => v ?? '-' },
+                        {
+                          title: '操作',
+                          key: 'actions',
+                          width: 120,
+                          render: (_: any, device: any) => (
+                            <div className="flex space-x-2">
+                              <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <Popconfirm title={`确定要删除"${device.device_name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(device.id)}>
+                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Popconfirm>
+                            </div>
+                          )
+                        }
+                      ]}
+                      title={() => (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                          <span>总数：{devices.length}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                 )}
 
-                {activeTab === 'devices' && editingDevice && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingDevice.id ? '编辑设备' : '新增设备'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">设备编号 *</label>
-                        <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备编号" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">设备名称 *</label>
-                        <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备名称" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时间(分钟)</label>
-                        <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入最大辅助时间" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">工序单价</label>
-                        <input type="number" value={editingDevice.process_unit_price ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, process_unit_price: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工序单价" />
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button onClick={() => setEditingDevice(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSaveDevice} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'devices' && editingDevice && (
-                  <div className="overflow-x-auto mt-4">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备编号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备名称</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最大辅助时间(分钟)</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工序单价</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {devices.map((device, index) => (
-                          <tr key={device.id}>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="font-medium">{index + 1}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{device.device_no}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.device_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.max_aux_minutes ?? '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{device.process_unit_price ?? '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
-                                <Popconfirm title={`确定要删除"${device.device_name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(device.id)}>
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
-                                </Popconfirm>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* 维修选项管理 */}
-                {activeTab === 'fixedOptions' && !editingFixedOption && (
+                {activeTab === 'fixedOptions' && (
                   <div>
-                    {/* 新增按钮 */}
                     <div className="mb-4 flex justify-end">
-                      <button 
-                        onClick={handleCreateFixedOption} 
+                      <button
+                        onClick={handleCreateFixedOption}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         disabled={loading}
                       >
@@ -1358,94 +1277,52 @@ export default function OptionsManagement() {
                         新增维修选项
                       </button>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {fixedOptions.map((option, index) => (
-                            <tr key={option.id}>
-                              <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span className="font-medium">{index + 1}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {option.option_value}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex space-x-2">
-                                  <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <Popconfirm
-                                    title={`确定要删除"${option.option_label}"吗？`}
-                                    okText="确定"
-                                    cancelText="取消"
-                                    onConfirm={() => handleDeleteFixedOption(option.id)}
-                                  >
-                                    <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </Popconfirm>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'fixedOptions' && editingFixedOption && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingFixedOption.id ? '编辑维修选项' : '新增维修选项'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
-                        <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
+                    {editingFixedOption && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingFixedOption.id ? '编辑维修选项' : '新增维修选项'}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
+                            <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-end space-x-3">
+                          <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
+                          <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'fixedOptions' && editingFixedOption && (
-                  <div className="overflow-x-auto mt-4">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">序号</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">选项值</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {fixedOptions.map((option, index) => (
-                          <tr key={option.id}>
-                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="font-medium">{index + 1}</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{option.option_value}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}><Edit2 className="w-4 h-4" /></button>
-                                <Popconfirm title={`确定要删除"${option.option_label}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(option.id)}>
-                                  <button className="text-red-600 hover:text-red-900" disabled={loading}><Trash2 className="w-4 h-4" /></button>
-                                </Popconfirm>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    )}
+                    <Table
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={fixedOptions}
+                      columns={[
+                        { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+                        { title: '选项值', dataIndex: 'option_value', key: 'option_value' },
+                        {
+                          title: '操作',
+                          key: 'actions',
+                          width: 120,
+                          render: (_: any, option: any) => (
+                            <div className="flex space-x-2">
+                              <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <Popconfirm title={`确定要删除"${option.option_label}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(option.id)}>
+                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </Popconfirm>
+                            </div>
+                          )
+                        }
+                      ]}
+                      title={() => (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                          <span>总数：{fixedOptions.length}</span>
+                        </div>
+                      )}
+                    />
                   </div>
                 )}
               </>
