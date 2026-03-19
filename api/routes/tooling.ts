@@ -253,6 +253,7 @@ router.post('/status', async (req, res) => {
 // 获取设备列表
 router.get('/devices', async (req, res) => {
   try {
+    await ensureDeviceProcessUnitPriceColumn()
     const { data, error } = await supabase
       .from('devices')
       .select('*')
