@@ -56,7 +56,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   
   if (cleanUrl.startsWith('/') && isApiPath) {
     // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
-    const isCriticalOrderPath = cleanUrl.startsWith('/api/purchase-orders') || cleanUrl.startsWith('/api/cutting-orders')
+    const isCriticalOrderPath =
+      cleanUrl.startsWith('/api/purchase-orders') ||
+      cleanUrl.startsWith('/api/cutting-orders') ||
+      cleanUrl.startsWith('/api/tooling/devices') ||
+      cleanUrl.startsWith('/api/tooling/fixed-inventory-options')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
     // 让 fetchWithFallback 继续执行并最终调用本地后端
@@ -238,7 +242,24 @@ export function installApiInterceptor() {
         urlStr = urlStr.replace('/rest/v1/parts?', '/rest/v1/parts_info?')
         // 直接通过REST API获取设备和固定库存选项数据，避免Supabase JS客户端可能的问题
         if (/\/rest\/v1\/devices\?/.test(urlStr)) {
-          if (method !== 'GET') return await fetch(urlStr, patchedInit)
+          if (method !== 'GET') {
+            const first = await fetch(urlStr, patchedInit)
+            if (first.status !== 400) return first
+            const rawBody = (patchedInit as any)?.body
+            if (!rawBody || typeof rawBody !== 'string') return first
+            try {
+              const parsed = JSON.parse(rawBody)
+              if (!Object.prototype.hasOwnProperty.call(parsed, 'process_unit_price')) return first
+              delete parsed.process_unit_price
+              const retryInit: RequestInit = {
+                ...patchedInit,
+                body: JSON.stringify(parsed)
+              }
+              return await fetch(urlStr, retryInit)
+            } catch {
+              return first
+            }
+          }
           // 直接调用REST API获取设备数据
           try {
             const response = await originalFetch(urlStr.replace(/\?.*/, ''), {
