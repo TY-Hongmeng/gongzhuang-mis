@@ -2,17 +2,25 @@ const { spawnSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
-function runGit(args) {
-  const result = spawnSync('git', args, { stdio: 'inherit', shell: false })
+function execGit(args) {
+  const result = spawnSync('git', args, { encoding: 'utf8', shell: false })
+  if (result.stdout) process.stdout.write(result.stdout)
+  if (result.stderr) process.stderr.write(result.stderr)
+  return result
+}
+
+function runGitOrExit(args) {
+  const result = execGit(args)
   if (result.status !== 0) {
     process.exit(result.status || 1)
   }
 }
 
-function getOutput(args) {
+function getOutputOrExit(args) {
   const result = spawnSync('git', args, { encoding: 'utf8', shell: false })
   if (result.status !== 0) {
-    process.stderr.write(result.stderr || '')
+    if (result.stdout) process.stdout.write(result.stdout)
+    if (result.stderr) process.stderr.write(result.stderr)
     process.exit(result.status || 1)
   }
   return String(result.stdout || '')
@@ -68,6 +76,26 @@ function nowText() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+function getRemoteHead(remoteRef) {
+  const out = getOutputOrExit(['ls-remote', 'origin', remoteRef]).trim()
+  return String(out.split(/\s+/)[0] || '').trim()
+}
+
+function pushMainWithLease(remoteRef, maxRetry) {
+  const attempts = Math.max(1, Number(maxRetry) || 1)
+  for (let i = 0; i < attempts; i += 1) {
+    const remoteHead = getRemoteHead(remoteRef)
+    const args = remoteHead
+      ? ['push', `--force-with-lease=${remoteRef}:${remoteHead}`, 'origin', `HEAD:${remoteRef}`]
+      : ['push', 'origin', `HEAD:${remoteRef}`]
+    const result = execGit(args)
+    if (result.status === 0) return
+    if (i === attempts - 1) {
+      process.exit(result.status || 1)
+    }
+  }
+}
+
 const { message, files, auto } = parseArgs(process.argv.slice(2))
 const version = readVersion()
 const commitMessage = message || (auto ? `chore: auto sync ${version ? `v${version} ` : ''}${nowText()}`.trim() : '')
@@ -77,21 +105,20 @@ if (!commitMessage) {
 }
 
 if (files.length > 0) {
-  runGit(['add', '--', ...files])
+  runGitOrExit(['add', '--', ...files])
 } else {
-  runGit(['add', '-A', '--', '.'])
+  runGitOrExit(['add', '-A', '--', '.'])
 }
 
-const staged = getOutput(['diff', '--cached', '--name-only']).trim()
+const staged = getOutputOrExit(['diff', '--cached', '--name-only']).trim()
 if (staged) {
-  runGit(['commit', '-m', commitMessage])
+  runGitOrExit(['commit', '-m', commitMessage])
 }
 
-runGit(['pull', '--rebase', '--autostash', 'origin', 'main'])
-runGit(['push', 'origin', 'main'])
-const localHead = getOutput(['rev-parse', 'HEAD']).trim()
-const remoteInfo = getOutput(['ls-remote', 'origin', 'refs/heads/main']).trim()
-const remoteHead = String(remoteInfo.split(/\s+/)[0] || '').trim()
+const remoteRef = 'refs/heads/main'
+pushMainWithLease(remoteRef, 3)
+const localHead = getOutputOrExit(['rev-parse', 'HEAD']).trim()
+const remoteHead = getRemoteHead(remoteRef)
 if (!localHead || !remoteHead || localHead !== remoteHead) {
   console.error(`Git sync verify failed: local=${localHead} remote=${remoteHead}`)
   process.exit(2)

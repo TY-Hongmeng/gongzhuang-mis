@@ -12,7 +12,8 @@
     "server:dev": "nodemon",
     "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
     "git:sync": "node scripts/git-sync.cjs --auto",
-    "git:sync:manual": "node scripts/git-sync.cjs"
+    "git:sync:manual": "node scripts/git-sync.cjs",
+    "git:sync:stable": "node scripts/git-sync.cjs --auto"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

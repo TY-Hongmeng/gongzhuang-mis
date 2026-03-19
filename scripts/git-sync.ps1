@@ -2,7 +2,8 @@
 param(
   [Parameter(Mandatory = $true)]
   [string[]]$Message,
-  [string[]]$Files
+  [string[]]$Files,
+  [int]$Retry = 3
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,5 +41,42 @@ if (-not $staged) {
 }
 
 Invoke-Git commit -m $commitMessage
-Invoke-Git pull --rebase --autostash origin main
-Invoke-Git push origin main
+
+$remoteRef = 'refs/heads/main'
+$attempt = 0
+while ($attempt -lt [Math]::Max(1, $Retry)) {
+  $attempt += 1
+  $remoteLine = (& $git ls-remote origin $remoteRef)
+  if ($LASTEXITCODE -ne 0) {
+    throw "Git command failed: git ls-remote origin $remoteRef"
+  }
+  $remoteHead = ''
+  if ($remoteLine) {
+    $remoteHead = ($remoteLine -split '\s+')[0]
+  }
+  if ($remoteHead) {
+    & $git push "--force-with-lease=$remoteRef`:$remoteHead" origin "HEAD:$remoteRef"
+  } else {
+    & $git push origin "HEAD:$remoteRef"
+  }
+  if ($LASTEXITCODE -eq 0) {
+    break
+  }
+  if ($attempt -ge [Math]::Max(1, $Retry)) {
+    throw "Git push failed after $attempt attempts."
+  }
+}
+
+$localHead = (& $git rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) {
+  throw "Git command failed: git rev-parse HEAD"
+}
+$remoteVerifyLine = (& $git ls-remote origin $remoteRef)
+if ($LASTEXITCODE -ne 0) {
+  throw "Git command failed: git ls-remote origin $remoteRef"
+}
+$remoteVerify = ($remoteVerifyLine -split '\s+')[0]
+if (-not $localHead -or -not $remoteVerify -or $localHead -ne $remoteVerify) {
+  throw "Git sync verify failed: local=$localHead remote=$remoteVerify"
+}
+Write-Output "Git sync verified: $localHead"
