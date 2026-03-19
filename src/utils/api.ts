@@ -877,7 +877,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             process_unit_price: body.process_unit_price ?? null
           }
           let { data, error } = await supabase.from('devices').insert(payload).select('*').single()
-          if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+          if (error && Object.prototype.hasOwnProperty.call(payload, 'process_unit_price')) {
             const fallbackPayload = {
               device_no: payload.device_no,
               device_name: payload.device_name,
@@ -900,7 +900,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             process_unit_price: body.process_unit_price ?? null
           }
           let { error } = await supabase.from('devices').update(payload).eq('id', id)
-          if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+          if (error && Object.prototype.hasOwnProperty.call(payload, 'process_unit_price')) {
             const fallbackPayload = {
               device_no: payload.device_no,
               device_name: payload.device_name,

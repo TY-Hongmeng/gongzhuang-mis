@@ -63,6 +63,16 @@ const ensurePurchaseStatusColumns = async () => {
     statusColumnsReady = false;
   }
 };
+let devicePriceColumnReady = false;
+const ensureDeviceProcessUnitPriceColumn = async () => {
+  if (devicePriceColumnReady) return;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    await query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS process_unit_price NUMERIC`);
+    devicePriceColumnReady = true;
+  } catch (e) {}
+};
 
 // GET /api/tooling
 // 支持分页、搜索、筛选与排序
@@ -1481,6 +1491,7 @@ router.post('/work-hours/batch-delete', async (req, res) => {
 // 设备管理
 router.get('/devices', async (_req, res) => {
   try {
+    await ensureDeviceProcessUnitPriceColumn()
     const { data, error } = await supabase.from('devices').select('*').order('device_no', { ascending: true })
     if (error) throw error
     res.json({ success: true, items: data || [] })
@@ -1685,6 +1696,7 @@ router.delete('/fixed-inventory-options/:id', async (req, res) => {
 })
 router.post('/devices', async (req, res) => {
   try {
+    await ensureDeviceProcessUnitPriceColumn()
     const payload = req.body || {}
     if (!payload.device_no || !payload.device_name) return res.status(400).json({ success: false, error: '缺少设备编号或名称' })
     let { data, error } = await supabase.from('devices').insert([payload]).select('*').single()
@@ -1707,6 +1719,7 @@ router.post('/devices', async (req, res) => {
 
 router.put('/devices/:id', async (req, res) => {
   try {
+    await ensureDeviceProcessUnitPriceColumn()
     const { id } = req.params
     const payload = req.body || {}
     let { data, error } = await supabase.from('devices').update(payload).eq('id', id).select('*').single()
@@ -1730,6 +1743,43 @@ router.put('/devices/:id', async (req, res) => {
 router.delete('/devices/:id', async (req, res) => {
   try {
     const { id } = req.params
+    const { error } = await supabase.from('devices').delete().eq('id', id)
+    if (error) throw error
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
+router.post('/devices/update', async (req, res) => {
+  try {
+    await ensureDeviceProcessUnitPriceColumn()
+    const payload = req.body || {}
+    const id = String(payload.id || '')
+    if (!id) return res.status(400).json({ success: false, error: '缺少设备ID' })
+    let { data, error } = await supabase.from('devices').update(payload).eq('id', id).select('*').single()
+    if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+      const fallbackPayload = {
+        device_no: String(payload.device_no || ''),
+        device_name: String(payload.device_name || ''),
+        max_aux_minutes: payload.max_aux_minutes ?? null
+      }
+      const retried = await supabase.from('devices').update(fallbackPayload).eq('id', id).select('*').single()
+      data = retried.data
+      error = retried.error
+    }
+    if (error) throw error
+    res.json({ success: true, data })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
+router.post('/devices/delete', async (req, res) => {
+  try {
+    const payload = req.body || {}
+    const id = String(payload.id || '')
+    if (!id) return res.status(400).json({ success: false, error: '缺少设备ID' })
     const { error } = await supabase.from('devices').delete().eq('id', id)
     if (error) throw error
     res.json({ success: true })
