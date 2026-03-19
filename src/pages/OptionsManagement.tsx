@@ -58,6 +58,18 @@ interface EditableItem {
 
 export default function OptionsManagement() {
   const navigate = useNavigate();
+  const getToolingApiUrl = useCallback((path: string) => {
+    const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
+    const isGhPages = /github\.io/i.test(host)
+    const isLocal = /localhost|127\.0\.0\.1|::1/i.test(host)
+      || /^192\.168\./.test(host)
+      || /^10\./.test(host)
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    if (!isGhPages && isLocal) {
+      return `http://localhost:3003${path}`
+    }
+    return path
+  }, [])
   const [productionUnits, setProductionUnits] = useState<ProductionUnit[]>([]);
   const [toolingCategories, setToolingCategories] = useState<ToolingCategory[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
@@ -162,7 +174,7 @@ export default function OptionsManagement() {
           setPartTypes(normPartTypes);
           break;
         case 'devices':
-          const devicesData = await createTimedFetch('/api/tooling/devices', 'devices');
+          const devicesData = await createTimedFetch(getToolingApiUrl('/api/tooling/devices'), 'devices');
           const devicesResult = getArr(devicesData);
           const normDevices = devicesResult.map((x: any) => ({ id: String(x.id ?? x.uuid ?? Math.random().toString(36).slice(2)), device_no: String(x.device_no ?? ''), device_name: String(x.device_name ?? ''), name: String(x.device_name ?? ''), is_active: Boolean(x.is_active ?? true), max_aux_minutes: x.max_aux_minutes ?? null, process_unit_price: x.process_unit_price ?? null }));
           console.log('normDevices:', normDevices);
@@ -386,7 +398,7 @@ export default function OptionsManagement() {
       for (let i = 0; i < candidates.length; i += chunkSize) {
         const batch = candidates.slice(i, i + chunkSize)
         const results = await Promise.all(batch.map(async (item) => {
-          const url = item.existing ? '/api/tooling/devices/update' : '/api/tooling/devices'
+          const url = getToolingApiUrl(item.existing ? '/api/tooling/devices/update' : '/api/tooling/devices')
           const response = await fetchWithFallback(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -596,7 +608,7 @@ export default function OptionsManagement() {
     setLoading(true);
     try {
       const isUpdate = Boolean(editingDevice.id)
-      const url = isUpdate ? '/api/tooling/devices/update' : '/api/tooling/devices'
+      const url = getToolingApiUrl(isUpdate ? '/api/tooling/devices/update' : '/api/tooling/devices')
       const response = await fetchWithFallback(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -608,7 +620,10 @@ export default function OptionsManagement() {
           process_unit_price: (editingDevice.process_unit_price === '' || editingDevice.process_unit_price === undefined) ? null : Number(editingDevice.process_unit_price)
         })
       });
-      if (!response.ok) throw new Error('保存失败');
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({} as any))
+        throw new Error(detail?.error ? `保存失败：${detail.error}` : '保存失败')
+      }
       await response.json();
       await fetchTabData('devices');
       setEditingDevice(null);
@@ -622,8 +637,11 @@ export default function OptionsManagement() {
   const handleDeleteDevice = async (id: string) => {
     setLoading(true);
     try {
-      const response = await fetchWithFallback('/api/tooling/devices/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      if (!response.ok) throw new Error('删除失败');
+      const response = await fetchWithFallback(getToolingApiUrl('/api/tooling/devices/delete'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({} as any))
+        throw new Error(detail?.error ? `删除失败：${detail.error}` : '删除失败')
+      }
       await fetchTabData('devices');
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
