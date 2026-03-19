@@ -876,7 +876,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             max_aux_minutes: body.max_aux_minutes ?? null,
             process_unit_price: body.process_unit_price ?? null
           }
-          const { data, error } = await supabase.from('devices').insert(payload).select('*').single()
+          let { data, error } = await supabase.from('devices').insert(payload).select('*').single()
+          if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+            const fallbackPayload = {
+              device_no: payload.device_no,
+              device_name: payload.device_name,
+              max_aux_minutes: payload.max_aux_minutes
+            }
+            const retried = await supabase.from('devices').insert(fallbackPayload).select('*').single()
+            data = retried.data
+            error = retried.error
+          }
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, item: data })
         }
@@ -889,7 +899,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             max_aux_minutes: body.max_aux_minutes ?? null,
             process_unit_price: body.process_unit_price ?? null
           }
-          const { error } = await supabase.from('devices').update(payload).eq('id', id)
+          let { error } = await supabase.from('devices').update(payload).eq('id', id)
+          if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+            const fallbackPayload = {
+              device_no: payload.device_no,
+              device_name: payload.device_name,
+              max_aux_minutes: payload.max_aux_minutes
+            }
+            const retried = await supabase.from('devices').update(fallbackPayload).eq('id', id)
+            error = retried.error
+          }
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }

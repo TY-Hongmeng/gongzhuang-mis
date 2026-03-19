@@ -1687,7 +1687,17 @@ router.post('/devices', async (req, res) => {
   try {
     const payload = req.body || {}
     if (!payload.device_no || !payload.device_name) return res.status(400).json({ success: false, error: '缺少设备编号或名称' })
-    const { data, error } = await supabase.from('devices').insert([payload]).select('*').single()
+    let { data, error } = await supabase.from('devices').insert([payload]).select('*').single()
+    if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+      const fallbackPayload = {
+        device_no: String(payload.device_no || ''),
+        device_name: String(payload.device_name || ''),
+        max_aux_minutes: payload.max_aux_minutes ?? null
+      }
+      const retried = await supabase.from('devices').insert([fallbackPayload]).select('*').single()
+      data = retried.data
+      error = retried.error
+    }
     if (error) throw error
     res.json({ success: true, data })
   } catch (err: any) {
@@ -1699,7 +1709,17 @@ router.put('/devices/:id', async (req, res) => {
   try {
     const { id } = req.params
     const payload = req.body || {}
-    const { data, error } = await supabase.from('devices').update(payload).eq('id', id).select('*').single()
+    let { data, error } = await supabase.from('devices').update(payload).eq('id', id).select('*').single()
+    if (error && /process_unit_price/i.test(String(error?.message || ''))) {
+      const fallbackPayload = {
+        device_no: String(payload.device_no || ''),
+        device_name: String(payload.device_name || ''),
+        max_aux_minutes: payload.max_aux_minutes ?? null
+      }
+      const retried = await supabase.from('devices').update(fallbackPayload).eq('id', id).select('*').single()
+      data = retried.data
+      error = retried.error
+    }
     if (error) throw error
     res.json({ success: true, data })
   } catch (err: any) {
