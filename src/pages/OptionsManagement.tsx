@@ -787,9 +787,9 @@ export default function OptionsManagement() {
   // 渲染表格的辅助函数
   const renderTable = (items: any[], editingItem: EditableItem | null, onEdit: (item: any) => void, onSave: () => void, onCancel: () => void, deleteHandler?: (id: any) => void) => (
     <Table
-      rowKey="id"
+      rowKey={(row: any) => String(row.id)}
       pagination={false}
-      dataSource={items}
+      dataSource={editingItem && !editingItem.id ? [{ ...editingItem, id: '__new__' }, ...items] : items}
       columns={[
         {
           title: '序号',
@@ -803,7 +803,7 @@ export default function OptionsManagement() {
           dataIndex: 'name',
           key: 'name',
           render: (_: any, item: any) => (
-            editingItem?.id === item.id ? (
+            (editingItem && String(editingItem.id || '__new__') === String(item.id || '')) ? (
               <input
                 type="text"
                 value={editingItem.name}
@@ -823,7 +823,7 @@ export default function OptionsManagement() {
           key: 'actions',
           width: 120,
           render: (_: any, item: any) => (
-            editingItem?.id === item.id ? (
+            (editingItem && String(editingItem.id || '__new__') === String(item.id || '')) ? (
               <div className="flex space-x-2">
                 <button onClick={onSave} className="text-green-600 hover:text-green-900" disabled={loading}>
                   <Save className="w-4 h-4" />
@@ -834,7 +834,7 @@ export default function OptionsManagement() {
               </div>
             ) : (
               <div className="flex space-x-2">
-                <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
+                <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-900" disabled={loading || !!editingItem}>
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <Popconfirm
@@ -843,7 +843,7 @@ export default function OptionsManagement() {
                   cancelText="取消"
                   onConfirm={() => item.id && deleteHandler && deleteHandler(item.id)}
                 >
-                  <button className="text-red-600 hover:text-red-900" disabled={loading}>
+                  <button className="text-red-600 hover:text-red-900" disabled={loading || !!editingItem}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </Popconfirm>
@@ -926,27 +926,12 @@ export default function OptionsManagement() {
                       <button 
                         onClick={handleCreateUnit} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingUnit}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增投产单位
                       </button>
                     </div>
-                    {editingUnit && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingUnit.id ? '编辑投产单位' : '新增投产单位'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
-                            <input type="text" value={editingUnit.name} onChange={(e) => setEditingUnit({ ...editingUnit, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入投产单位名称" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingUnit(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveUnit} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
                     {renderTable(productionUnits, editingUnit, (item) => setEditingUnit({ ...item }), handleSaveUnit, () => setEditingUnit(null), handleDeleteUnit)}
                   </div>
                 )}
@@ -958,33 +943,18 @@ export default function OptionsManagement() {
                       <button 
                         onClick={handleCreateCategory} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingCategory}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增工装类别
                       </button>
                     </div>
-                    {editingCategory && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingCategory.id ? '编辑工装类别' : '新增工装类别'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">名称 *</label>
-                            <input type="text" value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工装类别名称" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingCategory(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveCategory} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
                     {renderTable(toolingCategories, editingCategory, (item) => setEditingCategory({ ...item }), handleSaveCategory, () => setEditingCategory(null), handleDeleteCategory)}
                   </div>
                 )}
 
-                {/* 材料管理 - 简化版本 */}
-                {activeTab === 'materials' && !editingMaterial && (
+                {/* 材料管理 */}
+                {activeTab === 'materials' && (
                   <div>
                     <div className="mb-4 flex justify-end space-x-2">
                       <Button icon={<DownloadOutlined />} onClick={handleDownloadMaterialTemplate} disabled={loading}>
@@ -996,41 +966,68 @@ export default function OptionsManagement() {
                       <button 
                         onClick={handleCreateMaterial} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingMaterial}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增材料
                       </button>
                     </div>
                     <Table
-                      rowKey="id"
+                      rowKey={(row: any) => String(row.id)}
                       pagination={false}
-                      dataSource={materials}
+                      dataSource={editingMaterial && !editingMaterial.id ? [{ ...editingMaterial, id: '__new__' }, ...materials] : materials}
                       columns={[
                         { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-                        { title: '材料名称', dataIndex: 'name', key: 'name' },
-                        { title: '密度(g/cm³)', dataIndex: 'density', key: 'density' },
+                        {
+                          title: '材料名称',
+                          dataIndex: 'name',
+                          key: 'name',
+                          render: (_: any, material: any) => (
+                            editingMaterial && String(editingMaterial.id || '__new__') === String(material.id || '')
+                              ? <input type="text" value={editingMaterial.name} onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : material.name
+                          )
+                        },
+                        {
+                          title: '密度(g/cm³)',
+                          dataIndex: 'density',
+                          key: 'density',
+                          render: (_: any, material: any) => (
+                            editingMaterial && String(editingMaterial.id || '__new__') === String(material.id || '')
+                              ? <input type="number" step="0.001" value={editingMaterial.density} onChange={(e) => setEditingMaterial({ ...editingMaterial, density: Number(e.target.value) })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : material.density
+                          )
+                        },
                         {
                           title: '单价(元/kg)',
                           dataIndex: 'unit_price',
                           key: 'unit_price',
-                          render: (v: any) => `¥${v ? Number(v).toFixed(2) : '0.00'}`
+                          render: (_: any, material: any) => (
+                            editingMaterial && String(editingMaterial.id || '__new__') === String(material.id || '')
+                              ? <input type="number" step="0.01" value={(editingMaterial as any).unit_price ?? ''} onChange={(e) => setEditingMaterial({ ...editingMaterial, unit_price: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : `¥${material.unit_price ? Number(material.unit_price).toFixed(2) : '0.00'}`
+                          )
                         },
                         {
                           title: '操作',
                           key: 'actions',
                           width: 120,
                           render: (_: any, material: any) => (
-                            <div className="flex space-x-2">
-                              <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
-                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </Popconfirm>
-                            </div>
+                            editingMaterial && String(editingMaterial.id || '__new__') === String(material.id || '')
+                              ? (
+                                <div className="flex space-x-2">
+                                  <button onClick={handleSaveMaterial} className="text-green-600 hover:text-green-900" disabled={loading}><Save className="w-4 h-4" /></button>
+                                  <button onClick={() => setEditingMaterial(null)} className="text-gray-600 hover:text-gray-900" disabled={loading}><X className="w-4 h-4" /></button>
+                                </div>
+                              )
+                              : (
+                                <div className="flex space-x-2">
+                                  <button onClick={() => handleEditMaterial(material)} className="text-blue-600 hover:text-blue-900" disabled={loading || !!editingMaterial}><Edit2 className="w-4 h-4" /></button>
+                                  <Popconfirm title="确定要删除这个材料吗？" okText="确定" cancelText="取消" onConfirm={() => handleDeleteMaterial(material.id)}>
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading || !!editingMaterial}><Trash2 className="w-4 h-4" /></button>
+                                  </Popconfirm>
+                                </div>
+                              )
                           )
                         }
                       ]}
@@ -1043,77 +1040,76 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
-                {activeTab === 'materials' && editingMaterial && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingMaterial.id ? '编辑材料' : '新增材料'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">材料名称 *</label>
-                        <input type="text" value={editingMaterial.name} onChange={(e) => setEditingMaterial({ ...editingMaterial, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入材料名称" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">密度 (g/cm³) *</label>
-                        <input type="number" step="0.001" value={editingMaterial.density} onChange={(e) => setEditingMaterial({ ...editingMaterial, density: parseFloat(e.target.value) })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入密度" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">单价 (元/kg)</label>
-                        <input type="number" step="0.01" value={(editingMaterial as any).unit_price ?? ''} onChange={(e) => setEditingMaterial({ ...editingMaterial, unit_price: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入单价" />
-                      </div>
-                    </div>
-                    
-                    
-                    
-                    <div className="mt-6 flex justify-end space-x-3 pt-4 border-t">
-                      <button onClick={() => setEditingMaterial(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSaveMaterial} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存材料</button>
-                    </div>
-                  </div>
-                )}
-
                 
 
                 {/* 料型管理 */}
-                {activeTab === 'partTypes' && !editingPartType && (
+                {activeTab === 'partTypes' && (
                   <div>
-                    {/* 新增按钮 */}
                     <div className="mb-4 flex justify-end">
                       <button 
                         onClick={handleCreatePartType} 
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingPartType}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增料型
                       </button>
                     </div>
                     <Table
-                      rowKey="id"
+                      rowKey={(row: any) => String(row.id)}
                       pagination={false}
-                      dataSource={partTypes}
+                      dataSource={editingPartType && !editingPartType.id ? [{ ...editingPartType, id: '__new__' }, ...partTypes] : partTypes}
                       columns={[
                         { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-                        { title: '名称', dataIndex: 'name', key: 'name' },
-                        { title: '体积公式', dataIndex: 'volume_formula', key: 'volume_formula', render: (v: any) => v || '-' },
+                        {
+                          title: '名称',
+                          dataIndex: 'name',
+                          key: 'name',
+                          render: (_: any, partType: any) => (
+                            editingPartType && String(editingPartType.id || '__new__') === String(partType.id || '')
+                              ? <input type="text" value={editingPartType.name} onChange={(e) => setEditingPartType({ ...editingPartType, name: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : partType.name
+                          )
+                        },
+                        {
+                          title: '体积公式',
+                          dataIndex: 'volume_formula',
+                          key: 'volume_formula',
+                          render: (_: any, partType: any) => (
+                            editingPartType && String(editingPartType.id || '__new__') === String(partType.id || '')
+                              ? <input type="text" value={editingPartType.volume_formula || ''} onChange={(e) => setEditingPartType({ ...editingPartType, volume_formula: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : (partType.volume_formula || '-')
+                          )
+                        },
                         {
                           title: '操作',
                           key: 'actions',
                           width: 120,
                           render: (_: any, partType: any) => (
-                            <div className="flex space-x-2">
-                              <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <Popconfirm
-                                title={`确定要删除"${partType.name}"吗？`}
-                                okText="确定"
-                                cancelText="取消"
-                                onConfirm={() => handleDeletePartType(partType.id)}
-                              >
-                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </Popconfirm>
-                            </div>
+                            editingPartType && String(editingPartType.id || '__new__') === String(partType.id || '')
+                              ? (
+                                <div className="flex space-x-2">
+                                  <button onClick={handleSavePartType} className="text-green-600 hover:text-green-900" disabled={loading}><Save className="w-4 h-4" /></button>
+                                  <button onClick={() => setEditingPartType(null)} className="text-gray-600 hover:text-gray-900" disabled={loading}><X className="w-4 h-4" /></button>
+                                </div>
+                              )
+                              : (
+                                <div className="flex space-x-2">
+                                  <button onClick={() => handleEditPartType(partType)} className="text-blue-600 hover:text-blue-900" disabled={loading || !!editingPartType}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm
+                                    title={`确定要删除"${partType.name}"吗？`}
+                                    okText="确定"
+                                    cancelText="取消"
+                                    onConfirm={() => handleDeletePartType(partType.id)}
+                                  >
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading || !!editingPartType}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              )
                           )
                         }
                       ]}
@@ -1126,59 +1122,19 @@ export default function OptionsManagement() {
                   </div>
                 )}
 
-                {activeTab === 'partTypes' && editingPartType && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{editingPartType.id ? '编辑料型' : '新增料型'}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">料型名称 *</label>
-                        <input type="text" value={editingPartType.name} onChange={(e) => setEditingPartType({ ...editingPartType, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入料型名称" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">体积公式</label>
-                        <input type="text" value={editingPartType.volume_formula} onChange={(e) => setEditingPartType({ ...editingPartType, volume_formula: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入体积公式" />
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end space-x-3">
-                      <button onClick={() => setEditingPartType(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                      <button onClick={handleSavePartType} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                    </div>
-                  </div>
-                )}
-
                 {/* 材料来源 */}
                 {activeTab === 'materialSources' && (
                   <div>
-                    {!editingMaterialSource ? (
-                      <div className="mb-4 flex justify-end">
-                        <button 
-                          onClick={handleCreateMaterialSource} 
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          disabled={loading}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          新增材料来源
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingMaterialSource.id ? '编辑材料来源' : '新增材料来源'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">材料来源名称 *</label>
-                            <input type="text" value={editingMaterialSource.name} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入材料来源名称" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">描述</label>
-                            <input type="text" value={editingMaterialSource.description} onChange={(e) => setEditingMaterialSource({ ...editingMaterialSource, description: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入描述" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingMaterialSource(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveMaterialSource} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
+                    <div className="mb-4 flex justify-end">
+                      <button
+                        onClick={handleCreateMaterialSource}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={loading || !!editingMaterialSource}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        新增材料来源
+                      </button>
+                    </div>
                     {renderTable(materialSources, editingMaterialSource, (item) => setEditingMaterialSource({ ...item }), handleSaveMaterialSource, () => setEditingMaterialSource(null), handleDeleteMaterialSource)}
                   </div>
                 )}
@@ -1195,64 +1151,82 @@ export default function OptionsManagement() {
                       <button
                         onClick={handleCreateDevice}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingDevice}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增设备
                       </button>
                     </div>
-                    {editingDevice && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingDevice.id ? '编辑设备' : '新增设备'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">设备编号 *</label>
-                            <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备编号" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">设备名称 *</label>
-                            <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入设备名称" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">最大辅助时间(分钟)</label>
-                            <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入最大辅助时间" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">工序单价</label>
-                            <input type="number" value={editingDevice.process_unit_price ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, process_unit_price: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入工序单价" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingDevice(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveDevice} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
                     <Table
-                      rowKey="id"
+                      rowKey={(row: any) => String(row.id)}
                       pagination={false}
-                      dataSource={devices}
+                      dataSource={editingDevice && !editingDevice.id ? [{ ...editingDevice, id: '__new__' }, ...devices] : devices}
                       columns={[
                         { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-                        { title: '设备编号', dataIndex: 'device_no', key: 'device_no' },
-                        { title: '设备名称', dataIndex: 'device_name', key: 'device_name' },
-                        { title: '最大辅助时间(分钟)', dataIndex: 'max_aux_minutes', key: 'max_aux_minutes', render: (v: any) => v ?? '-' },
-                        { title: '工序单价', dataIndex: 'process_unit_price', key: 'process_unit_price', render: (v: any) => v ?? '-' },
+                        {
+                          title: '设备编号',
+                          dataIndex: 'device_no',
+                          key: 'device_no',
+                          render: (_: any, device: any) => (
+                            editingDevice && String(editingDevice.id || '__new__') === String(device.id || '')
+                              ? <input type="text" value={editingDevice.device_no} onChange={(e) => setEditingDevice({ ...editingDevice, device_no: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : device.device_no
+                          )
+                        },
+                        {
+                          title: '设备名称',
+                          dataIndex: 'device_name',
+                          key: 'device_name',
+                          render: (_: any, device: any) => (
+                            editingDevice && String(editingDevice.id || '__new__') === String(device.id || '')
+                              ? <input type="text" value={editingDevice.device_name} onChange={(e) => setEditingDevice({ ...editingDevice, device_name: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : device.device_name
+                          )
+                        },
+                        {
+                          title: '最大辅助时间(分钟)',
+                          dataIndex: 'max_aux_minutes',
+                          key: 'max_aux_minutes',
+                          render: (_: any, device: any) => (
+                            editingDevice && String(editingDevice.id || '__new__') === String(device.id || '')
+                              ? <input type="number" value={editingDevice.max_aux_minutes ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, max_aux_minutes: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : (device.max_aux_minutes ?? '-')
+                          )
+                        },
+                        {
+                          title: '工序单价',
+                          dataIndex: 'process_unit_price',
+                          key: 'process_unit_price',
+                          render: (_: any, device: any) => (
+                            editingDevice && String(editingDevice.id || '__new__') === String(device.id || '')
+                              ? <input type="number" value={editingDevice.process_unit_price ?? ''} onChange={(e) => setEditingDevice({ ...editingDevice, process_unit_price: e.target.value ? Number(e.target.value) : null })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : (device.process_unit_price ?? '-')
+                          )
+                        },
                         {
                           title: '操作',
                           key: 'actions',
                           width: 120,
                           render: (_: any, device: any) => (
-                            <div className="flex space-x-2">
-                              <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <Popconfirm title={`确定要删除"${device.device_name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(device.id)}>
-                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </Popconfirm>
-                            </div>
+                            editingDevice && String(editingDevice.id || '__new__') === String(device.id || '')
+                              ? (
+                                <div className="flex space-x-2">
+                                  <button onClick={handleSaveDevice} className="text-green-600 hover:text-green-900" disabled={loading}><Save className="w-4 h-4" /></button>
+                                  <button onClick={() => setEditingDevice(null)} className="text-gray-600 hover:text-gray-900" disabled={loading}><X className="w-4 h-4" /></button>
+                                </div>
+                              )
+                              : (
+                                <div className="flex space-x-2">
+                                  <button onClick={() => setEditingDevice({ ...device })} className="text-blue-600 hover:text-blue-900" disabled={loading || !!editingDevice}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm title={`确定要删除"${device.device_name}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteDevice(device.id)}>
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading || !!editingDevice}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              )
                           )
                         }
                       ]}
@@ -1271,49 +1245,52 @@ export default function OptionsManagement() {
                       <button
                         onClick={handleCreateFixedOption}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        disabled={loading}
+                        disabled={loading || !!editingFixedOption}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         新增维修选项
                       </button>
                     </div>
-                    {editingFixedOption && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">{editingFixedOption.id ? '编辑维修选项' : '新增维修选项'}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">选项值 *</label>
-                            <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入选项值" />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end space-x-3">
-                          <button onClick={() => setEditingFixedOption(null)} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" disabled={loading}>取消</button>
-                          <button onClick={handleSaveFixedOption} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" disabled={loading}>保存</button>
-                        </div>
-                      </div>
-                    )}
                     <Table
-                      rowKey="id"
+                      rowKey={(row: any) => String(row.id)}
                       pagination={false}
-                      dataSource={fixedOptions}
+                      dataSource={editingFixedOption && !editingFixedOption.id ? [{ ...editingFixedOption, id: '__new__' }, ...fixedOptions] : fixedOptions}
                       columns={[
                         { title: '序号', key: 'index', width: 70, align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-                        { title: '选项值', dataIndex: 'option_value', key: 'option_value' },
+                        {
+                          title: '选项值',
+                          dataIndex: 'option_value',
+                          key: 'option_value',
+                          render: (_: any, option: any) => (
+                            editingFixedOption && String(editingFixedOption.id || '__new__') === String(option.id || '')
+                              ? <input type="text" value={editingFixedOption.option_value} onChange={(e) => setEditingFixedOption({ ...editingFixedOption, option_value: e.target.value })} className="w-full border border-gray-300 rounded px-2 py-1" />
+                              : option.option_value
+                          )
+                        },
                         {
                           title: '操作',
                           key: 'actions',
                           width: 120,
                           render: (_: any, option: any) => (
-                            <div className="flex space-x-2">
-                              <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading}>
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <Popconfirm title={`确定要删除"${option.option_label}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(option.id)}>
-                                <button className="text-red-600 hover:text-red-900" disabled={loading}>
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </Popconfirm>
-                            </div>
+                            editingFixedOption && String(editingFixedOption.id || '__new__') === String(option.id || '')
+                              ? (
+                                <div className="flex space-x-2">
+                                  <button onClick={handleSaveFixedOption} className="text-green-600 hover:text-green-900" disabled={loading}><Save className="w-4 h-4" /></button>
+                                  <button onClick={() => setEditingFixedOption(null)} className="text-gray-600 hover:text-gray-900" disabled={loading}><X className="w-4 h-4" /></button>
+                                </div>
+                              )
+                              : (
+                                <div className="flex space-x-2">
+                                  <button onClick={() => setEditingFixedOption({ ...option })} className="text-blue-600 hover:text-blue-900" disabled={loading || !!editingFixedOption}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <Popconfirm title={`确定要删除"${option.option_label}"吗？`} okText="确定" cancelText="取消" onConfirm={() => handleDeleteFixedOption(option.id)}>
+                                    <button className="text-red-600 hover:text-red-900" disabled={loading || !!editingFixedOption}>
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </Popconfirm>
+                                </div>
+                              )
                           )
                         }
                       ]}
