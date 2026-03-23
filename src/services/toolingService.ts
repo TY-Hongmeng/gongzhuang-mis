@@ -82,14 +82,21 @@ export interface ChildItem {
 }
 
 // 获取工装列表
-export const fetchToolingList = async (page: number = 1, pageSize: number = 50) => {
+export const fetchToolingList = async (page: number = 1, pageSize: number = 0) => {
   try {
     if (supabase) {
-      const { data, error } = await supabase
+      const noPagination = pageSize <= 0
+      let query = supabase
         .from('tooling_info')
         .select('*')
         .order('created_at', { ascending: true })
-        .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+      
+      // 分页处理：当 pageSize > 0 时才使用 range
+      if (!noPagination) {
+        query = query.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+      }
+      
+      const { data, error } = await query
       if (error) throw error
       const items = (data || []).map((x: any) => ({
         id: x.id,
