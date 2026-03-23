@@ -1646,6 +1646,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const t = typeof body.total_price === 'number' ? body.total_price : Number(body.total_price)
           payload.total_price = Number.isNaN(t) ? null : t
         }
+        if (Object.prototype.hasOwnProperty.call(body, 'process_route')) {
+          const s = body.process_route
+          payload.process_route = (s === null) ? null : String(s || '')
+        }
         const updateStatus = async () => {
           if (!hasStatus) return
           const s = body.purchase_status
