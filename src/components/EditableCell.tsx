@@ -21,7 +21,7 @@ interface EditableCellProps {
   renderDisplay?: (value: string | undefined, record: any, dataIndex: string) => React.ReactNode
 }
 
-const EditableCell: React.FC<EditableCellProps> = React.memo(({ 
+const EditableCell: React.FC<EditableCellProps> = ({ 
   value, 
   record, 
   dataIndex, 
@@ -39,11 +39,9 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef<InputRef>(null)
   const selectRef = useRef<any>(null)
-  const didSaveRef = useRef(false)
-  const saveTriggeredRef = useRef(false)
   const isSavingRef = useRef(false)
-  const lastValueRef = useRef(String(value ?? ''))
   const compositionRef = useRef(false)
+  const savedValueRef = useRef<string | null>(null)
 
   const getSelectOptions = useCallback(() => {
     if (dataIndex === 'material_id' && materialOptions) {
@@ -71,8 +69,10 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
 
   useEffect(() => {
     const strValue = String(value ?? '')
-    if (!isEditing) {
-      lastValueRef.current = strValue
+    if (!isEditing && !isSavingRef.current) {
+      if (savedValueRef.current !== null && savedValueRef.current === strValue) {
+        savedValueRef.current = null
+      }
       setEditValue(strValue)
     }
   }, [value, isEditing])
@@ -80,11 +80,10 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
   const handleStartEdit = () => {
     setEditValue(String(value ?? ''))
     setIsEditing(true)
-    didSaveRef.current = false
   }
 
   const handleSave = async () => {
-    if (saveTriggeredRef.current || isSavingRef.current) {
+    if (isSavingRef.current) {
       return
     }
     if (selectOptions.length > 0) {
@@ -92,12 +91,12 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
       return
     }
 
-    if (editValue !== String(value ?? '')) {
+    const currentValue = String(value ?? '')
+    if (editValue !== currentValue) {
       isSavingRef.current = true
       try {
         await onSave(record.id, dataIndex, editValue)
-        didSaveRef.current = true
-        lastValueRef.current = editValue
+        savedValueRef.current = editValue
       } finally {
         isSavingRef.current = false
       }
@@ -169,19 +168,16 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
         onChange={async (newValue) => {
           if (isSavingRef.current) return
           setEditValue(newValue)
-          saveTriggeredRef.current = true
           isSavingRef.current = true
           try {
             await onSave(record.id, dataIndex, newValue)
-            lastValueRef.current = newValue
+            savedValueRef.current = newValue
           } finally {
             isSavingRef.current = false
-            saveTriggeredRef.current = false
           }
           setIsEditing(false)
         }}
         onBlur={() => {
-          saveTriggeredRef.current = false
           setIsEditing(false)
         }}
         onKeyDown={(e) => {
@@ -220,16 +216,6 @@ const EditableCell: React.FC<EditableCellProps> = React.memo(({
       }}
     />
   )
-}, (prev, next) => {
-  return prev.value === next.value &&
-         prev.record === next.record &&
-         prev.dataIndex === next.dataIndex &&
-         prev.options === next.options &&
-         prev.materialOptions === next.materialOptions &&
-         prev.materialSourceOptions === next.materialSourceOptions &&
-         prev.partCategoryOptions === next.partCategoryOptions &&
-         prev.productionUnitOptions === next.productionUnitOptions &&
-         prev.categoryOptions === next.categoryOptions
-})
+}
 
-export default EditableCell
+export default React.memo(EditableCell)

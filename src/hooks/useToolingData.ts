@@ -40,7 +40,7 @@ export const useToolingData = () => {
     try {
       const p = new URLSearchParams()
       p.set('page', String(opts?.page ?? 1))
-      p.set('pageSize', String(opts?.pageSize ?? 50))
+      p.set('pageSize', String(opts?.pageSize ?? 0))
       p.set('sortField', String(opts?.sortField ?? 'created_at'))
       p.set('sortOrder', String(opts?.sortOrder ?? 'asc'))
       if (opts?.search) p.set('search', String(opts.search))

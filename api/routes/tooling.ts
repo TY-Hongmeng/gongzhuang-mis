@@ -160,14 +160,50 @@ router.get('/', async (req, res) => {
     const ascending = String(sortOrder).toLowerCase() === 'asc';
     query = query.order(sortField, { ascending });
 
-    // 分页
-    query = query.range(from, to);
+    // 分页：当 pageSize 为 0 或负数时，获取所有数据
+    const noPagination = parseInt(pageSize, 10) <= 0;
+    let data: any[] = [];
+    let count: number | null = null;
+    
+    if (noPagination) {
+      // 使用循环获取所有数据，绕过 Supabase 的 1000 条限制
+      const BATCH_SIZE = 1000;
+      let offset = 0;
+      let totalCount: number | null = null;
+      
+      // 先获取总数
+      const { count: c } = await supabase
+        .from('tooling_info')
+        .select('*', { count: 'exact', head: true });
+      totalCount = c;
+      
+      // 循环获取所有数据
+      while (true) {
+        const { data: batch, error: batchErr } = await query.range(offset, offset + BATCH_SIZE - 1);
+        if (batchErr) {
+          console.error('Fetch tooling_info batch error:', batchErr);
+          return res.status(500).json({ success: false, error: '查询失败' });
+        }
+        if (!batch || batch.length === 0) break;
+        data.push(...batch);
+        if (batch.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
+      }
+      count = totalCount;
+    } else {
+      const result = await query;
+      data = result.data || [];
+      count = result.count;
+    }
 
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error('Fetch tooling_info error:', error);
-      return res.status(500).json({ success: false, error: '查询失败' });
+    if (!data || data.length === 0) {
+      return res.json({
+        success: true,
+        items: [],
+        total: 0,
+        page: pageNum,
+        pageSize: sizeNum
+      });
     }
 
     res.json({
