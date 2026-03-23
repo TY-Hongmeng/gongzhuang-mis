@@ -1186,7 +1186,886 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       if (method === 'GET' && path === '/api/tooling') {
         const qs = getQuery(cleanUrl)
         const page = Number(qs.get('page') || 1)
-        const pageSize = Number(qs.get('pageSize') || 50)
+        const pageSize = Number(qs.get('pageSize') || 0
+        const sortField = String(qs.get('sortField') || 'created_at'
+        const sortOrder = String(qs.get('sortOrder') || 'asc').toLowerCase() === 'asc'
+        const search = String(qs.get('search') || '').trim()
+        const productionUnit = String(qs.get('production_unit') || '').trim()
+        const category = string(qs.get('category') || '').trim()
+        const priorityLevel = string(qs.get('priority_level') || ''
+        const start_date = string(qs.get('start_date') || ''
+        const end_date = string(qs.get('end_date') || ''
+
+        const search = search
+        if (search) {
+          const keyword = `%${search}%`
+          let partsToolingIds: string[] = []
+          try {
+            const ids = new Set<string>()
+            const BATCH_SIZE = 1000
+            let offset = 0
+            while (true) {
+              const { data: parts, error: = await supabase
+                .from('parts_info')
+                .select('tooling_id, part_inventory_number, inventory_number')
+                .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
+                .range(offset, offset + BATCHSize - 1)
+              }
+              if (perr || !Array.isArray(parts) || parts.length === 0) break
+            }
+            partsToolingIds = Array.from(ids)
+            partsToolingIds = partsToolingIds.map(id => String(id))
+          })
+        }
+      }
+      if (parts.length < batchSize) {
+        break
+      }
+      const total = typeof count === 'number' ? count : : items.length
+    }
+    if (search) {
+      query = query.or(`${baseExpr},id.in.(${partsToolingIds.join(',')})`)
+    } else {
+      query = query.or(baseExpr)
+    }
+    query = query.range((page - 1) * pageSize, ( page - 1) * pageSize + pageSize - 1)
+    }
+    query = query.or(`${baseExpr},id.in.(${partsToolingIds.join(',')})`)
+  } else {
+    query = query.or(`${baseExpr},project_name.ilike.${keyword}, recorder.ilike.${keyword}`)
+  })
+  if (search) {
+    query = query.or('inventory_number.ilike.??', or('project_name.ilike.??', or `production_unit.ilike.??${production_unit}??${category} ilike.??${category}??${priority_level} ?? priorityLevel} ?? priorityLevel)
+  }
+        })
+      }
+    }
+  })
+  .sort(sortField as any,({ ascending: sortOrder })
+    .if (search) {
+      query = query.or(`${baseExpr},id.in.(${partsToolingIds.join(',')})`)
+    } else {
+      query = query.or(`${baseExpr},project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+    if (search) {
+      query = query.or(`${baseExpr}, recorder.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+    if (search) {
+      query = query.or(`${baseExpr},project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+    if (search) {
+      query = query.or(`${baseExpr}, recorder.ilike.${keyword}`)
+      .order(sortField = { ascending: true })
+    }
+    if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+    query = query.or(`${baseExpr}, project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+    query = query.or(`${baseExpr}, project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+          query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+    query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+  if (search) {
+    query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query = query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if ( search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        if if (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField, { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search() {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike(${keyword})
+      .order(sortField) { ascending: true })
+    }
+  }
+        ifif (search) {
+      query= query.or(`${baseExpr}, project_name.ilike.${keyword}`)
+      .order(sortField, { ascending: sortOrder })
+      .range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
+      
+ const { data, error, count } = await query
+      if (error) return jsonResponse({ success: false, error: error.message })
+      }
+      const items = (data || []).map((x: any) => ({
+        id: x.id,
+        inventory_number: x.inventory_number || '',
+        production_unit: x.production_unit || '',
+        category: x.category || '',
+        priority_level: typeof x.priority_level === 'number' ? x.priority_level : 0,
+        received_date: x.received_date || '',
+        demand_date: x.demand_date || '',
+        completed_date: x.completed_date || '',
+        project_name: x.project_name || '',
+        production_date: x.production_date || '',
+        sets_count: typeof x.sets_count === 'number' ? x.sets_count : 1,
+        recorder: x.recorder || ''
+      }))
+      return jsonResponse({ success: true, items, total: typeof count === 'number' ? count : items.length, page: pageSize, data: items })
+    }
+  }
+
         const sortField = String(qs.get('sortField') || 'created_at')
         const sortOrder = String(qs.get('sortOrder') || 'asc').toLowerCase() === 'asc'
         const search = String(qs.get('search') || '').trim()
