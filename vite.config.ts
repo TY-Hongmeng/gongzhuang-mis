@@ -1,12 +1,12 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
-import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const isProduction = mode === 'production'
+  // 检查后端服务实际运行的端口
+  let apiPort = 3003; // 默认端口
   
   return {
     base: './',
@@ -16,17 +16,13 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react({
         babel: {
-          plugins: isProduction ? [] : ['react-dev-locator'],
+          plugins: [
+            'react-dev-locator',
+          ],
         },
       }),
       tsconfigPaths(),
-      // 仅在分析构建时启用
-      process.env.ANALYZE === 'true' && visualizer({
-        open: true,
-        gzipSize: true,
-        brotliSize: true,
-      }),
-    ].filter(Boolean),
+    ],
     server: {
       port: 5182,
       host: 'localhost',
@@ -36,89 +32,55 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api': {
+          // 尝试先连接3003端口，如果失败则依次尝试其他可能的端口
           target: `http://localhost:3003`,
           changeOrigin: true,
           secure: false,
           configure: (proxy, _options) => {
+            // 后端可能使用的端口列表，与api/server.ts保持一致
             const possiblePorts = [3003, 3010, 3020, 3030, 3040];
             let currentPortIndex = 0;
+            
+            // 保存原始的请求处理函数
             const originalWeb = proxy.web;
             
+            // 自定义请求处理函数，支持端口重试
             proxy.web = (req: any, res: any) => {
               const handleProxyError = (err: any) => {
                 console.log(`Proxy error on port ${possiblePorts[currentPortIndex]}, trying port ${possiblePorts[currentPortIndex + 1]}`, err);
                 currentPortIndex++;
+                
                 if (currentPortIndex < possiblePorts.length) {
+                  // 尝试下一个端口
                   proxy.target = `http://localhost:${possiblePorts[currentPortIndex]}`;
+                  // 重新发起请求
                   originalWeb.call(proxy, req, res);
                 } else {
+                  // 所有端口都尝试失败，返回错误
                   console.error('All proxy ports failed, giving up');
                   res.statusCode = 502;
                   res.end('Bad Gateway: Could not connect to API server');
                 }
               };
+              
+              // 移除之前的错误监听器，避免重复触发
               proxy.removeAllListeners('error');
+              // 添加新的错误监听器
               proxy.once('error', handleProxyError);
+              // 发起请求
               originalWeb.call(proxy, req, res);
             };
+            
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Sending Request to the Target:', req.method, req.url, `(port: ${possiblePorts[currentPortIndex]})`);
+            });
+            
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              console.log('Received Response from the Target:', proxyRes.statusCode, req.url, `(port: ${possiblePorts[currentPortIndex]})`);
+            });
           },
         }
       }
-    },
-    build: {
-      target: 'es2015',
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: isProduction,
-          drop_debugger: isProduction,
-        },
-      },
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            // 将第三方库单独打包
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-antd': ['antd', '@ant-design/icons', '@ant-design/charts'],
-            'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-utils': ['dayjs', 'lodash-es', 'xlsx'],
-          },
-          // 控制代码块大小
-          chunkFileNames: 'assets/js/[name]-[hash].js',
-          entryFileNames: 'assets/js/[name]-[hash].js',
-          assetFileNames: (assetInfo) => {
-            const info = assetInfo.name || '';
-            if (/\.css$/.test(info)) {
-              return 'assets/css/[name]-[hash][extname]';
-            }
-            if (/\.png|\.jpg|\.jpeg|\.gif|\.svg|\.webp$/.test(info)) {
-              return 'assets/images/[name]-[hash][extname]';
-            }
-            return 'assets/[name]-[hash][extname]';
-          },
-        },
-      },
-      // 控制构建输出大小警告
-      chunkSizeWarningLimit: 1000,
-      // 启用 CSS 代码分割
-      cssCodeSplit: true,
-      // 启用 source map（生产环境可以关闭）
-      sourcemap: !isProduction,
-    },
-    optimizeDeps: {
-      include: [
-        'react',
-        'react-dom',
-        'react-router-dom',
-        'antd',
-        '@supabase/supabase-js',
-        'dayjs',
-      ],
-      exclude: [],
-    },
-    esbuild: {
-      // 移除 console 和 debugger
-      drop: isProduction ? ['console', 'debugger'] : [],
-    },
+    }
   }
 })
