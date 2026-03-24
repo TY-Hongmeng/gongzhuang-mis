@@ -6,18 +6,6 @@ export interface Material {
   name: string;
   density: number; // 密度 g/cm³
   description?: string;
-  prices?: MaterialPrice[]; // 材料价格历史
-  created_at: string;
-  updated_at: string;
-}
-
-// 材料价格历史
-export interface MaterialPrice {
-  id: string;
-  material_id: string;
-  unit_price: number; // 单价(元/kg)
-  effective_start_date: string; // 生效开始日期
-  effective_end_date?: string; // 生效结束日期（可选）
   created_at: string;
   updated_at: string;
 }
