@@ -34,7 +34,6 @@ export const PartInfoPage: React.FC<PartInfoPageProps> = ({
   onBack
 }) => {
   const [searchText, setSearchText] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'complete' | 'warning' | 'incomplete'>('all')
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([])
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [newPart, setNewPart] = useState<Partial<PartItem>>({})
@@ -66,7 +65,7 @@ export const PartInfoPage: React.FC<PartInfoPageProps> = ({
     let result = parts
 
     if (searchText.trim()) {
-      const keyword = searchText.toLowerCase()
+      const keyword = searchText.trim().toLowerCase()
       result = result.filter(p => 
         (p.part_inventory_number || '').toLowerCase().includes(keyword) ||
         (p.part_drawing_number || '').toLowerCase().includes(keyword) ||
@@ -74,49 +73,8 @@ export const PartInfoPage: React.FC<PartInfoPageProps> = ({
       )
     }
 
-    if (filterStatus !== 'all') {
-      result = result.filter(p => {
-        const hasInventoryNumber = !!p.part_inventory_number && p.part_inventory_number.trim() !== ''
-        const hasDrawingNumber = !!p.part_drawing_number && p.part_drawing_number.trim() !== ''
-        const hasName = !!p.part_name && p.part_name.trim() !== ''
-        const hasQuantity = p.part_quantity !== undefined && p.part_quantity !== null && Number(p.part_quantity) > 0
-        const hasMaterial = !!p.material_id
-        const hasCategory = !!p.part_category && p.part_category.trim() !== ''
-
-        if (filterStatus === 'complete') {
-          return hasInventoryNumber && hasDrawingNumber && hasName && hasQuantity && hasMaterial && hasCategory
-        }
-        if (filterStatus === 'warning') {
-          return !p.id.startsWith('blank-') && !(
-            hasInventoryNumber && hasDrawingNumber && hasName && hasQuantity && hasMaterial && hasCategory
-          )
-        }
-        if (filterStatus === 'incomplete') {
-          return p.id.startsWith('blank-')
-        }
-        return true
-      })
-    }
-
     return result
-  }, [parts, searchText, filterStatus])
-
-  const statistics = useMemo(() => {
-    const total = parts.length
-    const complete = parts.filter(p => {
-      const hasInventoryNumber = !!p.part_inventory_number && p.part_inventory_number.trim() !== ''
-      const hasDrawingNumber = !!p.part_drawing_number && p.part_drawing_number.trim() !== ''
-      const hasName = !!p.part_name && p.part_name.trim() !== ''
-      const hasQuantity = p.part_quantity !== undefined && p.part_quantity !== null && Number(p.part_quantity) > 0
-      const hasMaterial = !!p.material_id
-      const hasCategory = !!p.part_category && p.part_category.trim() !== ''
-      return hasInventoryNumber && hasDrawingNumber && hasName && hasQuantity && hasMaterial && hasCategory
-    }).length
-    const warning = total - complete - parts.filter(p => p.id.startsWith('blank-')).length
-    const incomplete = parts.filter(p => p.id.startsWith('blank-')).length
-    
-    return { total, complete, warning, incomplete }
-  }, [parts])
+  }, [parts, searchText])
 
   const handleEdit = useCallback((id: string, key: string, value: any) => {
     setPartsMap(prev => ({
@@ -257,23 +215,12 @@ export const PartInfoPage: React.FC<PartInfoPageProps> = ({
         <div style={{ marginBottom: 16 }}>
           <Space size="middle" wrap>
             <Input
-              placeholder="搜索盘存编号、零件图号、零件名称"
+              placeholder="搜索盘存编号/图号/名称"
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
               style={{ width: 300 }}
               prefix={<SearchOutlined />}
               allowClear
-            />
-            <Select
-              value={filterStatus}
-              onChange={setFilterStatus}
-              style={{ width: 150 }}
-              options={[
-                { value: 'all', label: '全部' },
-                { value: 'complete', label: '完整' },
-                { value: 'warning', label: '缺失' },
-                { value: 'incomplete', label: '空白' }
-              ]}
             />
             <Button
               type="primary"
@@ -316,10 +263,7 @@ export const PartInfoPage: React.FC<PartInfoPageProps> = ({
         <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f5f5f5', borderRadius: 4 }}>
           <Space size="large">
             <span>项目名称：<strong>{projectName || '未知'}</strong></span>
-            <span>总计：<Tag color="blue">{statistics.total}</Tag></span>
-            <span>完整：<Tag color="green">{statistics.complete}</Tag></span>
-            <span>缺失：<Tag color="orange">{statistics.warning}</Tag></span>
-            <span>空白：<Tag color="default">{statistics.incomplete}</Tag></span>
+            <span>零件数量：<Tag color="blue">{parts.length}</Tag></span>
           </Space>
         </div>
 

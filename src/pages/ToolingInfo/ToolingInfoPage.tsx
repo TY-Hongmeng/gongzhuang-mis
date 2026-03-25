@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
-import { Card, Space, Button, message, Modal, Tabs, Spin, Alert, Statistic, Row, Col, Dropdown } from 'antd'
-import { LeftOutlined, ToolOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, CheckCircleOutlined, WarningOutlined, FileExcelOutlined, CloudDownloadOutlined, SaveOutlined, DatabaseOutlined, MoreOutlined } from '@ant-design/icons'
+import { Card, Space, Button, message, Modal, Tabs, Spin, Alert, Dropdown } from 'antd'
+import { LeftOutlined, ToolOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, FileExcelOutlined, CloudDownloadOutlined, SaveOutlined, DatabaseOutlined, MoreOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { useToolingData } from '../hooks/useToolingData'
 import { useToolingMeta } from '../hooks/useToolingMeta'
@@ -18,69 +18,7 @@ interface ToolingInfoPageProps {
   onBack?: () => void
 }
 
-const StatisticsPanel = memo(({ data }: { data: any[] }) => {
-  const statistics = useMemo(() => {
-    let complete = 0
-    let blank = 0
-    for (const item of data) {
-      if (String(item.id || '').startsWith('blank-')) {
-        blank += 1
-        continue
-      }
-      const hasInventoryNumber = !!item.inventory_number && item.inventory_number.trim() !== ''
-      const hasProductionUnit = !!item.production_unit && item.production_unit.trim() !== ''
-      const hasCategory = !!item.category && item.category.trim() !== ''
-      const hasProjectName = !!item.project_name && item.project_name.trim() !== ''
-      const hasReceivedDate = !!item.received_date && item.received_date.trim() !== ''
-      const hasProductionDate = !!item.production_date && item.production_date.trim() !== ''
-      if (hasInventoryNumber && hasProductionUnit && hasCategory && hasProjectName && hasReceivedDate && hasProductionDate) {
-        complete += 1
-      }
-    }
-    const total = data.length
-    const incomplete = total - complete - blank
-    return { total, complete, incomplete }
-  }, [data])
 
-  return (
-    <Row gutter={16} style={{ marginBottom: 16 }}>
-      <Col span={6}>
-        <Statistic 
-          title="总工装数" 
-          value={statistics.total} 
-          valueStyle={{ color: '#1890ff' }}
-          prefix={<ToolOutlined />}
-        />
-      </Col>
-      <Col span={6}>
-        <Statistic 
-          title="完整工装" 
-          value={statistics.complete} 
-          valueStyle={{ color: '#52c41a' }}
-          prefix={<CheckCircleOutlined />}
-        />
-      </Col>
-      <Col span={6}>
-        <Statistic 
-          title="缺失信息" 
-          value={statistics.incomplete} 
-          valueStyle={{ color: '#faad14' }}
-          prefix={<WarningOutlined />}
-        />
-      </Col>
-      <Col span={6}>
-        <Statistic 
-          title="完成率" 
-          value={statistics.total > 0 ? ((statistics.complete / statistics.total) * 100).toFixed(1) : 0} 
-          suffix="%" 
-          valueStyle={{ color: '#1890ff' }}
-        />
-      </Col>
-    </Row>
-  )
-})
-
-StatisticsPanel.displayName = 'StatisticsPanel'
 
 const ActionButtons = memo(({ 
   onRefresh, 
@@ -789,8 +727,6 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             返回
           </Button>
         </div>
-
-        <StatisticsPanel data={data} />
 
         <ToolingFilters
           onRefresh={handleRefresh}
