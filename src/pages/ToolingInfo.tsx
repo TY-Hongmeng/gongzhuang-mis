@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1204,9 +1204,10 @@ const ToolingInfoPage: React.FC = () => {
     calculateTotalPriceRef.current = calculateTotalPrice
   }, [calculateTotalPrice])
 
-  const calcPartMetrics = useCallback((row: PartItem) => {
+  const calcPartMetrics = useCallback((row: PartItem, forceRecalculate = false) => {
     const unitWeightRaw = Number(row.weight ?? 0)
-    const unitWeight = unitWeightRaw > 0
+    // 当 forceRecalculate 为 true 时，强制根据规格重新计算重量
+    const unitWeight = (unitWeightRaw > 0 && !forceRecalculate)
       ? unitWeightRaw
       : calculatePartWeightRef.current(row.specifications || {}, row.material_id || '', row.part_category || '', partTypesRef.current, materialsRef.current)
     const qty = Number(row.part_quantity || 0)
@@ -1596,7 +1597,9 @@ const ToolingInfoPage: React.FC = () => {
           const nextVal = key === 'part_quantity' ? (String(value).trim() === '' ? '' : Number(value)) : value
           const updatedRow = { ...r, [key]: nextVal } as PartItem
           if (key === 'specifications' || key === 'material_id' || key === 'part_category' || key === 'part_quantity' || key === 'weight') {
-            const metrics = calcPartMetrics(updatedRow)
+            // 规格、材质、零件类别变化时，强制重新计算重量（因为这些字段影响重量计算）
+            const forceRecalculate = key === 'specifications' || key === 'material_id' || key === 'part_category'
+            const metrics = calcPartMetrics(updatedRow, forceRecalculate)
             updatedRow.weight = metrics.unitWeight
             updatedRow.total_price = metrics.totalPrice
           }
@@ -1688,7 +1691,9 @@ const ToolingInfoPage: React.FC = () => {
             nextRow = { ...baseRow, [key]: value }
           }
           
-          const metrics = calcPartMetrics(nextRow)
+          // 规格、材质、零件类别变化时，强制重新计算重量
+          const forceRecalculate = key === 'specifications' || key === 'material_id' || key === 'part_category'
+          const metrics = calcPartMetrics(nextRow, forceRecalculate)
           payload.weight = metrics.unitWeight
           payload.total_price = metrics.totalPrice
         }
