@@ -651,10 +651,33 @@ router.get('/:id/parts', async (req, res) => {
       const { data, error } = await supabase
           .from('parts_info')
           .select(`${sel}, material:materials(*), material_source:material_sources(*)`)
-          .eq('tooling_id', id)
-          .order('part_inventory_number', { ascending: true });
+          .eq('tooling_id', id);
       if (error) throw error
-      const items = (data || []) as any[]
+      let items = (data || []) as any[]
+      
+      // 按盘存编号自然排序（处理如 LJ260101-01, LJ260101-02, LJ260101-10 的情况）
+      items.sort((a: any, b: any) => {
+        const numA = String(a.part_inventory_number || '')
+        const numB = String(b.part_inventory_number || '')
+        // 提取前缀和数字后缀
+        const matchA = numA.match(/^(.+?)-(\d+)$/)
+        const matchB = numB.match(/^(.+?)-(\d+)$/)
+        if (matchA && matchB) {
+          const prefixA = matchA[1]
+          const prefixB = matchB[1]
+          // 先比较前缀
+          if (prefixA !== prefixB) {
+            return prefixA.localeCompare(prefixB)
+          }
+          // 前缀相同，比较数字后缀
+          const suffixA = parseInt(matchA[2], 10)
+          const suffixB = parseInt(matchB[2], 10)
+          return suffixA - suffixB
+        }
+        // 不符合格式，按字符串排序
+        return numA.localeCompare(numB)
+      })
+      
       const missingIds = items
         .filter(r => !String(r.purchase_status || '').trim())
         .map(r => String(r.id || ''))
@@ -692,7 +715,16 @@ router.get('/:id/parts', async (req, res) => {
           LEFT JOIN materials m ON p.material_id = m.id
           LEFT JOIN material_sources s ON p.material_source_id = s.id
           WHERE p.tooling_id = $1
-          ORDER BY p.part_inventory_number ASC`
+          ORDER BY 
+            -- 提取盘存编号的前缀部分（非数字部分）
+            REGEXP_REPLACE(p.part_inventory_number, '[0-9]+$', '', 'g'),
+            -- 提取盘存编号的数字后缀并转为整数排序
+            CASE 
+              WHEN p.part_inventory_number ~ '-[0-9]+$' THEN 
+                (REGEXP_MATCHES(p.part_inventory_number, '-([0-9]+)$'))[1]::INTEGER
+              ELSE 0
+            END,
+            p.part_inventory_number ASC`
         const r = await query(sql, [id])
         return res.json({ success: true, items: r.rows || [] })
       } catch (pgErr: any) {
