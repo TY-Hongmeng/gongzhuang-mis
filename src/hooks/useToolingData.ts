@@ -122,7 +122,7 @@ export const useToolingData = () => {
         const response = await fetchWithFallback(`/api/tooling/${toolingId}/parts?t=${timestamp}`, { cache: 'no-store' })
         const result = await response.json()
         const rawItems = Array.isArray(result?.items) ? result.items : (Array.isArray(result?.data) ? result.data : [])
-        const items = rawItems.map(item => {
+        let items = rawItems.map(item => {
           const safeSpecifications = item.specifications ? Object.fromEntries(
             Object.entries(item.specifications)
               .filter(([_, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
@@ -149,6 +149,30 @@ export const useToolingData = () => {
             material: undefined
           };
         });
+        
+        // 按盘存编号自然排序（处理如 LJ260101-01, LJ260101-02, LJ260101-10 的情况）
+        items.sort((a: any, b: any) => {
+          const numA = String(a.part_inventory_number || '')
+          const numB = String(b.part_inventory_number || '')
+          // 提取前缀和数字后缀
+          const matchA = numA.match(/^(.+?)-(\d+)$/)
+          const matchB = numB.match(/^(.+?)-(\d+)$/)
+          if (matchA && matchB) {
+            const prefixA = matchA[1]
+            const prefixB = matchB[1]
+            // 先比较前缀
+            if (prefixA !== prefixB) {
+              return prefixA.localeCompare(prefixB)
+            }
+            // 前缀相同，比较数字后缀
+            const suffixA = parseInt(matchA[2], 10)
+            const suffixB = parseInt(matchB[2], 10)
+            return suffixA - suffixB
+          }
+          // 不符合格式，按字符串排序
+          return numA.localeCompare(numB)
+        });
+        
         partsCacheRef.current.set(toolingId, { items, ts: Date.now() })
         setPartsMap(prev => ({ ...prev, [toolingId]: items }))
         return items
