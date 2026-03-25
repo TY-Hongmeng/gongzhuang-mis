@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -233,6 +233,7 @@ const ExpandedSubTables: React.FC<{
   parentProject: string
   parentUnit: string
   parentApplicant: string
+  parentCompletedDate?: string
   partColumns: any[]
   childColumns: any[]
   selectedRowKeys: string[]
@@ -249,6 +250,7 @@ const ExpandedSubTables: React.FC<{
   parentProject,
   parentUnit,
   parentApplicant,
+  parentCompletedDate,
   partColumns,
   childColumns,
   selectedRowKeys,
@@ -258,6 +260,11 @@ const ExpandedSubTables: React.FC<{
   onAddChildItem
 }) => {
   const isPartCompleted = (rec: PartItem): boolean => {
+    // 如果父表有完成日期，则所有零件都视为已完成
+    if (parentCompletedDate && String(parentCompletedDate).trim() !== '') {
+      return true
+    }
+    // 否则检查零件自己的完成状态
     const v = String((rec as any).purchase_status || '').trim()
     return isDateString(v)
   }
@@ -2620,6 +2627,7 @@ const ToolingInfoPage: React.FC = () => {
     const parentProject = parent?.project_name || ''
     const parentUnit = parent?.production_unit || ''
     const parentApplicant = parent?.recorder || ''
+    const parentCompletedDate = parent?.completed_date || ''
     
     // 获取当前数据，不再自动添加空白行
     const partsList = partsMap[toolingId] || []
@@ -2677,6 +2685,7 @@ const ToolingInfoPage: React.FC = () => {
         parentProject={parentProject}
         parentUnit={parentUnit}
         parentApplicant={parentApplicant}
+        parentCompletedDate={parentCompletedDate}
         partColumns={cols}
         childColumns={childCols}
         selectedRowKeys={selectedRowKeys}
