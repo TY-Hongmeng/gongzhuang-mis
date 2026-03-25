@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -899,77 +899,6 @@ const ToolingInfoPage: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
-  const [partsFilterStatus, setPartsFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('all')
-  const partsPrefetchInflightRef = useRef<Set<string>>(new Set())
-  const [partsSummarySnapshotMap, setPartsSummarySnapshotMap] = useState<Record<string, { total: number; completed: number; incomplete: number }>>({})
-
-  useEffect(() => {
-    let cancelled = false
-    const ids = (visibleData || [])
-      .map((r: any) => String(r?.id || ''))
-      .filter((id) => !!id && !id.startsWith('blank-'))
-    if (ids.length === 0) {
-      setPartsSummarySnapshotMap({})
-      return
-    }
-    const needPrefetch = ids.filter((id) => {
-      if (Object.prototype.hasOwnProperty.call(partsMapRef.current, id)) return false
-      if (partsPrefetchInflightRef.current.has(id)) return false
-      return true
-    })
-    const run = async () => {
-      if (needPrefetch.length > 0) {
-        await runWithConcurrency(needPrefetch.slice(0, 80), 8, async (toolingId) => {
-          if (cancelled) return
-          partsPrefetchInflightRef.current.add(toolingId)
-          try {
-            await fetchPartsData(toolingId)
-          } finally {
-            partsPrefetchInflightRef.current.delete(toolingId)
-          }
-        })
-      }
-      if (cancelled) return
-      const map: Record<string, { total: number; completed: number; incomplete: number }> = {}
-      ids.forEach((id) => {
-        const list = Array.isArray(partsMapRef.current[id]) ? partsMapRef.current[id] : []
-        const valid = list.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-        const total = valid.length
-        const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
-        map[id] = { total, completed, incomplete: Math.max(total - completed, 0) }
-      })
-      setPartsSummarySnapshotMap(map)
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [visibleData, fetchPartsData])
-
-  useEffect(() => {
-    const ids = (visibleData || [])
-      .map((r: any) => String(r?.id || ''))
-      .filter((id) => !!id && !id.startsWith('blank-'))
-    if (ids.length === 0) return
-    const hasInflight = ids.some((id) => partsPrefetchInflightRef.current.has(id))
-    if (hasInflight) return
-    const allLoaded = ids.every((id) => Object.prototype.hasOwnProperty.call(partsMapRef.current, id))
-    if (!allLoaded) return
-    const map: Record<string, { total: number; completed: number; incomplete: number }> = {}
-    ids.forEach((id) => {
-      const list = Array.isArray(partsMapRef.current[id]) ? partsMapRef.current[id] : []
-      const valid = list.filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-      const total = valid.length
-      const completed = valid.filter((p: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(p?.purchase_status || '').trim())).length
-      map[id] = { total, completed, incomplete: Math.max(total - completed, 0) }
-    })
-    setPartsSummarySnapshotMap(map)
-  }, [visibleData, partsMap])
-
-  const getPartSummaryByToolingId = useCallback((toolingId: string) => {
-    return partsSummarySnapshotMap[toolingId] || { total: 0, completed: 0, incomplete: 0 }
-  }, [partsSummarySnapshotMap])
-
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = visibleData || []
     
@@ -993,40 +922,11 @@ const ToolingInfoPage: React.FC = () => {
       })
     }
 
-    if (partsFilterStatus !== 'all') {
-      result = result.filter((row: any) => {
-        const tid = String(row?.id || '')
-        const s = getPartSummaryByToolingId(tid)
-        const total = Number(s.total || 0) || 0
-        const completed = Number(s.completed || 0) || 0
-        const isAllCompleted = total > 0 && completed >= total
-        if (partsFilterStatus === 'completed') return isAllCompleted
-        return !isAllCompleted
-      })
-    }
-    
     return {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus, partsFilterStatus, getPartSummaryByToolingId])
-  const partsCounts = useMemo(() => {
-    let result = visibleData || []
-    if (filterPriority) {
-      result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
-    }
-    let all = 0
-    let completed = 0
-    result.forEach((row: any) => {
-      const tid = String(row?.id || '')
-      if (!tid || tid.startsWith('blank-')) return
-      const s = getPartSummaryByToolingId(tid)
-      all += Number(s.total || 0) || 0
-      completed += Number(s.completed || 0) || 0
-    })
-    const incomplete = Math.max(all - completed, 0)
-    return { all, completed, incomplete }
-  }, [visibleData, filterPriority, getPartSummaryByToolingId])
+  }, [visibleData, filterPriority, filterStatus])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
@@ -4974,15 +4874,6 @@ const ToolingInfoPage: React.FC = () => {
           </Space>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : undefined }}>
-          <Segmented
-            options={[
-              { label: `零件-全部 (${partsCounts.all})`, value: 'all' },
-              { label: `零件-完成 (${partsCounts.completed})`, value: 'completed' },
-              { label: `零件-未完成 (${partsCounts.incomplete})`, value: 'incomplete' }
-            ]}
-            value={partsFilterStatus}
-            onChange={(v) => setPartsFilterStatus(v as any)}
-          />
           <Segmented
             options={[
               { label: `全部 (${counts.all})`, value: 'all' },
