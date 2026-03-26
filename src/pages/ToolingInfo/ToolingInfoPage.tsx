@@ -747,11 +747,16 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           .ant-table-expanded-row-fixed .ant-table-body {
             margin-top: 0 !important;
             overflow: visible !important;
+            padding-top: 8px !important;
           }
           
           .ant-table-expanded-row-fixed .ant-table-thead > tr > th {
             position: relative !important;
             top: auto !important;
+          }
+          
+          .ant-table-expanded-row-fixed .ant-table-tbody > tr:first-child > td {
+            padding-top: 8px !important;
           }
         `}</style>
         <PartTable
