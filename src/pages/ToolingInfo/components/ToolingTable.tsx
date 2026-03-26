@@ -234,46 +234,48 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
         </Space>
       </div>
       
-      <Table
-        rowKey="id"
-        columns={fullColumns}
-        dataSource={filteredData}
-        loading={loading}
-        pagination={{
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-          pageSizeOptions: ['10', '20', '50', '100'],
-          pageSize,
-          onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('tooling_table_ps', String(ps)) } }
-        }}
-        bordered={false}
-        size="small"
-        scroll={{ x: 1500, y: 300 }}
-        expandable={{
-          expandedRowKeys,
-          onExpand: (expanded, record) => {
-            const keys = expanded
-              ? [...expandedRowKeys, record.id]
-              : expandedRowKeys.filter(k => k !== record.id)
-            onExpand(keys)
-          }
-        }}
-        rowClassName={getRowClassName}
-        rowSelection={rowSelection}
-        components={{
-          body: {
-            cell: (props: any) => (
-              <EditableCell
-                {...props}
-                onSave={onEdit}
-                productionUnitOptions={productionUnitOptions}
-                categoryOptions={categoryOptions}
-              />
-            )
-          }
-        }}
-      />
+      <div style={{ maxHeight: 300, overflow: 'auto' }}>
+        <Table
+          rowKey="id"
+          columns={fullColumns}
+          dataSource={filteredData}
+          loading={loading}
+          pagination={{
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            pageSize,
+            onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('tooling_table_ps', String(ps)) } }
+          }}
+          bordered={false}
+          size="small"
+          scroll={{ x: 1500 }}
+          expandable={{
+            expandedRowKeys,
+            onExpand: (expanded, record) => {
+              const keys = expanded
+                ? [...expandedRowKeys, record.id]
+                : expandedRowKeys.filter(k => k !== record.id)
+              onExpand(keys)
+            }
+          }}
+          rowClassName={getRowClassName}
+          rowSelection={rowSelection}
+          components={{
+            body: {
+              cell: (props: any) => (
+                <EditableCell
+                  {...props}
+                  onSave={onEdit}
+                  productionUnitOptions={productionUnitOptions}
+                  categoryOptions={categoryOptions}
+                />
+              )
+            }
+          }}
+        />
+      </div>
       
       <style jsx>{`
         .tooling-row-complete {

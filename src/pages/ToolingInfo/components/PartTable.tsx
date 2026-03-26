@@ -233,44 +233,46 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         </Space>
       </div>
       
-      <Table
-        ref={tableRef}
-        rowKey="id"
-        columns={fullColumns}
-        dataSource={filteredData}
-        pagination={{
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-          pageSizeOptions: ['10', '20', '50', '100'],
-          pageSize,
-          onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('part_table_ps', String(ps)) } }
-        }}
-        bordered={false}
-        size="small"
-        scroll={{ x: 1300, y: 300 }}
-        rowClassName={getRowClassName}
-        rowSelection={useMemo(() => ({
-          selectedRowKeys,
-          onChange: onSelectChange,
-          getCheckboxProps: (record: any) => ({
-            disabled: String(record.id || '').startsWith('blank-')
-          })
-        }), [selectedRowKeys, onSelectChange])}
-        components={{
-          body: {
-            cell: (props: any) => (
-              <EditableCell
-                {...props}
-                onSave={handleCellEdit}
-                materialOptions={materialOptions}
-                materialSourceOptions={materialSourceOptions}
-                partCategoryOptions={partCategoryOptions}
-              />
-            )
-          }
-        }}
-      />
+      <div style={{ maxHeight: 300, overflow: 'auto' }}>
+        <Table
+          ref={tableRef}
+          rowKey="id"
+          columns={fullColumns}
+          dataSource={filteredData}
+          pagination={{
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            pageSize,
+            onChange: (p, ps) => { if (ps && ps !== pageSize) { setPageSize(ps); localStorage.setItem('part_table_ps', String(ps)) } }
+          }}
+          bordered={false}
+          size="small"
+          scroll={{ x: 1300 }}
+          rowClassName={getRowClassName}
+          rowSelection={useMemo(() => ({
+            selectedRowKeys,
+            onChange: onSelectChange,
+            getCheckboxProps: (record: any) => ({
+              disabled: String(record.id || '').startsWith('blank-')
+            })
+          }), [selectedRowKeys, onSelectChange])}
+          components={{
+            body: {
+              cell: (props: any) => (
+                <EditableCell
+                  {...props}
+                  onSave={handleCellEdit}
+                  materialOptions={materialOptions}
+                  materialSourceOptions={materialSourceOptions}
+                  partCategoryOptions={partCategoryOptions}
+                />
+              )
+            }
+          }}
+        />
+      </div>
       
       <style jsx>{`
         .part-row-complete {
