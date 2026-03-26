@@ -233,7 +233,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         </Space>
       </div>
       
-      <div className="table-container" style={{ height: '300px', overflow: 'auto' }}>
+      <div style={{ height: '300px', maxHeight: '300px', overflow: 'hidden', position: 'relative', border: '2px solid blue' }}>
         <Table
           ref={tableRef}
           rowKey="id"
@@ -249,7 +249,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
           }}
           bordered={false}
           size="small"
-          scroll={{ x: 1300 }}
+          scroll={{ x: 1300, y: 240 }}
           rowClassName={getRowClassName}
           rowSelection={useMemo(() => ({
             selectedRowKeys,
