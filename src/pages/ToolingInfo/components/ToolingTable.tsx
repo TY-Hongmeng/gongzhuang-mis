@@ -234,7 +234,7 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ height: '300px', maxHeight: '300px', overflow: 'hidden', position: 'relative', border: '2px solid red' }}>
+      <div style={{ border: '2px solid red' }}>
         <Table
           rowKey="id"
           columns={fullColumns}
@@ -250,7 +250,7 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
           }}
           bordered={false}
           size="small"
-          scroll={{ x: 1500, y: 240 }}
+          scroll={{ x: 1500 }}
           expandable={{
             expandedRowKeys,
             onExpand: (expanded, record) => {
@@ -288,6 +288,13 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
         
         .ant-table-tbody > tr:hover > td {
           background-color: #e6f7ff !important;
+        }
+        
+        .ant-table-thead > tr > th,
+        .ant-table-tbody > tr > td {
+          height: 28px !important;
+          padding: 2px 8px !important;
+          line-height: 1.2 !important;
         }
       `}</style>
     </div>

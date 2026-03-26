@@ -221,7 +221,7 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ height: '300px', maxHeight: '300px', overflow: 'hidden', position: 'relative', border: '2px solid green' }}>
+      <div style={{ border: '2px solid green' }}>
         <Table
           ref={tableRef}
           rowKey="id"
@@ -237,7 +237,7 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
           }}
           bordered={false}
           size="small"
-          scroll={{ x: 1100, y: 240 }}
+          scroll={{ x: 1100 }}
           rowClassName={getRowClassName}
           rowSelection={useMemo(() => ({
             selectedRowKeys,
@@ -271,6 +271,13 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         
         .ant-table-tbody > tr:hover > td {
           background-color: #e6f7ff !important;
+        }
+        
+        .ant-table-thead > tr > th,
+        .ant-table-tbody > tr > td {
+          height: 28px !important;
+          padding: 2px 8px !important;
+          line-height: 1.2 !important;
         }
       `}</style>
     </div>
