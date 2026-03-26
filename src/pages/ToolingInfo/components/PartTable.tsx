@@ -233,7 +233,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ border: '2px solid blue' }}>
+      <div className="part-table-container" style={{ border: '2px solid blue' }}>
         <Table
           ref={tableRef}
           rowKey="id"
@@ -250,7 +250,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
           bordered={false}
           size="small"
           scroll={{ x: 1300 }}
-          rowClassName={getRowClassName}
+          rowClassName={(record) => `${getRowClassName(record)} compact-row`}
           rowSelection={useMemo(() => ({
             selectedRowKeys,
             onChange: onSelectChange,
@@ -274,21 +274,35 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         />
       </div>
       
-      <style jsx>{`
+      <style>{`
         .part-row-complete {
-          background-color: #f6ffed;
+          background-color: #f6ffed !important;
         }
         
         .part-row-warning {
-          background-color: #fffbe6;
+          background-color: #fffbe6 !important;
         }
         
         .ant-table-tbody > tr:hover > td {
           background-color: #e6f7ff !important;
         }
+      `}</style>
+      
+      <style jsx global>{`
+        .part-table-container .ant-table-thead > tr > th,
+        .part-table-container .ant-table-tbody > tr > td {
+          height: 28px !important;
+          padding: 2px 8px !important;
+          line-height: 1.2 !important;
+          box-sizing: border-box !important;
+        }
         
-        .ant-table-thead > tr > th,
-        .ant-table-tbody > tr > td {
+        .part-table-container .ant-table-cell {
+          height: 28px !important;
+          padding: 2px 8px !important;
+        }
+        
+        .part-table-container .compact-row > td {
           height: 28px !important;
           padding: 2px 8px !important;
           line-height: 1.2 !important;
