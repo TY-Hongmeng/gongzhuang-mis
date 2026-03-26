@@ -32,16 +32,29 @@
   border-bottom: 1px solid #d9d9d9 !important;
   border-right: 1px solid #d9d9d9 !important;
   border-left: 1px solid #d9d9d9 !important;
-  padding: 4px 8px !important;
+  padding: 2px 8px !important;
   font-size: 13px !important;
+  height: 28px !important;
+  line-height: 1.2 !important;
 }
 
 .ant-table-tbody > tr > td {
-  padding: 4px 8px !important;
+  padding: 2px 8px !important;
   border-bottom: 1px solid #e8e8e8 !important;
   border-right: 1px solid #e8e8e8 !important;
   border-left: 1px solid #e8e8e8 !important;
   transition: all 0.2s ease !important;
+  height: 24px !important;
+  line-height: 1.2 !important;
+}
+
+/* 强制覆盖 Ant Design 默认样式 */
+.ant-table-cell {
+  padding: 2px 8px !important;
+}
+
+.ant-table-row {
+  height: 24px !important;
 }
 
 .ant-table-tbody > tr:hover > td {
