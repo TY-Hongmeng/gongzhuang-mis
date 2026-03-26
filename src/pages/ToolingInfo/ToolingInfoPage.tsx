@@ -731,6 +731,13 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
     return (
       <div style={{ padding: '16px 24px', background: '#fafafa' }}>
+        <style>{`
+          .ant-table-expanded-row-fixed {
+            position: relative !important;
+            left: auto !important;
+            overflow: visible !important;
+          }
+        `}</style>
         <PartTable
           toolingId={record.id}
           parts={parts}
