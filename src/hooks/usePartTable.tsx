@@ -118,7 +118,7 @@ export const usePartTable = ({ toolingId, onEdit }: PartTableProps) => {
     {
       title: '零件图号',
       dataIndex: 'part_drawing_number',
-      width: 140,
+      width: 200,
       editable: true,
       render: (text: string) => text || ''
     },
