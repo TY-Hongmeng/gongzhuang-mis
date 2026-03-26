@@ -737,6 +737,22 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             left: auto !important;
             overflow: visible !important;
           }
+          
+          /* 修复子表表头遮挡第一行的问题 */
+          .ant-table-expanded-row-fixed .ant-table-header {
+            position: relative !important;
+            overflow: visible !important;
+          }
+          
+          .ant-table-expanded-row-fixed .ant-table-body {
+            margin-top: 0 !important;
+            overflow: visible !important;
+          }
+          
+          .ant-table-expanded-row-fixed .ant-table-thead > tr > th {
+            position: relative !important;
+            top: auto !important;
+          }
         `}</style>
         <PartTable
           toolingId={record.id}
