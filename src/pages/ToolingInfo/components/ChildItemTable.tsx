@@ -236,7 +236,7 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         }}
         bordered={false}
         size="small"
-        scroll={{ x: 1100, y: 400 }}
+        scroll={{ x: 1100, y: 350 }}
         rowClassName={getRowClassName}
         rowSelection={useMemo(() => ({
           selectedRowKeys,
