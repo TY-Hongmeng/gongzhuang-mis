@@ -248,7 +248,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         }}
         bordered={false}
         size="small"
-        scroll={{ x: 1300, y: 350 }}
+        scroll={{ x: 1300, y: 300 }}
         rowClassName={getRowClassName}
         rowSelection={useMemo(() => ({
           selectedRowKeys,

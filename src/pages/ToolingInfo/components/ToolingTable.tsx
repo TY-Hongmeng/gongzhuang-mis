@@ -249,7 +249,7 @@ export const ToolingTable: React.FC<ToolingTableProps> = memo(({
         }}
         bordered={false}
         size="small"
-        scroll={{ x: 1500, y: 350 }}
+        scroll={{ x: 1500, y: 300 }}
         expandable={{
           expandedRowKeys,
           onExpand: (expanded, record) => {
