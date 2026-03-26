@@ -221,7 +221,7 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ border: '2px solid green' }}>
+      <div style={{ border: '2px solid green', marginTop: 8 }}>
         <Table
           ref={tableRef}
           rowKey="id"

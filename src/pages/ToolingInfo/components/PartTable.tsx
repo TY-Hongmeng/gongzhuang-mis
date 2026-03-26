@@ -233,7 +233,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         </Space>
       </div>
       
-      <div className="part-table-container" style={{ border: '2px solid blue' }}>
+      <div className="part-table-container" style={{ border: '2px solid blue', marginTop: 8 }}>
         <Table
           ref={tableRef}
           rowKey="id"
