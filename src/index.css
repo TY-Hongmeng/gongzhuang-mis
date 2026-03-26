@@ -154,3 +154,10 @@ table select:focus {
 .ant-input-affix-wrapper-focused {
   box-shadow: none !important;
 }
+
+/* 表格容器高度限制 */
+.table-container {
+  height: 300px !important;
+  max-height: 300px !important;
+  overflow: auto !important;
+}
