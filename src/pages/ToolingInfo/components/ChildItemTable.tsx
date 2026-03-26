@@ -221,7 +221,7 @@ export const ChildItemTable: React.FC<ChildItemTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ maxHeight: 300, overflow: 'auto' }}>
+      <div style={{ height: 300, overflow: 'auto', border: '1px solid #e8e8e8' }}>
         <Table
           ref={tableRef}
           rowKey="id"
