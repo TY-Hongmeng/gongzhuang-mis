@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -369,18 +369,19 @@ const ExpandedSubTables: React.FC<{
             size="small"
           />
         </div>
-        <Table
-          className="subtable-no-hover"
-          rowKey="id"
-          columns={partColumns}
-          dataSource={filteredParts}
-          loading={partsLoading}
-          pagination={false}
-          bordered={false}
-          size="small"
-          tableLayout="fixed"
-          scroll={{ x: 1700 }}
-          locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
+        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+          <Table
+            className="subtable-no-hover"
+            rowKey="id"
+            columns={partColumns}
+            dataSource={filteredParts}
+            loading={partsLoading}
+            pagination={false}
+            bordered={false}
+            size="small"
+            tableLayout="fixed"
+            scroll={{ x: 1700 }}
+            locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -406,7 +407,8 @@ const ExpandedSubTables: React.FC<{
             checkStrictly: true,
             preserveSelectedRowKeys: true
           }}
-        />
+          />
+        </div>
       </div>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -422,18 +424,19 @@ const ExpandedSubTables: React.FC<{
             size="small"
           />
         </div>
-        <Table
-          className="subtable-no-hover"
-          rowKey="id"
-          columns={childColumns}
-          dataSource={filteredChildItems}
-          loading={childLoading}
-          pagination={false}
-          bordered={false}
-          size="small"
-          tableLayout="fixed"
-          scroll={{ x: 1200 }}
-          locale={{ emptyText: childLoading ? '' : '暂无数据' }}
+        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+          <Table
+            className="subtable-no-hover"
+            rowKey="id"
+            columns={childColumns}
+            dataSource={filteredChildItems}
+            loading={childLoading}
+            pagination={false}
+            bordered={false}
+            size="small"
+            tableLayout="fixed"
+            scroll={{ x: 1200 }}
+            locale={{ emptyText: childLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
           })}
@@ -459,7 +462,8 @@ const ExpandedSubTables: React.FC<{
             checkStrictly: true,
             preserveSelectedRowKeys: true
           }}
-        />
+          />
+        </div>
       </div>
     </div>
   )
