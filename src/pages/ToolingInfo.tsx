@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3039,7 +3039,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '序号',
       dataIndex: '__seq',
-      width: 80,
+      width: 40,
       render: (_text: any, record: RowItem, index: number) => {
         const isBlank = String(record.id).startsWith('blank-')
         if (isBlank) {
@@ -3080,7 +3080,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '盘存编号',
       dataIndex: 'inventory_number',
-      width: 160,
+      width: 80,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3108,7 +3108,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '投产单位',
       dataIndex: 'production_unit',
-      width: 160,
+      width: 80,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3123,7 +3123,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '工装类别',
       dataIndex: 'category',
-      width: 160,
+      width: 80,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3138,7 +3138,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '级别',
       dataIndex: 'priority_level',
-      width: 120,
+      width: 60,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (_: any, record: RowItem) => (
         record.project_name ? (
@@ -3153,7 +3153,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '接收日期',
       dataIndex: 'received_date',
-      width: 140,
+      width: 70,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3167,7 +3167,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '需求日期',
       dataIndex: 'demand_date',
-      width: 140,
+      width: 70,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3181,7 +3181,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '完成日期',
       dataIndex: 'completed_date',
-      width: 140,
+      width: 70,
       onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
       render: (text: string, record: RowItem) => (
         <EditableCell
@@ -3195,7 +3195,7 @@ const ToolingInfoPage: React.FC = () => {
     {
       title: '责任人',
       dataIndex: 'recorder',
-      width: 120,
+      width: 60,
       render: (text: string, record: RowItem) => (
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
