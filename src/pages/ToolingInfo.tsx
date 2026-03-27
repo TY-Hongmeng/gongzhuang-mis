@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -369,7 +369,7 @@ const ExpandedSubTables: React.FC<{
             size="small"
           />
         </div>
-        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+        <div style={{ overflowX: 'auto' }}>
           <Table
             className="subtable-no-hover"
             rowKey="id"
@@ -379,8 +379,7 @@ const ExpandedSubTables: React.FC<{
             pagination={false}
             bordered={false}
             size="small"
-            tableLayout="fixed"
-            scroll={{ x: 1700 }}
+            tableLayout="auto"
             locale={{ emptyText: partsLoading ? '' : '暂无数据' }}
           onRow={(rec: any) => ({
             className: isPartCompleted(rec) ? 'row-completed' : (isPartReady(rec) ? 'text-blue-600' : undefined)
@@ -424,7 +423,7 @@ const ExpandedSubTables: React.FC<{
             size="small"
           />
         </div>
-        <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+        <div style={{ overflowX: 'auto' }}>
           <Table
             className="subtable-no-hover"
             rowKey="id"
@@ -434,34 +433,33 @@ const ExpandedSubTables: React.FC<{
             pagination={false}
             bordered={false}
             size="small"
-            tableLayout="fixed"
-            scroll={{ x: 1200 }}
+            tableLayout="auto"
             locale={{ emptyText: childLoading ? '' : '暂无数据' }}
-          onRow={(rec: any) => ({
-            className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
-          })}
-          rowSelection={{
-            selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
-            onChange: (keys) => {
-              const prefixed = (keys as string[])
-                .map(k => 'child-' + k)
-                // Remove filter for blank rows
-              setSelectedRowKeys(prev => {
-                const others = prev.filter(k => {
-                  if (!k.startsWith('child-')) return true
-                  return !childItems.some(p => ('child-' + p.id) === k)
+            onRow={(rec: any) => ({
+              className: isChildCompleted(rec) ? 'row-completed' : (isChildReady(rec) ? 'text-blue-600' : undefined)
+            })}
+            rowSelection={{
+              selectedRowKeys: selectedRowKeys.filter(k => k.startsWith('child-')).map(k => k.slice(6)),
+              onChange: (keys) => {
+                const prefixed = (keys as string[])
+                  .map(k => 'child-' + k)
+                  // Remove filter for blank rows
+                setSelectedRowKeys(prev => {
+                  const others = prev.filter(k => {
+                    if (!k.startsWith('child-')) return true
+                    return !childItems.some(p => ('child-' + p.id) === k)
+                  })
+                  return Array.from(new Set([...others, ...prefixed]))
                 })
-                return Array.from(new Set([...others, ...prefixed]))
-              })
-            },
-            columnWidth: 40,
-            getCheckboxProps: (rec: any) => ({ 
-              // Enable checkbox for blank rows
-              disabled: false 
-            }),
-            checkStrictly: true,
-            preserveSelectedRowKeys: true
-          }}
+              },
+              columnWidth: 40,
+              getCheckboxProps: (rec: any) => ({ 
+                // Enable checkbox for blank rows
+                disabled: false 
+              }),
+              checkStrictly: true,
+              preserveSelectedRowKeys: true
+            }}
           />
         </div>
       </div>
