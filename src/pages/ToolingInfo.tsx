@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2949,12 +2949,23 @@ const ToolingInfoPage: React.FC = () => {
 
     const mapUpdates: Record<string, string> = {}
     for (const [invK, routeText] of Object.entries(cardRoutes)) {
-      let matchedKeys = allChildKeysOnPage.filter(k => k === invK || k.startsWith(invK))
+      // 首先尝试精确匹配
+      let matchedKeys = allChildKeysOnPage.filter(k => k === invK)
+      // 如果没有精确匹配，尝试前缀匹配（零件盘存编号以工艺卡片盘存编号开头）
       if (matchedKeys.length === 0) {
-        const candidates = (data || []).filter(d => String(d.inventory_number || '').trim().toUpperCase() && invK.startsWith(String(d.inventory_number || '').trim().toUpperCase())).map(d => d.id)
+        matchedKeys = allChildKeysOnPage.filter(k => k.startsWith(invK))
+      }
+      // 如果还是没有匹配，尝试从父表数据重新获取零件数据
+      if (matchedKeys.length === 0) {
+        // 查找可能匹配的父表（工艺卡片盘存编号以父表盘存编号开头）
+        const candidates = (data || []).filter(d => {
+          const parentInv = String(d.inventory_number || '').trim().toUpperCase()
+          return parentInv && invK.startsWith(parentInv)
+        }).map(d => d.id)
         for (const tid of candidates) {
           if (!partsMap[tid] || partsMap[tid].length === 0) await fetchPartsData(tid)
         }
+        // 重新扫描所有零件
         const reScan: string[] = []
         Object.values(partsMap).forEach(list => (list || []).forEach((p: any) => {
           const k = String(p.part_inventory_number || '').trim().toUpperCase()
@@ -2963,6 +2974,8 @@ const ToolingInfoPage: React.FC = () => {
         matchedKeys = [...new Set(reScan)]
       }
       if (matchedKeys.length === 0) {
+        // 未匹配到，记录日志以便调试
+        console.warn(`[ProcessImport] 未找到匹配的零件: ${invK}`)
         mapUpdates[invK] = routeText
       } else {
         matchedKeys.forEach(k => { mapUpdates[k] = routeText })
@@ -3044,8 +3057,14 @@ const ToolingInfoPage: React.FC = () => {
           Object.entries(prev).forEach(([tid, list]) => {
             next[tid] = (list || []).map(p => {
               const k = String(p.part_inventory_number || '').trim().toUpperCase()
+              const drawingK = String(p.part_drawing_number || '').trim()
+              // 通过盘存编号匹配
               if (k && mapKeys.includes(k)) {
                 return { ...p, process_route: mapUpdates[k] }
+              }
+              // 通过图号匹配（处理 DRAWING: 前缀的情况）
+              if (drawingK && mapKeys.includes(`DRAWING:${drawingK}`)) {
+                return { ...p, process_route: mapUpdates[`DRAWING:${drawingK}`] }
               }
               return p
             })
