@@ -1570,6 +1570,45 @@ router.post('/work-hours/batch-delete', async (req, res) => {
   }
 })
 
+// 获取工时数据聚合（用于工艺路线完成状态）
+router.get('/work-hours/aggregates', async (req, res) => {
+  try {
+    const { invs } = req.query as { invs?: string }
+    if (!invs) {
+      return res.json({ success: true, data: {} })
+    }
+    
+    const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+    if (invList.length === 0) {
+      return res.json({ success: true, data: {} })
+    }
+    
+    // 查询这些盘存编号对应的所有工时记录
+    const { data, error } = await supabase
+      .from('work_hours')
+      .select('inventory_no, process_name')
+      .in('inventory_no', invList)
+    
+    if (error) throw error
+    
+    // 按盘存编号聚合工序
+    const aggregates: Record<string, string[]> = {}
+    ;(data || []).forEach((row: any) => {
+      const inv = String(row.inventory_no || '').trim().toUpperCase()
+      const process = String(row.process_name || '').trim()
+      if (inv && process) {
+        if (!aggregates[inv]) aggregates[inv] = []
+        if (!aggregates[inv].includes(process)) aggregates[inv].push(process)
+      }
+    })
+    
+    res.json({ success: true, data: aggregates })
+  } catch (err: any) {
+    console.error('获取工时聚合数据失败:', err)
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 // 设备管理
 router.get('/devices', async (_req, res) => {
   try {
