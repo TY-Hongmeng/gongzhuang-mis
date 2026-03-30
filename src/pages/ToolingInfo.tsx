@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2353,25 +2353,35 @@ const ToolingInfoPage: React.FC = () => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           // 从工时数据获取已完成的工序
           const workHoursCompleted = new Set<string>((workHoursDataRef.current[inventoryNo] || []).map(x => x.trim().toLowerCase()))
-          // 从本地存储获取手动勾选的工序
-          const manualCompletedKey = `manual_process_${rec.id}`
-          const manualCompletedStr = safeLocalStorage.getItem(manualCompletedKey) || ''
-          const manualCompleted = new Set<string>(manualCompletedStr.split(',').filter(Boolean).map(x => x.trim().toLowerCase()))
-          // 合并两种完成状态
-          const completedSet = new Set<string>([...workHoursCompleted, ...manualCompleted])
+          // 从后端数据获取手动勾选的工序（completed_steps 字段）
+          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+          const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => x.trim().toLowerCase()))
+          // 合并两种完成状态（工时录入 + 数据库手动勾选）
+          const completedSet = new Set<string>([...workHoursCompleted, ...dbCompleted])
           
           const handleStepToggle = async (step: string, checked: boolean) => {
             const stepKey = step.trim().toLowerCase()
-            const newCompleted = new Set<string>(manualCompleted)
+            const newCompleted = new Set<string>(dbCompleted)
             if (checked) {
               newCompleted.add(stepKey)
             } else {
               newCompleted.delete(stepKey)
             }
-            // 保存到本地存储
-            safeLocalStorage.setItem(manualCompletedKey, Array.from(newCompleted).join(','))
-            // 触发重新渲染
-            setPartsMap(prev => ({ ...prev }))
+            // 保存到后端数据库
+            const completedStepsArray = Array.from(newCompleted)
+            const success = await savePartData(rec.id, { completed_steps: completedStepsArray })
+            if (success) {
+              // 更新本地状态
+              setPartsMap(prev => {
+                const newPartsMap = { ...prev }
+                Object.keys(newPartsMap).forEach(tid => {
+                  newPartsMap[tid] = newPartsMap[tid].map(part => 
+                    part.id === rec.id ? { ...part, completed_steps: completedStepsArray } : part
+                  )
+                })
+                return newPartsMap
+              })
+            }
           }
           
           const display = (val: string | undefined) => {
