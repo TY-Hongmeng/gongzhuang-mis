@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -712,18 +712,32 @@ const ToolingInfoPage: React.FC = () => {
     // 防止重复加载同一工装的数据
     if (expandedLoadInflightRef.current.has(toolingId)) return
     expandedLoadInflightRef.current.add(toolingId)
+    const tasks: Promise<any>[] = []
+
+    const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMapRef.current, toolingId)
+    const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMapRef.current, toolingId)
+    const partsLoading = !!partsLoadingMapRef.current[toolingId]
+    const childLoading = !!childLoadingMapRef.current[toolingId]
 
     try {
-      // 直接调用 fetch 函数，让它们在内部处理缓存和 loading 状态
-      // 如果缓存有效，这些函数不会设置 loading 为 true
-      await Promise.all([
-        fetchPartsDataRef.current(toolingId),
-        fetchChildItemsDataRef.current(toolingId)
-      ])
+      // 只加载未加载且不在加载中的数据
+      if (!hasPartsLoaded && !partsLoading) {
+        setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+        tasks.push(fetchPartsDataRef.current(toolingId))
+      }
+
+      if (!hasChildLoaded && !childLoading) {
+        setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
+        tasks.push(fetchChildItemsDataRef.current(toolingId))
+      }
+
+      if (tasks.length > 0) {
+        await Promise.all(tasks)
+      }
     } finally {
       expandedLoadInflightRef.current.delete(toolingId)
     }
-  }, [])
+  }, [setPartsLoadingMap, setChildLoadingMap])
   
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
@@ -2337,16 +2351,50 @@ const ToolingInfoPage: React.FC = () => {
             currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
           }
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const completedSet = new Set<string>((workHoursDataRef.current[inventoryNo] || []).map(x => x.trim().toLowerCase()))
+          // 从工时数据获取已完成的工序
+          const workHoursCompleted = new Set<string>((workHoursDataRef.current[inventoryNo] || []).map(x => x.trim().toLowerCase()))
+          // 从本地存储获取手动勾选的工序
+          const manualCompletedKey = `manual_process_${rec.id}`
+          const manualCompletedStr = safeLocalStorage.getItem(manualCompletedKey) || ''
+          const manualCompleted = new Set<string>(manualCompletedStr.split(',').filter(Boolean).map(x => x.trim().toLowerCase()))
+          // 合并两种完成状态
+          const completedSet = new Set<string>([...workHoursCompleted, ...manualCompleted])
+          
+          const handleStepToggle = async (step: string, checked: boolean) => {
+            const stepKey = step.trim().toLowerCase()
+            const newCompleted = new Set<string>(manualCompleted)
+            if (checked) {
+              newCompleted.add(stepKey)
+            } else {
+              newCompleted.delete(stepKey)
+            }
+            // 保存到本地存储
+            safeLocalStorage.setItem(manualCompletedKey, Array.from(newCompleted).join(','))
+            // 触发重新渲染
+            setPartsMap(prev => ({ ...prev }))
+          }
+          
           const display = (val: string | undefined) => {
             const route = String(val || '')
             if (!route) return <span style={{ color: '#999' }}>-</span>
             const steps = route.split(/\s*→\s*/).filter(Boolean)
             return (
-              <span>
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'center' }}>
                 {steps.map((s, i) => {
                   const ok = completedSet.has(s.trim().toLowerCase())
-                  return <span key={i} style={{ color: ok ? '#28a745' : '#333', fontWeight: 400 }}>{s}{i < steps.length - 1 ? '→' : ''}</span>
+                  return (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={ok}
+                        onChange={(e) => handleStepToggle(s, e.target.checked)}
+                        style={{ cursor: 'pointer', margin: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span style={{ color: ok ? '#28a745' : '#333', fontWeight: ok ? 500 : 400 }}>{s}</span>
+                      {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+                    </span>
+                  )
                 })}
               </span>
             )
