@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -709,9 +709,7 @@ const ToolingInfoPage: React.FC = () => {
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
-    const isExpandedNow = () => expandedRowKeysRef.current.includes(toolingId) || expandedChildKeysRef.current.includes(toolingId)
-    const canLoadNow = () => force || isExpandedNow()
-    if (!force && !isExpandedNow()) return
+    // 防止重复加载同一工装的数据
     if (expandedLoadInflightRef.current.has(toolingId)) return
     expandedLoadInflightRef.current.add(toolingId)
     const tasks: Promise<any>[] = []
@@ -722,12 +720,13 @@ const ToolingInfoPage: React.FC = () => {
     const childLoading = !!childLoadingMapRef.current[toolingId]
 
     try {
-      if (!hasPartsLoaded && !partsLoading && canLoadNow()) {
+      // 只加载未加载且不在加载中的数据
+      if (!hasPartsLoaded && !partsLoading) {
         setPartsLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
         tasks.push(fetchPartsDataRef.current(toolingId))
       }
 
-      if (!hasChildLoaded && !childLoading && canLoadNow()) {
+      if (!hasChildLoaded && !childLoading) {
         setChildLoadingMap(prev => prev[toolingId] ? prev : ({ ...prev, [toolingId]: true }))
         tasks.push(fetchChildItemsDataRef.current(toolingId))
       }
@@ -3134,12 +3133,9 @@ const ToolingInfoPage: React.FC = () => {
                 const childNext = isChildExpanded ? expandedChildKeys.filter(k => k !== id) : [...expandedChildKeys, id]
                 setExpandedChildKeys(childNext)
                 // 如果即将展开（当前未展开），则加载数据
-                // 使用 setTimeout 确保状态更新后再检查
                 const willExpand = !isExpanded || !isChildExpanded
                 if (willExpand) {
-                  setTimeout(() => {
-                    ensureExpandedDataLoaded(id, false)
-                  }, 0)
+                  ensureExpandedDataLoaded(id, false)
                 }
               }}
               style={{ cursor: 'pointer', color: '#000000', fontWeight: 600, fontSize: '26px' }}
@@ -5069,9 +5065,7 @@ const ToolingInfoPage: React.FC = () => {
                 return prev.filter(k => k !== id)
               })
               if (expanded) {
-                setTimeout(() => {
-                  ensureExpandedDataLoaded(id, false)
-                }, 0)
+                ensureExpandedDataLoaded(id, false)
               }
             },
             expandRowByClick: false,
