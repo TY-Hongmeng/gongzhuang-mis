@@ -861,6 +861,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 hide()
                 message.success('提交成功')
                 
+                // 广播工时提交事件，通知其他页面刷新数据
+                try {
+                  const bc = new BroadcastChannel('work_hours_channel')
+                  bc.postMessage({ type: 'work_hours_submitted', inventoryNo: selectedInv, processName: vals.process_name, timestamp: Date.now() })
+                  bc.close()
+                } catch {}
+                
                 // 使用try-catch防止setAuxRange错误
                 try {
                   try {
