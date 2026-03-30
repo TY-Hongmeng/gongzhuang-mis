@@ -1574,11 +1574,13 @@ router.post('/work-hours/batch-delete', async (req, res) => {
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
     const { invs } = req.query as { invs?: string }
+    console.log('收到工时聚合数据请求，invs:', invs)
     if (!invs) {
       return res.json({ success: true, data: {} })
     }
     
     const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+    console.log('解析后的盘存编号列表:', invList)
     if (invList.length === 0) {
       return res.json({ success: true, data: {} })
     }
@@ -1588,6 +1590,8 @@ router.get('/work-hours/aggregates', async (req, res) => {
       .from('work_hours')
       .select('inventory_no, process_name')
       .in('inventory_no', invList)
+    
+    console.log('查询工时数据结果:', { data, error })
     
     if (error) throw error
     
@@ -1602,6 +1606,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
       }
     })
     
+    console.log('返回工时聚合数据:', aggregates)
     res.json({ success: true, data: aggregates })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)

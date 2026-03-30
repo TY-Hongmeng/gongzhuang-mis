@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1021,6 +1021,7 @@ const ToolingInfoPage: React.FC = () => {
         return
       }
       const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
+      console.log('请求工时数据URL:', url)
       const response = await fetchWithFallback(url, { cache: 'no-store' })
       if (!response.ok) {
         console.error('获取工时数据失败，HTTP状态:', response.status)
@@ -1028,6 +1029,7 @@ const ToolingInfoPage: React.FC = () => {
       }
       
       const result = await response.json()
+      console.log('工时数据API响应:', result)
       
       // 检查API响应格式
       if (!result || typeof result !== 'object') {
@@ -1046,6 +1048,7 @@ const ToolingInfoPage: React.FC = () => {
       // 提取工时数据
       const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
       
+      console.log('设置工时数据:', hoursByInventoryNo)
       setWorkHoursData(hoursByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
@@ -1095,11 +1098,14 @@ const ToolingInfoPage: React.FC = () => {
       bc = new BroadcastChannel('work_hours_channel')
       bc.onmessage = (event) => {
         if (event.data?.type === 'work_hours_submitted') {
+          console.log('收到工时提交广播:', event.data)
           // 清除缓存，强制刷新工时数据
           workHoursFetchRef.current.lastKey = ''
           workHoursFetchRef.current.lastFetchTime = 0
-          // 重新触发工时数据获取
+          // 使用广播中的盘存编号，同时收集当前页面所有相关盘存编号
+          const submittedInv = String(event.data?.inventoryNo || '').trim().toUpperCase()
           const invsSet = new Set<string>()
+          if (submittedInv) invsSet.add(submittedInv)
           ensureBlankToolings(data).forEach(d => {
             const inv = String(d.inventory_number || '').trim().toUpperCase()
             if (inv) invsSet.add(inv)
@@ -1109,6 +1115,7 @@ const ToolingInfoPage: React.FC = () => {
             if (inv) invsSet.add(inv)
           }))
           const invs = Array.from(invsSet)
+          console.log('刷新工时数据，盘存编号列表:', invs)
           if (invs.length > 0) {
             fetchWorkHoursData(invs)
             workHoursFetchRef.current.lastFetchTime = Date.now()
@@ -2388,7 +2395,9 @@ const ToolingInfoPage: React.FC = () => {
           }
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           // 从工时数据获取已完成的工序
-          const workHoursCompleted = new Set<string>((workHoursDataRef.current[inventoryNo] || []).map(x => x.trim().toLowerCase()))
+          const workHoursForThisInv = workHoursDataRef.current[inventoryNo] || []
+          console.log(`工艺路线渲染 - 盘存编号:${inventoryNo}, 工时数据:`, workHoursForThisInv, '所有工时数据:', workHoursDataRef.current)
+          const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => x.trim().toLowerCase()))
           // 从后端数据获取手动勾选的工序（completed_steps 字段）
           const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
           const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => x.trim().toLowerCase()))
