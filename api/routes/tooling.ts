@@ -44,6 +44,8 @@ const ensurePurchaseStatusColumns = async () => {
     await client.connect();
     await client.query(`ALTER TABLE parts_info ADD COLUMN IF NOT EXISTS purchase_status TEXT`);
     await client.query(`ALTER TABLE child_items ADD COLUMN IF NOT EXISTS purchase_status TEXT`);
+    // 添加 completed_steps 字段存储已完成的工序列表
+    await client.query(`ALTER TABLE parts_info ADD COLUMN IF NOT EXISTS completed_steps JSONB DEFAULT '[]'`);
     try {
       await client.query(`UPDATE parts_info p
         SET purchase_status = s.status
@@ -646,7 +648,7 @@ router.get('/:id/parts', async (req, res) => {
       const sel = [
         'id','tooling_id','part_inventory_number','part_drawing_number','part_name','part_quantity',
         'material_id','material_source_id','part_category','specifications','weight','unit_price',
-        'total_price','remarks','process_route','purchase_status'
+        'total_price','remarks','process_route','purchase_status','completed_steps'
       ].join(',')
       const { data, error } = await supabase
           .from('parts_info')
@@ -889,6 +891,17 @@ router.post('/:id/parts', async (req, res) => {
     if (hasStatus) {
       delete cleanedPayload.purchase_status
     }
+    // 处理 completed_steps 字段
+    if (Object.prototype.hasOwnProperty.call(cleanedPayload, 'completed_steps')) {
+      // 确保是数组格式
+      if (!Array.isArray(cleanedPayload.completed_steps)) {
+        try {
+          cleanedPayload.completed_steps = JSON.parse(cleanedPayload.completed_steps) || []
+        } catch {
+          cleanedPayload.completed_steps = []
+        }
+      }
+    }
     
     console.log('清理后的payload:', cleanedPayload);
 
@@ -915,7 +928,7 @@ router.post('/:id/parts', async (req, res) => {
               .from('parts_info')
               .select('part_inventory_number')
               .eq('tooling_id', toolingId)
-            const used = new Set<number>()
+            const used = new Set<number>();
             (existingParts || []).forEach((p: any) => {
               const v = String(p.part_inventory_number || '').trim()
               if (v && v.startsWith(prefix)) {
