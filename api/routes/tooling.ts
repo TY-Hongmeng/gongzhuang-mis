@@ -853,7 +853,8 @@ router.post('/:id/parts', async (req, res) => {
   router.put('/parts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await ensurePurchaseStatusColumns();
+    // 暂时禁用 ensurePurchaseStatusColumns，因为我们已经手动创建了 completed_steps 列
+    // await ensurePurchaseStatusColumns();
     const payload = req.body || {};
     const hasStatus = Object.prototype.hasOwnProperty.call(payload, 'purchase_status')
     
