@@ -233,7 +233,12 @@ export const PartTable: React.FC<PartTableProps> = memo(({
         </Space>
       </div>
       
-      <div style={{ border: '2px solid blue', marginTop: -24 }}>
+      <div style={{ 
+        width: '100%',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        marginTop: -24
+      }}>
         <Table
           ref={tableRef}
           rowKey="id"
@@ -249,7 +254,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
           }}
           bordered={false}
           size="small"
-          scroll={{ x: 1100 }}
+          scroll={{ x: 'max-content' }}
           rowClassName={getRowClassName}
           rowSelection={useMemo(() => ({
             selectedRowKeys,
@@ -271,6 +276,7 @@ export const PartTable: React.FC<PartTableProps> = memo(({
               )
             }
           }}
+          style={{ minWidth: 1500 }}
         />
       </div>
       
@@ -292,6 +298,33 @@ export const PartTable: React.FC<PartTableProps> = memo(({
           height: 28px !important;
           padding: 2px 8px !important;
           line-height: 1.2 !important;
+          white-space: nowrap !important;
+        }
+        
+        /* 确保横向滚动条始终可见 */
+        div::-webkit-scrollbar {
+          height: 10px;
+          width: 10px;
+        }
+        
+        div::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 5px;
+        }
+        
+        div::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 5px;
+        }
+        
+        div::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+        
+        /* Firefox 滚动条样式 */
+        div {
+          scrollbar-width: thin;
+          scrollbar-color: #c1c1c1 #f1f1f1;
         }
       `}</style>
     </div>
