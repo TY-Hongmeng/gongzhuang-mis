@@ -960,13 +960,19 @@ router.post('/:id/parts', async (req, res) => {
     if (completedStepsToSave && Array.isArray(completedStepsToSave)) {
       try {
         const completedStepsJson = JSON.stringify(completedStepsToSave);
-        const { rowCount } = await query(
+        const result = await query(
           'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
           [completedStepsJson, id]
         );
-        console.log('直接SQL更新 completed_steps 结果:', { rowCount, id, completedStepsJson });
-        if (rowCount === 0) {
-          console.error('直接SQL更新 completed_steps 失败：没有记录被更新');
+        console.log('直接SQL更新 completed_steps 结果:', { result, id, completedStepsJson });
+        // 检查 result 对象
+        if (result && result.rowCount !== undefined) {
+          console.log('SQL更新 rowCount:', result.rowCount);
+          if (result.rowCount === 0) {
+            console.error('直接SQL更新 completed_steps 失败：没有记录被更新');
+          }
+        } else {
+          console.log('SQL更新结果:', result);
         }
       } catch (sqlErr) {
         console.error('直接SQL更新 completed_steps 失败:', sqlErr);
