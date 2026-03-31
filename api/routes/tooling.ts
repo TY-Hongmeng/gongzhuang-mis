@@ -948,13 +948,15 @@ router.post('/:id/parts', async (req, res) => {
       console.warn('更新时自动生成盘存编号失败:', genErr)
     }
 
+    console.log('准备更新数据库，payload:', cleanedPayload);
+    
     const { data, error } = await supabase
       .from('parts_info')
       .update(cleanedPayload)
       .eq('id', id)
       .select(); // 返回数组
 
-    console.log('Supabase update result:', { data, error });
+    console.log('Supabase update result:', { data, error, id });
 
     if (error) {
       if ((error as any).code === '23505') {
@@ -963,6 +965,20 @@ router.post('/:id/parts', async (req, res) => {
       console.error('Update parts_info error:', error);
       return res.status(500).json({ success: false, error: error.message, code: error.code });
     }
+    
+    // 立即查询验证更新结果
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('parts_info')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (verifyError) {
+      console.error('验证更新结果失败:', verifyError);
+    } else {
+      console.log('验证更新结果成功:', verifyData);
+    }
+    
     if (hasStatus) {
       await ensureStatusTable();
       const s = payload.purchase_status
@@ -1003,7 +1019,9 @@ router.post('/:id/parts', async (req, res) => {
       return res.json({ success: true, data: (exists as any)[0] });
     }
 
-    console.log('零件更新成功:', arr[0]);
+    // 使用验证查询的结果返回给前端，确保包含 completed_steps
+    const finalData = verifyData || arr[0];
+    console.log('零件更新成功:', finalData);
 
     // 联动更新采购单的总重量与总金额，确保审批端与工装信息一致
     // 只在材料ID、重量或数量发生变化时才执行，避免不必要的数据库查询
@@ -1045,7 +1063,8 @@ router.post('/:id/parts', async (req, res) => {
       console.warn('[Tooling] 联动更新采购单失败:', linkErr);
     }
 
-    res.json({ success: true, data: arr[0] });
+    // 使用验证查询的结果返回给前端，确保包含 completed_steps
+    res.json({ success: true, data: finalData });
   } catch (err) {
     console.error('Update part route error', err);
     res.status(500).json({ success: false, error: '服务器错误' });
