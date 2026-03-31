@@ -950,10 +950,22 @@ router.post('/:id/parts', async (req, res) => {
 
     console.log('准备更新数据库，payload:', cleanedPayload);
     
-    // 如果有 completed_steps 字段，使用直接SQL更新确保数据保存
-    if (cleanedPayload.completed_steps && Array.isArray(cleanedPayload.completed_steps)) {
+    // 提取 completed_steps 字段，避免被 Supabase ORM 覆盖
+    const completedStepsToSave = cleanedPayload.completed_steps;
+    if (Object.prototype.hasOwnProperty.call(cleanedPayload, 'completed_steps')) {
+      delete (cleanedPayload as any).completed_steps;
+    }
+    
+    const { data, error } = await supabase
+      .from('parts_info')
+      .update(cleanedPayload)
+      .eq('id', id)
+      .select(); // 返回数组
+    
+    // 使用直接SQL更新 completed_steps，避免 Supabase ORM 的问题
+    if (completedStepsToSave && Array.isArray(completedStepsToSave)) {
       try {
-        const completedStepsJson = JSON.stringify(cleanedPayload.completed_steps);
+        const completedStepsJson = JSON.stringify(completedStepsToSave);
         const { rowCount } = await query(
           'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
           [completedStepsJson, id]
@@ -963,12 +975,6 @@ router.post('/:id/parts', async (req, res) => {
         console.error('直接SQL更新 completed_steps 失败:', sqlErr);
       }
     }
-    
-    const { data, error } = await supabase
-      .from('parts_info')
-      .update(cleanedPayload)
-      .eq('id', id)
-      .select(); // 返回数组
 
     console.log('Supabase update result:', { data, error, id });
 
