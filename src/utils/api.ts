@@ -1650,6 +1650,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const s = body.process_route
           payload.process_route = (s === null) ? null : String(s || '')
         }
+        if (Object.prototype.hasOwnProperty.call(body, 'completed_steps')) {
+          const cs = body.completed_steps
+          payload.completed_steps = Array.isArray(cs) ? cs : []
+        }
         const updateStatus = async () => {
           if (!hasStatus) return
           const s = body.purchase_status
