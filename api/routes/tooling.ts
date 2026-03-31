@@ -857,11 +857,6 @@ router.post('/:id/parts', async (req, res) => {
     // await ensurePurchaseStatusColumns();
     const payload = req.body || {};
     const hasStatus = Object.prototype.hasOwnProperty.call(payload, 'purchase_status')
-    
-    console.log('更新零件请求:', {
-      partId: id,
-      payload: payload
-    });
 
     // 清理空字符串的字段，避免数据库错误
     const cleanedPayload = { ...payload };
@@ -902,10 +897,7 @@ router.post('/:id/parts', async (req, res) => {
           cleanedPayload.completed_steps = []
         }
       }
-      console.log('处理 completed_steps:', cleanedPayload.completed_steps);
     }
-    
-    console.log('清理后的payload:', cleanedPayload);
 
     // 如果没有提供盘存编号但有内容，尝试自动生成一个唯一的盘存编号
     try {
@@ -949,36 +941,30 @@ router.post('/:id/parts', async (req, res) => {
       console.warn('更新时自动生成盘存编号失败:', genErr)
     }
 
-    console.log('准备更新数据库，payload:', cleanedPayload);
-    
     // 提取 completed_steps 字段
     const completedStepsToSave = cleanedPayload.completed_steps;
     if (Object.prototype.hasOwnProperty.call(cleanedPayload, 'completed_steps')) {
       delete (cleanedPayload as any).completed_steps;
     }
     
-    // 使用 Supabase 客户端更新 completed_steps（不使用 query()，避免 pg 模块依赖问题）
+    // 使用 Supabase 客户端更新 completed_steps
     if (completedStepsToSave && Array.isArray(completedStepsToSave)) {
       try {
-        console.log('使用 Supabase 更新 completed_steps:', { id, completedStepsToSave });
         const { error: csError } = await supabase
           .from('parts_info')
           .update({ completed_steps: completedStepsToSave })
           .eq('id', id);
         
         if (csError) {
-          console.error('Supabase 更新 completed_steps 失败:', csError);
-        } else {
-          console.log('Supabase 更新 completed_steps 成功');
+          console.error('更新 completed_steps 失败:', csError);
         }
       } catch (csErr) {
-        console.error('Supabase 更新 completed_steps 异常:', csErr);
+        console.error('更新 completed_steps 异常:', csErr);
       }
     }
     
     // 如果 cleanedPayload 为空（只有 completed_steps 字段），直接返回成功
     if (Object.keys(cleanedPayload).length === 0) {
-      console.log('cleanedPayload 为空，跳过其他字段更新');
       return res.json({ success: true, data: { id, completed_steps: completedStepsToSave } });
     }
     
@@ -987,8 +973,6 @@ router.post('/:id/parts', async (req, res) => {
       .update(cleanedPayload)
       .eq('id', id)
       .select(); // 返回数组
-
-    console.log('Supabase update result:', { data, error, id });
 
     if (error) {
       if ((error as any).code === '23505') {
@@ -1004,13 +988,7 @@ router.post('/:id/parts', async (req, res) => {
       .select('*')
       .eq('id', id)
       .single();
-    
-    if (verifyError) {
-      console.error('验证更新结果失败:', verifyError);
-    } else {
-      console.log('验证更新结果成功:', verifyData);
-    }
-    
+
     if (hasStatus) {
       await ensureStatusTable();
       const s = payload.purchase_status
@@ -1047,13 +1025,11 @@ router.post('/:id/parts', async (req, res) => {
       if ((exists || []).length === 0) {
         return res.status(404).json({ success: false, error: '记录不存在或未更新' });
       }
-      console.log('零件更新成功 (回查):', exists[0]);
       return res.json({ success: true, data: (exists as any)[0] });
     }
 
     // 使用验证查询的结果返回给前端，确保包含 completed_steps
     const finalData = verifyData || arr[0];
-    console.log('零件更新成功:', finalData);
 
     // 联动更新采购单的总重量与总金额，确保审批端与工装信息一致
     // 只在材料ID、重量或数量发生变化时才执行，避免不必要的数据库查询
@@ -1639,15 +1615,14 @@ router.post('/test-completed-steps', async (req, res) => {
       'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
       [completedStepsJson, id]
     );
-    console.log('测试结果:', result)
-    
+
     // 查询验证
     const { data, error } = await supabase
       .from('parts_info')
       .select('id, completed_steps')
       .eq('id', id)
       .single()
-    
+
     res.json({ success: true, result, data, error })
   } catch (err: any) {
     console.error('测试失败:', err)
@@ -1659,27 +1634,23 @@ router.post('/test-completed-steps', async (req, res) => {
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
     const { invs } = req.query as { invs?: string }
-    console.log('收到工时聚合数据请求，invs:', invs)
     if (!invs) {
       return res.json({ success: true, data: {} })
     }
-    
+
     const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-    console.log('解析后的盘存编号列表:', invList)
     if (invList.length === 0) {
       return res.json({ success: true, data: {} })
     }
-    
+
     // 查询这些盘存编号对应的所有工时记录
     const { data, error } = await supabase
       .from('work_hours')
       .select('inventory_no, process_name')
       .in('inventory_no', invList)
-    
-    console.log('查询工时数据结果:', { data, error })
-    
+
     if (error) throw error
-    
+
     // 按盘存编号聚合工序
     const aggregates: Record<string, string[]> = {}
     ;(data || []).forEach((row: any) => {
@@ -1690,8 +1661,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
         if (!aggregates[inv].includes(process)) aggregates[inv].push(process)
       }
     })
-    
-    console.log('返回工时聚合数据:', aggregates)
+
     res.json({ success: true, data: aggregates })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
