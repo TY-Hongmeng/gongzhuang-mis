@@ -1617,6 +1617,26 @@ router.get('/work-hours/aggregates', async (req, res) => {
   }
 })
 
+// 调试API：查询零件的 completed_steps
+router.get('/parts/:id/completed-steps', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { data, error } = await supabase
+      .from('parts_info')
+      .select('id, part_inventory_number, completed_steps')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    
+    console.log('查询 completed_steps:', { id, data })
+    res.json({ success: true, data })
+  } catch (err: any) {
+    console.error('查询 completed_steps 失败:', err)
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 // 设备管理
 router.get('/devices', async (_req, res) => {
   try {
