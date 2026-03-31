@@ -901,6 +901,7 @@ router.post('/:id/parts', async (req, res) => {
           cleanedPayload.completed_steps = []
         }
       }
+      console.log('处理 completed_steps:', cleanedPayload.completed_steps);
     }
     
     console.log('清理后的payload:', cleanedPayload);
@@ -952,6 +953,8 @@ router.post('/:id/parts', async (req, res) => {
       .update(cleanedPayload)
       .eq('id', id)
       .select(); // 返回数组
+
+    console.log('Supabase update result:', { data, error });
 
     if (error) {
       if ((error as any).code === '23505') {
