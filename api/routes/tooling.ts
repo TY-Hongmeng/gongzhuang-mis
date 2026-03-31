@@ -950,6 +950,20 @@ router.post('/:id/parts', async (req, res) => {
 
     console.log('准备更新数据库，payload:', cleanedPayload);
     
+    // 如果有 completed_steps 字段，使用直接SQL更新确保数据保存
+    if (cleanedPayload.completed_steps && Array.isArray(cleanedPayload.completed_steps)) {
+      try {
+        const completedStepsJson = JSON.stringify(cleanedPayload.completed_steps);
+        const { rowCount } = await query(
+          'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
+          [completedStepsJson, id]
+        );
+        console.log('直接SQL更新 completed_steps 结果:', { rowCount, id, completedStepsJson });
+      } catch (sqlErr) {
+        console.error('直接SQL更新 completed_steps 失败:', sqlErr);
+      }
+    }
+    
     const { data, error } = await supabase
       .from('parts_info')
       .update(cleanedPayload)
