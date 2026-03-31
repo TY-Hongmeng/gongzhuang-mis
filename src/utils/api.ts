@@ -20,12 +20,14 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
+    || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/status/.test(cleanUrl)
+    || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
   const method = String(init?.method || 'GET').toUpperCase()
   const clientOnly = isGhPages && (
     /^\/api\/tooling\/parts\/[^\/]+$/.test(cleanUrl) ||
@@ -2687,7 +2689,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (!route) continue
             if (inv) {
               await withTimeout(
-                supabase.from('parts_info').update({ process_route: route }).eq('inventory_number', inv),
+                supabase.from('parts_info').update({ process_route: route }).eq('part_inventory_number', inv),
                 8000
               )
             } else if (drawing) {
