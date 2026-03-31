@@ -951,39 +951,35 @@ router.post('/:id/parts', async (req, res) => {
 
     console.log('准备更新数据库，payload:', cleanedPayload);
     
-    // 提取 completed_steps 字段，避免被 Supabase ORM 覆盖
+    // 提取 completed_steps 字段
     const completedStepsToSave = cleanedPayload.completed_steps;
     if (Object.prototype.hasOwnProperty.call(cleanedPayload, 'completed_steps')) {
       delete (cleanedPayload as any).completed_steps;
     }
     
-    // 使用直接SQL更新 completed_steps，确保数据正确保存（放在Supabase ORM之前）
+    // 使用 Supabase 客户端更新 completed_steps（不使用 query()，避免 pg 模块依赖问题）
     if (completedStepsToSave && Array.isArray(completedStepsToSave)) {
       try {
-        const completedStepsJson = JSON.stringify(completedStepsToSave);
-        const result = await query(
-          'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
-          [completedStepsJson, id]
-        );
-        console.log('直接SQL更新 completed_steps 结果:', { result, id, completedStepsJson });
-        // 检查 result 对象
-        if (result && result.rowCount !== undefined) {
-          console.log('SQL更新 rowCount:', result.rowCount);
-          if (result.rowCount === 0) {
-            console.error('直接SQL更新 completed_steps 失败：没有记录被更新');
-          }
+        console.log('使用 Supabase 更新 completed_steps:', { id, completedStepsToSave });
+        const { data: csData, error: csError } = await supabase
+          .from('parts_info')
+          .update({ completed_steps: completedStepsToSave })
+          .eq('id', id)
+          .select();
+        
+        if (csError) {
+          console.error('Supabase 更新 completed_steps 失败:', csError);
         } else {
-          console.log('SQL更新结果:', result);
+          console.log('Supabase 更新 completed_steps 成功:', csData);
         }
-      } catch (sqlErr) {
-        console.error('直接SQL更新 completed_steps 失败:', sqlErr);
+      } catch (csErr) {
+        console.error('Supabase 更新 completed_steps 异常:', csErr);
       }
     }
     
-    // 如果 cleanedPayload 为空（只有 completed_steps 字段），跳过 Supabase ORM 更新
+    // 如果 cleanedPayload 为空（只有 completed_steps 字段），直接返回成功
     if (Object.keys(cleanedPayload).length === 0) {
-      console.log('cleanedPayload 为空，跳过 Supabase ORM 更新');
-      // 直接返回成功，因为 completed_steps 已经通过 SQL 更新了
+      console.log('cleanedPayload 为空，跳过其他字段更新');
       return res.json({ success: true, data: { id, completed_steps: completedStepsToSave } });
     }
     
