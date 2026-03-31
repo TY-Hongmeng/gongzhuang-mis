@@ -961,16 +961,15 @@ router.post('/:id/parts', async (req, res) => {
     if (completedStepsToSave && Array.isArray(completedStepsToSave)) {
       try {
         console.log('使用 Supabase 更新 completed_steps:', { id, completedStepsToSave });
-        const { data: csData, error: csError } = await supabase
+        const { error: csError } = await supabase
           .from('parts_info')
           .update({ completed_steps: completedStepsToSave })
-          .eq('id', id)
-          .select();
+          .eq('id', id);
         
         if (csError) {
           console.error('Supabase 更新 completed_steps 失败:', csError);
         } else {
-          console.log('Supabase 更新 completed_steps 成功:', csData);
+          console.log('Supabase 更新 completed_steps 成功');
         }
       } catch (csErr) {
         console.error('Supabase 更新 completed_steps 异常:', csErr);
