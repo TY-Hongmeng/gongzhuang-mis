@@ -146,6 +146,7 @@ export const useToolingData = () => {
             remarks: String(item.remarks || ''),
             purchase_status: String(item.purchase_status || ''),
             process_route: String(item.process_route || ''),
+            completed_steps: Array.isArray(item.completed_steps) ? item.completed_steps : [],
             material: undefined
           };
         });

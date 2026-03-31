@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1131,6 +1131,41 @@ const ToolingInfoPage: React.FC = () => {
       if (bc) {
         try { bc.close() } catch {}
       }
+    }
+  }, [data, partsMap])
+  
+  // 监听页面可见性变化，当用户切换回页面时刷新数据
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('页面重新可见，刷新工时数据')
+        // 清除缓存，强制刷新工时数据
+        workHoursFetchRef.current.lastKey = ''
+        workHoursFetchRef.current.lastFetchTime = 0
+        // 清除列缓存，确保列定义重新创建
+        partColumnsCacheRef.current.clear()
+        childColumnsCacheRef.current.clear()
+        // 重新获取工时数据
+        const invsSet = new Set<string>()
+        ensureBlankToolings(data).forEach(d => {
+          const inv = String(d.inventory_number || '').trim().toUpperCase()
+          if (inv) invsSet.add(inv)
+        })
+        Object.values(partsMap).forEach(list => (list || []).forEach(p => {
+          const inv = String(p.part_inventory_number || '').trim().toUpperCase()
+          if (inv) invsSet.add(inv)
+        }))
+        const invs = Array.from(invsSet)
+        if (invs.length > 0) {
+          fetchWorkHoursData(invs)
+          workHoursFetchRef.current.lastFetchTime = Date.now()
+          workHoursFetchRef.current.lastKey = invs.slice().sort().join('|')
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [data, partsMap])
   
