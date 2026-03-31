@@ -1628,6 +1628,37 @@ router.post('/work-hours/batch-delete', async (req, res) => {
   }
 })
 
+// 测试 completed_steps 更新
+router.post('/test-completed-steps', async (req, res) => {
+  try {
+    const { id, completed_steps } = req.body || {}
+    console.log('测试 completed_steps 更新:', { id, completed_steps })
+    
+    if (!id || !Array.isArray(completed_steps)) {
+      return res.status(400).json({ success: false, error: '参数错误' })
+    }
+    
+    const completedStepsJson = JSON.stringify(completed_steps);
+    const result = await query(
+      'UPDATE parts_info SET completed_steps = $1::jsonb WHERE id = $2',
+      [completedStepsJson, id]
+    );
+    console.log('测试结果:', result)
+    
+    // 查询验证
+    const { data, error } = await supabase
+      .from('parts_info')
+      .select('id, completed_steps')
+      .eq('id', id)
+      .single()
+    
+    res.json({ success: true, result, data, error })
+  } catch (err: any) {
+    console.error('测试失败:', err)
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 // 获取工时数据聚合（用于工艺路线完成状态）
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
