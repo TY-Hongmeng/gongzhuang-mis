@@ -107,7 +107,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
-  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || !wCompletedQuantity || !wAuxStart || !wAuxEnd || !wShiftDate
+  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || !wAuxStart || !wAuxEnd || !wShiftDate
 
 
 
