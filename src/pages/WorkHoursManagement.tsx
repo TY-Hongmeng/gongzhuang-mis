@@ -278,8 +278,13 @@ const WorkHoursManagement: React.FC = () => {
             if (d.device_no) map[d.device_no] = { name: d.device_name || '', max_aux_minutes: typeof d.max_aux_minutes === 'number' ? d.max_aux_minutes : undefined }
           })
           setDeviceMap(map)
+          console.log('[WorkHoursManagement] 设备数据加载成功:', Object.keys(map).length, '个设备')
+        } else {
+          console.error('[WorkHoursManagement] 设备数据加载失败:', j)
         }
-      } catch {}
+      } catch (e) {
+        console.error('[WorkHoursManagement] 加载设备数据出错:', e)
+      }
     })()
   }, [])
 
@@ -499,6 +504,10 @@ const WorkHoursManagement: React.FC = () => {
       const quantityFactor = Math.max(Number(r.completed_quantity) || 1, 1)
       const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined
       const eff = typeof adjustedMaxm === 'number' && mins > adjustedMaxm ? adjustedMaxm : mins
+      // 调试日志：当实际时间超过限制时输出
+      if (typeof adjustedMaxm === 'number' && mins > adjustedMaxm) {
+        console.log(`[WorkHoursManagement] 辅助时间限制生效: 设备=${r.device_no}, 原始=${mins}分钟, 限制=${adjustedMaxm}分钟(最大${maxm}×数量${quantityFactor}), 实际=${eff}分钟`)
+      }
       return String(eff)
     }, width: 60, align: 'center' },
     { title: '程序', dataIndex: 'proc_hours', render: (v: number) => ((Number(v||0)*60).toFixed(0)), width: 60, align: 'center' },
