@@ -1327,18 +1327,20 @@ const WorkHoursManagement: React.FC = () => {
               });
               
               return (
-                <Table
-                  rowKey="id"
-                  columns={columnsWithRowSpan as any}
-                  dataSource={record.rows}
-                  pagination={false}
-                  size="small"
-                  scroll={{ x: 'max-content' }}
-                  rowSelection={{
-                    selectedRowKeys: selectedKeys,
-                    onChange: (keys) => setSelectedKeys(keys as React.Key[])
-                  }}
-                />
+                <div style={{ margin: '8px 0', padding: '8px', background: '#fafafa', borderRadius: '4px' }}>
+                  <Table
+                    rowKey="id"
+                    columns={columnsWithRowSpan as any}
+                    dataSource={record.rows}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
+                    rowSelection={{
+                      selectedRowKeys: selectedKeys,
+                      onChange: (keys) => setSelectedKeys(keys as React.Key[])
+                    }}
+                  />
+                </div>
               );
             }
           }}
