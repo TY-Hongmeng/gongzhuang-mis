@@ -31,25 +31,6 @@
         } catch(e4) {}
       })();
     </script>
-    <script type="module">
-      // 仅在开发环境执行一次性遮罩清理与 SW 注销（无自动重载/重连）
-      if (import.meta.env?.DEV) {
-        try {
-          const nodes = document.querySelectorAll('vite-error-overlay, #vite-error-overlay, .vite-error-overlay');
-          nodes.forEach((el) => el.remove());
-        } catch {}
-
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations?.().then(regs => {
-            regs.forEach(r => r.unregister());
-          }).catch(() => {});
-          
-          caches.keys().then(names => {
-            Promise.all(names.map(n => caches.delete(n)));
-          }).catch(() => {});
-        }
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>

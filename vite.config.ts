@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -20,6 +21,10 @@ export default defineConfig(({ mode }) => {
         },
       }),
       tsconfigPaths(),
+      legacy({
+        targets: ['defaults', 'iOS >= 11', 'Safari >= 11'],
+        modernPolyfills: true,
+      }),
     ],
     server: {
       port: 5182,
