@@ -1,39 +1,26 @@
-// Kill-switch Service Worker for development
-// This SW takes control immediately, clears caches, and unregisters itself.
+self.addEventListener('install', function () {
+  self.skipWaiting()
+})
 
-self.addEventListener('install', (event) => {
-  // Activate immediately
-  self.skipWaiting();
-});
+self.addEventListener('activate', function (event) {
+  event.waitUntil((async function () {
+    try {
+      var keys = await caches.keys()
+      await Promise.all(keys.map(function (key) { return caches.delete(key) }))
+    } catch (e) {}
+    try {
+      await self.registration.unregister()
+    } catch (e2) {}
+    try {
+      await self.clients.claim()
+    } catch (e3) {}
+  })())
+})
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    try {
-      // Identify itself
-      console.log('[KillSW] Activated, clearing caches and unregistering');
-      // Clear all caches
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    } catch {}
-    try {
-      // Unregister this SW to fully disable control
-      await self.registration.unregister();
-      console.log('[KillSW] Unregistered current service worker');
-    } catch {}
-    // Claim clients to ensure immediate control until unregister completes
-    try {
-      await self.clients.claim();
-    } catch {}
-  })());
-});
-
-// Pass-through network for all requests to avoid any interception issues
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', function (event) {
   try {
-    const req = event.request;
-    event.respondWith(fetch(req));
+    event.respondWith(fetch(event.request))
   } catch (e) {
-    // If anything goes wrong, fallback to direct network
-    event.respondWith(fetch(event.request));
+    event.respondWith(fetch(event.request))
   }
-});
+})

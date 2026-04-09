@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths(),
       legacy({
         targets: ['defaults', 'iOS >= 11', 'Safari >= 11'],
-        modernPolyfills: true,
+        renderModernChunks: false,
       }),
     ],
     server: {

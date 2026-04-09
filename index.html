@@ -31,6 +31,45 @@
         } catch(e4) {}
       })();
     </script>
+    <script>
+      (function(){
+        try {
+          var ua = navigator.userAgent || ''
+          var isIOS = /iP(hone|ad|od)/i.test(ua)
+          var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
+          var key = '__ios_boot_recover_1_21_16__'
+          var done = false
+          try {
+            done = window.sessionStorage && window.sessionStorage.getItem(key) === '1'
+          } catch (e1) {}
+          if (!isIOS || !isEmbedded || done) return
+          try {
+            if (window.sessionStorage) window.sessionStorage.setItem(key, '1')
+          } catch (e2) {}
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+              navigator.serviceWorker.getRegistrations().then(function(regs){
+                regs.forEach(function(reg){ reg.unregister() })
+              }).catch(function(){})
+            }
+          } catch (e3) {}
+          try {
+            if (window.caches && caches.keys) {
+              caches.keys().then(function(names){
+                return Promise.all(names.map(function(name){ return caches.delete(name) }))
+              }).catch(function(){})
+            }
+          } catch (e4) {}
+          try {
+            if (location.search.indexOf('__ios_reload=1.21.16') === -1) {
+              var next = location.href
+              next += (next.indexOf('?') === -1 ? '?' : '&') + '__ios_reload=1.21.16'
+              location.replace(next)
+            }
+          } catch (e5) {}
+        } catch (e6) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
