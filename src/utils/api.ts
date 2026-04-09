@@ -106,6 +106,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     return cleanUrl
   })()
+  const shouldUseLocalhostFallback = !isGhPages && (isLocal || isDev)
   
   try {
     if (isGhPages && /functions\.supabase\.co/.test(abs)) {
@@ -114,9 +115,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     }
     const res = await fetch(abs, init)
     if (!res.ok && res.status >= 500) {
-      const u = new URL(abs, window.location.origin)
-      const fallback = `http://localhost:3003${u.pathname}${u.search}`
-      return await fetch(fallback, init)
+      if (shouldUseLocalhostFallback) {
+        const u = new URL(abs, window.location.origin)
+        const fallback = `http://localhost:3003${u.pathname}${u.search}`
+        return await fetch(fallback, init)
+      }
     }
     if (res.status === 404 && cleanUrl.startsWith('/') && (!forceBackend || allowClientFallbackOn404)) {
       const handled = await handleClientSideApi(cleanUrl, init)
@@ -130,9 +133,9 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       const handled = await handleClientSideApi(cleanUrl, init)
       if (handled) return handled
     }
-    // 在 GitHub Pages 环境不再回退到 localhost，直接抛错
-    if (isGhPages) {
-      console.error('fetchWithFallback: isGhPages=true, throwing Network error')
+    // 生产环境不回退到 localhost，避免 HTTPS 页面触发不安全请求
+    if (!shouldUseLocalhostFallback) {
+      console.error('fetchWithFallback: production mode, throwing Network error')
       throw new Error('Network error')
     }
     const u = new URL(abs, window.location.origin)
