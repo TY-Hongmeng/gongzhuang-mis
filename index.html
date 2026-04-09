@@ -37,37 +37,68 @@
           var ua = navigator.userAgent || ''
           var isIOS = /iP(hone|ad|od)/i.test(ua)
           var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
-          var key = '__ios_boot_recover_1_21_16__'
-          var done = false
-          try {
-            done = window.sessionStorage && window.sessionStorage.getItem(key) === '1'
-          } catch (e1) {}
-          if (!isIOS || !isEmbedded || done) return
-          try {
-            if (window.sessionStorage) window.sessionStorage.setItem(key, '1')
-          } catch (e2) {}
+          if (!isIOS || !isEmbedded) return
           try {
             if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
               navigator.serviceWorker.getRegistrations().then(function(regs){
                 regs.forEach(function(reg){ reg.unregister() })
               }).catch(function(){})
             }
-          } catch (e3) {}
+          } catch (e1) {}
           try {
             if (window.caches && caches.keys) {
               caches.keys().then(function(names){
                 return Promise.all(names.map(function(name){ return caches.delete(name) }))
               }).catch(function(){})
             }
-          } catch (e4) {}
-          try {
-            if (location.search.indexOf('__ios_reload=1.21.16') === -1) {
-              var next = location.href
-              next += (next.indexOf('?') === -1 ? '?' : '&') + '__ios_reload=1.21.16'
-              location.replace(next)
-            }
-          } catch (e5) {}
-        } catch (e6) {}
+          } catch (e2) {}
+        } catch (e3) {}
+      })();
+    </script>
+    <script>
+      (function(){
+        try {
+          window.__APP_BOOT_STAGE__ = 'html'
+          var timeoutMs = 12000
+          setTimeout(function(){
+            try {
+              if (window.__APP_BOOT_DONE__) return
+              var root = document.getElementById('root')
+              if (root && root.children && root.children.length > 0) return
+              var wrap = document.createElement('div')
+              wrap.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;padding:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;line-height:1.6;color:#111;'
+              var ua = navigator.userAgent || ''
+              var title = document.createElement('div')
+              title.textContent = '页面启动失败，请点击下方按钮重试'
+              title.style.cssText = 'font-size:16px;font-weight:600;margin-bottom:8px;'
+              var detail = document.createElement('div')
+              detail.textContent = 'boot=' + String(window.__APP_BOOT_STAGE__ || 'unknown') + ' | ua=' + ua
+              detail.style.cssText = 'font-size:12px;color:#666;word-break:break-all;margin-bottom:12px;'
+              var retry = document.createElement('button')
+              retry.textContent = '重试打开'
+              retry.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#1677ff;color:#fff;margin-right:8px;'
+              retry.onclick = function(){ location.reload() }
+              var safe = document.createElement('button')
+              safe.textContent = '兼容模式打开'
+              safe.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#22a06b;color:#fff;'
+              safe.onclick = function(){
+                var has = location.search.indexOf('boot_safe=1') !== -1
+                if (has) {
+                  location.reload()
+                  return
+                }
+                var next = location.href
+                next += (next.indexOf('?') === -1 ? '?' : '&') + 'boot_safe=1'
+                location.replace(next)
+              }
+              wrap.appendChild(title)
+              wrap.appendChild(detail)
+              wrap.appendChild(retry)
+              wrap.appendChild(safe)
+              document.body.appendChild(wrap)
+            } catch (e1) {}
+          }, timeoutMs)
+        } catch (e2) {}
       })();
     </script>
   </head>

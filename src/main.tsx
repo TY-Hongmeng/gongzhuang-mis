@@ -6,7 +6,8 @@ import './index.css'
 
 declare const __APP_VERSION__: string
 
-// iOS Safari 错误处理
+;(window as any).__APP_BOOT_STAGE__ = 'main-init'
+
 window.addEventListener('error', (e) => {
   console.error('Global error:', e.error)
 })
@@ -39,16 +40,34 @@ if (isIOSSafari) {
   document.body.classList.add('ios-safari')
 }
 
-installApiInterceptor()
+const bootSearch = new URLSearchParams(window.location.search)
+const forceSafeMode = bootSearch.get('boot_safe') === '1'
+const isIOSEmbedded = /iP(hone|ad|od)/i.test(navigator.userAgent) && /MicroMessenger|baiduboxapp|Baidu/i.test(navigator.userAgent)
+
+if (!forceSafeMode && !isIOSEmbedded) {
+  setTimeout(() => {
+    try {
+      ;(window as any).__APP_BOOT_STAGE__ = 'interceptor'
+      installApiInterceptor()
+    } catch (error) {
+      console.error('installApiInterceptor failed:', error)
+    }
+  }, 0)
+} else {
+  console.log('Boot safe mode: skip api interceptor')
+}
+
 console.log('App version:', __APP_VERSION__)
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
   console.error('Root element not found')
 } else {
+  ;(window as any).__APP_BOOT_STAGE__ = 'render'
   createRoot(rootElement).render(
     <StrictMode>
       <App />
     </StrictMode>,
   )
+  ;(window as any).__APP_BOOT_DONE__ = true
 }
