@@ -65,6 +65,34 @@
               if (window.__APP_BOOT_DONE__) return
               var root = document.getElementById('root')
               if (root && root.children && root.children.length > 0) return
+              var checks = [
+                { name: 'origin', url: location.origin + '/' },
+                { name: 'supabase', url: 'https://oltsiocyesbgezlrcxze.supabase.co' },
+                { name: 'functions', url: 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1/' }
+              ]
+              var testOne = function(item){
+                return new Promise(function(resolve){
+                  var done = false
+                  var finish = function(text){
+                    if (done) return
+                    done = true
+                    resolve(item.name + '=' + text)
+                  }
+                  var timer = setTimeout(function(){ finish('timeout') }, 5000)
+                  try {
+                    fetch(item.url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).then(function(){
+                      clearTimeout(timer)
+                      finish('ok')
+                    }).catch(function(err){
+                      clearTimeout(timer)
+                      finish('fail:' + String(err && err.message ? err.message : err))
+                    })
+                  } catch (err2) {
+                    clearTimeout(timer)
+                    finish('fail:' + String(err2 && err2.message ? err2.message : err2))
+                  }
+                })
+              }
               var wrap = document.createElement('div')
               wrap.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;padding:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;line-height:1.6;color:#111;'
               var ua = navigator.userAgent || ''
@@ -91,11 +119,24 @@
                 next += (next.indexOf('?') === -1 ? '?' : '&') + 'boot_safe=1'
                 location.replace(next)
               }
+              var copy = document.createElement('button')
+              copy.textContent = '复制诊断信息'
+              copy.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#444;color:#fff;margin-left:8px;'
+              copy.onclick = function(){
+                var text = detail.textContent || ''
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).catch(function(){})
+                }
+              }
               wrap.appendChild(title)
               wrap.appendChild(detail)
               wrap.appendChild(retry)
               wrap.appendChild(safe)
+              wrap.appendChild(copy)
               document.body.appendChild(wrap)
+              Promise.all(checks.map(testOne)).then(function(result){
+                detail.textContent = (detail.textContent || '') + ' | net=' + result.join(',')
+              }).catch(function(){})
             } catch (e1) {}
           }, timeoutMs)
         } catch (e2) {}
