@@ -193,34 +193,51 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
 
 
   React.useEffect(() => {
-    const fmtLast = () => {
-      if (!wDeviceNo) { setLastCompletedTime(''); return }
-      const last = (recentItems || []).find((it: any) => String(it.device_no || '') === String(wDeviceNo || ''))
-      if (!last || !last.aux_end_time || !last.aux_start_time) { setLastCompletedTime(''); return }
-      
-      // 创建辅助开始和结束的完整日期时间对象
-      const workDate = dayjs(last.work_date || undefined)
-      if (!workDate.isValid()) { setLastCompletedTime(''); return }
-      
-      const auxStartTime = dayjs(last.work_date).hour(Number(last.aux_start_time?.split(':')[0] || 0)).minute(Number(last.aux_start_time?.split(':')[1] || 0))
-      const auxEndTime = dayjs(last.work_date).hour(Number(last.aux_end_time?.split(':')[0] || 0)).minute(Number(last.aux_end_time?.split(':')[1] || 0))
-      
-      // 如果辅助结束时间早于辅助开始时间，说明跨天了，需要加1天
-      const actualAuxEndTime = auxEndTime.isBefore(auxStartTime) ? auxEndTime.add(1, 'day') : auxEndTime
-      
-      // 计算程序时长（分钟）
-      const procHours = Number(last.proc_hours || 0)
-      const programMinutes = Math.round(procHours * 60)
-      
-      // 计算完成时间：辅助结束时间加上程序时长
-      const completedTime = actualAuxEndTime.add(programMinutes, 'minute')
-      
-      // 格式化显示
-      const formattedTime = completedTime.format('MM月DD日 HH:mm')
-      setLastCompletedTime(formattedTime)
+    let cancelled = false
+    const fetchLastForDevice = async () => {
+      if (!wDeviceNo) {
+        if (!cancelled) setLastCompletedTime('')
+        return
+      }
+      try {
+        const params = new URLSearchParams()
+        params.set('page', '1')
+        params.set('pageSize', '200')
+        params.set('order', 'created_at')
+        params.set('order_dir', 'desc')
+        params.set('device_no', String(wDeviceNo))
+        const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
+        if (!resp.ok) throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+        const json = await resp.json()
+        const rows = Array.isArray(json?.items)
+          ? json.items
+          : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
+        let latest: dayjs.Dayjs | null = null
+        for (const row of rows) {
+          const workDate = dayjs(String(row?.work_date || ''))
+          if (!workDate.isValid()) continue
+          const start = String(row?.aux_start_time || '')
+          const end = String(row?.aux_end_time || '')
+          if (!start || !end) continue
+          const [sHour, sMin] = start.split(':').map((x: string) => Number(x || 0))
+          const [eHour, eMin] = end.split(':').map((x: string) => Number(x || 0))
+          const auxStartTime = dayjs(workDate).hour(sHour).minute(sMin)
+          const auxEndTime = dayjs(workDate).hour(eHour).minute(eMin)
+          const actualAuxEndTime = auxEndTime.isBefore(auxStartTime) ? auxEndTime.add(1, 'day') : auxEndTime
+          const procMinutes = Math.round(Number(row?.proc_hours || 0) * 60)
+          const doneAt = actualAuxEndTime.add(procMinutes, 'minute')
+          if (!latest || doneAt.valueOf() > latest.valueOf()) latest = doneAt
+        }
+        if (!cancelled) setLastCompletedTime(latest ? latest.format('MM月DD日 HH:mm') : '')
+      } catch {
+        if (!cancelled) setLastCompletedTime('')
+      }
     }
-    fmtLast()
-  }, [wDeviceNo, recentItems])
+    fetchLastForDevice()
+    return () => {
+      cancelled = true
+    }
+  }, [wDeviceNo])
 
   const fetchInventory = async (q: string) => {
     try {
