@@ -450,34 +450,46 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   }
 
   const fetchDevices = async () => {
-    const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-    const isGhPages = /github\.io/i.test(host)
-    const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
-    const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
-    const url = isGhPages ? `${restBase}/devices?select=*&order=device_no.asc` : '/api/tooling/devices'
-    const r = await fetchWithFallback(url)
-    if (!r.ok) {
-      throw new Error(`API请求失败: ${r.status} ${r.statusText}`)
-    }
-    const j = await r.json()
-    const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []))
-    if (deviceItems.length > 0 || j?.success) {
-      const uniqueDevices = new Map<string, any>()
-      deviceItems.forEach((d: any) => {
-        const val = String(d.device_no || '')
-        if (!val) return
-        if (!uniqueDevices.has(val)) {
-          uniqueDevices.set(val, {
-            value: val,
-            label: `${val}-${String(d.device_name || '')}`,
-            meta: { device_name: String(d.device_name || '') }
-          })
+    let lastError = ''
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const r = await fetchWithFallback('/api/tooling/devices')
+        if (!r.ok) {
+          let detail = ''
+          try {
+            const errJson = await r.json()
+            detail = String(errJson?.error || errJson?.message || '').trim()
+          } catch {}
+          const suffix = detail ? ` - ${detail}` : ''
+          throw new Error(`API请求失败: ${r.status}${suffix}`)
         }
-      })
-      const list = Array.from(uniqueDevices.values())
-      list.sort((a, b) => String(a.value).localeCompare(String(b.value), 'zh-Hans-CN', { numeric: true }))
-      setDeviceOptions(list)
+        const j = await r.json()
+        const deviceItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []))
+        const uniqueDevices = new Map<string, any>()
+        deviceItems.forEach((d: any) => {
+          const val = String(d.device_no || '')
+          if (!val) return
+          if (!uniqueDevices.has(val)) {
+            uniqueDevices.set(val, {
+              value: val,
+              label: `${val}-${String(d.device_name || '')}`,
+              meta: { device_name: String(d.device_name || '') }
+            })
+          }
+        })
+        const list = Array.from(uniqueDevices.values())
+        list.sort((a, b) => String(a.value).localeCompare(String(b.value), 'zh-Hans-CN', { numeric: true }))
+        setDeviceOptions(list)
+        return
+      } catch (e: any) {
+        lastError = String(e?.message || '加载设备编号失败')
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+        }
+      }
     }
+    setDeviceOptions([])
+    throw new Error(lastError || '加载设备编号失败')
   }
 
   const handleRefresh = async () => {
@@ -1054,6 +1066,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   showSearch
                   filterOption={(input, option) => String(option?.label || '').includes(input)}
                   options={deviceOptions}
+                  onOpenChange={(open) => {
+                    if (open && deviceOptions.length === 0) {
+                      fetchDevices().catch((e: any) => message.error(e?.message || '加载设备编号失败'))
+                    }
+                  }}
                   onSelect={(_val, opt: any) => setDeviceName(opt?.meta?.device_name || '')}
                 />
               </Form.Item>
