@@ -1484,8 +1484,10 @@ const enrichWorkHourPartNames = async (rows: any[]) => {
     const name = String(row?.part_name || '').trim()
     if (!name) return
     const invKey = normalizePartLookupKey(row?.part_inventory_number)
+    const toolingInvKey = normalizePartLookupKey(row?.inventory_number)
     const drawKey = normalizePartLookupKey(row?.part_drawing_number)
     if (invKey && !partNameMap.has(invKey)) partNameMap.set(invKey, name)
+    if (toolingInvKey && !partNameMap.has(toolingInvKey)) partNameMap.set(toolingInvKey, name)
     if (drawKey && !partNameMap.has(drawKey)) partNameMap.set(drawKey, name)
   }
 
@@ -1493,30 +1495,35 @@ const enrichWorkHourPartNames = async (rows: any[]) => {
     if (process.env.SUPABASE_DB_URL) {
       if (inventoryValues.length > 0) {
         const r1 = await query(
-          'SELECT part_inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_inventory_number = ANY($1::text[])',
+          'SELECT part_inventory_number, inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_inventory_number = ANY($1::text[]) OR inventory_number = ANY($1::text[])',
           [inventoryValues]
         )
         ;(r1.rows || []).forEach(upsertPartName)
       }
       if (drawingValues.length > 0) {
         const r2 = await query(
-          'SELECT part_inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_drawing_number = ANY($1::text[])',
+          'SELECT part_inventory_number, inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_drawing_number = ANY($1::text[])',
           [drawingValues]
         )
         ;(r2.rows || []).forEach(upsertPartName)
       }
     } else {
       if (inventoryValues.length > 0) {
-        const { data } = await supabase
+        const { data: partsByPartInv } = await supabase
           .from('parts_info')
-          .select('part_inventory_number, part_drawing_number, part_name')
+          .select('part_inventory_number, inventory_number, part_drawing_number, part_name')
           .in('part_inventory_number', inventoryValues)
-        ;(data || []).forEach(upsertPartName)
+        ;(partsByPartInv || []).forEach(upsertPartName)
+        const { data: partsByInv } = await supabase
+          .from('parts_info')
+          .select('part_inventory_number, inventory_number, part_drawing_number, part_name')
+          .in('inventory_number', inventoryValues)
+        ;(partsByInv || []).forEach(upsertPartName)
       }
       if (drawingValues.length > 0) {
         const { data } = await supabase
           .from('parts_info')
-          .select('part_inventory_number, part_drawing_number, part_name')
+          .select('part_inventory_number, inventory_number, part_drawing_number, part_name')
           .in('part_drawing_number', drawingValues)
         ;(data || []).forEach(upsertPartName)
       }
