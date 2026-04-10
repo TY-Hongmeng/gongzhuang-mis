@@ -139,10 +139,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
-  const auxStartDisplay = React.useMemo(() => {
-    if (!wWorkDate || !wAuxStart) return '-'
-    return dayjs(wWorkDate).hour(wAuxStart.hour()).minute(wAuxStart.minute()).format('MM-DD HH:mm')
-  }, [wWorkDate, wAuxStart])
   const auxEndDisplay = React.useMemo(() => {
     if (!wWorkDate || !wAuxStart || !wAuxEnd) return '-'
     const start = dayjs(wWorkDate).hour(wAuxStart.hour()).minute(wAuxStart.minute())
@@ -181,7 +177,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         const calculatedCompletedTime = actualAuxEndTime.add(wProcMinutes, 'minute')
         
         // 格式化显示
-        const formattedTime = calculatedCompletedTime.format('MM月DD日 HH:mm')
+        const formattedTime = calculatedCompletedTime.format('MM-DD HH:mm')
         
         // 更新状态完成时间，不再使用form
         setCompletedTime(formattedTime)
@@ -243,7 +239,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           const doneAt = actualAuxEndTime.add(procMinutes, 'minute')
           if (!latest || doneAt.valueOf() > latest.valueOf()) latest = doneAt
         }
-        if (!cancelled) setLastCompletedTime(latest ? latest.format('MM月DD日 HH:mm') : '')
+        if (!cancelled) setLastCompletedTime(latest ? latest.format('MM-DD HH:mm') : '')
       } catch {
         if (!cancelled) setLastCompletedTime('')
       }
@@ -1213,11 +1209,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">辅助开始：</div>
             <div className="line-value">
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="" />
+                <QuickTimeInput placeholder="" displayDate={wWorkDate} />
               </Form.Item>
-              <div className="line-static" style={{ marginTop: 6 }}>
-                <span className="line-static-value">{auxStartDisplay}</span>
-              </div>
             </div>
           </div>
 

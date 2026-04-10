@@ -8,6 +8,7 @@ interface QuickTimeInputProps {
   placeholder?: string
   isEndTime?: boolean // 是否为结束时间输入框，如果是，则提供特定的快捷操作（+时长）
   startTime?: Dayjs | null // 如果是结束时间，传入开始时间以计算时长
+  displayDate?: Dayjs | null
 }
 
 const QuickTimeInput: React.FC<QuickTimeInputProps> = ({ 
@@ -15,7 +16,8 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
   onChange, 
   placeholder = "HHmm", 
   isEndTime = false,
-  startTime = null
+  startTime = null,
+  displayDate = null
 }) => {
   // 内部维护输入框显示的字符串，支持HHmm格式
   const [inputValue, setInputValue] = useState('')
@@ -24,11 +26,16 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
   // 当外部 value 变化时，同步更新内部输入框
   useEffect(() => {
     if (value && dayjs(value).isValid()) {
-      setInputValue(value.format('HH:mm'))
+      if (displayDate && dayjs(displayDate).isValid()) {
+        const merged = dayjs(displayDate).hour(value.hour()).minute(value.minute()).second(0)
+        setInputValue(merged.format('MM-DD HH:mm'))
+      } else {
+        setInputValue(value.format('HH:mm'))
+      }
     } else {
       setInputValue('')
     }
-  }, [value])
+  }, [value, displayDate])
 
   // 处理输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,13 +51,17 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
 
   // 处理失去焦点：尝试格式化并触发 onChange
   const handleBlur = () => {
-    let val = inputValue.replace(':', '')
+    let val = String(inputValue || '').replace(/\D/g, '')
     
     if (!val) {
       if (value) {
         onChange?.(null)
       }
       return
+    }
+
+    if (val.length > 4) {
+      val = val.slice(-4)
     }
 
     // 补全逻辑
