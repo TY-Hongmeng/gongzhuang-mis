@@ -1852,6 +1852,51 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
       // Work hours
       if (method === 'GET' && path === '/api/tooling/work-hours') {
+        const normalizePartLookupKey = (value: any) => String(value || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/[^A-Za-z0-9]/g, '')
+          .trim()
+          .toUpperCase()
+        const enrichWorkHourPartMeta = async (rows: any[]) => {
+          const list = Array.isArray(rows) ? rows : []
+          if (list.length === 0) return list
+          const invValues = Array.from(new Set(
+            list
+              .map((row: any) => String(row?.part_inventory_number || '').trim())
+              .filter(Boolean)
+          ))
+          if (invValues.length === 0) return list
+          const partMetaMap = new Map<string, { name: string; drawing: string }>()
+          const upsertMeta = (row: any) => {
+            const name = String(row?.part_name || '').trim()
+            const drawing = String(row?.part_drawing_number || '').trim()
+            const invKey = normalizePartLookupKey(row?.part_inventory_number)
+            const parentInvKey = normalizePartLookupKey(row?.inventory_number)
+            const meta = { name, drawing }
+            if (invKey && !partMetaMap.has(invKey)) partMetaMap.set(invKey, meta)
+            if (parentInvKey && !partMetaMap.has(parentInvKey)) partMetaMap.set(parentInvKey, meta)
+          }
+          const { data: partsByPartInv } = await supabase
+            .from('parts_info')
+            .select('part_inventory_number,inventory_number,part_name,part_drawing_number')
+            .in('part_inventory_number', invValues)
+          ;(partsByPartInv || []).forEach(upsertMeta)
+          const { data: partsByInv } = await supabase
+            .from('parts_info')
+            .select('part_inventory_number,inventory_number,part_name,part_drawing_number')
+            .in('inventory_number', invValues)
+          ;(partsByInv || []).forEach(upsertMeta)
+          return list.map((row: any) => {
+            const key = normalizePartLookupKey(row?.part_inventory_number)
+            const meta = (key && partMetaMap.get(key)) || null
+            if (!meta) return row
+            return {
+              ...row,
+              part_name: meta.name || String(row?.part_name || ''),
+              part_drawing_number: meta.drawing || String(row?.part_drawing_number || '')
+            }
+          })
+        }
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         if (invsParam) {
@@ -1861,7 +1906,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (invs.length > 0) q = q.in('part_inventory_number', invs)
             const { data, error } = await q
             if (error) return jsonResponse({ success: true, items: [], total: 0, page: 1, pageSize: invs.length || 0, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
-            const items = data || []
+            const items = await enrichWorkHourPartMeta(data || [])
             const totals = (items as any[]).reduce(
               (acc, r: any) => {
                 acc.total_hours += Number(r.hours || 0)
@@ -1907,7 +1952,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         query = query.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error, count } = await query
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
-        const items = data || []
+        const items = await enrichWorkHourPartMeta(data || [])
         const totals = (items as any[]).reduce(
           (acc, r: any) => {
             acc.total_hours += Number(r.hours || 0)
@@ -1931,6 +1976,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const payload: any = {
           part_inventory_number: String(body.part_inventory_number || ''),
           part_drawing_number: String(body.part_drawing_number || ''),
+          part_name: String(body.part_name || ''),
           hours: Number(body.hours || 0),
           aux_hours: Number(body.aux_hours || 0),
           proc_hours: Number(body.proc_hours || 0),
