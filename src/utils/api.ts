@@ -2691,12 +2691,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const to = from + pageSize - 1
         const expr = search ? `%${search}%` : ''
         const BATCH_SIZE = 1000
+        const withRetry = async (build: () => Promise<any>) => {
+          let last: any = null
+          for (let i = 0; i < 3; i += 1) {
+            const res = await build()
+            if (!res?.error) return res
+            last = res
+            await new Promise(resolve => setTimeout(resolve, 180 * (i + 1)))
+          }
+          return last
+        }
         const fetchBatched = async (build: (offset: number, limit: number) => any) => {
           const all: any[] = []
           let offset = 0
           while (true) {
             if (!search && from + offset > to) break
-            const { data, error } = await build(offset, BATCH_SIZE)
+            const { data, error } = await withRetry(() => build(offset, BATCH_SIZE))
             if (error) return { error }
             const rows = Array.isArray(data) ? data : []
             all.push(...rows)

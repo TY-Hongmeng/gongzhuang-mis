@@ -229,24 +229,34 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       invAbortRef.current = new AbortController()
       const ts = Date.now()
       const keyword = String(q || '').trim()
-      const fetchAllInventoryItems = async (searchText: string, signal?: AbortSignal) => {
-        const pageSize = 1000
-        let page = 1
-        const all: any[] = []
-        while (true) {
-          const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(searchText)}&_ts=${ts}` , { signal })
-          if (!resp.ok) {
-            throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+      const fetchInventoryPage = async (searchText: string, signal?: AbortSignal) => {
+        const pageSize = searchText ? 200 : 300
+        let lastError = ''
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=${pageSize}&search=${encodeURIComponent(searchText)}&_ts=${ts}` , { signal })
+            if (!resp.ok) {
+              let detail = ''
+              try {
+                const errJson = await resp.json()
+                detail = String(errJson?.error || errJson?.message || '').trim()
+              } catch {}
+              const suffix = detail ? ` - ${detail}` : ''
+              throw new Error(`API请求失败: ${resp.status}${suffix}`)
+            }
+            const json = await resp.json()
+            return Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+          } catch (err: any) {
+            if (signal?.aborted) throw err
+            lastError = String(err?.message || '获取盘存编号失败')
+            if (attempt < 2) {
+              await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+            }
           }
-          const json = await resp.json()
-          const rows = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
-          all.push(...rows)
-          if (rows.length < pageSize) break
-          page += 1
         }
-        return all
+        throw new Error(lastError || '获取盘存编号失败')
       }
-      const invItems = await fetchAllInventoryItems(keyword, invAbortRef.current.signal)
+      const invItems = await fetchInventoryPage(keyword, invAbortRef.current.signal)
       const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
