@@ -770,10 +770,30 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
-        .work-hours-form .line-row { display: flex; align-items: center; margin-bottom: 8px; }
-        .work-hours-form .line-label { width: 132px; flex: 0 0 132px; font-weight: 500; }
+        .work-hours-form .line-row { margin-bottom: 8px; }
         .work-hours-form .line-value { flex: 1; min-width: 0; }
         .work-hours-form .line-value .ant-form-item { margin-bottom: 0; }
+        .work-hours-form .line-static {
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          border: 1px solid #d9d9d9;
+          border-radius: 6px;
+          padding: 4px 10px;
+          background: #fff;
+          font-size: 14px;
+        }
+        .work-hours-form .line-static-label {
+          color: rgba(0, 0, 0, 0.45);
+          margin-right: 6px;
+          white-space: nowrap;
+        }
+        .work-hours-form .line-static-value {
+          color: rgba(0, 0, 0, 0.88);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
         @media (min-width: 768px) {
           .work-hours-container { max-width: 900px; }
           .work-hours-row { column-gap: 12px; row-gap: 12px; }
@@ -985,20 +1005,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           }}
         >
           <div className="line-row">
-            <div className="line-label">1. 班次日期：</div>
             <div className="line-value">
               <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} initialValue={dayjs()} preserve={false}>
-                <DatePicker placeholder="" style={{ width: '100%' }} />
+                <DatePicker placeholder="1. 班次日期" style={{ width: '100%' }} />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">2. 班次：</div>
             <div className="line-value">
               <Form.Item name="shift" rules={[{ required: true, message: '请选择班次' }]}>
                 <Select
-                  placeholder="请选择班次"
+                  placeholder="2. 请选择班次"
                   options={[
                     { label: '白班', value: '白班' },
                     { label: '夜班', value: '夜班' }
@@ -1009,9 +1027,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-label">3. 盘存编号：</div>
             <div className="line-value">
               <Select
+                placeholder="3. 请选择盘存编号"
                 showSearch
                 filterOption={(input, option) => {
                   const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
@@ -1036,33 +1054,36 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-label">4. 零件名称：</div>
-            <div className="line-value">{selectedInfo.name || '-'}</div>
+            <div className="line-static">
+              <span className="line-static-label">4. 零件名称:</span>
+              <span className="line-static-value">{selectedInfo.name || '-'}</span>
+            </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">5. 零件编号：</div>
-            <div className="line-value">{selectedInfo.drawing || '-'}</div>
+            <div className="line-static">
+              <span className="line-static-label">5. 零件编号:</span>
+              <span className="line-static-value">{selectedInfo.drawing || '-'}</span>
+            </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">6. 加工工序：</div>
             <div className="line-value">
               <Form.Item name="process_name" rules={[{ required: true, message: '请选择或填写加工工序' }]}>
                 {useManualProcess ? (
-                  <Input />
+                  <Input placeholder="6. 请输入加工工序" />
                 ) : (
-                  <Select options={processOptions.map(p => ({ value: p, label: p }))} />
+                  <Select placeholder="6. 请选择加工工序" options={processOptions.map(p => ({ value: p, label: p }))} />
                 )}
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">7. 设备编号：</div>
             <div className="line-value">
               <Form.Item name="device_no" rules={[{ required: true, message: '请选择设备编号' }]}>
                 <Select
+                  placeholder="7. 请选择设备编号"
                   showSearch
                   filterOption={(input, option) => String(option?.label || '').includes(input)}
                   options={deviceOptions}
@@ -1078,30 +1099,29 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-label">8. 上次结束时间：</div>
-            <div className="line-value">{lastCompletedTime || '-'}</div>
+            <div className="line-static">
+              <span className="line-static-label">8. 上次结束时间:</span>
+              <span className="line-static-value">{lastCompletedTime || '-'}</span>
+            </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">9. 辅助开始时间：</div>
             <div className="line-value">
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
-                <QuickTimeInput />
+                <QuickTimeInput placeholder="9. 辅助开始时间" />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">10. 辅助结束时间：</div>
             <div className="line-value">
               <Form.Item name="aux_end" rules={[{ required: true, message: '请选择辅助结束时间' }]} preserve={false}>
-                <QuickTimeInput isEndTime startTime={wAuxStart} />
+                <QuickTimeInput placeholder="10. 辅助结束时间" isEndTime startTime={wAuxStart} />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">11. 程序时长(分钟)：</div>
             <div className="line-value">
               <Form.Item name="proc_minutes" rules={[{ required: true, message: '请输入程序时长' }]}>
                 <InputNumber
@@ -1109,6 +1129,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={5}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="11. 程序时长(分钟)"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
@@ -1116,12 +1137,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-label">12. 本次完成时间：</div>
-            <div className="line-value">{completedTime || '-'}</div>
+            <div className="line-static">
+              <span className="line-static-label">12. 本次完成时间:</span>
+              <span className="line-static-value">{completedTime || '-'}</span>
+            </div>
           </div>
 
           <div className="line-row">
-            <div className="line-label">13. 完成数量：</div>
             <div className="line-value">
               <Form.Item name="completed_quantity" rules={[{ required: true, message: '请输入完成数量' }]}>
                 <InputNumber
@@ -1129,6 +1151,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={1}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="13. 完成数量"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
