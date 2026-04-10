@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Input } from 'antd'
 import dayjs, { Dayjs } from 'dayjs'
-import { ClockCircleOutlined } from '@ant-design/icons'
 
 interface QuickTimeInputProps {
   value?: Dayjs | null
@@ -101,14 +100,13 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
         onChange={handleInputChange}
         onBlur={handleBlur}
         placeholder={placeholder}
-        prefix={<ClockCircleOutlined style={{ color: '#bfbfbf' }} />}
         suffix={
             <span style={{ fontSize: 12, color: '#8c8c8c' }}>
                 {getDurationText()}
             </span>
         }
         inputMode="numeric" // 触发移动端数字键盘
-        // type="tel" // tel 在某些浏览器可能更好唤起纯数字键盘，但 text 更通用
+        type="tel"
         allowClear
         onClear={() => {
             setInputValue('')

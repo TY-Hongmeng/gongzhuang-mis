@@ -139,6 +139,17 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
+  const auxStartDisplay = React.useMemo(() => {
+    if (!wWorkDate || !wAuxStart) return '-'
+    return dayjs(wWorkDate).hour(wAuxStart.hour()).minute(wAuxStart.minute()).format('MM-DD HH:mm')
+  }, [wWorkDate, wAuxStart])
+  const auxEndDisplay = React.useMemo(() => {
+    if (!wWorkDate || !wAuxStart || !wAuxEnd) return '-'
+    const start = dayjs(wWorkDate).hour(wAuxStart.hour()).minute(wAuxStart.minute())
+    const endRaw = dayjs(wWorkDate).hour(wAuxEnd.hour()).minute(wAuxEnd.minute())
+    const end = endRaw.isBefore(start) ? endRaw.add(1, 'day') : endRaw
+    return end.format('MM-DD HH:mm')
+  }, [wWorkDate, wAuxStart, wAuxEnd])
   const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || wAuxCount === undefined || wAuxCount === null || wProcessQuantity === undefined || wProcessQuantity === null || !wAuxStart || !wAuxEnd || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null || !wShiftDate
 
   React.useEffect(() => {
@@ -1204,14 +1215,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
                 <QuickTimeInput placeholder="" />
               </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">辅助结束：</div>
-            <div className="line-value">
-              <div className="line-static">
-                <span className="line-static-value">{wAuxEnd ? wAuxEnd.format('HH:mm') : '-'}</span>
+              <div className="line-static" style={{ marginTop: 6 }}>
+                <span className="line-static-value">{auxStartDisplay}</span>
               </div>
             </div>
           </div>
@@ -1228,6 +1233,15 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+            </div>
+          </div>
+
+          <div className="line-row">
+            <div className="line-label">辅助结束：</div>
+            <div className="line-value">
+              <div className="line-static">
+                <span className="line-static-value">{auxEndDisplay}</span>
+              </div>
             </div>
           </div>
 
