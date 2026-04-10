@@ -920,7 +920,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               shift: String(vals.shift || '')
             }
             try {
-              const resp = await fetch('/api/tooling/work-hours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+              const resp = await fetchWithFallback('/api/tooling/work-hours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
               if (!resp.ok) {
                 let detail = ''
                 try {
