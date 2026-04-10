@@ -1991,9 +1991,20 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           shift: String(body.shift || '')
         }
         try {
-          const { data, error } = await supabase.from('work_hours').insert(payload).select('*').single()
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, data })
+          let result = await supabase.from('work_hours').insert(payload).select('*').single()
+          if (result.error) {
+            const errMsg = String(result.error.message || '').toLowerCase()
+            const hitPartNameColumnError = errMsg.includes('part_name') && (
+              errMsg.includes('column') || errMsg.includes('schema cache')
+            )
+            if (hitPartNameColumnError) {
+              const fallbackPayload = { ...payload }
+              delete (fallbackPayload as any).part_name
+              result = await supabase.from('work_hours').insert(fallbackPayload).select('*').single()
+            }
+          }
+          if (result.error) return jsonResponse({ success: false, error: result.error.message }, 500)
+          return jsonResponse({ success: true, data: result.data })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '提交失败' }, 500)
         }

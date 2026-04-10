@@ -884,7 +884,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             try {
               const resp = await fetch('/api/tooling/work-hours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
               if (!resp.ok) {
-                throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+                let detail = ''
+                try {
+                  const errJson = await resp.json()
+                  detail = String(errJson?.error || errJson?.message || '').trim()
+                } catch {}
+                const suffix = detail ? ` - ${detail}` : ''
+                throw new Error(`API请求失败: ${resp.status}${suffix}`)
               }
               const json = await resp.json()
               if (json?.success) {
