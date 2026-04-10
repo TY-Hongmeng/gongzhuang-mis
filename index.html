@@ -35,9 +35,8 @@
       (function(){
         try {
           var ua = navigator.userAgent || ''
-          var isIOS = /iP(hone|ad|od)/i.test(ua)
           var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
-          if (!isIOS || !isEmbedded) return
+          if (!isEmbedded) return
           try {
             if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
               navigator.serviceWorker.getRegistrations().then(function(regs){
@@ -60,11 +59,33 @@
         try {
           window.__APP_BOOT_STAGE__ = 'html'
           var timeoutMs = 12000
+          var withBust = function(url, extraKey, extraVal){
+            try {
+              var q = ''
+              var i = url.indexOf('?')
+              if (i >= 0) q = url.slice(i + 1)
+              var hashIdx = url.indexOf('#')
+              var hash = hashIdx >= 0 ? url.slice(hashIdx) : ''
+              var base = hashIdx >= 0 ? url.slice(0, hashIdx) : url
+              if (extraKey) {
+                q += (q ? '&' : '') + encodeURIComponent(extraKey) + '=' + encodeURIComponent(String(extraVal || '1'))
+              }
+              q += (q ? '&' : '') + 'boot_retry=' + Date.now()
+              return base.split('?')[0] + '?' + q + hash
+            } catch (e0) {
+              return url
+            }
+          }
           setTimeout(function(){
             try {
               if (window.__APP_BOOT_DONE__) return
               var root = document.getElementById('root')
               if (root && root.children && root.children.length > 0) return
+              var once = location.search.indexOf('boot_retry_once=1') !== -1
+              if (!once) {
+                location.replace(withBust(location.href, 'boot_retry_once', '1'))
+                return
+              }
               var checks = [
                 { name: 'origin', url: location.origin + '/' },
                 { name: 'supabase', url: 'https://oltsiocyesbgezlrcxze.supabase.co' },
@@ -105,19 +126,19 @@
               var retry = document.createElement('button')
               retry.textContent = '重试打开'
               retry.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#1677ff;color:#fff;margin-right:8px;'
-              retry.onclick = function(){ location.reload() }
+              retry.onclick = function(){ location.replace(withBust(location.href)) }
               var safe = document.createElement('button')
               safe.textContent = '兼容模式打开'
               safe.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#22a06b;color:#fff;'
               safe.onclick = function(){
                 var has = location.search.indexOf('boot_safe=1') !== -1
                 if (has) {
-                  location.reload()
+                  location.replace(withBust(location.href))
                   return
                 }
                 var next = location.href
                 next += (next.indexOf('?') === -1 ? '?' : '&') + 'boot_safe=1'
-                location.replace(next)
+                location.replace(withBust(next))
               }
               var copy = document.createElement('button')
               copy.textContent = '复制诊断信息'
