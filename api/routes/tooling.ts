@@ -75,6 +75,19 @@ const ensureDeviceProcessUnitPriceColumn = async () => {
     devicePriceColumnReady = true;
   } catch (e) {}
 };
+let workHoursExtraColumnsReady = false;
+const ensureWorkHoursExtraColumns = async () => {
+  if (workHoursExtraColumnsReady) return;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    await query(`ALTER TABLE work_hours ADD COLUMN IF NOT EXISTS aux_count NUMERIC DEFAULT 1`);
+    await query(`ALTER TABLE work_hours ADD COLUMN IF NOT EXISTS process_quantity NUMERIC DEFAULT 1`);
+    await query(`ALTER TABLE work_hours ADD COLUMN IF NOT EXISTS single_aux_minutes NUMERIC DEFAULT 0`);
+    await query(`ALTER TABLE work_hours ADD COLUMN IF NOT EXISTS single_aux_count NUMERIC DEFAULT 0`);
+    workHoursExtraColumnsReady = true;
+  } catch (e) {}
+};
 
 // GET /api/tooling
 // 支持分页、搜索、筛选与排序
@@ -1317,6 +1330,7 @@ router.post('/parts/summary', async (req, res) => {
 // 记录工时
 router.post('/work-hours', async (req, res) => {
   try {
+    await ensureWorkHoursExtraColumns()
     const payload = req.body || {}
     const required = ['part_inventory_number']
     for (const k of required) {
@@ -1336,12 +1350,30 @@ router.post('/work-hours', async (req, res) => {
       }
     } catch {}
 
-    const adjustedHours = Number(payload.aux_hours || 0) * auxCoeff + Number(payload.proc_hours || 0) * procCoeff
+    const auxCount = Math.max(Number(payload.aux_count || 1) || 1, 1)
+    const processQuantity = Math.max(Number(payload.process_quantity || 1) || 1, 1)
+    const auxHoursInput = Number(payload.aux_hours || 0)
+    const auxMinutes = Math.max(0, Math.round(auxHoursInput * 60))
+    const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
+    const singleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
+    const adjustedHours = Number(auxHoursInput) * auxCoeff + Number(payload.proc_hours || 0) * procCoeff
 
     // Device time order validation: ensure current start is after previous finish for same device
     try {
       const deviceNo = String(payload.device_no || '').trim()
       if (deviceNo) {
+        try {
+          const { data: d } = await supabase
+            .from('devices')
+            .select('max_aux_minutes')
+            .eq('device_no', deviceNo)
+            .limit(1)
+          const d0 = Array.isArray(d) ? d[0] : null
+          const maxAux = Number((d0 as any)?.max_aux_minutes)
+          if (Number.isFinite(maxAux) && maxAux > 0 && singleAuxMinutes > maxAux) {
+            return res.status(400).json({ success: false, error: `单次辅助时长(${singleAuxMinutes.toFixed(1)}分钟)不能超过设备最大辅助时间(${maxAux}分钟)` })
+          }
+        } catch {}
         const { data: prevList } = await supabase
           .from('work_hours')
           .select('work_date, aux_end_time, proc_hours')
@@ -1418,7 +1450,14 @@ router.post('/work-hours', async (req, res) => {
       }
     } catch {}
 
-    const insertBody = { ...payload, hours: adjustedHours }
+    const insertBody = {
+      ...payload,
+      hours: adjustedHours,
+      aux_count: auxCount,
+      process_quantity: processQuantity,
+      single_aux_minutes: singleAuxMinutes,
+      single_aux_count: singleAuxCount
+    }
     try {
       const { data, error } = await supabase
         .from('work_hours')

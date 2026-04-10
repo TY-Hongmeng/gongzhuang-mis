@@ -49,6 +49,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [selectedInfo, setSelectedInfo] = React.useState<{ name?: string; drawing?: string }>({})
   const [deviceOptions, setDeviceOptions] = React.useState<any[]>([])
   const [deviceName, setDeviceName] = React.useState<string>('')
+  const [selectedDeviceMaxAuxMinutes, setSelectedDeviceMaxAuxMinutes] = React.useState<number | null>(null)
   const [processOptions, setProcessOptions] = React.useState<string[]>([])
   const [fixedInvOptions, setFixedInvOptions] = React.useState<any[]>([])
   const [useManualProcess, setUseManualProcess] = React.useState(false)
@@ -96,6 +97,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const wShift = Form.useWatch('shift', form)
   const wProcessName = Form.useWatch('process_name', form)
   const wCompletedQuantity = Form.useWatch('completed_quantity', form)
+  const wAuxCount = Form.useWatch('aux_count', form)
+  const wProcessQuantity = Form.useWatch('process_quantity', form)
   const wShiftDate = Form.useWatch('shift_date', form)
   
   // 关键修复：添加Form.useWatch监听辅助开始和结束时间变化
@@ -127,7 +130,17 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
-  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || !wAuxStart || !wAuxEnd || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null || !wShiftDate
+  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || wAuxCount === undefined || wAuxCount === null || wProcessQuantity === undefined || wProcessQuantity === null || !wAuxStart || !wAuxEnd || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null || !wShiftDate
+
+  React.useEffect(() => {
+    if (!wDeviceNo) {
+      setSelectedDeviceMaxAuxMinutes(null)
+      return
+    }
+    const found = deviceOptions.find((d: any) => String(d?.value || '') === String(wDeviceNo || ''))
+    const maxAux = Number(found?.meta?.max_aux_minutes)
+    setSelectedDeviceMaxAuxMinutes(Number.isFinite(maxAux) ? maxAux : null)
+  }, [wDeviceNo, deviceOptions])
 
 
 
@@ -454,10 +467,14 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           const val = String(d.device_no || '')
           if (!val) return
           if (!uniqueDevices.has(val)) {
+            const maxAux = Number(d.max_aux_minutes)
             uniqueDevices.set(val, {
               value: val,
               label: `${val}-${String(d.device_name || '')}`,
-              meta: { device_name: String(d.device_name || '') }
+              meta: {
+                device_name: String(d.device_name || ''),
+                max_aux_minutes: Number.isFinite(maxAux) ? maxAux : null
+              }
             })
           }
         })
@@ -487,6 +504,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     setSelectedInfo({})
     setProcessOptions([])
     setDeviceName('')
+    setSelectedDeviceMaxAuxMinutes(null)
     form.resetFields()
     await Promise.all([fetchInventory(''), fetchDevices(), fetchFixedOptions()])
     await fetchRecent()
@@ -527,6 +545,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           shift_date: String(item.shift_date || ''),
           process_name: String(item.process_name || ''),
           operator: String(item.operator || ''),
+          aux_count: Math.max(Number(item.aux_count || 1), 1),
+          process_quantity: Math.max(Number(item.process_quantity || 1), 1),
+          single_aux_minutes: Number(item.single_aux_minutes || 0),
+          single_aux_count: Number(item.single_aux_count || 0),
           completed_quantity: Number(item.completed_quantity || 0),
           device_no: String(item.device_no || ''),
           shift: String(item.shift || ''),
@@ -676,6 +698,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         return String(mins)
       }, width: 60, align: 'center' },
       { title: '程序', dataIndex: 'proc_hours', render: (v: number) => ((Number(v||0)*60).toFixed(0)), width: 60, align: 'center' },
+      { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
+      { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
+      { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 90, align: 'center' },
+      { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 90, align: 'center' },
       { title: '统计', key: 'stat_hours', render: (_: any, r: any) => {
         const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
         let auxMinutes = 0
@@ -715,7 +741,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         
         return completedTime.format('MM-DD HH:mm')
       }, width: 100, align: 'center' },
-      { title: '加工数量', dataIndex: 'completed_quantity', align: 'center' }
+      { title: '完成数量', dataIndex: 'completed_quantity', align: 'center' }
     ] as any;
     
     // 计算rowSpan配置
@@ -851,7 +877,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         <Form
           layout="vertical"
           size="small"
-          initialValues={{}}
+          initialValues={{ aux_count: 1, process_quantity: 1 }}
           form={form}
           className="work-hours-form"
           onFinish={async (vals) => {
@@ -861,6 +887,15 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             }
             if (!selectedInv) {
               message.warning('请先选择盘存编号')
+              return
+            }
+            const auxCount = Math.max(Number(vals.aux_count || 1), 1)
+            const processQuantity = Math.max(Number(vals.process_quantity || 1), 1)
+            const auxMinutes = Math.max(0, Number(vals.aux_duration_minutes || 0))
+            const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
+            const singleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
+            if (selectedDeviceMaxAuxMinutes !== null && singleAuxMinutes > selectedDeviceMaxAuxMinutes) {
+              message.error(`单次辅助时长(${singleAuxMinutes.toFixed(1)}分钟)不能超过设备最大辅助时间(${selectedDeviceMaxAuxMinutes}分钟)`)
               return
             }
             // Validate device time order against last record for the same device
@@ -933,7 +968,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             } catch {}
             const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
             const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
-            const auxMinutes = Math.max(0, Number(vals.aux_duration_minutes || 0))
             const auxHours = auxMinutes / 60
             const procHours = Number(vals.proc_minutes || 0) / 60
             const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
@@ -956,6 +990,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
               process_name: String(vals.process_name || ''),
               operator: String(user?.real_name || ''),
+              aux_count: Number(auxCount),
+              process_quantity: Number(processQuantity),
+              single_aux_minutes: Number(singleAuxMinutes),
+              single_aux_count: Number(singleAuxCount),
               completed_quantity: Number(vals.completed_quantity || 0),
               device_no: String(vals.device_no || ''),
               shift: String(vals.shift || '')
@@ -996,6 +1034,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   setSelectedInfo({})
                   setProcessOptions([])
                   setDeviceName('')
+                  setSelectedDeviceMaxAuxMinutes(null)
                   setUseManualProcess(false)
                   
                   // 强制清空所有表单字段，不依赖setFieldsValue
@@ -1004,6 +1043,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   // 额外清除，确保字段被清空 - 使用适当的空值而非undefined，避免JSON.stringify循环引用警告
                   form.setFieldValue('aux_start', null)
                   form.setFieldValue('aux_duration_minutes', null)
+                  form.setFieldValue('aux_count', 1)
+                  form.setFieldValue('process_quantity', 1)
                   form.setFieldValue('process_name', '')
                   form.setFieldValue('device_no', '')
                   form.setFieldValue('proc_minutes', null)
@@ -1122,7 +1163,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                       fetchDevices().catch((e: any) => message.error(e?.message || '加载设备编号失败'))
                     }
                   }}
-                  onSelect={(_val, opt: any) => setDeviceName(opt?.meta?.device_name || '')}
+                  onSelect={(_val, opt: any) => {
+                    setDeviceName(opt?.meta?.device_name || '')
+                    const maxAux = Number(opt?.meta?.max_aux_minutes)
+                    setSelectedDeviceMaxAuxMinutes(Number.isFinite(maxAux) ? maxAux : null)
+                  }}
+                  onClear={() => setSelectedDeviceMaxAuxMinutes(null)}
                 />
               </Form.Item>
             </div>
@@ -1171,6 +1217,21 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
+            <div className="line-label">辅助次数：</div>
+            <div className="line-value">
+              <Form.Item name="aux_count" rules={[{ required: true, message: '请输入辅助次数' }]} initialValue={1}>
+                <InputNumber
+                  min={1}
+                  step={1}
+                  controls={false}
+                  inputMode="numeric"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </div>
+          </div>
+
+          <div className="line-row">
             <div className="line-label">程序时长：</div>
             <div className="line-value">
               <Form.Item name="proc_minutes" rules={[{ required: true, message: '请输入程序时长' }]}>
@@ -1191,6 +1252,21 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <div className="line-static">
                 <span className="line-static-value">{completedTime || '-'}</span>
               </div>
+            </div>
+          </div>
+
+          <div className="line-row">
+            <div className="line-label">加工数量：</div>
+            <div className="line-value">
+              <Form.Item name="process_quantity" rules={[{ required: true, message: '请输入加工数量' }]} initialValue={1}>
+                <InputNumber
+                  min={1}
+                  step={1}
+                  controls={false}
+                  inputMode="numeric"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
             </div>
           </div>
 

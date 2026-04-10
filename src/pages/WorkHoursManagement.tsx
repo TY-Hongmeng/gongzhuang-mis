@@ -168,6 +168,10 @@ const WorkHoursManagement: React.FC = () => {
             shift_date: String(item.shift_date || ''),
             process_name: String(item.process_name || ''),
             operator: String(item.operator || ''),
+            aux_count: Math.max(Number(item.aux_count || 1), 1),
+            process_quantity: Math.max(Number(item.process_quantity || 1), 1),
+            single_aux_minutes: Number(item.single_aux_minutes || 0),
+            single_aux_count: Number(item.single_aux_count || 0),
             completed_quantity: Number(item.completed_quantity || 0),
             device_no: String(item.device_no || ''),
             shift: String(item.shift || ''),
@@ -401,9 +405,8 @@ const WorkHoursManagement: React.FC = () => {
       }
       const info = (deviceMap as any)[String(r.device_no || '')] || {}
       const maxm = typeof info.max_aux_minutes === 'number' ? info.max_aux_minutes : undefined
-      // 计算数量因子：完成数量为0时按1计算，用于批量零件的辅助时间上限
-      const quantityFactor = Math.max(Number(r.completed_quantity) || 1, 1)
-      const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined
+      const auxCount = Math.max(Number(r.aux_count) || 1, 1)
+      const adjustedMaxm = typeof maxm === 'number' ? maxm * auxCount : undefined
       const effectiveAuxMinutes = typeof adjustedMaxm === 'number' && auxMinutes > adjustedMaxm ? adjustedMaxm : auxMinutes
       const procMinutes = Math.round(Number(r.proc_hours || 0) * 60)
       
@@ -530,17 +533,20 @@ const WorkHoursManagement: React.FC = () => {
       }
       const info = (deviceMap as any)[String(r.device_no || '')] || {}
       const maxm = typeof info.max_aux_minutes === 'number' ? info.max_aux_minutes : undefined
-      // 计算数量因子：完成数量为0时按1计算，用于批量零件的辅助时间上限
-      const quantityFactor = Math.max(Number(r.completed_quantity) || 1, 1)
-      const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined
+      const auxCount = Math.max(Number(r.aux_count) || 1, 1)
+      const adjustedMaxm = typeof maxm === 'number' ? maxm * auxCount : undefined
       const eff = typeof adjustedMaxm === 'number' && mins > adjustedMaxm ? adjustedMaxm : mins
       // 调试日志：当实际时间超过限制时输出
       if (typeof adjustedMaxm === 'number' && mins > adjustedMaxm) {
-        console.log(`[WorkHoursManagement] 辅助时间限制生效: 设备=${r.device_no}, 原始=${mins}分钟, 限制=${adjustedMaxm}分钟(最大${maxm}×数量${quantityFactor}), 实际=${eff}分钟`)
+        console.log(`[WorkHoursManagement] 辅助时间限制生效: 设备=${r.device_no}, 原始=${mins}分钟, 限制=${adjustedMaxm}分钟(最大${maxm}×辅助次数${auxCount}), 实际=${eff}分钟`)
       }
       return String(eff)
     }, width: 60, align: 'center' },
     { title: '程序', dataIndex: 'proc_hours', render: (v: number) => ((Number(v||0)*60).toFixed(0)), width: 60, align: 'center' },
+    { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
+    { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
+    { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 90, align: 'center' },
+    { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 90, align: 'center' },
     { title: '统计', key: 'stat_hours', render: (_: any, r: any) => {
       const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
       let auxMinutes = 0
@@ -553,9 +559,8 @@ const WorkHoursManagement: React.FC = () => {
       }
       const info = (deviceMap as any)[String(r.device_no || '')] || {}
       const maxm = typeof info.max_aux_minutes === 'number' ? info.max_aux_minutes : undefined
-      // 计算数量因子：完成数量为0时按1计算，用于批量零件的辅助时间上限
-      const quantityFactor = Math.max(Number(r.completed_quantity) || 1, 1)
-      const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined
+      const auxCount = Math.max(Number(r.aux_count) || 1, 1)
+      const adjustedMaxm = typeof maxm === 'number' ? maxm * auxCount : undefined
       const auxHours = typeof adjustedMaxm === 'number' && auxMinutes > adjustedMaxm ? adjustedMaxm : auxMinutes
       const procMinutes = Math.round(Number(r.proc_hours || 0) * 60)
       
@@ -593,7 +598,7 @@ const WorkHoursManagement: React.FC = () => {
       
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
-    { title: '加工数量', dataIndex: 'completed_quantity', align: 'center' }
+    { title: '完成数量', dataIndex: 'completed_quantity', align: 'center' }
   ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum])
 
   const expandColumnWidth = 48
@@ -658,9 +663,8 @@ const WorkHoursManagement: React.FC = () => {
       }
       const info = (deviceMap as any)[String(r.device_no || '')] || {}
       const maxm = typeof info.max_aux_minutes === 'number' ? info.max_aux_minutes : undefined
-      // 计算数量因子：完成数量为0时按1计算，用于批量零件的辅助时间上限
-      const quantityFactor = Math.max(Number(r.completed_quantity) || 1, 1)
-      const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined
+      const auxCount = Math.max(Number(r.aux_count) || 1, 1)
+      const adjustedMaxm = typeof maxm === 'number' ? maxm * auxCount : undefined
       const effMinutes = typeof adjustedMaxm === 'number' && auxMinutes > adjustedMaxm ? adjustedMaxm : auxMinutes
       const auxH = effMinutes / 60
       map[key].aux_total += auxH
@@ -880,9 +884,8 @@ const WorkHoursManagement: React.FC = () => {
             // 应用设备最大辅助时间限制，与表格显示保持一致
             const info = deviceMap[String(row.device_no || '')] || { name: '', max_aux_minutes: undefined };
             const maxm = typeof info.max_aux_minutes === 'number' ? info.max_aux_minutes : undefined;
-            // 计算数量因子：完成数量为0时按1计算，用于批量零件的辅助时间上限
-            const quantityFactor = Math.max(Number(row.completed_quantity) || 1, 1);
-            const adjustedMaxm = typeof maxm === 'number' ? maxm * quantityFactor : undefined;
+            const auxCount = Math.max(Number(row.aux_count) || 1, 1);
+            const adjustedMaxm = typeof maxm === 'number' ? maxm * auxCount : undefined;
             const effMinutes = typeof adjustedMaxm === 'number' && auxMinutes > adjustedMaxm ? adjustedMaxm : auxMinutes;
             
             // 获取零件名称
@@ -941,9 +944,13 @@ const WorkHoursManagement: React.FC = () => {
               '辅助时间': `${row.work_date ? row.work_date.slice(5) : '-'}${auxTimeDisplay ? `\n${auxTimeDisplay}` : ''}`,
               '辅助': `${effMinutes}分钟`,
               '程序': `${procMinutes}分钟`,
+              '辅助次数': Math.max(Number(row.aux_count) || 1, 1),
+              '加工数量': Math.max(Number(row.process_quantity) || 1, 1),
+              '单次辅助时长': Number(row.single_aux_minutes || 0).toFixed(1),
+              '单件辅助次数': Number(row.single_aux_count || 0).toFixed(2),
               '统计': `${statMinutes}分钟`,
               '完成时间': completedTime,
-              '加工数量': row.completed_quantity
+              '完成数量': row.completed_quantity
             });
           });
           
@@ -1013,9 +1020,13 @@ const WorkHoursManagement: React.FC = () => {
               { wch: 30 },  // 辅助时间
               { wch: 8 },   // 辅助
               { wch: 8 },   // 程序
+              { wch: 8 },   // 辅助次数
+              { wch: 8 },   // 加工数量
+              { wch: 12 },  // 单次辅助时长
+              { wch: 12 },  // 单件辅助次数
               { wch: 8 },   // 统计
               { wch: 12 },  // 完成时间
-              { wch: 10 }   // 加工数量
+              { wch: 10 }   // 完成数量
             ];
             childWorksheet['!cols'] = childColumnWidths;
             
