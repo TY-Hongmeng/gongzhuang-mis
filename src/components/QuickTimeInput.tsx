@@ -39,14 +39,22 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
 
   // 处理输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value
-    // 移除所有非数字和冒号
-    val = val.replace(/[^\d:]/g, '')
-    
-    // 限制长度
-    if (val.length > 5) return
+    const raw = String(e.target.value || '')
+    let digits = raw.replace(/\D/g, '')
+    if (digits.length > 4) {
+      digits = digits.slice(-4)
+    }
+    if (digits.length >= 3) {
+      setInputValue(`${digits.slice(0, 2)}:${digits.slice(2)}`)
+      return
+    }
+    setInputValue(digits)
+  }
 
-    setInputValue(val)
+  const handleFocus = () => {
+    if (value && dayjs(value).isValid()) {
+      setInputValue(value.format('HH:mm'))
+    }
   }
 
   // 处理失去焦点：尝试格式化并触发 onChange
@@ -109,6 +117,7 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
         ref={inputRef}
         value={inputValue}
         onChange={handleInputChange}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
         suffix={
