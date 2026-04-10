@@ -1,7 +1,7 @@
 {
   "name": "trae-project",
   "private": true,
-  "version": "2.1.9",
+  "version": "2.1.10",
   "type": "module",
   "scripts": {
     "client:dev": "vite --port 5182",

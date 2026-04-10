@@ -956,137 +956,118 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             }
           }}
         >
-          {/* 第一行：班次日期、班次 */}
-          <div className="work-hours-row">
-            <Form.Item name="shift_date" label="班次日期" rules={[{ required: true, message: '请选择班次日期' }]} className="work-hours-item" style={{ marginBottom: 8 }} initialValue={dayjs()} preserve={false}>
-              <DatePicker placeholder="" />
-            </Form.Item>
-            <Form.Item name="shift" label="班次" rules={[{ required: true, message: '请选择班次' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <Select
-                placeholder="请选择班次"
-                options={[
-                  { label: '白班', value: '白班' },
-                  { label: '夜班', value: '夜班' }
-                ]}
-              />
-            </Form.Item>
+          <Form.Item name="shift_date" label="班次日期" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择班次日期' }]} initialValue={dayjs()} preserve={false}>
+            <DatePicker placeholder="" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="shift" label="班次" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择班次' }]}>
+            <Select
+              placeholder="请选择班次"
+              options={[
+                { label: '白班', value: '白班' },
+                { label: '夜班', value: '夜班' }
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item label="盘存编号" style={{ marginBottom: 8 }} required>
+            <Select
+              showSearch
+              filterOption={(input, option) => {
+                const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+                const q = normalize(String(input || ''))
+                const label = String(option?.label || '')
+                const value = String(option?.value || '')
+                return normalize(label).includes(q) || normalize(value).includes(q)
+              }}
+              onSearch={(val) => {
+                if (invTimerRef.current) clearTimeout(invTimerRef.current)
+                invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 400)
+              }}
+              onOpenChange={(open) => { if (open) fetchInventory('') }}
+              options={invOptions}
+              loading={loadingInv}
+              style={{ width: '100%' }}
+              value={selectedInv || undefined}
+              allowClear
+              onChange={onSelectInv}
+            />
+          </Form.Item>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>零件名称</label>
+            <span>{selectedInfo.name || '-'}</span>
           </div>
 
-          {/* 第二行：盘存编号、零件名称 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>盘存编号</label>
-              <Select
-                showSearch
-                filterOption={(input, option) => {
-                  const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-                  const q = normalize(String(input || ''))
-                  const label = String(option?.label || '')
-                  const value = String(option?.value || '')
-                  return normalize(label).includes(q) || normalize(value).includes(q)
-                }}
-                onSearch={(val) => {
-                  if (invTimerRef.current) clearTimeout(invTimerRef.current)
-                  invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 400)
-                }}
-                onOpenChange={(open) => { if (open) fetchInventory('') }}
-                options={invOptions}
-                loading={loadingInv}
-                style={{ width: '100%' }}
-                value={selectedInv || undefined}
-                allowClear
-                onChange={onSelectInv}
-              />
-            </div>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              {/* 直接显示零件名称，无标签 */}
-              <div className="work-hours-info">
-                <div style={{ marginBottom: 4 }}>
-                  <span>{selectedInfo.name || '-'}</span>
-                </div>
-                <div>
-                  <span>{selectedInfo.drawing || '-'}</span>
-                </div>
-              </div>
-            </div>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>零件编号</label>
+            <span>{selectedInfo.drawing || '-'}</span>
           </div>
 
-          {/* 第三行：加工工序、设备编号 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <Form.Item name="process_name" label="加工工序" rules={[{ required: true, message: '请选择或填写加工工序' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              {useManualProcess ? (
-                <Input />
-              ) : (
-                <Select options={processOptions.map(p => ({ value: p, label: p }))} />
-              )}
-            </Form.Item>
-            <Form.Item name="device_no" label="设备编号" rules={[{ required: true, message: '请选择设备编号' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <Select
-                showSearch
-                filterOption={(input, option) => String(option?.label || '').includes(input)}
-                options={deviceOptions}
-                onSelect={(_val, opt: any) => setDeviceName(opt?.meta?.device_name || '')}
-              />
-            </Form.Item>
+          <Form.Item name="process_name" label="加工工序" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择或填写加工工序' }]}>
+            {useManualProcess ? (
+              <Input />
+            ) : (
+              <Select options={processOptions.map(p => ({ value: p, label: p }))} />
+            )}
+          </Form.Item>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>加工日期</label>
+            <span>{wWorkDate ? wWorkDate.format('YYYY-MM-DD') : '-'}</span>
           </div>
 
-          {/* 第四行：加工日期和辅助时长 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>加工日期</label>
-              <span>{wWorkDate ? wWorkDate.format('YYYY-MM-DD') : '-'}</span>
-            </div>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>辅助时长:</label>
-              <span style={{ fontSize: '14px' }}>
-                {calculateAuxDuration() || '-'}分钟
-              </span>
-            </div>
-          </div>
-          
-          {/* 第五行：辅助开始、辅助结束 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <Form.Item name="aux_start" label="辅助开始" rules={[{ required: true, message: '请选择辅助开始时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
-              <QuickTimeInput />
-            </Form.Item>
-            <Form.Item name="aux_end" label="辅助结束" rules={[{ required: true, message: '请选择辅助结束时间' }]} className="work-hours-item" style={{ marginBottom: 8 }} preserve={false}>
-              <QuickTimeInput isEndTime startTime={wAuxStart} />
-            </Form.Item>
+          <Form.Item name="device_no" label="设备编号" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择设备编号' }]}>
+            <Select
+              showSearch
+              filterOption={(input, option) => String(option?.label || '').includes(input)}
+              options={deviceOptions}
+              onSelect={(_val, opt: any) => setDeviceName(opt?.meta?.device_name || '')}
+            />
+          </Form.Item>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>上次结束时间</label>
+            <span>{lastCompletedTime || '-'}</span>
           </div>
 
-          {/* 第六行：程序时长(分钟)、完成数量 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <Form.Item name="proc_minutes" label="程序时长(分钟)" rules={[{ required: true, message: '请输入程序时长' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <InputNumber 
-                min={0} 
-                step={5} 
-                controls={false}
-                inputMode="numeric"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="completed_quantity" label="完成数量" rules={[{ required: true, message: '请输入完成数量' }]} className="work-hours-item" style={{ marginBottom: 8 }}>
-              <InputNumber 
-                min={0} 
-                step={1} 
-                controls={false}
-                inputMode="numeric"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
+          <Form.Item name="aux_start" label="辅助开始时间" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
+            <QuickTimeInput />
+          </Form.Item>
+
+          <Form.Item name="aux_end" label="辅助结束时间" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请选择辅助结束时间' }]} preserve={false}>
+            <QuickTimeInput isEndTime startTime={wAuxStart} />
+          </Form.Item>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>辅助时长</label>
+            <span style={{ fontSize: '14px' }}>{calculateAuxDuration() || '-'}分钟</span>
           </div>
 
-          {/* 第七行：上次结束时间、本次完成时间 */}
-          <div className="work-hours-row" style={{ marginBottom: 8 }}>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>上次结束时间</label>
-              <span>{lastCompletedTime || '-'}</span>
-            </div>
-            <div className="work-hours-item" style={{ marginBottom: 8 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>本次完成时间</label>
-              <span>{completedTime || '-'}</span>
-            </div>
+          <Form.Item name="proc_minutes" label="程序时长(分钟)" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请输入程序时长' }]}>
+            <InputNumber
+              min={0}
+              step={5}
+              controls={false}
+              inputMode="numeric"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: '14px', color: 'rgba(0, 0, 0, 0.88)' }}>本次完成时间</label>
+            <span>{completedTime || '-'}</span>
           </div>
+
+          <Form.Item name="completed_quantity" label="完成数量" style={{ marginBottom: 8 }} rules={[{ required: true, message: '请输入完成数量' }]}>
+            <InputNumber
+              min={0}
+              step={1}
+              controls={false}
+              inputMode="numeric"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
 
           {/* 第八行：提交按钮 */}
           <Form.Item style={{ marginBottom: 0 }}>
