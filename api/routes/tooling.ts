@@ -1457,6 +1457,82 @@ router.post('/work-hours', async (req, res) => {
   }
 })
 
+const normalizePartLookupKey = (value: any) => String(value || '')
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/[^A-Za-z0-9]/g, '')
+  .trim()
+  .toUpperCase()
+
+const enrichWorkHourPartNames = async (rows: any[]) => {
+  if (!Array.isArray(rows) || rows.length === 0) return rows
+  const missingRows = rows.filter((row: any) => !String(row?.part_name || '').trim())
+  if (missingRows.length === 0) return rows
+
+  const inventoryValues = Array.from(new Set(
+    missingRows
+      .map((row: any) => String(row?.part_inventory_number || '').trim())
+      .filter(Boolean)
+  ))
+  const drawingValues = Array.from(new Set(
+    missingRows
+      .map((row: any) => String(row?.part_drawing_number || '').trim())
+      .filter(Boolean)
+  ))
+
+  const partNameMap = new Map<string, string>()
+  const upsertPartName = (row: any) => {
+    const name = String(row?.part_name || '').trim()
+    if (!name) return
+    const invKey = normalizePartLookupKey(row?.part_inventory_number)
+    const drawKey = normalizePartLookupKey(row?.part_drawing_number)
+    if (invKey && !partNameMap.has(invKey)) partNameMap.set(invKey, name)
+    if (drawKey && !partNameMap.has(drawKey)) partNameMap.set(drawKey, name)
+  }
+
+  try {
+    if (process.env.SUPABASE_DB_URL) {
+      if (inventoryValues.length > 0) {
+        const r1 = await query(
+          'SELECT part_inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_inventory_number = ANY($1::text[])',
+          [inventoryValues]
+        )
+        ;(r1.rows || []).forEach(upsertPartName)
+      }
+      if (drawingValues.length > 0) {
+        const r2 = await query(
+          'SELECT part_inventory_number, part_drawing_number, part_name FROM parts_info WHERE part_drawing_number = ANY($1::text[])',
+          [drawingValues]
+        )
+        ;(r2.rows || []).forEach(upsertPartName)
+      }
+    } else {
+      if (inventoryValues.length > 0) {
+        const { data } = await supabase
+          .from('parts_info')
+          .select('part_inventory_number, part_drawing_number, part_name')
+          .in('part_inventory_number', inventoryValues)
+        ;(data || []).forEach(upsertPartName)
+      }
+      if (drawingValues.length > 0) {
+        const { data } = await supabase
+          .from('parts_info')
+          .select('part_inventory_number, part_drawing_number, part_name')
+          .in('part_drawing_number', drawingValues)
+        ;(data || []).forEach(upsertPartName)
+      }
+    }
+  } catch {}
+
+  return rows.map((row: any) => {
+    const directName = String(row?.part_name || '').trim()
+    if (directName) return row
+    const invKey = normalizePartLookupKey(row?.part_inventory_number)
+    const drawKey = normalizePartLookupKey(row?.part_drawing_number)
+    const resolvedName = (invKey && partNameMap.get(invKey)) || (drawKey && partNameMap.get(drawKey)) || ''
+    return resolvedName ? { ...row, part_name: resolvedName } : row
+  })
+}
+
 // 获取工时记录与统计
 router.get('/work-hours', async (req, res) => {
   try {
@@ -1536,6 +1612,8 @@ router.get('/work-hours', async (req, res) => {
         return res.status(500).json({ success: false, error: sbErr?.message || '服务器错误' })
       }
     }
+
+    items = await enrichWorkHourPartNames(items)
 
     const totals = items.reduce(
       (acc: any, r: any) => {
