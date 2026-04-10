@@ -759,7 +759,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   return (
     <div className="work-hours-container">
       <style>{`
-        .work-hours-container { padding: 12px; max-width: 520px; margin: 0 auto; }
+        .work-hours-container { padding: 8px; max-width: 520px; margin: 0 auto; }
         .work-hours-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
         .work-hours-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 6px; row-gap: 6px; }
         .work-hours-item { min-width: 0; }
@@ -770,22 +770,44 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
-        .work-hours-form .line-row { margin-bottom: 8px; }
+        .work-hours-form .line-row { display: flex; align-items: center; margin-bottom: 6px; }
+        .work-hours-form .line-label {
+          width: 82px;
+          flex: 0 0 82px;
+          font-size: 13px;
+          line-height: 1.2;
+          text-align: right;
+          padding-right: 6px;
+          white-space: nowrap;
+          color: rgba(0, 0, 0, 0.88);
+        }
         .work-hours-form .line-value { flex: 1; min-width: 0; }
         .work-hours-form .line-value .ant-form-item { margin-bottom: 0; }
+        .work-hours-form .line-value .ant-picker,
+        .work-hours-form .line-value .ant-input,
+        .work-hours-form .line-value .ant-input-number,
+        .work-hours-form .line-value .ant-select-selector {
+          min-height: 30px !important;
+          height: 30px !important;
+          font-size: 13px;
+        }
+        .work-hours-form .line-value .ant-select-single .ant-select-selector .ant-select-selection-item,
+        .work-hours-form .line-value .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+          line-height: 28px !important;
+        }
         .work-hours-form .line-static {
-          min-height: 32px;
+          min-height: 30px;
           display: flex;
           align-items: center;
           border: 1px solid #d9d9d9;
           border-radius: 6px;
-          padding: 4px 10px;
+          padding: 2px 8px;
           background: #fff;
-          font-size: 14px;
+          font-size: 13px;
         }
         .work-hours-form .line-static-label {
           color: rgba(0, 0, 0, 0.45);
-          margin-right: 6px;
+          margin-right: 0;
           white-space: nowrap;
         }
         .work-hours-form .line-static-value {
@@ -820,7 +842,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         </Space>
       </div>
       {showEntry && (
-      <Card className="work-hours-card" styles={{ body: { padding: 12 } }}>
+      <Card className="work-hours-card" styles={{ body: { padding: 10 } }}>
         <Form
           layout="vertical"
           size="small"
@@ -1005,18 +1027,20 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           }}
         >
           <div className="line-row">
+            <div className="line-label">班次日期：</div>
             <div className="line-value">
               <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} initialValue={dayjs()} preserve={false}>
-                <DatePicker placeholder="1. 班次日期" style={{ width: '100%' }} />
+                <DatePicker placeholder="" style={{ width: '100%' }} />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">当班班次：</div>
             <div className="line-value">
               <Form.Item name="shift" rules={[{ required: true, message: '请选择班次' }]}>
                 <Select
-                  placeholder="2. 请选择班次"
+                  placeholder=""
                   options={[
                     { label: '白班', value: '白班' },
                     { label: '夜班', value: '夜班' }
@@ -1027,9 +1051,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
+            <div className="line-label">盘存编号：</div>
             <div className="line-value">
               <Select
-                placeholder="3. 请选择盘存编号"
+                placeholder=""
                 showSearch
                 filterOption={(input, option) => {
                   const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
@@ -1054,36 +1079,42 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-static">
-              <span className="line-static-label">4. 零件名称:</span>
-              <span className="line-static-value">{selectedInfo.name || '-'}</span>
+            <div className="line-label">零件名称：</div>
+            <div className="line-value">
+              <div className="line-static">
+                <span className="line-static-value">{selectedInfo.name || '-'}</span>
+              </div>
             </div>
           </div>
 
           <div className="line-row">
-            <div className="line-static">
-              <span className="line-static-label">5. 零件编号:</span>
-              <span className="line-static-value">{selectedInfo.drawing || '-'}</span>
+            <div className="line-label">零件编号：</div>
+            <div className="line-value">
+              <div className="line-static">
+                <span className="line-static-value">{selectedInfo.drawing || '-'}</span>
+              </div>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">工艺工序：</div>
             <div className="line-value">
               <Form.Item name="process_name" rules={[{ required: true, message: '请选择或填写加工工序' }]}>
                 {useManualProcess ? (
-                  <Input placeholder="6. 请输入加工工序" />
+                  <Input placeholder="" />
                 ) : (
-                  <Select placeholder="6. 请选择加工工序" options={processOptions.map(p => ({ value: p, label: p }))} />
+                  <Select placeholder="" options={processOptions.map(p => ({ value: p, label: p }))} />
                 )}
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">设备编号：</div>
             <div className="line-value">
               <Form.Item name="device_no" rules={[{ required: true, message: '请选择设备编号' }]}>
                 <Select
-                  placeholder="7. 请选择设备编号"
+                  placeholder=""
                   showSearch
                   filterOption={(input, option) => String(option?.label || '').includes(input)}
                   options={deviceOptions}
@@ -1099,29 +1130,34 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-static">
-              <span className="line-static-label">8. 上次结束时间:</span>
-              <span className="line-static-value">{lastCompletedTime || '-'}</span>
+            <div className="line-label">上次结束：</div>
+            <div className="line-value">
+              <div className="line-static">
+                <span className="line-static-value">{lastCompletedTime || '-'}</span>
+              </div>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">辅助开始：</div>
             <div className="line-value">
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="9. 辅助开始时间" />
+                <QuickTimeInput placeholder="" />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">辅助结束：</div>
             <div className="line-value">
               <Form.Item name="aux_end" rules={[{ required: true, message: '请选择辅助结束时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="10. 辅助结束时间" isEndTime startTime={wAuxStart} />
+                <QuickTimeInput placeholder="" isEndTime startTime={wAuxStart} />
               </Form.Item>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">程序时长：</div>
             <div className="line-value">
               <Form.Item name="proc_minutes" rules={[{ required: true, message: '请输入程序时长' }]}>
                 <InputNumber
@@ -1129,7 +1165,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={5}
                   controls={false}
                   inputMode="numeric"
-                  placeholder="11. 程序时长(分钟)"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
@@ -1137,13 +1172,16 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           </div>
 
           <div className="line-row">
-            <div className="line-static">
-              <span className="line-static-label">12. 本次完成时间:</span>
-              <span className="line-static-value">{completedTime || '-'}</span>
+            <div className="line-label">本次完成：</div>
+            <div className="line-value">
+              <div className="line-static">
+                <span className="line-static-value">{completedTime || '-'}</span>
+              </div>
             </div>
           </div>
 
           <div className="line-row">
+            <div className="line-label">完成数量：</div>
             <div className="line-value">
               <Form.Item name="completed_quantity" rules={[{ required: true, message: '请输入完成数量' }]}>
                 <InputNumber
@@ -1151,7 +1189,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={1}
                   controls={false}
                   inputMode="numeric"
-                  placeholder="13. 完成数量"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
