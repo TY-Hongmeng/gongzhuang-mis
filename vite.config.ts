@@ -2,6 +2,13 @@ import { defineConfig } from 'vite'
 import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
+const appVersion = String(process.env.npm_package_version || pkg?.version || '0.0.0')
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
@@ -10,7 +17,7 @@ export default defineConfig(({ command }) => {
   return {
     base: './',
     define: {
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.0.0')
+      __APP_VERSION__: JSON.stringify(appVersion)
     },
     plugins: [
       react({

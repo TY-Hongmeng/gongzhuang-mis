@@ -867,6 +867,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             const payload = {
               part_inventory_number: String(selectedInv),
               part_drawing_number: String(selectedInfo.drawing || ''),
+              part_name: String(selectedInfo.name || ''),
               hours: Number(auxHours + procHours),
               aux_hours: Number(auxHours),
               proc_hours: Number(procHours),
