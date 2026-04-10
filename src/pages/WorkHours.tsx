@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, TimePicker, Button, message, Table, Space, Modal } from 'antd'
+import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, Button, message, Table, Space, Modal } from 'antd'
 import { ReloadOutlined, LeftOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
@@ -101,7 +101,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 关键修复：添加Form.useWatch监听辅助开始和结束时间变化
   // 这会确保当用户选择时间时，组件会重新渲染，触发calculateAuxDuration函数重新计算
   const wAuxStart = Form.useWatch('aux_start', form)
-  const wAuxEnd = Form.useWatch('aux_end', form)
+  const wAuxDurationMinutes = Form.useWatch('aux_duration_minutes', form)
+  const wAuxEnd = React.useMemo(() => {
+    if (!wAuxStart || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null) return null
+    const dur = Math.max(0, Number(wAuxDurationMinutes || 0))
+    return dayjs(wAuxStart).add(dur, 'minute')
+  }, [wAuxStart, wAuxDurationMinutes])
   const resolveWorkDate = React.useCallback((shiftDate: any, shift: any, auxStart: any, auxEnd: any) => {
     const baseDate = dayjs(shiftDate || undefined)
     if (!baseDate.isValid()) return null
@@ -122,34 +127,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     return (crossMidnight || isAfterMidnightInNightShift) ? baseDate.add(1, 'day') : baseDate
   }, [])
   const wWorkDate = React.useMemo(() => resolveWorkDate(wShiftDate, wShift, wAuxStart, wAuxEnd), [resolveWorkDate, wShiftDate, wShift, wAuxStart, wAuxEnd])
-  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || !wAuxStart || !wAuxEnd || !wShiftDate
+  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || !wAuxStart || !wAuxEnd || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null || !wShiftDate
 
 
-
-  // 简化的辅助时长计算
-  const calculateAuxDuration = () => {
-    // 使用Form.useWatch返回的值，确保获取的是最新值
-    if (wAuxStart && wAuxEnd) {
-      // 直接从dayjs对象获取小时和分钟
-      const sHour = wAuxStart.hour()
-      const sMin = wAuxStart.minute()
-      const eHour = wAuxEnd.hour()
-      const eMin = wAuxEnd.minute()
-      
-      // 简化的跨天判断：开始时间 > 结束时间即为跨天
-      const isCrossDay = (sHour > eHour) || (sHour === eHour && sMin > eMin)
-      
-      // 计算辅助时长（分钟）
-      const sTotal = sHour * 60 + sMin
-      const eTotal = eHour * 60 + eMin
-      return isCrossDay ? (eTotal + 1440 - sTotal) : (eTotal - sTotal)
-    }
-    return undefined
-  }
 
   // 彻底修复的完成时间计算
   React.useEffect(() => {
-    if (wAuxEnd && wAuxStart && wProcMinutes !== undefined) {
+    if (wAuxEnd && wAuxStart && wProcMinutes !== undefined && wAuxDurationMinutes !== undefined && wAuxDurationMinutes !== null) {
       // 获取当前工作日期
       const workDate = wWorkDate
       if (workDate && workDate.isValid()) {
@@ -186,7 +170,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       // 更新状态完成时间，不再使用form
       setCompletedTime('')
     }
-  }, [wProcMinutes, wAuxStart, wAuxEnd, wWorkDate, form])
+  }, [wProcMinutes, wAuxStart, wAuxEnd, wAuxDurationMinutes, wWorkDate, form])
 
 
 
@@ -891,7 +875,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   return
                 }
                 if (vals.aux_start) {
-                  const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+                  const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
                   if (!submitWorkDate) {
                     message.error('班次日期无效，请重新选择')
                     return
@@ -916,10 +900,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             // Overlap check across devices for same operator (UX-side)
             try {
               const mm = (t: any) => dayjs(t).format('HH:mm')
-              const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+              const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
               const ws = submitWorkDate?.format('YYYY-MM-DD')
               const sstr = vals.aux_start ? mm(vals.aux_start) : ''
-              const estr = vals.aux_end ? mm(vals.aux_end) : ''
+              const estr = wAuxEnd ? mm(wAuxEnd) : ''
               if (ws && sstr) {
                 const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
                 const sMin = toMin(sstr)
@@ -949,16 +933,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             } catch {}
             const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
             const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
-            const parseMinutes = (hhmm: string) => {
-              const [hh, mm] = hhmm.split(':').map(n => Number(n || 0))
-              return (hh * 60) + mm
-            }
-            const startMin = auxStart ? parseMinutes(auxStart) : 0
-            const endMin = auxEnd ? parseMinutes(auxEnd) : 0
-            const diffMin = (endMin >= startMin) ? (endMin - startMin) : (endMin + 1440 - startMin)
-            const auxHours = diffMin > 0 ? diffMin / 60 : 0
+            const auxMinutes = Math.max(0, Number(vals.aux_duration_minutes || 0))
+            const auxHours = auxMinutes / 60
             const procHours = Number(vals.proc_minutes || 0) / 60
-            const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, vals.aux_end)
+            const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
             if (!submitWorkDate) {
               hide()
               message.error('班次日期无效，请重新选择')
@@ -1025,7 +1003,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   
                   // 额外清除，确保字段被清空 - 使用适当的空值而非undefined，避免JSON.stringify循环引用警告
                   form.setFieldValue('aux_start', null)
-                  form.setFieldValue('aux_end', null)
+                  form.setFieldValue('aux_duration_minutes', null)
                   form.setFieldValue('process_name', '')
                   form.setFieldValue('device_no', '')
                   form.setFieldValue('proc_minutes', null)
@@ -1171,8 +1149,23 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           <div className="line-row">
             <div className="line-label">辅助结束：</div>
             <div className="line-value">
-              <Form.Item name="aux_end" rules={[{ required: true, message: '请选择辅助结束时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="" isEndTime startTime={wAuxStart} />
+              <div className="line-static">
+                <span className="line-static-value">{wAuxEnd ? wAuxEnd.format('HH:mm') : '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="line-row">
+            <div className="line-label">辅助时长：</div>
+            <div className="line-value">
+              <Form.Item name="aux_duration_minutes" rules={[{ required: true, message: '请输入辅助时长' }]}>
+                <InputNumber
+                  min={0}
+                  step={5}
+                  controls={false}
+                  inputMode="numeric"
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
             </div>
           </div>
