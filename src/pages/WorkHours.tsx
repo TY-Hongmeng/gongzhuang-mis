@@ -86,6 +86,15 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     if (direct) return direct
     return '-'
   }, [resolvePartMeta])
+  const getAuxMinutesFromRow = React.useCallback((row: any) => {
+    const toMin = (t: string) => { const [h, m] = String(t || '').split(':').map((x) => Number(x || 0)); return h * 60 + m }
+    if (row?.aux_start_time && row?.aux_end_time) {
+      const s = toMin(String(row.aux_start_time || ''))
+      const e = toMin(String(row.aux_end_time || ''))
+      return e >= s ? (e - s) : (e + 1440 - s)
+    }
+    return Math.max(0, Math.round(Number(row?.aux_hours || 0) * 60))
+  }, [])
   const invAbortRef = React.useRef<AbortController | null>(null)
   const invTimerRef = React.useRef<any>(null)
   
@@ -531,7 +540,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         ? json.items
         : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
       if (json?.success || rawItems.length > 0) {
-        const items = rawItems.map(item => ({
+        const items = rawItems.map(item => {
+          const auxCount = Math.max(Number(item.aux_count || 1), 1)
+          const processQuantity = Math.max(Number(item.process_quantity || 1), 1)
+          const auxMinutes = getAuxMinutesFromRow(item)
+          const singleAuxMinutesRaw = Number(item.single_aux_minutes)
+          const singleAuxCountRaw = Number(item.single_aux_count)
+          return ({
           id: String(item.id || ''),
           part_inventory_number: String(item.part_inventory_number || ''),
           part_drawing_number: String(item.part_drawing_number || ''),
@@ -545,15 +560,15 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           shift_date: String(item.shift_date || ''),
           process_name: String(item.process_name || ''),
           operator: String(item.operator || ''),
-          aux_count: Math.max(Number(item.aux_count || 1), 1),
-          process_quantity: Math.max(Number(item.process_quantity || 1), 1),
-          single_aux_minutes: Number(item.single_aux_minutes || 0),
-          single_aux_count: Number(item.single_aux_count || 0),
+          aux_count: auxCount,
+          process_quantity: processQuantity,
+          single_aux_minutes: Number.isFinite(singleAuxMinutesRaw) && singleAuxMinutesRaw > 0 ? singleAuxMinutesRaw : (auxCount > 0 ? (auxMinutes / auxCount) : 0),
+          single_aux_count: Number.isFinite(singleAuxCountRaw) && singleAuxCountRaw > 0 ? singleAuxCountRaw : (processQuantity > 0 ? (auxCount / processQuantity) : 0),
           completed_quantity: Number(item.completed_quantity || 0),
           device_no: String(item.device_no || ''),
           shift: String(item.shift || ''),
           created_at: String(item.created_at || '')
-        }))
+        })})
         setRecentItems(items)
       } else {
         setRecentItems([])

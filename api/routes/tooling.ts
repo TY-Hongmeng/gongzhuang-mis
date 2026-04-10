@@ -1502,6 +1502,40 @@ const normalizePartLookupKey = (value: any) => String(value || '')
   .trim()
   .toUpperCase()
 
+const getAuxMinutesFromRow = (row: any) => {
+  const toMin = (t: string) => {
+    const [h, m] = String(t || '').split(':').map((x) => Number(x || 0))
+    return h * 60 + m
+  }
+  const hasRange = String(row?.aux_start_time || '') && String(row?.aux_end_time || '')
+  if (hasRange) {
+    const s = toMin(String(row.aux_start_time || ''))
+    const e = toMin(String(row.aux_end_time || ''))
+    return e >= s ? (e - s) : (e + 1440 - s)
+  }
+  return Math.max(0, Math.round(Number(row?.aux_hours || 0) * 60))
+}
+
+const enrichWorkHourAuxMetrics = (rows: any[]) => {
+  if (!Array.isArray(rows) || rows.length === 0) return rows
+  return rows.map((row: any) => {
+    const auxCount = Math.max(Number(row?.aux_count || 1) || 1, 1)
+    const processQuantity = Math.max(Number(row?.process_quantity || 1) || 1, 1)
+    const auxMinutes = getAuxMinutesFromRow(row)
+    const singleAuxMinutes = Number(row?.single_aux_minutes)
+    const singleAuxCount = Number(row?.single_aux_count)
+    const computedSingleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
+    const computedSingleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
+    return {
+      ...row,
+      aux_count: auxCount,
+      process_quantity: processQuantity,
+      single_aux_minutes: Number.isFinite(singleAuxMinutes) && singleAuxMinutes > 0 ? singleAuxMinutes : computedSingleAuxMinutes,
+      single_aux_count: Number.isFinite(singleAuxCount) && singleAuxCount > 0 ? singleAuxCount : computedSingleAuxCount
+    }
+  })
+}
+
 const enrichWorkHourPartMeta = async (rows: any[]) => {
   if (!Array.isArray(rows) || rows.length === 0) return rows
   const inventoryValues = Array.from(new Set(
@@ -1635,6 +1669,7 @@ router.get('/work-hours', async (req, res) => {
       }
     }
 
+    items = enrichWorkHourAuxMetrics(items)
     items = await enrichWorkHourPartMeta(items)
 
     const totals = items.reduce(

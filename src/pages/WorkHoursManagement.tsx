@@ -73,6 +73,15 @@ const WorkHoursManagement: React.FC = () => {
     if (direct) return direct
     return '-'
   }, [resolvePartMeta])
+  const getAuxMinutesFromRow = React.useCallback((row: any) => {
+    const toMin = (t: string) => { const [h, m] = String(t || '').split(':').map((x) => Number(x || 0)); return h * 60 + m }
+    if (row?.aux_start_time && row?.aux_end_time) {
+      const s = toMin(String(row.aux_start_time || ''))
+      const e = toMin(String(row.aux_end_time || ''))
+      return e >= s ? (e - s) : (e + 1440 - s)
+    }
+    return Math.max(0, Math.round(Number(row?.aux_hours || 0) * 60))
+  }, [])
 
   // 获取唯一的操作者列表
   const uniqueOperators = React.useMemo(() => {
@@ -153,7 +162,13 @@ const WorkHoursManagement: React.FC = () => {
       if (json?.success) {
           // 处理数据，将所有对象转换为基本类型，避免循环引用
           const rawData = json.items || []
-          const allData = rawData.map(item => ({
+          const allData = rawData.map(item => {
+            const auxCount = Math.max(Number(item.aux_count || 1), 1)
+            const processQuantity = Math.max(Number(item.process_quantity || 1), 1)
+            const auxMinutes = getAuxMinutesFromRow(item)
+            const singleAuxMinutesRaw = Number(item.single_aux_minutes)
+            const singleAuxCountRaw = Number(item.single_aux_count)
+            return ({
             // 只保留需要的属性，并转换为基本类型
             id: String(item.id || ''),
             part_inventory_number: String(item.part_inventory_number || ''),
@@ -168,17 +183,17 @@ const WorkHoursManagement: React.FC = () => {
             shift_date: String(item.shift_date || ''),
             process_name: String(item.process_name || ''),
             operator: String(item.operator || ''),
-            aux_count: Math.max(Number(item.aux_count || 1), 1),
-            process_quantity: Math.max(Number(item.process_quantity || 1), 1),
-            single_aux_minutes: Number(item.single_aux_minutes || 0),
-            single_aux_count: Number(item.single_aux_count || 0),
+            aux_count: auxCount,
+            process_quantity: processQuantity,
+            single_aux_minutes: Number.isFinite(singleAuxMinutesRaw) && singleAuxMinutesRaw > 0 ? singleAuxMinutesRaw : (auxCount > 0 ? (auxMinutes / auxCount) : 0),
+            single_aux_count: Number.isFinite(singleAuxCountRaw) && singleAuxCountRaw > 0 ? singleAuxCountRaw : (processQuantity > 0 ? (auxCount / processQuantity) : 0),
             completed_quantity: Number(item.completed_quantity || 0),
             device_no: String(item.device_no || ''),
             shift: String(item.shift || ''),
             // 转换其他可能包含循环引用的属性
             created_at: String(item.created_at || ''),
             updated_at: String(item.updated_at || '')
-          }))
+          })})
           
           // 保存所有数据，用于生成筛选选项
           setAllItems(allData)
