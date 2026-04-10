@@ -1,11 +1,11 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+export default defineConfig(({ command }) => {
+  const isDevServer = command === 'serve'
   
   return {
     base: './',
@@ -14,18 +14,33 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react({
-        babel: {
-          plugins: [
-            'react-dev-locator',
-          ],
-        },
+        babel: isDevServer
+          ? {
+              plugins: [
+                'react-dev-locator',
+              ],
+            }
+          : undefined,
       }),
       tsconfigPaths(),
       legacy({
         targets: ['defaults', 'iOS >= 11', 'Safari >= 11'],
-        renderModernChunks: false,
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            if (id.includes('react') || id.includes('scheduler')) return 'vendor-react'
+            if (id.includes('antd') || id.includes('@ant-design') || id.includes('rc-')) return 'vendor-antd'
+            if (id.includes('xlsx') || id.includes('file-saver')) return 'vendor-xlsx'
+            if (id.includes('@supabase')) return 'vendor-supabase'
+            return 'vendor'
+          },
+        },
+      },
+    },
     server: {
       port: 5182,
       host: true,

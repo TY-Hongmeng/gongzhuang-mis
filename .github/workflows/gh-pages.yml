@@ -19,16 +19,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Install
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build (relative base for GitHub Pages)
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: npx vite build -- --base=./
+        run: pnpm exec vite build --base=./
 
       - name: SPA fallback (copy index.html to 404.html)
         run: cp -f dist/index.html dist/404.html
