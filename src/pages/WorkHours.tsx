@@ -770,14 +770,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .ant-input,
         .work-hours-form .ant-select,
         .work-hours-form .ant-input-number { width: 100%; }
-        .work-hours-form .line-row { display: flex; align-items: center; margin-bottom: 6px; }
+        .work-hours-form .line-row { display: flex; align-items: stretch; gap: 8px; margin-bottom: 10px; }
         .work-hours-form .line-label {
-          width: 82px;
-          flex: 0 0 82px;
-          font-size: 13px;
-          line-height: 1.2;
+          width: 86px;
+          flex: 0 0 86px;
+          min-height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          font-size: 14px;
+          line-height: 1.3;
           text-align: right;
-          padding-right: 6px;
+          padding-right: 2px;
           white-space: nowrap;
           color: rgba(0, 0, 0, 0.88);
         }
@@ -787,23 +791,35 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .work-hours-form .line-value .ant-input,
         .work-hours-form .line-value .ant-input-number,
         .work-hours-form .line-value .ant-select-selector {
-          min-height: 30px !important;
-          height: 30px !important;
-          font-size: 13px;
+          min-height: 38px !important;
+          height: 38px !important;
+          font-size: 14px;
+          border-radius: 8px !important;
+        }
+        .work-hours-form .line-value .ant-input,
+        .work-hours-form .line-value .ant-picker .ant-picker-input > input,
+        .work-hours-form .line-value .ant-input-number .ant-input-number-input {
+          height: 36px;
+          line-height: 36px;
+          font-size: 14px;
+        }
+        .work-hours-form .line-value .ant-input-number .ant-input-number-input-wrap {
+          height: 100%;
         }
         .work-hours-form .line-value .ant-select-single .ant-select-selector .ant-select-selection-item,
         .work-hours-form .line-value .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
-          line-height: 28px !important;
+          line-height: 36px !important;
+          font-size: 14px;
         }
         .work-hours-form .line-static {
-          min-height: 30px;
+          min-height: 38px;
           display: flex;
           align-items: center;
           border: 1px solid #d9d9d9;
-          border-radius: 6px;
-          padding: 2px 8px;
+          border-radius: 8px;
+          padding: 0 10px;
           background: #fff;
-          font-size: 13px;
+          font-size: 14px;
         }
         .work-hours-form .line-static-label {
           color: rgba(0, 0, 0, 0.45);
@@ -815,6 +831,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+        .work-hours-form .ant-btn {
+          min-height: 40px;
+          font-size: 15px;
+          border-radius: 8px;
         }
         @media (min-width: 768px) {
           .work-hours-container { max-width: 900px; }
