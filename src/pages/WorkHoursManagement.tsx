@@ -47,7 +47,13 @@ const WorkHoursManagement: React.FC = () => {
   const [selectedKeys, setSelectedKeys] = React.useState<React.Key[]>([])
   const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
   const [deviceMap, setDeviceMap] = React.useState<Record<string, { name: string; max_aux_minutes?: number }>>({})
-  const normalizePartKey = React.useCallback((v: any) => String(v || '').trim().toUpperCase(), [])
+  const normalizePartKey = React.useCallback((v: any) => {
+    return String(v || '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .trim()
+      .toUpperCase()
+  }, [])
   const resolvePartMeta = React.useCallback((row: any) => {
     const inv = normalizePartKey(row?.part_inventory_number)
     const draw = normalizePartKey(row?.part_drawing_number)
@@ -253,6 +259,18 @@ const WorkHoursManagement: React.FC = () => {
         const pageSize = 1000
         let page = 1
         const map: Record<string, { name: string; drawing: string }> = {}
+        const upsertMeta = (key: string, meta: { name: string; drawing: string }) => {
+          if (!key) return
+          const prev = map[key]
+          if (!prev) {
+            map[key] = meta
+            return
+          }
+          map[key] = {
+            name: prev.name || meta.name,
+            drawing: prev.drawing || meta.drawing
+          }
+        }
         while (true) {
           const r = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
           if (!r.ok) {
@@ -265,8 +283,8 @@ const WorkHoursManagement: React.FC = () => {
             const drawing = String(p.part_drawing_number || '').trim()
             const inv = normalizePartKey(p.part_inventory_number)
             const draw = normalizePartKey(p.part_drawing_number)
-            if (inv) map[inv] = { name, drawing }
-            if (draw && !map[draw]) map[draw] = { name, drawing }
+            upsertMeta(inv, { name, drawing })
+            upsertMeta(draw, { name, drawing })
           })
           if (rows.length < pageSize) break
           page += 1
