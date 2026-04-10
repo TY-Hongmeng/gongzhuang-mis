@@ -1406,50 +1406,6 @@ router.post('/work-hours', async (req, res) => {
       }
     } catch {}
 
-    // Operator overlap validation across devices: prevent overlapping auxiliary intervals
-    try {
-      const operator = String(payload.operator || '').trim()
-      const deviceNo = String(payload.device_no || '').trim()
-      const workDate = String(payload.work_date || '').trim()
-      const startTime = String(payload.aux_start_time || '').trim()
-      const endTime = String(payload.aux_end_time || '').trim()
-      if (operator && workDate && startTime) {
-        const dayjs = (await import('dayjs')).default as any
-        const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
-        const sMin = toMin(startTime)
-        const eMinRaw = endTime ? toMin(endTime) : null
-        const eMin = eMinRaw !== null ? eMinRaw : sMin // fallback same minute if no end provided
-        const currStartTs = dayjs(workDate).hour(Math.floor(sMin/60)).minute(sMin%60).valueOf()
-        const addDay = eMin < sMin ? 1 : 0
-        const currEndTs = dayjs(workDate).add(addDay, 'day').hour(Math.floor(eMin/60)).minute(eMin%60).valueOf()
-        const prevDay = dayjs(workDate).subtract(1,'day').format('YYYY-MM-DD')
-        const nextDay = dayjs(workDate).add(1,'day').format('YYYY-MM-DD')
-        const { data: rows } = await supabase
-          .from('work_hours')
-          .select('work_date, aux_start_time, aux_end_time, device_no')
-          .eq('operator', operator)
-          .gte('work_date', prevDay)
-          .lte('work_date', nextDay)
-          .order('created_at', { ascending: false })
-        for (const r of (rows || [])) {
-          const otherDevice = String((r as any).device_no || '')
-          if (otherDevice && deviceNo && otherDevice === deviceNo) continue
-          const osMin = toMin((r as any).aux_start_time || '')
-          const oeMinRaw = (r as any).aux_end_time ? toMin((r as any).aux_end_time) : null
-          if (osMin === 0 && oeMinRaw === null) continue
-          const oStartTs = dayjs((r as any).work_date).hour(Math.floor(osMin/60)).minute(osMin%60).valueOf()
-          const oAddDay = (oeMinRaw !== null && oeMinRaw < osMin) ? 1 : 0
-          const oEndTs = (oeMinRaw !== null)
-            ? dayjs((r as any).work_date).add(oAddDay, 'day').hour(Math.floor(oeMinRaw/60)).minute(oeMinRaw%60).valueOf()
-            : Number.MAX_SAFE_INTEGER // treat missing end as still ongoing
-          const overlap = (currStartTs < oEndTs) && (currEndTs > oStartTs)
-          if (overlap) {
-            return res.status(400).json({ success: false, error: '该操作者辅助时间与其他设备作业重叠，请调整时间后再提交' })
-          }
-        }
-      }
-    } catch {}
-
     const insertBody = {
       ...payload,
       hours: adjustedHours,

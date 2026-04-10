@@ -923,7 +923,23 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             // Validate device time order against last record for the same device
             const deviceNo = form.getFieldValue('device_no')
             if (deviceNo) {
-              const lastSame = (recentItems || []).find((it: any) => String(it.device_no || '') === String(deviceNo || ''))
+              let lastSame: any = null
+              try {
+                const params = new URLSearchParams()
+                params.set('page', '1')
+                params.set('pageSize', '200')
+                params.set('order', 'created_at')
+                params.set('order_dir', 'desc')
+                params.set('device_no', String(deviceNo || ''))
+                const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
+                if (resp.ok) {
+                  const json = await resp.json()
+                  const rows = Array.isArray(json?.items)
+                    ? json.items
+                    : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
+                  lastSame = Array.isArray(rows) ? rows[0] : null
+                }
+              } catch {}
               if (lastSame) {
                 const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
                 const pad = (n: number) => String(n).padStart(2,'0')
@@ -954,40 +970,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               }
             }
             const hide = message.loading('提交中...', 0)
-            // Overlap check across devices for same operator (UX-side)
-            try {
-              const mm = (t: any) => dayjs(t).format('HH:mm')
-              const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
-              const ws = submitWorkDate?.format('YYYY-MM-DD')
-              const sstr = vals.aux_start ? mm(vals.aux_start) : ''
-              const estr = wAuxEnd ? mm(wAuxEnd) : ''
-              if (ws && sstr) {
-                const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
-                const sMin = toMin(sstr)
-                const eMinRaw = estr ? toMin(estr) : sMin
-                const addDay = eMinRaw < sMin ? 1 : 0
-                const currStart = dayjs(ws).hour(Math.floor(sMin/60)).minute(sMin%60).valueOf()
-                const currEnd = dayjs(ws).add(addDay,'day').hour(Math.floor(eMinRaw/60)).minute(eMinRaw%60).valueOf()
-                const deviceNo = form.getFieldValue('device_no')
-                for (const it of recentItems || []) {
-                  if (String(it.operator || '') !== String(user?.real_name || '')) continue
-                  if (String(it.device_no || '') === String(deviceNo || '')) continue
-                  const os = String(it.aux_start_time || '')
-                  const oe = String(it.aux_end_time || '')
-                  if (!os) continue
-                  const osMin = toMin(os)
-                  const oeMinRaw = oe ? toMin(oe) : null
-                  const oAdd = (oeMinRaw !== null && oeMinRaw < osMin) ? 1 : 0
-                  const oStart = dayjs(it.work_date).hour(Math.floor(osMin/60)).minute(osMin%60).valueOf()
-                  const oEnd = (oeMinRaw !== null) ? dayjs(it.work_date).add(oAdd,'day').hour(Math.floor(oeMinRaw/60)).minute(oeMinRaw%60).valueOf() : Number.MAX_SAFE_INTEGER
-                  if (currStart < oEnd && currEnd > oStart) {
-                    hide()
-                    message.error('与该操作者其他设备的辅助时间重叠，请调整')
-                    return
-                  }
-                }
-              }
-            } catch {}
             const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
             const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
             const auxHours = auxMinutes / 60
