@@ -60,16 +60,27 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [lastCompletedTime, setLastCompletedTime] = React.useState<string>('')
   // 添加 completedTime 状态来替代 form 中的 completed_time 字段
   const [completedTime, setCompletedTime] = React.useState<string>('')
-  // 添加零件名称映射
-  const [partNameMap, setPartNameMap] = React.useState<Record<string, string>>({})
+  const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
   const normalizePartKey = React.useCallback((v: any) => String(v || '').trim().toUpperCase(), [])
-  const resolvePartName = React.useCallback((row: any) => {
-    const direct = String(row?.part_name || '').trim()
-    if (direct) return direct
+  const resolvePartMeta = React.useCallback((row: any) => {
     const inv = normalizePartKey(row?.part_inventory_number)
     const draw = normalizePartKey(row?.part_drawing_number)
-    return (inv && partNameMap[inv]) || (draw && partNameMap[draw]) || '-'
-  }, [partNameMap, normalizePartKey])
+    return (inv && partMetaMap[inv]) || (draw && partMetaMap[draw]) || null
+  }, [partMetaMap, normalizePartKey])
+  const resolvePartName = React.useCallback((row: any) => {
+    const byMeta = resolvePartMeta(row)?.name
+    if (byMeta) return byMeta
+    const direct = String(row?.part_name || '').trim()
+    if (direct) return direct
+    return '-'
+  }, [resolvePartMeta])
+  const resolvePartDrawingNumber = React.useCallback((row: any) => {
+    const byMeta = resolvePartMeta(row)?.drawing
+    if (byMeta) return byMeta
+    const direct = String(row?.part_drawing_number || '').trim()
+    if (direct) return direct
+    return '-'
+  }, [resolvePartMeta])
   const invAbortRef = React.useRef<AbortController | null>(null)
   const invTimerRef = React.useRef<any>(null)
   
@@ -365,16 +376,16 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         if (rows.length < pageSize) break
         page += 1
       }
-      const map: Record<string, string> = {}
+      const map: Record<string, { name: string; drawing: string }> = {}
       all.forEach((p: any) => {
         const name = String(p.part_name || '').trim()
-        if (!name) return
+        const drawing = String(p.part_drawing_number || '').trim()
         const inv = normalizePartKey(p.part_inventory_number)
         const draw = normalizePartKey(p.part_drawing_number)
-        if (inv) map[inv] = name
-        if (draw && !map[draw]) map[draw] = name
+        if (inv) map[inv] = { name, drawing }
+        if (draw && !map[draw]) map[draw] = { name, drawing }
       })
-      setPartNameMap(map)
+      setPartMetaMap(map)
     } catch {}
   }
 
@@ -590,7 +601,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         return recentStats[key]?.runningCount || 0;
       }, width: 50, align: 'center' },
       { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
-      { title: '图号', dataIndex: 'part_drawing_number', align: 'center' },
+      { title: '图号', key: 'part_drawing_number', render: (_: any, r: any) => resolvePartDrawingNumber(r), align: 'center' },
       { title: '零件名称', key: 'part_name', render: (_: any, r: any) => resolvePartName(r), align: 'center' },
       { title: '工序', dataIndex: 'process_name', align: 'center' },
       { title: '设备编号', key: 'device', render: (_: any, r: any) => {
@@ -688,7 +699,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       return col;
     });
-  }, [recentItems, recentStats, resolvePartName, showRecent])
+  }, [recentItems, recentStats, resolvePartName, resolvePartDrawingNumber, showRecent])
 
   const titleText = showRecent ? '最近提交' : '工时录入'
 

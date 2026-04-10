@@ -45,16 +45,28 @@ const WorkHoursManagement: React.FC = () => {
   const [userMap, setUserMap] = React.useState<Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }>>({})
   const [expandedRowKeys, setExpandedRowKeys] = React.useState<React.Key[]>([])
   const [selectedKeys, setSelectedKeys] = React.useState<React.Key[]>([])
-  const [partNameMap, setPartNameMap] = React.useState<Record<string, string>>({})
+  const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
   const [deviceMap, setDeviceMap] = React.useState<Record<string, { name: string; max_aux_minutes?: number }>>({})
   const normalizePartKey = React.useCallback((v: any) => String(v || '').trim().toUpperCase(), [])
-  const resolvePartName = React.useCallback((row: any) => {
-    const direct = String(row?.part_name || '').trim()
-    if (direct) return direct
+  const resolvePartMeta = React.useCallback((row: any) => {
     const inv = normalizePartKey(row?.part_inventory_number)
     const draw = normalizePartKey(row?.part_drawing_number)
-    return (inv && partNameMap[inv]) || (draw && partNameMap[draw]) || '-'
-  }, [partNameMap, normalizePartKey])
+    return (inv && partMetaMap[inv]) || (draw && partMetaMap[draw]) || null
+  }, [partMetaMap, normalizePartKey])
+  const resolvePartName = React.useCallback((row: any) => {
+    const byMeta = resolvePartMeta(row)?.name
+    if (byMeta) return byMeta
+    const direct = String(row?.part_name || '').trim()
+    if (direct) return direct
+    return '-'
+  }, [resolvePartMeta])
+  const resolvePartDrawingNumber = React.useCallback((row: any) => {
+    const byMeta = resolvePartMeta(row)?.drawing
+    if (byMeta) return byMeta
+    const direct = String(row?.part_drawing_number || '').trim()
+    if (direct) return direct
+    return '-'
+  }, [resolvePartMeta])
 
   // 获取唯一的操作者列表
   const uniqueOperators = React.useMemo(() => {
@@ -82,9 +94,9 @@ const WorkHoursManagement: React.FC = () => {
 
   // 获取唯一的图号列表
   const uniquePartDrawingNos = React.useMemo(() => {
-    const partDrawingNos = Array.from(new Set(allItems.map(item => item.part_drawing_number || '-')))
+    const partDrawingNos = Array.from(new Set(allItems.map(item => resolvePartDrawingNumber(item))))
     return partDrawingNos.filter(p => p !== '-')
-  }, [allItems])
+  }, [allItems, resolvePartDrawingNumber])
 
   // 获取唯一的零件名称列表
   const uniquePartNames = React.useMemo(() => {
@@ -207,7 +219,7 @@ const WorkHoursManagement: React.FC = () => {
         
         // 图号筛选
         if (partDrawingNo) {
-          filteredData = filteredData.filter(item => item.part_drawing_number === partDrawingNo)
+          filteredData = filteredData.filter(item => resolvePartDrawingNumber(item) === partDrawingNo)
         }
         
         // 零件名称筛选
@@ -233,14 +245,14 @@ const WorkHoursManagement: React.FC = () => {
   // 当筛选条件变化时，重新获取数据并在客户端进行筛选
   React.useEffect(() => {
     fetchData()
-  }, [range, yearMonth, operator, workshop, team, shift, deviceNo, partInventoryNo, partDrawingNo, partName, resolvePartName])
+  }, [range, yearMonth, operator, workshop, team, shift, deviceNo, partInventoryNo, partDrawingNo, partName, resolvePartDrawingNumber, resolvePartName])
 
   React.useEffect(() => {
     (async () => {
       try {
         const pageSize = 1000
         let page = 1
-        const map: Record<string, string> = {}
+        const map: Record<string, { name: string; drawing: string }> = {}
         while (true) {
           const r = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}`)
           if (!r.ok) {
@@ -250,16 +262,16 @@ const WorkHoursManagement: React.FC = () => {
           const rows = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : [])
           rows.forEach((p: any) => {
             const name = String(p.part_name || '').trim()
-            if (!name) return
+            const drawing = String(p.part_drawing_number || '').trim()
             const inv = normalizePartKey(p.part_inventory_number)
             const draw = normalizePartKey(p.part_drawing_number)
-            if (inv) map[inv] = name
-            if (draw && !map[draw]) map[draw] = name
+            if (inv) map[inv] = { name, drawing }
+            if (draw && !map[draw]) map[draw] = { name, drawing }
           })
           if (rows.length < pageSize) break
           page += 1
         }
-        setPartNameMap(map)
+        setPartMetaMap(map)
       } catch {}
     })()
   }, [normalizePartKey])
@@ -461,7 +473,7 @@ const WorkHoursManagement: React.FC = () => {
       return getRunningDevicesCount(r.work_date, r.shift, items);
     }, width: 50, align: 'center' },
     { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
-    { title: '图号', dataIndex: 'part_drawing_number', align: 'center' },
+    { title: '图号', key: 'part_drawing_number', render: (_: any, r: any) => resolvePartDrawingNumber(r), align: 'center' },
     { title: '零件名称', key: 'part_name', render: (_: any, r: any) => resolvePartName(r), align: 'center' },
     { title: '工序', dataIndex: 'process_name', align: 'center' },
     { title: '设备编号', key: 'device', render: (_: any, r: any) => {
@@ -564,7 +576,7 @@ const WorkHoursManagement: React.FC = () => {
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
     { title: '加工数量', dataIndex: 'completed_quantity', align: 'center' }
-  ], [resolvePartName, deviceMap, userMap, items, dailyHoursSum])
+  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum])
 
   const expandColumnWidth = 48
   const parentColumnWidths = [90, 70, 70, 140, 140, 140, 140, 140, 140, 90, 120, 160]
@@ -857,6 +869,7 @@ const WorkHoursManagement: React.FC = () => {
             
             // 获取零件名称
             const partNameDisplay = resolvePartName(row);
+            const partDrawingDisplay = resolvePartDrawingNumber(row);
             
             // 计算日统计、日辅助、日程序（小时）
             const dailyKey = `${group.operator}-${row.shift}-${row.work_date}`;
@@ -903,7 +916,7 @@ const WorkHoursManagement: React.FC = () => {
               '日程序': `${dailyProc}小时`,
               '开动': runningCount,
               '盘存编号': row.part_inventory_number || '-',
-              '图号': row.part_drawing_number || '-',
+              '图号': partDrawingDisplay || '-',
               '零件名称': partNameDisplay || '-',
               '工序': row.process_name || '-',
               '设备编号': deviceFullName,
