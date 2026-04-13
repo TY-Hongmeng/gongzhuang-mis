@@ -97,6 +97,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   }, [])
   const invAbortRef = React.useRef<AbortController | null>(null)
   const invTimerRef = React.useRef<any>(null)
+  const invCacheRef = React.useRef<any[]>([])
+  const invReqSeqRef = React.useRef(0)
   
 
 
@@ -251,18 +253,33 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   }, [wDeviceNo])
 
   const fetchInventory = async (q: string) => {
+    const requestSeq = ++invReqSeqRef.current
+    const keyword = String(q || '').trim()
+    const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+    const filterFromCache = (searchText: string) => {
+      const nq = normalize(searchText)
+      if (!nq) return [...invCacheRef.current]
+      return invCacheRef.current.filter((opt: any) => {
+        const label = normalize(String(opt?.label || ''))
+        const value = normalize(String(opt?.value || ''))
+        const name = normalize(String(opt?.meta?.part_name || ''))
+        return label.includes(nq) || value.includes(nq) || name.includes(nq)
+      })
+    }
     try {
       setLoadingInv(true)
       if (invAbortRef.current) invAbortRef.current.abort()
       invAbortRef.current = new AbortController()
       const ts = Date.now()
-      const keyword = String(q || '').trim()
-      const fetchInventoryPage = async (searchText: string, signal?: AbortSignal) => {
-        const pageSize = searchText ? 200 : 300
+      if (keyword && invCacheRef.current.length > 0) {
+        setInvOptions(filterFromCache(keyword))
+      }
+      const fetchInventoryPage = async (searchText: string, page: number, signal?: AbortSignal) => {
+        const pageSize = searchText ? 300 : 500
         let lastError = ''
         for (let attempt = 0; attempt < 3; attempt += 1) {
           try {
-            const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=${pageSize}&search=${encodeURIComponent(searchText)}&_ts=${ts}` , { signal })
+            const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(searchText)}&_ts=${ts}` , { signal })
             if (!resp.ok) {
               let detail = ''
               try {
@@ -284,8 +301,22 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         }
         throw new Error(lastError || '获取盘存编号失败')
       }
-      const invItems = await fetchInventoryPage(keyword, invAbortRef.current.signal)
-      const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+      let invItems = await fetchInventoryPage(keyword, 1, invAbortRef.current.signal)
+      if (keyword && invItems.length === 0) {
+        const allRows: any[] = []
+        for (let page = 1; page <= 6; page += 1) {
+          const rows = await fetchInventoryPage('', page, invAbortRef.current.signal)
+          allRows.push(...rows)
+          if (rows.length < 500) break
+        }
+        const nq = normalize(keyword)
+        invItems = allRows.filter((it: any) => {
+          const inv = normalize(String(it?.part_inventory_number || it?.inventory_number || ''))
+          const name = normalize(String(it?.part_name || ''))
+          const drawing = normalize(String(it?.part_drawing_number || ''))
+          return inv.includes(nq) || name.includes(nq) || drawing.includes(nq)
+        })
+      }
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
         const inv = String(it.part_inventory_number || it.inventory_number || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
@@ -366,12 +397,31 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           combined.push(mo)
         }
       })
-      setInvOptions(combined)
+      if (requestSeq !== invReqSeqRef.current) return
+      if (!keyword) {
+        invCacheRef.current = combined
+      } else if (combined.length > 0) {
+        const byValue = new Set(invCacheRef.current.map((it: any) => String(it?.value || '')))
+        combined.forEach((it: any) => {
+          const value = String(it?.value || '')
+          if (!value || byValue.has(value)) return
+          byValue.add(value)
+          invCacheRef.current.push(it)
+        })
+      }
+      setInvOptions(combined.length > 0 ? combined : filterFromCache(keyword))
     } catch (e: any) {
       console.error('Fetch inventory failed', e)
-      message.error(e?.message || '获取盘存编号失败')
+      if (requestSeq !== invReqSeqRef.current) return
+      if (invCacheRef.current.length > 0) {
+        setInvOptions(filterFromCache(String(q || '').trim()))
+      } else {
+        message.error(e?.message || '获取盘存编号失败')
+      }
     } finally {
-      setLoadingInv(false)
+      if (requestSeq === invReqSeqRef.current) {
+        setLoadingInv(false)
+      }
     }
   }
 
@@ -1109,9 +1159,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 }}
                 onSearch={(val) => {
                   if (invTimerRef.current) clearTimeout(invTimerRef.current)
-                  invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 400)
+                  invTimerRef.current = setTimeout(() => { fetchInventory(val) }, 250)
                 }}
-                onOpenChange={(open) => { if (open) fetchInventory('') }}
+                onOpenChange={(open) => { if (open) fetchInventory(selectedInv || '') }}
                 options={invOptions}
                 loading={loadingInv}
                 style={{ width: '100%' }}
