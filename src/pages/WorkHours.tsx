@@ -390,13 +390,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           String(opt.meta.part_name).toLowerCase().includes(lowerQ)
         )
       }
-      const combined = [...invOpts]
-      const invValues = new Set(invOpts.map((o:any) => o.value))
-      maintenanceOpts.forEach(mo => {
-        if (!invValues.has(mo.value)) {
-          combined.push(mo)
-        }
-      })
+      const maintenanceValues = new Set(maintenanceOpts.map((o: any) => String(o?.value || '')))
+      const normalInvOpts = invOpts.filter((o: any) => !maintenanceValues.has(String(o?.value || '')))
+      const combined = [...maintenanceOpts, ...normalInvOpts]
       if (requestSeq !== invReqSeqRef.current) return
       if (!keyword) {
         invCacheRef.current = combined
