@@ -226,6 +226,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           ? json.items
           : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
         let latest: dayjs.Dayjs | null = null
+        let latestOperator = ''
         for (const row of rows) {
           const workDate = dayjs(String(row?.work_date || ''))
           if (!workDate.isValid()) continue
@@ -239,9 +240,14 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           const actualAuxEndTime = auxEndTime.isBefore(auxStartTime) ? auxEndTime.add(1, 'day') : auxEndTime
           const procMinutes = Math.round(Number(row?.proc_hours || 0) * 60)
           const doneAt = actualAuxEndTime.add(procMinutes, 'minute')
-          if (!latest || doneAt.valueOf() > latest.valueOf()) latest = doneAt
+          if (!latest || doneAt.valueOf() > latest.valueOf()) {
+            latest = doneAt
+            latestOperator = String(row?.operator || '').trim()
+          }
         }
-        if (!cancelled) setLastCompletedTime(latest ? latest.format('MM-DD HH:mm') : '')
+        if (!cancelled) {
+          setLastCompletedTime(latest ? `${latest.format('MM-DD HH:mm')}${latestOperator ? ` (${latestOperator})` : ''}` : '')
+        }
       } catch {
         if (!cancelled) setLastCompletedTime('')
       }
@@ -317,17 +323,29 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           return inv.includes(nq) || name.includes(nq) || drawing.includes(nq)
         })
       }
+      const formatInventoryLabel = (inventoryNo: string, partName: string) => {
+        const inv = String(inventoryNo || '').trim()
+        const name = String(partName || '').trim()
+        return name ? `${inv} | ${name}` : inv
+      }
+      const formatMaintenanceLabel = (inventoryNo: string, partName: string) => {
+        const inv = String(inventoryNo || '').trim()
+        const fixedInv = inv.startsWith('维修-') ? inv : `维修-${inv}`
+        const name = String(partName || '').trim()
+        return name ? `${fixedInv} | ${name}` : fixedInv
+      }
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
         const inv = String(it.part_inventory_number || it.inventory_number || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
         if (!inv) return
         const key = normalize(inv)
+        const partName = String(it.part_name || '').trim()
         if (!mergedByInv.has(key)) {
           mergedByInv.set(key, {
             value: inv,
-            label: inv,
+            label: formatInventoryLabel(inv, partName),
             meta: {
-              part_name: String(it.part_name || ''),
+              part_name: partName,
               part_drawing_number: String(it.part_drawing_number || ''),
               process_route: String(it.process_route || '')
             },
@@ -348,7 +366,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           const d1 = r1.ok ? await r1.json() : []
           const arr1 = Array.isArray(d1?.data) ? d1.data : (Array.isArray(d1) ? d1 : [])
           const a = arr1.filter((x:any)=>x?.is_active!==false).map((mo:any)=>({
-            label: String(mo.option_value ?? mo.inventory_number ?? ''),
+            label: formatMaintenanceLabel(String(mo.option_value ?? mo.inventory_number ?? ''), String(mo.option_label ?? mo.name ?? '')),
             value: String(mo.option_value ?? mo.inventory_number ?? ''),
             type: 'maintenance',
             meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
@@ -356,7 +374,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           const ensurePrefix = (s: string) => s.startsWith('维修-') ? s : `维修-${s}`
           maintenanceOpts = a.map((it:any)=>({
             ...it,
-            label: ensurePrefix(String(it.label || '')),
+            label: String(it.label || ''),
             value: ensurePrefix(String(it.value || ''))
           }))
         } catch {}
@@ -369,7 +387,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             const a = mData
               .filter((mo: any) => mo?.is_active !== false)
               .map((mo: any) => ({
-                label: String(mo.option_value ?? mo.inventory_number ?? ''),
+                label: formatMaintenanceLabel(String(mo.option_value ?? mo.inventory_number ?? ''), String(mo.option_label ?? mo.name ?? '')),
                 value: String(mo.option_value ?? mo.inventory_number ?? ''),
                 type: 'maintenance',
                 meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
@@ -377,7 +395,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               .filter((mo: any) => !!mo.value)
             maintenanceOpts = [...maintenanceOpts, ...a].map((it:any)=>({
               ...it,
-              label: it.label.startsWith('维修-') ? it.label : `维修-${it.label}`,
+              label: String(it.label || ''),
               value: it.value.startsWith('维修-') ? it.value : `维修-${it.value}`
             }))
           }
@@ -1119,7 +1137,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           <div className="line-row">
             <div className="line-label">班次日期：</div>
             <div className="line-value">
-              <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} initialValue={dayjs()} preserve={false}>
+              <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} preserve={false}>
                 <DatePicker placeholder="" style={{ width: '100%' }} />
               </Form.Item>
             </div>
@@ -1165,15 +1183,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 allowClear
                 onChange={onSelectInv}
               />
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">零件名称：</div>
-            <div className="line-value">
-              <div className="line-static">
-                <span className="line-static-value">{selectedInfo.name || '-'}</span>
-              </div>
             </div>
           </div>
 
