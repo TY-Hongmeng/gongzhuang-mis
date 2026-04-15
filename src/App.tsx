@@ -41,6 +41,7 @@ const OptionsManagement = lazyWithTrace("OptionsManagement", () => import("./pag
 const PartTypes = lazyWithTrace("PartTypes", () => import("./pages/PartTypes"));
 const CuttingManagement = lazyWithTrace("CuttingManagement", () => import("./pages/CuttingManagement"));
 const PurchaseManagement = lazyWithTrace("PurchaseManagement", () => import("./pages/PurchaseManagement"));
+const StandardPartsManagement = lazyWithTrace("StandardPartsManagement", () => import("./pages/StandardPartsManagement"));
 const WorkHours = lazyWithTrace("WorkHours", () => import("./pages/WorkHours"));
 const WorkHoursManagement = lazyWithTrace("WorkHoursManagement", () => import("./pages/WorkHoursManagement"));
 
@@ -79,6 +80,7 @@ export default function App() {
                 <Route path="part-types" element={<ProtectedRoute requiredModule="base_data"><PartTypes /></ProtectedRoute>} />
                 <Route path="cutting-management" element={<ProtectedRoute requiredModule="cutting"><CuttingManagement /></ProtectedRoute>} />
                 <Route path="purchase-management" element={<ProtectedRoute requiredModule="purchase"><PurchaseManagement /></ProtectedRoute>} />
+                <Route path="standard-parts" element={<ProtectedRoute requiredModule="purchase"><StandardPartsManagement /></ProtectedRoute>} />
                 <Route path="work-hours" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours mode="entry" /></ProtectedRoute>} />
                 <Route path="work-hours-recent" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours mode="recent" /></ProtectedRoute>} />
                 <Route path="work-hours-management" element={<ProtectedRoute requiredModule="work_hours"><WorkHoursManagement /></ProtectedRoute>} />
