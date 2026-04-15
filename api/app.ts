@@ -23,6 +23,7 @@ import purchaseOrdersRoutes from './routes/purchaseOrders.js'
 import backupMaterialsRoutes from './routes/backupMaterials.js'
 import manualPlansRoutes from './routes/manualPlans.js'
 import permissionsRoutes from './routes/permissions.js'
+import standardPartsRoutes from './routes/standardParts.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -57,6 +58,7 @@ app.use('/api/purchase-orders', purchaseOrdersRoutes)
 app.use('/api/backup-materials', backupMaterialsRoutes)
 app.use('/api/manual-plans', manualPlansRoutes)
 app.use('/api/permissions', permissionsRoutes)
+app.use('/api/standard-parts', standardPartsRoutes)
 
 /**
  * health

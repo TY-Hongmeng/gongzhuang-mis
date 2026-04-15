@@ -47,6 +47,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/purchase-orders',
     '/api/backup-materials',
     '/api/manual-plans',
+    '/api/standard-parts',
     '/api/users',
     '/api/companies'
   ]
@@ -1098,6 +1099,300 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const id = bm[1]
           const { error } = await supabase.from('backup_materials').delete().eq('id', id)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+      }
+
+      // Standard parts
+      if (path.startsWith('/api/standard-parts')) {
+        const toNum = (v: any) => {
+          const n = Number(v)
+          return Number.isFinite(n) ? n : 0
+        }
+        const normText = (v: any) => String(v || '').trim()
+        const today = () => new Date().toISOString().slice(0, 10)
+        const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
+        const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
+          if (!minDate || !maxDate || totalQty <= 0) return 0
+          const start = new Date(`${minDate}T00:00:00`)
+          const end = new Date(`${maxDate}T00:00:00`)
+          const months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1)
+          return totalQty / months
+        }
+
+        if (method === 'GET' && path === '/api/standard-parts/inbound') {
+          const { data, error } = await scopedClient
+            .from('standard_part_inbound')
+            .select('*')
+            .neq('status', '已删除')
+            .order('in_date', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
+
+        if (method === 'GET' && path === '/api/standard-parts/outbound') {
+          const { data, error } = await scopedClient
+            .from('standard_part_outbound')
+            .select('*')
+            .neq('status', '已删除')
+            .order('out_date', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
+
+        if (method === 'GET' && path === '/api/standard-parts/stock-ledger') {
+          const [inRes, outRes] = await Promise.all([
+            scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,unit_price,quantity,status,in_date'),
+            scopedClient.from('standard_part_outbound').select('name,spec_model,location,unit,unit_price,quantity,status,out_date')
+          ])
+          if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
+          if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
+          const inboundRows = (inRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
+          const outboundRows = (outRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
+
+          const inboundMap = new Map<string, any>()
+          for (const row of inboundRows) {
+            const key = keyOf(row)
+            const prev = inboundMap.get(key) || {
+              name: normText(row.name),
+              spec_model: normText(row.spec_model),
+              location: normText(row.location),
+              unit: normText(row.unit),
+              inbound_total: 0,
+              unit_price: 0
+            }
+            prev.inbound_total += toNum(row.quantity)
+            prev.unit_price = Math.max(toNum(prev.unit_price), toNum(row.unit_price))
+            inboundMap.set(key, prev)
+          }
+
+          const outboundMap = new Map<string, any>()
+          for (const row of outboundRows) {
+            const key = keyOf(row)
+            const prev = outboundMap.get(key) || {
+              name: normText(row.name),
+              spec_model: normText(row.spec_model),
+              location: normText(row.location),
+              unit: normText(row.unit),
+              outbound_total: 0,
+              total_used_qty: 0,
+              min_out_date: null as string | null,
+              max_out_date: null as string | null
+            }
+            prev.outbound_total += toNum(row.quantity)
+            prev.total_used_qty += toNum(row.quantity)
+            const d = normText(row.out_date)
+            if (d) {
+              if (!prev.min_out_date || d < prev.min_out_date) prev.min_out_date = d
+              if (!prev.max_out_date || d > prev.max_out_date) prev.max_out_date = d
+            }
+            outboundMap.set(key, prev)
+          }
+
+          const mergedKeys = new Set<string>([...inboundMap.keys(), ...outboundMap.keys()])
+          const items = Array.from(mergedKeys).map((k) => {
+            const i = inboundMap.get(k) || {}
+            const o = outboundMap.get(k) || {}
+            const inboundTotal = toNum(i.inbound_total)
+            const outboundTotal = toNum(o.outbound_total)
+            const balance = inboundTotal - outboundTotal
+            const unitPrice = toNum(i.unit_price)
+            const avgMonthly = calcAverageMonthlyUsage(toNum(o.total_used_qty), o.min_out_date || null, o.max_out_date || null)
+            return {
+              name: normText(i.name || o.name),
+              spec_model: normText(i.spec_model || o.spec_model),
+              tech_group: '',
+              location: normText(i.location || o.location),
+              inbound_total: inboundTotal,
+              outbound_total: outboundTotal,
+              balance,
+              unit: normText(i.unit || o.unit),
+              unit_price: unitPrice,
+              total_amount: unitPrice * balance,
+              safety_stock: avgMonthly,
+              max_stock: avgMonthly * 3
+            }
+          }).sort((a, b) =>
+            String(a.name).localeCompare(String(b.name), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+            || String(a.spec_model).localeCompare(String(b.spec_model), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+            || String(a.location).localeCompare(String(b.location), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+          )
+          return jsonResponse({ success: true, items })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/inbound/batch') {
+          const body = await readBody()
+          const items = Array.isArray(body?.items) ? body.items : []
+          if (items.length === 0) return jsonResponse({ success: false, error: '缺少入库数据' }, 400)
+          const payload = items.map((raw: any) => ({
+            name: normText(raw?.name),
+            spec_model: normText(raw?.spec_model),
+            tech_group: normText(raw?.tech_group),
+            location: normText(raw?.location),
+            quantity: toNum(raw?.quantity),
+            unit: normText(raw?.unit),
+            unit_price: toNum(raw?.unit_price),
+            in_date: normText(raw?.in_date) || today(),
+            operator: normText(raw?.operator),
+            status: normText(raw?.status) || '正常'
+          }))
+          const bad = payload.find((x: any) => !x.name || !x.spec_model || !x.location || !x.unit || x.quantity <= 0)
+          if (bad) return jsonResponse({ success: false, error: '入库数据不完整，名称/规格/库位/单位/数量为必填' }, 400)
+          const { data, error } = await scopedClient.from('standard_part_inbound').insert(payload).select('*')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/outbound/batch') {
+          const body = await readBody()
+          const items = Array.isArray(body?.items) ? body.items : []
+          if (items.length === 0) return jsonResponse({ success: false, error: '缺少出库数据' }, 400)
+
+          const [inRes, outRes] = await Promise.all([
+            scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,quantity,status'),
+            scopedClient.from('standard_part_outbound').select('name,spec_model,location,unit,quantity,status')
+          ])
+          if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
+          if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
+          const balMap = new Map<string, number>()
+          for (const r of (inRes.data || [])) {
+            if (String(r.status || '') === '已删除') continue
+            const k = keyOf(r)
+            balMap.set(k, toNum(balMap.get(k)) + toNum(r.quantity))
+          }
+          for (const r of (outRes.data || [])) {
+            if (String(r.status || '') === '已删除') continue
+            const k = keyOf(r)
+            balMap.set(k, toNum(balMap.get(k)) - toNum(r.quantity))
+          }
+
+          const payload: any[] = []
+          for (const raw of items) {
+            const row = {
+              name: normText(raw?.name),
+              spec_model: normText(raw?.spec_model),
+              tech_group: normText(raw?.tech_group),
+              location: normText(raw?.location),
+              quantity: toNum(raw?.quantity),
+              unit: normText(raw?.unit),
+              unit_price: toNum(raw?.unit_price),
+              out_date: normText(raw?.out_date) || today(),
+              operator: normText(raw?.operator),
+              status: normText(raw?.status) || '正常'
+            }
+            if (!row.name || !row.spec_model || !row.location || !row.unit || row.quantity <= 0) {
+              return jsonResponse({ success: false, error: '出库数据不完整，名称/规格/库位/单位/数量为必填' }, 400)
+            }
+            const k = keyOf(row)
+            const current = toNum(balMap.get(k))
+            if (row.quantity > current) {
+              return jsonResponse({ success: false, error: `${row.name} ${row.spec_model} 在 ${row.location} 库存不足，当前结余 ${current}` }, 400)
+            }
+            balMap.set(k, current - row.quantity)
+            payload.push(row)
+          }
+          const { data, error } = await scopedClient.from('standard_part_outbound').insert(payload).select('*')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/inbound/delete') {
+          const body = await readBody()
+          const ids = Array.isArray(body?.ids) ? body.ids : []
+          if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
+          const { error } = await scopedClient
+            .from('standard_part_inbound')
+            .update({ status: '已删除', updated_at: new Date().toISOString() })
+            .in('id', ids as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/outbound/delete') {
+          const body = await readBody()
+          const ids = Array.isArray(body?.ids) ? body.ids : []
+          if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
+          const { error } = await scopedClient
+            .from('standard_part_outbound')
+            .update({ status: '已删除', updated_at: new Date().toISOString() })
+            .in('id', ids as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/inbound/return') {
+          const body = await readBody()
+          const ids = Array.isArray(body?.ids) ? body.ids : []
+          const operator = normText(body?.operator)
+          if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要退库的数据' }, 400)
+          const { data: selected, error: selectErr } = await scopedClient
+            .from('standard_part_inbound')
+            .select('*')
+            .in('id', ids as any)
+            .neq('status', '已删除')
+          if (selectErr) return jsonResponse({ success: false, error: selectErr.message }, 500)
+          const rows = (selected || []).filter((x: any) => String(x.status || '') !== '已退库')
+          if (rows.length > 0) {
+            const inserts = rows.map((r: any) => ({
+              name: r.name,
+              spec_model: r.spec_model,
+              tech_group: r.tech_group || '',
+              location: r.location,
+              quantity: toNum(r.quantity),
+              unit: r.unit,
+              unit_price: toNum(r.unit_price),
+              out_date: today(),
+              operator: operator || normText(r.operator),
+              status: '退库',
+              source_inbound_id: r.id
+            }))
+            const { error: insertErr } = await scopedClient.from('standard_part_outbound').insert(inserts)
+            if (insertErr) return jsonResponse({ success: false, error: insertErr.message }, 500)
+            const { error: updateErr } = await scopedClient
+              .from('standard_part_inbound')
+              .update({ status: '已退库', updated_at: new Date().toISOString() })
+              .in('id', rows.map((x: any) => x.id) as any)
+            if (updateErr) return jsonResponse({ success: false, error: updateErr.message }, 500)
+          }
+          return jsonResponse({ success: true })
+        }
+
+        if (method === 'POST' && path === '/api/standard-parts/outbound/return') {
+          const body = await readBody()
+          const ids = Array.isArray(body?.ids) ? body.ids : []
+          const operator = normText(body?.operator)
+          if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要退库的数据' }, 400)
+          const { data: selected, error: selectErr } = await scopedClient
+            .from('standard_part_outbound')
+            .select('*')
+            .in('id', ids as any)
+            .neq('status', '已删除')
+          if (selectErr) return jsonResponse({ success: false, error: selectErr.message }, 500)
+          const rows = (selected || []).filter((x: any) => String(x.status || '') !== '已退库')
+          if (rows.length > 0) {
+            const inserts = rows.map((r: any) => ({
+              name: r.name,
+              spec_model: r.spec_model,
+              tech_group: r.tech_group || '',
+              location: r.location,
+              quantity: toNum(r.quantity),
+              unit: r.unit,
+              unit_price: toNum(r.unit_price),
+              in_date: today(),
+              operator: operator || normText(r.operator),
+              status: '退库入库',
+              source_outbound_id: r.id
+            }))
+            const { error: insertErr } = await scopedClient.from('standard_part_inbound').insert(inserts)
+            if (insertErr) return jsonResponse({ success: false, error: insertErr.message }, 500)
+            const { error: updateErr } = await scopedClient
+              .from('standard_part_outbound')
+              .update({ status: '已退库', updated_at: new Date().toISOString() })
+              .in('id', rows.map((x: any) => x.id) as any)
+            if (updateErr) return jsonResponse({ success: false, error: updateErr.message }, 500)
+          }
           return jsonResponse({ success: true })
         }
       }
