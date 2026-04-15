@@ -14,7 +14,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
   )
 
-  const forceBackend = (
+  const forceBackend = !isGhPages && (
     /^\/api\/tooling\/status/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
