@@ -1116,7 +1116,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         const normText = (v: any) => String(v || '').trim()
         const today = () => new Date().toISOString().slice(0, 10)
-        const nowIso = () => new Date().toISOString()
         const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
         const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
           if (!minDate || !maxDate || totalQty <= 0) return 0
@@ -1125,39 +1124,38 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const months = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1)
           return totalQty / months
         }
-        const IN_KEY = 'standard_parts_inbound_v1'
-        const OUT_KEY = 'standard_parts_outbound_v1'
-        const readRows = (k: string) => {
-          try {
-            const raw = localStorage.getItem(k)
-            const parsed = raw ? JSON.parse(raw) : []
-            return Array.isArray(parsed) ? parsed : []
-          } catch {
-            return []
-          }
-        }
-        const writeRows = (k: string, rows: any[]) => {
-          localStorage.setItem(k, JSON.stringify(rows))
-        }
-        const genId = () => `sp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
         if (method === 'GET' && path === '/api/standard-parts/inbound') {
-          const items = readRows(IN_KEY)
-            .filter((x: any) => String(x.status || '') !== '已删除')
-            .sort((a: any, b: any) => String(b.in_date || '').localeCompare(String(a.in_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
-          return jsonResponse({ success: true, items })
+          const { data, error } = await scopedClient
+            .from('standard_part_inbound')
+            .select('*')
+            .neq('status', '已删除')
+            .order('in_date', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
         }
 
         if (method === 'GET' && path === '/api/standard-parts/outbound') {
-          const items = readRows(OUT_KEY)
-            .filter((x: any) => String(x.status || '') !== '已删除')
-            .sort((a: any, b: any) => String(b.out_date || '').localeCompare(String(a.out_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
-          return jsonResponse({ success: true, items })
+          const { data, error } = await scopedClient
+            .from('standard_part_outbound')
+            .select('*')
+            .neq('status', '已删除')
+            .order('out_date', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
         }
 
         if (method === 'GET' && path === '/api/standard-parts/stock-ledger') {
-          const inboundRows = readRows(IN_KEY).filter((r: any) => String(r.status || '') !== '已删除')
-          const outboundRows = readRows(OUT_KEY).filter((r: any) => String(r.status || '') !== '已删除')
+          const [inRes, outRes] = await Promise.all([
+            scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,unit_price,quantity,status,in_date'),
+            scopedClient.from('standard_part_outbound').select('name,spec_model,location,unit,unit_price,quantity,status,out_date')
+          ])
+          if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
+          if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
+          const inboundRows = (inRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
+          const outboundRows = (outRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
 
           const inboundMap = new Map<string, any>()
           for (const row of inboundRows) {
@@ -1247,15 +1245,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           }))
           const bad = payload.find((x: any) => !x.name || !x.spec_model || !x.location || !x.unit || x.quantity <= 0)
           if (bad) return jsonResponse({ success: false, error: '入库数据不完整，名称/规格/库位/单位/数量为必填' }, 400)
-          const all = readRows(IN_KEY)
-          const inserted = payload.map((r: any) => ({
-            id: genId(),
-            ...r,
-            created_at: nowIso(),
-            updated_at: nowIso()
-          }))
-          writeRows(IN_KEY, [...all, ...inserted])
-          return jsonResponse({ success: true, items: inserted })
+          const { data, error } = await scopedClient.from('standard_part_inbound').insert(payload).select('*')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
         }
 
         if (method === 'POST' && path === '/api/standard-parts/outbound/batch') {
@@ -1263,15 +1255,19 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const items = Array.isArray(body?.items) ? body.items : []
           if (items.length === 0) return jsonResponse({ success: false, error: '缺少出库数据' }, 400)
 
-          const inRows = readRows(IN_KEY)
-          const outRows = readRows(OUT_KEY)
+          const [inRes, outRes] = await Promise.all([
+            scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,quantity,status'),
+            scopedClient.from('standard_part_outbound').select('name,spec_model,location,unit,quantity,status')
+          ])
+          if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
+          if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
           const balMap = new Map<string, number>()
-          for (const r of inRows) {
+          for (const r of (inRes.data || [])) {
             if (String(r.status || '') === '已删除') continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) + toNum(r.quantity))
           }
-          for (const r of outRows) {
+          for (const r of (outRes.data || [])) {
             if (String(r.status || '') === '已删除') continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) - toNum(r.quantity))
@@ -1302,23 +1298,20 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             balMap.set(k, current - row.quantity)
             payload.push(row)
           }
-          const inserted = payload.map((r: any) => ({
-            id: genId(),
-            ...r,
-            created_at: nowIso(),
-            updated_at: nowIso()
-          }))
-          writeRows(OUT_KEY, [...outRows, ...inserted])
-          return jsonResponse({ success: true, items: inserted })
+          const { data, error } = await scopedClient.from('standard_part_outbound').insert(payload).select('*')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
         }
 
         if (method === 'POST' && path === '/api/standard-parts/inbound/delete') {
           const body = await readBody()
           const ids = Array.isArray(body?.ids) ? body.ids : []
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
-          const idSet = new Set(ids.map((x: any) => String(x)))
-          const rows = readRows(IN_KEY).map((r: any) => idSet.has(String(r.id)) ? { ...r, status: '已删除', updated_at: nowIso() } : r)
-          writeRows(IN_KEY, rows)
+          const { error } = await scopedClient
+            .from('standard_part_inbound')
+            .update({ status: '已删除', updated_at: new Date().toISOString() })
+            .in('id', ids as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
 
@@ -1326,9 +1319,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const ids = Array.isArray(body?.ids) ? body.ids : []
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
-          const idSet = new Set(ids.map((x: any) => String(x)))
-          const rows = readRows(OUT_KEY).map((r: any) => idSet.has(String(r.id)) ? { ...r, status: '已删除', updated_at: nowIso() } : r)
-          writeRows(OUT_KEY, rows)
+          const { error } = await scopedClient
+            .from('standard_part_outbound')
+            .update({ status: '已删除', updated_at: new Date().toISOString() })
+            .in('id', ids as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
 
@@ -1337,13 +1332,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const ids = Array.isArray(body?.ids) ? body.ids : []
           const operator = normText(body?.operator)
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要退库的数据' }, 400)
-          const allIn = readRows(IN_KEY)
-          const allOut = readRows(OUT_KEY)
-          const idSet = new Set(ids.map((x: any) => String(x)))
-          const rows = allIn.filter((x: any) => idSet.has(String(x.id)) && String(x.status || '') !== '已删除' && String(x.status || '') !== '已退库')
+          const { data: selected, error: selectErr } = await scopedClient
+            .from('standard_part_inbound')
+            .select('*')
+            .in('id', ids as any)
+            .neq('status', '已删除')
+          if (selectErr) return jsonResponse({ success: false, error: selectErr.message }, 500)
+          const rows = (selected || []).filter((x: any) => String(x.status || '') !== '已退库')
           if (rows.length > 0) {
             const inserts = rows.map((r: any) => ({
-              id: genId(),
               name: r.name,
               spec_model: r.spec_model,
               tech_group: r.tech_group || '',
@@ -1354,13 +1351,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               out_date: today(),
               operator: operator || normText(r.operator),
               status: '退库',
-              source_inbound_id: r.id,
-              created_at: nowIso(),
-              updated_at: nowIso()
+              source_inbound_id: r.id
             }))
-            const updatedIn = allIn.map((r: any) => idSet.has(String(r.id)) ? { ...r, status: '已退库', updated_at: nowIso() } : r)
-            writeRows(IN_KEY, updatedIn)
-            writeRows(OUT_KEY, [...allOut, ...inserts])
+            const { error: insertErr } = await scopedClient.from('standard_part_outbound').insert(inserts)
+            if (insertErr) return jsonResponse({ success: false, error: insertErr.message }, 500)
+            const { error: updateErr } = await scopedClient
+              .from('standard_part_inbound')
+              .update({ status: '已退库', updated_at: new Date().toISOString() })
+              .in('id', rows.map((x: any) => x.id) as any)
+            if (updateErr) return jsonResponse({ success: false, error: updateErr.message }, 500)
           }
           return jsonResponse({ success: true })
         }
@@ -1370,13 +1369,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const ids = Array.isArray(body?.ids) ? body.ids : []
           const operator = normText(body?.operator)
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要退库的数据' }, 400)
-          const allOut = readRows(OUT_KEY)
-          const allIn = readRows(IN_KEY)
-          const idSet = new Set(ids.map((x: any) => String(x)))
-          const rows = allOut.filter((x: any) => idSet.has(String(x.id)) && String(x.status || '') !== '已删除' && String(x.status || '') !== '已退库')
+          const { data: selected, error: selectErr } = await scopedClient
+            .from('standard_part_outbound')
+            .select('*')
+            .in('id', ids as any)
+            .neq('status', '已删除')
+          if (selectErr) return jsonResponse({ success: false, error: selectErr.message }, 500)
+          const rows = (selected || []).filter((x: any) => String(x.status || '') !== '已退库')
           if (rows.length > 0) {
             const inserts = rows.map((r: any) => ({
-              id: genId(),
               name: r.name,
               spec_model: r.spec_model,
               tech_group: r.tech_group || '',
@@ -1387,13 +1388,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               in_date: today(),
               operator: operator || normText(r.operator),
               status: '退库入库',
-              source_outbound_id: r.id,
-              created_at: nowIso(),
-              updated_at: nowIso()
+              source_outbound_id: r.id
             }))
-            const updatedOut = allOut.map((r: any) => idSet.has(String(r.id)) ? { ...r, status: '已退库', updated_at: nowIso() } : r)
-            writeRows(OUT_KEY, updatedOut)
-            writeRows(IN_KEY, [...allIn, ...inserts])
+            const { error: insertErr } = await scopedClient.from('standard_part_inbound').insert(inserts)
+            if (insertErr) return jsonResponse({ success: false, error: insertErr.message }, 500)
+            const { error: updateErr } = await scopedClient
+              .from('standard_part_outbound')
+              .update({ status: '已退库', updated_at: new Date().toISOString() })
+              .in('id', rows.map((x: any) => x.id) as any)
+            if (updateErr) return jsonResponse({ success: false, error: updateErr.message }, 500)
           }
           return jsonResponse({ success: true })
         }
