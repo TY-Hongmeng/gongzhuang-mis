@@ -178,22 +178,25 @@ const StandardPartsManagement: React.FC = () => {
   }
 
   const patchDraftInboundRow = (key: string, patch: Partial<DraftInboundRow>) => {
-    setDraftInboundRows((prev) => prev.map((r) => {
-      if (r.key !== key) return r
-      const next = { ...r, ...patch }
-      if ((patch.name !== undefined || patch.spec_model !== undefined || patch.location !== undefined) && (!patch.unit || !patch.unit_price)) {
-        const matched = stockItems.find((s) =>
-          s.name === String(next.name || '').trim()
-          && s.spec_model === String(next.spec_model || '').trim()
-          && s.location === String(next.location || '').trim()
-        )
-        if (matched) {
-          if (!patch.unit) next.unit = matched.unit
-          if (!patch.unit_price || Number(patch.unit_price) <= 0) next.unit_price = Number(matched.unit_price || 0)
+    setDraftInboundRows((prev) => {
+      const updated = prev.map((r) => {
+        if (r.key !== key) return r
+        const next = { ...r, ...patch }
+        if ((patch.name !== undefined || patch.spec_model !== undefined || patch.location !== undefined) && (!patch.unit || !patch.unit_price)) {
+          const matched = stockItems.find((s) =>
+            s.name === String(next.name || '').trim()
+            && s.spec_model === String(next.spec_model || '').trim()
+            && s.location === String(next.location || '').trim()
+          )
+          if (matched) {
+            if (!patch.unit) next.unit = matched.unit
+            if (!patch.unit_price || Number(patch.unit_price) <= 0) next.unit_price = Number(matched.unit_price || 0)
+          }
         }
-      }
-      return next
-    }))
+        return next
+      })
+      return ensureAtLeastTwoBlankRows(updated)
+    })
   }
 
   const handleDraftInboundSubmit = async () => {
@@ -311,7 +314,7 @@ const StandardPartsManagement: React.FC = () => {
                     loading={loading}
                     dataSource={stockItems}
                     scroll={{ x: 1600, y: 520 }}
-                    pagination={{ pageSize: 50 }}
+                    pagination={false}
                     columns={[
                       { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
                       { title: '规格型号', dataIndex: 'spec_model', width: 220 },
@@ -330,8 +333,8 @@ const StandardPartsManagement: React.FC = () => {
               )
             },
             {
-              key: 'inbound',
-              label: '入库台账',
+              key: 'inbound-op',
+              label: '入库操作',
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
@@ -402,6 +405,14 @@ const StandardPartsManagement: React.FC = () => {
                       ]}
                     />
                   </div>
+                </Space>
+              )
+            },
+            {
+              key: 'inbound',
+              label: '入库台账',
+              children: (
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
                     <Button onClick={() => handleBatchAction('inbound', 'return')}>退库</Button>
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
@@ -415,6 +426,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
                       dataSource={inboundItems}
                       scroll={{ x: 1400, y: 420 }}
+                      pagination={false}
                       columns={[
                         { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
                         { title: '规格型号', dataIndex: 'spec_model', width: 190 },

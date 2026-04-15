@@ -14,13 +14,14 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     (/^\d+\.\d+\.\d+\.\d+$/.test(host) && !isGhPages)
   )
 
-  const forceBackend = !isGhPages && (
+  const forceBackend = (
     /^\/api\/tooling\/status/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
+    || /^\/api\/standard-parts(\/|$)/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
@@ -63,7 +64,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       cleanUrl.startsWith('/api/purchase-orders') ||
       cleanUrl.startsWith('/api/cutting-orders') ||
       cleanUrl.startsWith('/api/tooling/devices') ||
-      cleanUrl.startsWith('/api/tooling/fixed-inventory-options')
+      cleanUrl.startsWith('/api/tooling/fixed-inventory-options') ||
+      cleanUrl.startsWith('/api/standard-parts')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
     // 让 fetchWithFallback 继续执行并最终调用本地后端
@@ -110,7 +112,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   const shouldUseLocalhostFallback = !isGhPages && (isLocal || isDev)
   
   try {
-    if (isGhPages && /functions\.supabase\.co/.test(abs)) {
+    if (!forceBackend && isGhPages && /functions\.supabase\.co/.test(abs)) {
       const handled = await handleClientSideApi(abs, init)
       if (handled) return handled
     }
@@ -179,6 +181,7 @@ export function installApiInterceptor() {
       )
       
       if (cleanUrl.startsWith('/api/')) {
+        const strictBackendPath = cleanUrl.startsWith('/api/standard-parts')
         // 在本地环境或开发模式下，强制优先走本地后端
         if ((isLocal || isDev) && !isGhPages) {
           try {
@@ -186,11 +189,13 @@ export function installApiInterceptor() {
             const res = await originalFetch(input, init)
             // 如果后端返回 502/504，说明代理目标（后端服务）可能未启动
             if (res.status === 502 || res.status === 504) {
+              if (strictBackendPath) return res
               if (debugLog) console.warn(`[API Interceptor] Backend gateway error (${res.status}) for ${cleanUrl}, falling back to client-side Supabase.`)
               return await handleClientSideApi(cleanUrl, init)
             }
             return res
           } catch (err) {
+            if (strictBackendPath) throw err
             // 捕获 ERR_CONNECTION_REFUSED 等网络错误，并自动回退到客户端直接连接 Supabase
             if (debugLog) console.warn(`[API Interceptor] Backend connection failed for ${cleanUrl}, falling back to client-side Supabase. Error:`, err)
             return await handleClientSideApi(cleanUrl, init)
