@@ -13,7 +13,8 @@ const MODULE_ALIASES: Record<string, string> = {
   '工时录入': 'work_hours_entry', work_hours_entry: 'work_hours_entry',
   '工时管理': 'work_hours', work_hours: 'work_hours',
   '权限管理': 'permission', permission: 'permission',
-  '个人设置': 'personal_settings', personal_settings: 'personal_settings'
+  '个人设置': 'personal_settings', personal_settings: 'personal_settings',
+  '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue'
 }
 
 interface ProtectedRouteProps {

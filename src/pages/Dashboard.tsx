@@ -33,7 +33,8 @@ const Dashboard: React.FC = () => {
     '工时录入': 'work_hours_entry', work_hours_entry: 'work_hours_entry',
     '工时管理': 'work_hours', work_hours: 'work_hours',
     '权限管理': 'permission', permission: 'permission',
-    '个人设置': 'personal_settings', personal_settings: 'personal_settings'
+    '个人设置': 'personal_settings', personal_settings: 'personal_settings',
+    '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue'
   }
   const perms = (user as any)?.roles?.role_permissions || []
   const can = (module: string) => {
@@ -166,6 +167,16 @@ const Dashboard: React.FC = () => {
                 <Card hoverable className="text-center cursor-pointer">
                   <BuildOutlined className="text-3xl text-cyan-500 mb-2" />
                   标准件管理
+                </Card>
+              </Link>
+            </Col>
+          )}
+          {can('standard_parts_issue') && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Link to="/standard-parts-issue" style={{ display: 'block' }}>
+                <Card hoverable className="text-center cursor-pointer">
+                  <BuildOutlined className="text-3xl text-sky-500 mb-2" />
+                  标准件出库
                 </Card>
               </Link>
             </Col>

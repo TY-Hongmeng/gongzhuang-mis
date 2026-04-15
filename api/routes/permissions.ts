@@ -62,6 +62,11 @@ const DEFAULT_MODULES: Record<string, string[]> = {
     '查看工时','编辑工时','删除工时','导出工时','统计工时','审核工时'
   ]
   ,
+  // 标准件出库
+  standard_parts_issue: [
+    '访问模块',
+    '提交出库'
+  ],
   // 个人设置
   personal_settings: [
     '访问模块'
