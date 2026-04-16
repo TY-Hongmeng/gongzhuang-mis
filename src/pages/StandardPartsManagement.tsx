@@ -170,7 +170,7 @@ const StandardPartsManagement: React.FC = () => {
     }
   }
 
-  const handleBatchAction = async (kind: 'inbound' | 'outbound', action: 'delete' | 'return') => {
+  const handleBatchAction = async (kind: 'inbound' | 'outbound', action: 'delete') => {
     const ids = (kind === 'inbound' ? inboundSelectedKeys : outboundSelectedKeys).map(String)
     if (ids.length === 0) {
       message.warning('请先勾选数据')
@@ -186,7 +186,7 @@ const StandardPartsManagement: React.FC = () => {
       if (!resp.ok || json?.success === false) {
         throw new Error(String(json?.error || '操作失败'))
       }
-      message.success(action === 'delete' ? '删除成功' : '退库成功')
+      message.success('删除成功')
       if (kind === 'inbound') setInboundSelectedKeys([])
       else setOutboundSelectedKeys([])
       await loadAll()
@@ -432,7 +432,6 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
-                    <Button onClick={() => handleBatchAction('inbound', 'return')}>退库</Button>
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
@@ -466,9 +465,7 @@ const StandardPartsManagement: React.FC = () => {
               label: '出库台账',
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Button type="primary" onClick={() => navigate('/standard-parts-issue')}>进入出库模块</Button>
                   <Space>
-                    <Button onClick={() => handleBatchAction('outbound', 'return')}>退库</Button>
                     <Popconfirm title="确认删除选中的出库记录？" onConfirm={() => handleBatchAction('outbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>

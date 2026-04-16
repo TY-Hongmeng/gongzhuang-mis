@@ -83,8 +83,8 @@ router.get('/stock-ledger', async (_req, res) => {
           tech_group,
           location,
           unit,
-          SUM(CASE WHEN status NOT IN ('已删除','已退库') THEN quantity ELSE 0 END) AS inbound_total,
-          MAX(CASE WHEN status NOT IN ('已删除','已退库') THEN unit_price ELSE 0 END) AS latest_inbound_price
+          SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS inbound_total,
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN unit_price ELSE 0 END) AS latest_inbound_price
         FROM standard_part_inbound
         GROUP BY name, spec_model, tech_group, location, unit
       ),
@@ -95,10 +95,10 @@ router.get('/stock-ledger', async (_req, res) => {
           tech_group,
           location,
           unit,
-          SUM(CASE WHEN status NOT IN ('已删除','已退库') THEN quantity ELSE 0 END) AS outbound_total,
-          SUM(CASE WHEN status NOT IN ('已删除','已退库') THEN quantity ELSE 0 END) AS total_used_qty,
-          MIN(CASE WHEN status NOT IN ('已删除','已退库') THEN out_date END) AS min_out_date,
-          MAX(CASE WHEN status NOT IN ('已删除','已退库') THEN out_date END) AS max_out_date
+          SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS outbound_total,
+          SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS total_used_qty,
+          MIN(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS min_out_date,
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS max_out_date
         FROM standard_part_outbound
         GROUP BY name, spec_model, tech_group, location, unit
       ),
@@ -163,13 +163,13 @@ router.get('/catalog', async (_req, res) => {
       WITH inbound AS (
         SELECT name, spec_model, tech_group, location, unit, SUM(quantity) AS in_qty, MAX(unit_price) AS price
         FROM standard_part_inbound
-        WHERE status NOT IN ('已删除','已退库')
+        WHERE status NOT IN ('已删除','已退库','退库','退库入库')
         GROUP BY name, spec_model, tech_group, location, unit
       ),
       outbound AS (
         SELECT name, spec_model, tech_group, location, unit, SUM(quantity) AS out_qty
         FROM standard_part_outbound
-        WHERE status NOT IN ('已删除','已退库')
+        WHERE status NOT IN ('已删除','已退库','退库','退库入库')
         GROUP BY name, spec_model, tech_group, location, unit
       )
       SELECT
@@ -200,7 +200,7 @@ router.get('/inbound', async (_req, res) => {
     await ensureSchema()
     const rows = (await query(`
       SELECT * FROM standard_part_inbound
-      WHERE status <> '已删除'
+      WHERE status NOT IN ('已删除','已退库','退库','退库入库')
       ORDER BY in_date DESC, created_at DESC
     `)).rows || []
     res.json({ success: true, items: rows })
@@ -214,7 +214,7 @@ router.get('/outbound', async (_req, res) => {
     await ensureSchema()
     const rows = (await query(`
       SELECT * FROM standard_part_outbound
-      WHERE status <> '已删除'
+      WHERE status NOT IN ('已删除','已退库','退库','退库入库')
       ORDER BY out_date DESC, created_at DESC
     `)).rows || []
     res.json({ success: true, items: rows })
@@ -283,9 +283,9 @@ router.post('/outbound/batch', async (req, res) => {
         }
         const stockRow = await client.query(`
           SELECT
-            COALESCE((SELECT SUM(quantity) FROM standard_part_inbound WHERE status NOT IN ('已删除','已退库') AND name=$1 AND spec_model=$2 AND tech_group=$3 AND location=$4 AND unit=$5), 0)
+            COALESCE((SELECT SUM(quantity) FROM standard_part_inbound WHERE status NOT IN ('已删除','已退库','退库','退库入库') AND name=$1 AND spec_model=$2 AND tech_group=$3 AND location=$4 AND unit=$5), 0)
             -
-            COALESCE((SELECT SUM(quantity) FROM standard_part_outbound WHERE status NOT IN ('已删除','已退库') AND name=$1 AND spec_model=$2 AND tech_group=$3 AND location=$4 AND unit=$5), 0)
+            COALESCE((SELECT SUM(quantity) FROM standard_part_outbound WHERE status NOT IN ('已删除','已退库','退库','退库入库') AND name=$1 AND spec_model=$2 AND tech_group=$3 AND location=$4 AND unit=$5), 0)
             AS balance
         `, [name, spec, techGroup, location, unit])
         const balance = toNum(stockRow.rows?.[0]?.balance)

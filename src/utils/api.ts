@@ -1116,6 +1116,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         const normText = (v: any) => String(v || '').trim()
         const today = () => new Date().toISOString().slice(0, 10)
+        const excludedStatuses = ['已删除', '已退库', '退库', '退库入库']
         const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
         const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
           if (!minDate || !maxDate || totalQty <= 0) return 0
@@ -1129,22 +1130,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const { data, error } = await scopedClient
             .from('standard_part_inbound')
             .select('*')
-            .neq('status', '已删除')
             .order('in_date', { ascending: false })
             .order('created_at', { ascending: false })
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, items: data || [] })
+          const items = (data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          return jsonResponse({ success: true, items })
         }
 
         if (method === 'GET' && path === '/api/standard-parts/outbound') {
           const { data, error } = await scopedClient
             .from('standard_part_outbound')
             .select('*')
-            .neq('status', '已删除')
             .order('out_date', { ascending: false })
             .order('created_at', { ascending: false })
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          return jsonResponse({ success: true, items: data || [] })
+          const items = (data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          return jsonResponse({ success: true, items })
         }
 
         if (method === 'GET' && path === '/api/standard-parts/stock-ledger') {
@@ -1154,8 +1155,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           ])
           if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
-          const inboundRows = (inRes.data || []).filter((r: any) => !['已删除', '已退库'].includes(String(r.status || '')))
-          const outboundRows = (outRes.data || []).filter((r: any) => !['已删除', '已退库'].includes(String(r.status || '')))
+          const inboundRows = (inRes.data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          const outboundRows = (outRes.data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
 
           const inboundMap = new Map<string, any>()
           for (const row of inboundRows) {
@@ -1263,12 +1264,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
           const balMap = new Map<string, number>()
           for (const r of (inRes.data || [])) {
-            if (['已删除', '已退库'].includes(String(r.status || ''))) continue
+            if (excludedStatuses.includes(String(r.status || ''))) continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) + toNum(r.quantity))
           }
           for (const r of (outRes.data || [])) {
-            if (['已删除', '已退库'].includes(String(r.status || ''))) continue
+            if (excludedStatuses.includes(String(r.status || ''))) continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) - toNum(r.quantity))
           }
