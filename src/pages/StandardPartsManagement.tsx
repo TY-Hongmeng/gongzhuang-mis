@@ -2,7 +2,6 @@ import React from 'react'
 import {
   Button,
   Input,
-  InputNumber,
   Popconfirm,
   Space,
   Table,
@@ -63,6 +62,18 @@ type DraftInboundRow = {
 }
 
 const fmtNum = (v: any, p = 2) => Number(v || 0).toFixed(p)
+const fmtMoney = (v: any) => Number(v || 0).toFixed(2)
+const fmtIntPos = (v: any) => `${Math.max(0, Math.round(Number(v || 0)))}`
+const normalizePositiveInt = (v: any) => {
+  const n = Number(String(v ?? '').replace(/[^\d.-]/g, ''))
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Math.round(n)
+}
+const normalizePositiveMoney = (v: any) => {
+  const n = Number(String(v ?? '').replace(/[^\d.-]/g, ''))
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Number(n.toFixed(2))
+}
 
 const StandardPartsManagement: React.FC = () => {
   const navigate = useNavigate()
@@ -76,6 +87,7 @@ const StandardPartsManagement: React.FC = () => {
   const [outboundSelectedKeys, setOutboundSelectedKeys] = React.useState<React.Key[]>([])
   const [draftInboundRows, setDraftInboundRows] = React.useState<DraftInboundRow[]>([])
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
+  const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
 
   const loadAll = React.useCallback(async () => {
     setLoading(true)
@@ -100,6 +112,12 @@ const StandardPartsManagement: React.FC = () => {
     loadAll()
   }, [loadAll])
 
+  React.useEffect(() => {
+    const onResize = () => setTableY(Math.max(380, window.innerHeight - 320))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const createBlankInboundRow = React.useCallback((idx: number): DraftInboundRow => ({
     key: `manual-${Date.now()}-${idx}-${Math.random()}`,
     name: '',
@@ -108,9 +126,9 @@ const StandardPartsManagement: React.FC = () => {
     quantity: 0,
     unit: '',
     unit_price: 0,
-    in_date: dayjs().format('YYYY-MM-DD'),
-    operator: user?.real_name || '',
-    status: '待入库'
+    in_date: '',
+    operator: '',
+    status: ''
   }), [user?.real_name])
 
   React.useEffect(() => {
@@ -218,9 +236,9 @@ const StandardPartsManagement: React.FC = () => {
         spec_model: String(r.spec_model || '').trim(),
         tech_group: '',
         location: String(r.location || '').trim(),
-        quantity: Number(r.quantity || 0),
+        quantity: normalizePositiveInt(r.quantity),
         unit: String(r.unit || '').trim(),
-        unit_price: Number(r.unit_price || 0),
+        unit_price: normalizePositiveMoney(r.unit_price),
         in_date: String(r.in_date || dayjs().format('YYYY-MM-DD')),
         operator: String(r.operator || user?.real_name || ''),
         status: '正常'
@@ -273,7 +291,7 @@ const StandardPartsManagement: React.FC = () => {
             location,
             quantity: Number(r['入库数量'] || r['quantity'] || 0),
             unit: String(r['单位'] || r['unit'] || '').trim(),
-            unit_price: Number(r['单价'] || r['unit_price'] || 0),
+            unit_price: normalizePositiveMoney(r['单价'] || r['unit_price'] || 0),
             in_date: String(r['入库日期'] || r['in_date'] || dayjs().format('YYYY-MM-DD')).trim(),
             operator: String(r['操作人'] || r['operator'] || user?.real_name || '').trim(),
             status: String(r['状态'] || r['status'] || '待入库').trim()
@@ -290,8 +308,8 @@ const StandardPartsManagement: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white">
+    <div className="w-full px-2 md:px-4 py-4">
+      <div className="bg-white min-h-[calc(100vh-100px)]">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <Title level={2} className="mb-0">标准件管理</Title>
@@ -313,20 +331,20 @@ const StandardPartsManagement: React.FC = () => {
                     rowKey={(r) => `${r.name}-${r.spec_model}-${r.location}-${r.unit}`}
                     loading={loading}
                     dataSource={stockItems}
-                    scroll={{ x: 1600, y: 520 }}
+                    scroll={{ x: 1600, y: tableY }}
                     pagination={false}
                     columns={[
                       { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
                       { title: '规格型号', dataIndex: 'spec_model', width: 220 },
                       { title: '库位', dataIndex: 'location', width: 160, align: 'center' },
-                      { title: '入库总数', dataIndex: 'inbound_total', width: 120, align: 'right', render: (v) => fmtNum(v, 2) },
-                      { title: '出库总数', dataIndex: 'outbound_total', width: 120, align: 'right', render: (v) => fmtNum(v, 2) },
-                      { title: '结余', dataIndex: 'balance', width: 120, align: 'right', render: (v) => fmtNum(v, 2) },
+                      { title: '入库总数', dataIndex: 'inbound_total', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '出库总数', dataIndex: 'outbound_total', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '结余', dataIndex: 'balance', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
                       { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                      { title: '单价', dataIndex: 'unit_price', width: 130, align: 'right', render: (v) => fmtNum(v, 4) },
+                      { title: '单价', dataIndex: 'unit_price', width: 130, align: 'right', render: (v) => fmtMoney(v) },
                       { title: '总额', dataIndex: 'total_amount', width: 130, align: 'right', render: (v) => fmtNum(v, 2) },
-                      { title: '安全库存(月均)', dataIndex: 'safety_stock', width: 140, align: 'right', render: (v) => fmtNum(v, 2) },
-                      { title: '最大库存(3个月)', dataIndex: 'max_stock', width: 150, align: 'right', render: (v) => fmtNum(v, 2) }
+                      { title: '安全库存(月均)', dataIndex: 'safety_stock', width: 140, align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '最大库存(3个月)', dataIndex: 'max_stock', width: 150, align: 'right', render: (v) => fmtIntPos(v) }
                     ]}
                   />
                 </div>
@@ -350,7 +368,7 @@ const StandardPartsManagement: React.FC = () => {
                       size="small"
                       rowSelection={{ selectedRowKeys: draftSelectedKeys, onChange: setDraftSelectedKeys }}
                       dataSource={draftInboundRows}
-                      scroll={{ x: 1400, y: 360 }}
+                      scroll={{ x: 1400, y: tableY }}
                       pagination={false}
                       columns={[
                         {
@@ -375,7 +393,7 @@ const StandardPartsManagement: React.FC = () => {
                           title: '入库数量',
                           dataIndex: 'quantity',
                           width: 120,
-                          render: (_v, r: DraftInboundRow) => <InputNumber min={0} style={{ width: '100%' }} value={r.quantity} onChange={(v) => patchDraftInboundRow(r.key, { quantity: Number(v || 0) })} />
+                          render: (_v, r: DraftInboundRow) => <Input value={r.quantity ? String(r.quantity) : ''} onChange={(e) => patchDraftInboundRow(r.key, { quantity: normalizePositiveInt(e.target.value) })} />
                         },
                         {
                           title: '单位',
@@ -387,7 +405,7 @@ const StandardPartsManagement: React.FC = () => {
                           title: '单价',
                           dataIndex: 'unit_price',
                           width: 110,
-                          render: (_v, r: DraftInboundRow) => <InputNumber min={0} precision={4} style={{ width: '100%' }} value={r.unit_price} onChange={(v) => patchDraftInboundRow(r.key, { unit_price: Number(v || 0) })} />
+                          render: (_v, r: DraftInboundRow) => <Input value={r.unit_price ? String(r.unit_price) : ''} onChange={(e) => patchDraftInboundRow(r.key, { unit_price: normalizePositiveMoney(e.target.value) })} />
                         },
                         {
                           title: '入库日期',
@@ -425,15 +443,15 @@ const StandardPartsManagement: React.FC = () => {
                       loading={loading}
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
                       dataSource={inboundItems}
-                      scroll={{ x: 1400, y: 420 }}
+                      scroll={{ x: 1400, y: tableY }}
                       pagination={false}
                       columns={[
                         { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
                         { title: '规格型号', dataIndex: 'spec_model', width: 190 },
                         { title: '库位', dataIndex: 'location', width: 140, align: 'center' },
-                        { title: '入库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtNum(v, 2) },
+                        { title: '入库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
                         { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtNum(v, 4) },
+                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtMoney(v) },
                         { title: '入库日期', dataIndex: 'in_date', width: 120, align: 'center' },
                         { title: '操作人', dataIndex: 'operator', width: 120, align: 'center' },
                         { title: '状态', dataIndex: 'status', width: 100, align: 'center' }
@@ -461,14 +479,15 @@ const StandardPartsManagement: React.FC = () => {
                       loading={loading}
                       rowSelection={{ selectedRowKeys: outboundSelectedKeys, onChange: setOutboundSelectedKeys }}
                       dataSource={outboundItems}
-                      scroll={{ x: 1400, y: 520 }}
+                      scroll={{ x: 1400, y: tableY }}
+                      pagination={false}
                       columns={[
                         { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
                         { title: '规格型号', dataIndex: 'spec_model', width: 190 },
                         { title: '库位', dataIndex: 'location', width: 140, align: 'center' },
-                        { title: '出库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtNum(v, 2) },
+                        { title: '出库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
                         { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtNum(v, 4) },
+                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtMoney(v) },
                         { title: '出库日期', dataIndex: 'out_date', width: 120, align: 'center' },
                         { title: '操作人', dataIndex: 'operator', width: 120, align: 'center' },
                         { title: '状态', dataIndex: 'status', width: 100, align: 'center' }

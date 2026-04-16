@@ -1154,8 +1154,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           ])
           if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
-          const inboundRows = (inRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
-          const outboundRows = (outRes.data || []).filter((r: any) => String(r.status || '') !== '已删除')
+          const inboundRows = (inRes.data || []).filter((r: any) => !['已删除', '已退库'].includes(String(r.status || '')))
+          const outboundRows = (outRes.data || []).filter((r: any) => !['已删除', '已退库'].includes(String(r.status || '')))
 
           const inboundMap = new Map<string, any>()
           for (const row of inboundRows) {
@@ -1263,12 +1263,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
           const balMap = new Map<string, number>()
           for (const r of (inRes.data || [])) {
-            if (String(r.status || '') === '已删除') continue
+            if (['已删除', '已退库'].includes(String(r.status || ''))) continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) + toNum(r.quantity))
           }
           for (const r of (outRes.data || [])) {
-            if (String(r.status || '') === '已删除') continue
+            if (['已删除', '已退库'].includes(String(r.status || ''))) continue
             const k = keyOf(r)
             balMap.set(k, toNum(balMap.get(k)) - toNum(r.quantity))
           }
