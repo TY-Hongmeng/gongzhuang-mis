@@ -1117,6 +1117,34 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const normText = (v: any) => String(v || '').trim()
         const today = () => new Date().toISOString().slice(0, 10)
         const excludedStatuses = ['已删除', '已退库', '退库', '退库入库']
+        const q = getQuery(cleanUrl)
+        const requestOperator = normText(q.get('operator') || '')
+        const getVisibilityByOperator = async (operator: string) => {
+          const op = normText(operator)
+          if (!op) return { isTechnician: false, teamName: '' }
+          const { data: usersData } = await scopedClient
+            .from('users')
+            .select('role_id, team_id')
+            .eq('real_name', op)
+            .limit(1)
+          const u = (usersData || [])[0] as any
+          if (!u) return { isTechnician: false, teamName: '' }
+          let roleName = ''
+          let teamName = ''
+          if (u.role_id) {
+            const { data: roleData } = await scopedClient.from('roles').select('name').eq('id', String(u.role_id)).limit(1)
+            roleName = String((roleData || [])[0]?.name || '')
+          }
+          if (u.team_id) {
+            const { data: teamData } = await scopedClient.from('teams').select('name').eq('id', String(u.team_id)).limit(1)
+            teamName = String((teamData || [])[0]?.name || '')
+          }
+          return {
+            isTechnician: roleName.includes('技术员'),
+            teamName: normText(teamName)
+          }
+        }
+        const visibility = await getVisibilityByOperator(requestOperator)
         const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
         const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
           if (!minDate || !maxDate || totalQty <= 0) return 0
@@ -1133,7 +1161,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             .order('in_date', { ascending: false })
             .order('created_at', { ascending: false })
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          const items = (data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          const items = (data || []).filter((r: any) =>
+            !excludedStatuses.includes(String(r.status || ''))
+            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+          )
           return jsonResponse({ success: true, items })
         }
 
@@ -1144,7 +1175,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             .order('out_date', { ascending: false })
             .order('created_at', { ascending: false })
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
-          const items = (data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          const items = (data || []).filter((r: any) =>
+            !excludedStatuses.includes(String(r.status || ''))
+            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+          )
           return jsonResponse({ success: true, items })
         }
 
@@ -1155,8 +1189,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           ])
           if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
-          const inboundRows = (inRes.data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
-          const outboundRows = (outRes.data || []).filter((r: any) => !excludedStatuses.includes(String(r.status || '')))
+          const inboundRows = (inRes.data || []).filter((r: any) =>
+            !excludedStatuses.includes(String(r.status || ''))
+            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+          )
+          const outboundRows = (outRes.data || []).filter((r: any) =>
+            !excludedStatuses.includes(String(r.status || ''))
+            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+          )
 
           const inboundMap = new Map<string, any>()
           for (const row of inboundRows) {
@@ -1235,7 +1275,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const payload = items.map((raw: any) => ({
             name: normText(raw?.name),
             spec_model: normText(raw?.spec_model),
-            tech_group: normText(raw?.tech_group),
+            tech_group: visibility.isTechnician ? visibility.teamName : normText(raw?.tech_group),
             location: normText(raw?.location),
             quantity: toNum(raw?.quantity),
             unit: normText(raw?.unit),
@@ -1279,7 +1319,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const row = {
               name: normText(raw?.name),
               spec_model: normText(raw?.spec_model),
-              tech_group: normText(raw?.tech_group),
+              tech_group: visibility.isTechnician ? visibility.teamName : normText(raw?.tech_group),
               location: normText(raw?.location),
               quantity: toNum(raw?.quantity),
               unit: normText(raw?.unit),

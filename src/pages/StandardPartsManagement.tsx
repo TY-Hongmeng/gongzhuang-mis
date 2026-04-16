@@ -89,13 +89,32 @@ const StandardPartsManagement: React.FC = () => {
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
   const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
 
+  const autofillDraftDefaults = React.useCallback((row: DraftInboundRow): DraftInboundRow => {
+    const hasAnyInput = Boolean(
+      String(row.name || '').trim()
+      || String(row.spec_model || '').trim()
+      || String(row.location || '').trim()
+      || Number(row.quantity || 0) > 0
+      || String(row.unit || '').trim()
+      || Number(row.unit_price || 0) > 0
+    )
+    if (!hasAnyInput) return row
+    return {
+      ...row,
+      in_date: String(row.in_date || dayjs().format('YYYY-MM-DD')),
+      operator: String(row.operator || user?.real_name || ''),
+      status: String(row.status || '待入库')
+    }
+  }, [user?.real_name])
+
   const loadAll = React.useCallback(async () => {
     setLoading(true)
     try {
+      const op = encodeURIComponent(String(user?.real_name || ''))
       const [stockRes, inRes, outRes] = await Promise.all([
-        fetchWithFallback('/api/standard-parts/stock-ledger'),
-        fetchWithFallback('/api/standard-parts/inbound'),
-        fetchWithFallback('/api/standard-parts/outbound')
+        fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}`),
+        fetchWithFallback(`/api/standard-parts/inbound?operator=${op}`),
+        fetchWithFallback(`/api/standard-parts/outbound?operator=${op}`)
       ])
       const [stockJson, inJson, outJson] = await Promise.all([stockRes.json(), inRes.json(), outRes.json()])
       setStockItems(Array.isArray(stockJson?.items) ? stockJson.items : [])
@@ -106,7 +125,7 @@ const StandardPartsManagement: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.real_name])
 
   React.useEffect(() => {
     loadAll()
@@ -211,7 +230,7 @@ const StandardPartsManagement: React.FC = () => {
             if (!patch.unit_price || Number(patch.unit_price) <= 0) next.unit_price = Number(matched.unit_price || 0)
           }
         }
-        return next
+        return autofillDraftDefaults(next)
       })
       return ensureAtLeastTwoBlankRows(updated)
     })
@@ -284,7 +303,7 @@ const StandardPartsManagement: React.FC = () => {
           const spec = String(r['规格型号'] || r['spec_model'] || '').trim()
           const locationRaw = String(r['库位'] || r['location'] || '').trim()
           const location = locationRaw
-          return {
+          return autofillDraftDefaults({
             key: `import-${Date.now()}-${i}`,
             name,
             spec_model: spec,
@@ -295,7 +314,7 @@ const StandardPartsManagement: React.FC = () => {
             in_date: String(r['入库日期'] || r['in_date'] || dayjs().format('YYYY-MM-DD')).trim(),
             operator: String(r['操作人'] || r['operator'] || user?.real_name || '').trim(),
             status: String(r['状态'] || r['status'] || '待入库').trim()
-          } as DraftInboundRow
+          } as DraftInboundRow)
         }).filter((x: DraftInboundRow) => x.name && x.spec_model && x.location && x.unit && x.quantity > 0)
         setDraftInboundRows((prev) => ensureAtLeastTwoBlankRows([...prev, ...parsed]))
         setDraftSelectedKeys((prev) => [...prev, ...parsed.map((r: DraftInboundRow) => r.key)])

@@ -72,9 +72,38 @@ const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDa
   return totalQty / months
 }
 
+const getVisibilityByOperator = async (operator: string) => {
+  const op = normText(operator)
+  if (!op) return { isTechnician: false, teamName: '' }
+  const rs = await query(`
+    SELECT
+      COALESCE(t.name, '') AS team_name,
+      COALESCE(r.name, '') AS role_name
+    FROM users u
+    LEFT JOIN teams t ON t.id = u.team_id
+    LEFT JOIN roles r ON r.id = u.role_id
+    WHERE u.real_name = $1
+    ORDER BY u.updated_at DESC NULLS LAST
+    LIMIT 1
+  `, [op])
+  const row = rs.rows?.[0] || {}
+  const roleName = normText(row.role_name)
+  const teamName = normText(row.team_name)
+  return {
+    isTechnician: roleName.includes('技术员'),
+    teamName
+  }
+}
+
 router.get('/stock-ledger', async (_req, res) => {
   try {
     await ensureSchema()
+    const q = _req.query as any
+    const forcedGroup = normText(q?.tech_group)
+    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const params = scopedGroup ? [scopedGroup] : []
     const sql = `
       WITH inbound AS (
         SELECT
@@ -86,6 +115,7 @@ router.get('/stock-ledger', async (_req, res) => {
           SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS inbound_total,
           MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN unit_price ELSE 0 END) AS latest_inbound_price
         FROM standard_part_inbound
+        WHERE 1=1 ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
       ),
       outbound AS (
@@ -100,6 +130,7 @@ router.get('/stock-ledger', async (_req, res) => {
           MIN(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS min_out_date,
           MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS max_out_date
         FROM standard_part_outbound
+        WHERE 1=1 ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
       ),
       merged AS (
@@ -126,7 +157,7 @@ router.get('/stock-ledger', async (_req, res) => {
       SELECT * FROM merged
       ORDER BY name ASC, spec_model ASC, tech_group ASC, location ASC
     `
-    const rows = (await query(sql)).rows || []
+    const rows = (await query(sql, params)).rows || []
     const items = rows.map((r: any) => {
       const inboundTotal = toNum(r.inbound_total)
       const outboundTotal = toNum(r.outbound_total)
@@ -159,17 +190,23 @@ router.get('/stock-ledger', async (_req, res) => {
 router.get('/catalog', async (_req, res) => {
   try {
     await ensureSchema()
+    const q = _req.query as any
+    const forcedGroup = normText(q?.tech_group)
+    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const params = scopedGroup ? [scopedGroup] : []
     const stockRows = (await query(`
       WITH inbound AS (
         SELECT name, spec_model, tech_group, location, unit, SUM(quantity) AS in_qty, MAX(unit_price) AS price
         FROM standard_part_inbound
-        WHERE status NOT IN ('已删除','已退库','退库','退库入库')
+        WHERE status NOT IN ('已删除','已退库','退库','退库入库') ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
       ),
       outbound AS (
         SELECT name, spec_model, tech_group, location, unit, SUM(quantity) AS out_qty
         FROM standard_part_outbound
-        WHERE status NOT IN ('已删除','已退库','退库','退库入库')
+        WHERE status NOT IN ('已删除','已退库','退库','退库入库') ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
       )
       SELECT
@@ -188,7 +225,7 @@ router.get('/catalog', async (_req, res) => {
        AND i.location = o.location
        AND i.unit = o.unit
       ORDER BY 1,2,3,4
-    `)).rows || []
+    `, params)).rows || []
     res.json({ success: true, items: stockRows })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载目录失败' })
@@ -198,11 +235,18 @@ router.get('/catalog', async (_req, res) => {
 router.get('/inbound', async (_req, res) => {
   try {
     await ensureSchema()
+    const q = _req.query as any
+    const forcedGroup = normText(q?.tech_group)
+    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
       SELECT * FROM standard_part_inbound
       WHERE status NOT IN ('已删除','已退库','退库','退库入库')
+      ${whereScoped}
       ORDER BY in_date DESC, created_at DESC
-    `)).rows || []
+    `, params)).rows || []
     res.json({ success: true, items: rows })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载入库台账失败' })
@@ -212,11 +256,18 @@ router.get('/inbound', async (_req, res) => {
 router.get('/outbound', async (_req, res) => {
   try {
     await ensureSchema()
+    const q = _req.query as any
+    const forcedGroup = normText(q?.tech_group)
+    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
       SELECT * FROM standard_part_outbound
       WHERE status NOT IN ('已删除','已退库','退库','退库入库')
+      ${whereScoped}
       ORDER BY out_date DESC, created_at DESC
-    `)).rows || []
+    `, params)).rows || []
     res.json({ success: true, items: rows })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载出库台账失败' })
@@ -227,13 +278,15 @@ router.post('/inbound/batch', async (req, res) => {
   try {
     await ensureSchema()
     const items = Array.isArray(req.body?.items) ? req.body.items : []
+    const visibility = await getVisibilityByOperator(normText(req.body?.operator) || normText(items?.[0]?.operator))
     if (items.length === 0) return res.status(400).json({ success: false, error: '缺少入库数据' })
     const inserted = await transaction(async (client) => {
       const rows: any[] = []
       for (const raw of items) {
         const name = normText(raw?.name)
         const spec = normText(raw?.spec_model)
-        const techGroup = normText(raw?.tech_group)
+        const rawTechGroup = normText(raw?.tech_group)
+        const techGroup = visibility.isTechnician ? visibility.teamName : rawTechGroup
         const location = normText(raw?.location) || defaultLocationFromGroup(techGroup)
         const quantity = toNum(raw?.quantity)
         const unit = normText(raw?.unit)
@@ -264,13 +317,15 @@ router.post('/outbound/batch', async (req, res) => {
   try {
     await ensureSchema()
     const items = Array.isArray(req.body?.items) ? req.body.items : []
+    const visibility = await getVisibilityByOperator(normText(req.body?.operator) || normText(items?.[0]?.operator))
     if (items.length === 0) return res.status(400).json({ success: false, error: '缺少出库数据' })
     const inserted = await transaction(async (client) => {
       const rows: any[] = []
       for (const raw of items) {
         const name = normText(raw?.name)
         const spec = normText(raw?.spec_model)
-        const techGroup = normText(raw?.tech_group)
+        const rawTechGroup = normText(raw?.tech_group)
+        const techGroup = visibility.isTechnician ? visibility.teamName : rawTechGroup
         const location = normText(raw?.location) || defaultLocationFromGroup(techGroup)
         const quantity = toNum(raw?.quantity)
         const unit = normText(raw?.unit)

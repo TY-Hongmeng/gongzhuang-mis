@@ -39,7 +39,8 @@ const StandardPartsIssue: React.FC = () => {
   const loadStock = React.useCallback(async () => {
     setLoading(true)
     try {
-      const resp = await fetchWithFallback('/api/standard-parts/stock-ledger')
+      const op = encodeURIComponent(String(user?.real_name || ''))
+      const resp = await fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}`)
       const json = await resp.json().catch(() => ({}))
       if (!resp.ok || json?.success === false) {
         throw new Error(String(json?.error || '加载库存失败'))
@@ -51,7 +52,7 @@ const StandardPartsIssue: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.real_name])
 
   React.useEffect(() => {
     loadStock()
