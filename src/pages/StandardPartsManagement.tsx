@@ -74,6 +74,12 @@ const normalizePositiveMoney = (v: any) => {
   if (!Number.isFinite(n) || n <= 0) return 0
   return Number(n.toFixed(2))
 }
+const sortByDateDesc = (a?: string, b?: string) => {
+  const av = String(a || '')
+  const bv = String(b || '')
+  if (av === bv) return 0
+  return bv.localeCompare(av)
+}
 
 const StandardPartsManagement: React.FC = () => {
   const navigate = useNavigate()
@@ -212,18 +218,18 @@ const StandardPartsManagement: React.FC = () => {
 
   const inboundFiltered = React.useMemo(() => {
     const q = inboundKeyword.trim().toLowerCase()
-    if (!q) return inboundItems
-    return inboundItems.filter((r) =>
+    const base = !q ? inboundItems : inboundItems.filter((r) =>
       `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
     )
+    return [...base].sort((a, b) => sortByDateDesc(a.in_date, b.in_date))
   }, [inboundItems, inboundKeyword])
 
   const outboundFiltered = React.useMemo(() => {
     const q = outboundKeyword.trim().toLowerCase()
-    if (!q) return outboundItems
-    return outboundItems.filter((r) =>
+    const base = !q ? outboundItems : outboundItems.filter((r) =>
       `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
     )
+    return [...base].sort((a, b) => sortByDateDesc(a.out_date, b.out_date))
   }, [outboundItems, outboundKeyword])
 
   const submitInbound = async (rows: any[]) => {
@@ -557,7 +563,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
                       dataSource={inboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={false}
+                      pagination={{ pageSize: 20, showSizeChanger: true, showQuickJumper: true }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
@@ -600,7 +606,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: outboundSelectedKeys, onChange: setOutboundSelectedKeys }}
                       dataSource={outboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={false}
+                      pagination={{ pageSize: 20, showSizeChanger: true, showQuickJumper: true }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
