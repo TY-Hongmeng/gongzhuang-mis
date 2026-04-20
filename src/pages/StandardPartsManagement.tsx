@@ -3,6 +3,7 @@ import {
   Button,
   Input,
   Popconfirm,
+  Select,
   Space,
   Table,
   Tabs,
@@ -80,6 +81,12 @@ const sortByDateDesc = (a?: string, b?: string) => {
   if (av === bv) return 0
   return bv.localeCompare(av)
 }
+const includesByKeyword = (val: any, keyword: string) => {
+  const v = String(val || '').toLowerCase()
+  const k = String(keyword || '').trim().toLowerCase()
+  if (!k) return true
+  return v.includes(k)
+}
 
 const StandardPartsManagement: React.FC = () => {
   const navigate = useNavigate()
@@ -94,10 +101,10 @@ const StandardPartsManagement: React.FC = () => {
   const [draftInboundRows, setDraftInboundRows] = React.useState<DraftInboundRow[]>([])
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
   const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
-  const [stockKeyword, setStockKeyword] = React.useState('')
-  const [inboundOpKeyword, setInboundOpKeyword] = React.useState('')
-  const [inboundKeyword, setInboundKeyword] = React.useState('')
-  const [outboundKeyword, setOutboundKeyword] = React.useState('')
+  const [stockFilter, setStockFilter] = React.useState({ name: '', spec: '', location: '', unit: '' })
+  const [inboundOpFilter, setInboundOpFilter] = React.useState({ name: '', spec: '', location: '', unit: '', status: '' })
+  const [inboundFilter, setInboundFilter] = React.useState({ name: '', spec: '', location: '', unit: '', operator: '', status: '' })
+  const [outboundFilter, setOutboundFilter] = React.useState({ name: '', spec: '', location: '', unit: '', operator: '', status: '' })
 
   const autofillDraftDefaults = React.useCallback((row: DraftInboundRow): DraftInboundRow => {
     const hasAnyInput = Boolean(
@@ -201,36 +208,48 @@ const StandardPartsManagement: React.FC = () => {
   }, [createBlankInboundRow])
 
   const stockFiltered = React.useMemo(() => {
-    const q = stockKeyword.trim().toLowerCase()
-    if (!q) return stockItems
     return stockItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
+      includesByKeyword(r.name, stockFilter.name)
+      && includesByKeyword(r.spec_model, stockFilter.spec)
+      && includesByKeyword(r.location, stockFilter.location)
+      && includesByKeyword(r.unit, stockFilter.unit)
     )
-  }, [stockItems, stockKeyword])
+  }, [stockItems, stockFilter])
 
   const draftFiltered = React.useMemo(() => {
-    const q = inboundOpKeyword.trim().toLowerCase()
-    if (!q) return draftInboundRows
-    return draftInboundRows.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
-    )
-  }, [draftInboundRows, inboundOpKeyword])
+    return draftInboundRows.filter((r) => {
+      const rowStatus = getDraftRowStatus(r)
+      return includesByKeyword(r.name, inboundOpFilter.name)
+        && includesByKeyword(r.spec_model, inboundOpFilter.spec)
+        && includesByKeyword(r.location, inboundOpFilter.location)
+        && includesByKeyword(r.unit, inboundOpFilter.unit)
+        && includesByKeyword(rowStatus, inboundOpFilter.status)
+    })
+  }, [draftInboundRows, getDraftRowStatus, inboundOpFilter])
 
   const inboundFiltered = React.useMemo(() => {
-    const q = inboundKeyword.trim().toLowerCase()
-    const base = !q ? inboundItems : inboundItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
+    const base = inboundItems.filter((r) =>
+      includesByKeyword(r.name, inboundFilter.name)
+      && includesByKeyword(r.spec_model, inboundFilter.spec)
+      && includesByKeyword(r.location, inboundFilter.location)
+      && includesByKeyword(r.unit, inboundFilter.unit)
+      && includesByKeyword(r.operator, inboundFilter.operator)
+      && includesByKeyword(r.status, inboundFilter.status)
     )
     return [...base].sort((a, b) => sortByDateDesc(a.in_date, b.in_date))
-  }, [inboundItems, inboundKeyword])
+  }, [inboundItems, inboundFilter])
 
   const outboundFiltered = React.useMemo(() => {
-    const q = outboundKeyword.trim().toLowerCase()
-    const base = !q ? outboundItems : outboundItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
+    const base = outboundItems.filter((r) =>
+      includesByKeyword(r.name, outboundFilter.name)
+      && includesByKeyword(r.spec_model, outboundFilter.spec)
+      && includesByKeyword(r.location, outboundFilter.location)
+      && includesByKeyword(r.unit, outboundFilter.unit)
+      && includesByKeyword(r.operator, outboundFilter.operator)
+      && includesByKeyword(r.status, outboundFilter.status)
     )
     return [...base].sort((a, b) => sortByDateDesc(a.out_date, b.out_date))
-  }, [outboundItems, outboundKeyword])
+  }, [outboundItems, outboundFilter])
 
   const submitInbound = async (rows: any[]) => {
     const resp = await fetchWithFallback('/api/standard-parts/inbound/batch', {
@@ -413,13 +432,12 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <div className="border border-gray-200 rounded-lg p-2">
                   <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Input
-                      allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位"
-                      value={stockKeyword}
-                      onChange={(e) => setStockKeyword(e.target.value)}
-                      style={{ maxWidth: 360 }}
-                    />
+                    <Space wrap>
+                      <Input allowClear placeholder="名称" value={stockFilter.name} onChange={(e) => setStockFilter((p) => ({ ...p, name: e.target.value }))} style={{ width: 180 }} />
+                      <Input allowClear placeholder="规格型号" value={stockFilter.spec} onChange={(e) => setStockFilter((p) => ({ ...p, spec: e.target.value }))} style={{ width: 180 }} />
+                      <Input allowClear placeholder="库位" value={stockFilter.location} onChange={(e) => setStockFilter((p) => ({ ...p, location: e.target.value }))} style={{ width: 160 }} />
+                      <Input allowClear placeholder="单位" value={stockFilter.unit} onChange={(e) => setStockFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 120 }} />
+                    </Space>
                   </Space>
                   <Table
                     rowKey={(r) => `${r.name}-${r.spec_model}-${r.location}-${r.unit}`}
@@ -463,13 +481,20 @@ const StandardPartsManagement: React.FC = () => {
                   </Space>
                   <div className="border border-gray-200 rounded-lg p-2">
                     <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Input
-                        allowClear
-                        placeholder="筛选：名称/规格型号/库位/单位"
-                        value={inboundOpKeyword}
-                        onChange={(e) => setInboundOpKeyword(e.target.value)}
-                        style={{ maxWidth: 360 }}
-                      />
+                      <Space wrap>
+                        <Input allowClear placeholder="名称" value={inboundOpFilter.name} onChange={(e) => setInboundOpFilter((p) => ({ ...p, name: e.target.value }))} style={{ width: 180 }} />
+                        <Input allowClear placeholder="规格型号" value={inboundOpFilter.spec} onChange={(e) => setInboundOpFilter((p) => ({ ...p, spec: e.target.value }))} style={{ width: 180 }} />
+                        <Input allowClear placeholder="库位" value={inboundOpFilter.location} onChange={(e) => setInboundOpFilter((p) => ({ ...p, location: e.target.value }))} style={{ width: 160 }} />
+                        <Input allowClear placeholder="单位" value={inboundOpFilter.unit} onChange={(e) => setInboundOpFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 120 }} />
+                        <Select
+                          allowClear
+                          placeholder="状态"
+                          value={inboundOpFilter.status || undefined}
+                          onChange={(v) => setInboundOpFilter((p) => ({ ...p, status: String(v || '') }))}
+                          options={[{ value: '可入库', label: '可入库' }, { value: '待补全', label: '待补全' }]}
+                          style={{ width: 120 }}
+                        />
+                      </Space>
                     </Space>
                     <Table
                       rowKey="key"
@@ -545,13 +570,14 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
-                    <Input
-                      allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
-                      value={inboundKeyword}
-                      onChange={(e) => setInboundKeyword(e.target.value)}
-                      style={{ width: 360 }}
-                    />
+                    <Space wrap>
+                      <Input allowClear placeholder="名称" value={inboundFilter.name} onChange={(e) => setInboundFilter((p) => ({ ...p, name: e.target.value }))} style={{ width: 160 }} />
+                      <Input allowClear placeholder="规格型号" value={inboundFilter.spec} onChange={(e) => setInboundFilter((p) => ({ ...p, spec: e.target.value }))} style={{ width: 170 }} />
+                      <Input allowClear placeholder="库位" value={inboundFilter.location} onChange={(e) => setInboundFilter((p) => ({ ...p, location: e.target.value }))} style={{ width: 140 }} />
+                      <Input allowClear placeholder="单位" value={inboundFilter.unit} onChange={(e) => setInboundFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 100 }} />
+                      <Input allowClear placeholder="操作人" value={inboundFilter.operator} onChange={(e) => setInboundFilter((p) => ({ ...p, operator: e.target.value }))} style={{ width: 130 }} />
+                      <Input allowClear placeholder="状态" value={inboundFilter.status} onChange={(e) => setInboundFilter((p) => ({ ...p, status: e.target.value }))} style={{ width: 120 }} />
+                    </Space>
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
@@ -588,13 +614,14 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
-                    <Input
-                      allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
-                      value={outboundKeyword}
-                      onChange={(e) => setOutboundKeyword(e.target.value)}
-                      style={{ width: 360 }}
-                    />
+                    <Space wrap>
+                      <Input allowClear placeholder="名称" value={outboundFilter.name} onChange={(e) => setOutboundFilter((p) => ({ ...p, name: e.target.value }))} style={{ width: 160 }} />
+                      <Input allowClear placeholder="规格型号" value={outboundFilter.spec} onChange={(e) => setOutboundFilter((p) => ({ ...p, spec: e.target.value }))} style={{ width: 170 }} />
+                      <Input allowClear placeholder="库位" value={outboundFilter.location} onChange={(e) => setOutboundFilter((p) => ({ ...p, location: e.target.value }))} style={{ width: 140 }} />
+                      <Input allowClear placeholder="单位" value={outboundFilter.unit} onChange={(e) => setOutboundFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 100 }} />
+                      <Input allowClear placeholder="操作人" value={outboundFilter.operator} onChange={(e) => setOutboundFilter((p) => ({ ...p, operator: e.target.value }))} style={{ width: 130 }} />
+                      <Input allowClear placeholder="状态" value={outboundFilter.status} onChange={(e) => setOutboundFilter((p) => ({ ...p, status: e.target.value }))} style={{ width: 120 }} />
+                    </Space>
                     <Popconfirm title="确认删除选中的出库记录？" onConfirm={() => handleBatchAction('outbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
