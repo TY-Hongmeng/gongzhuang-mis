@@ -88,6 +88,10 @@ const StandardPartsManagement: React.FC = () => {
   const [draftInboundRows, setDraftInboundRows] = React.useState<DraftInboundRow[]>([])
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
   const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
+  const [stockKeyword, setStockKeyword] = React.useState('')
+  const [inboundOpKeyword, setInboundOpKeyword] = React.useState('')
+  const [inboundKeyword, setInboundKeyword] = React.useState('')
+  const [outboundKeyword, setOutboundKeyword] = React.useState('')
 
   const autofillDraftDefaults = React.useCallback((row: DraftInboundRow): DraftInboundRow => {
     const hasAnyInput = Boolean(
@@ -106,6 +110,31 @@ const StandardPartsManagement: React.FC = () => {
       status: String(row.status || '待入库')
     }
   }, [user?.real_name])
+
+  const isDraftRowValid = React.useCallback((r: DraftInboundRow) => {
+    return Boolean(
+      String(r.name || '').trim()
+      && String(r.spec_model || '').trim()
+      && String(r.location || '').trim()
+      && Number(r.quantity || 0) > 0
+      && String(r.unit || '').trim()
+    )
+  }, [])
+
+  const isDraftRowBlank = React.useCallback((r: DraftInboundRow) => {
+    return !String(r.name || '').trim()
+      && !String(r.spec_model || '').trim()
+      && !String(r.location || '').trim()
+      && Number(r.quantity || 0) <= 0
+      && !String(r.unit || '').trim()
+      && Number(r.unit_price || 0) <= 0
+  }, [])
+
+  const getDraftRowStatus = React.useCallback((r: DraftInboundRow) => {
+    if (isDraftRowBlank(r)) return ''
+    if (isDraftRowValid(r)) return '可入库'
+    return '待补全'
+  }, [isDraftRowBlank, isDraftRowValid])
 
   const loadAll = React.useCallback(async () => {
     setLoading(true)
@@ -164,6 +193,38 @@ const StandardPartsManagement: React.FC = () => {
     }
     return next
   }, [createBlankInboundRow])
+
+  const stockFiltered = React.useMemo(() => {
+    const q = stockKeyword.trim().toLowerCase()
+    if (!q) return stockItems
+    return stockItems.filter((r) =>
+      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
+    )
+  }, [stockItems, stockKeyword])
+
+  const draftFiltered = React.useMemo(() => {
+    const q = inboundOpKeyword.trim().toLowerCase()
+    if (!q) return draftInboundRows
+    return draftInboundRows.filter((r) =>
+      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
+    )
+  }, [draftInboundRows, inboundOpKeyword])
+
+  const inboundFiltered = React.useMemo(() => {
+    const q = inboundKeyword.trim().toLowerCase()
+    if (!q) return inboundItems
+    return inboundItems.filter((r) =>
+      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
+    )
+  }, [inboundItems, inboundKeyword])
+
+  const outboundFiltered = React.useMemo(() => {
+    const q = outboundKeyword.trim().toLowerCase()
+    if (!q) return outboundItems
+    return outboundItems.filter((r) =>
+      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
+    )
+  }, [outboundItems, outboundKeyword])
 
   const submitInbound = async (rows: any[]) => {
     const resp = await fetchWithFallback('/api/standard-parts/inbound/batch', {
@@ -238,13 +299,7 @@ const StandardPartsManagement: React.FC = () => {
 
   const handleDraftInboundSubmit = async () => {
     const selected = draftInboundRows.filter((r) => draftSelectedKeys.includes(r.key))
-    const valid = selected.filter((r) =>
-      String(r.name || '').trim()
-      && String(r.spec_model || '').trim()
-      && String(r.location || '').trim()
-      && Number(r.quantity || 0) > 0
-      && String(r.unit || '').trim()
-    )
+    const valid = selected.filter((r) => isDraftRowValid(r))
     if (valid.length === 0) {
       message.warning('请先勾选并填写有效的待入库数据')
       return
@@ -264,13 +319,7 @@ const StandardPartsManagement: React.FC = () => {
       }))
       await submitInbound(payload)
       const successKeySet = new Set(valid.map((x) => x.key))
-      setDraftInboundRows((prev) => ensureAtLeastTwoBlankRows(prev.map((r) => {
-        if (!successKeySet.has(r.key)) return r
-        return {
-          ...r,
-          status: '入库成功'
-        }
-      })))
+      setDraftInboundRows((prev) => ensureAtLeastTwoBlankRows(prev.filter((r) => !successKeySet.has(r.key))))
       setDraftSelectedKeys([])
       message.success(`已完成 ${valid.length} 条入库`)
       await loadAll()
@@ -286,6 +335,17 @@ const StandardPartsManagement: React.FC = () => {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '入库导入模板')
     XLSX.writeFile(wb, '标准件入库导入模板.xlsx')
+  }
+
+  const handleDeleteDraftRows = () => {
+    if (draftSelectedKeys.length === 0) {
+      message.warning('请先勾选待删除的入库操作数据')
+      return
+    }
+    const keySet = new Set(draftSelectedKeys.map(String))
+    setDraftInboundRows((prev) => ensureAtLeastTwoBlankRows(prev.filter((r) => !keySet.has(String(r.key)))))
+    setDraftSelectedKeys([])
+    message.success('已删除选中的入库操作数据')
   }
 
   const importUploadProps: UploadProps = {
@@ -346,24 +406,35 @@ const StandardPartsManagement: React.FC = () => {
               label: '库存台账',
               children: (
                 <div className="border border-gray-200 rounded-lg p-2">
+                  <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Input
+                      allowClear
+                      placeholder="筛选：名称/规格型号/库位/单位"
+                      value={stockKeyword}
+                      onChange={(e) => setStockKeyword(e.target.value)}
+                      style={{ maxWidth: 360 }}
+                    />
+                  </Space>
                   <Table
                     rowKey={(r) => `${r.name}-${r.spec_model}-${r.location}-${r.unit}`}
                     loading={loading}
-                    dataSource={stockItems}
-                    scroll={{ x: 1600, y: tableY }}
+                    dataSource={stockFiltered}
+                    scroll={{ y: tableY }}
                     pagination={false}
+                    tableLayout="fixed"
                     columns={[
-                      { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
-                      { title: '规格型号', dataIndex: 'spec_model', width: 220 },
-                      { title: '库位', dataIndex: 'location', width: 160, align: 'center' },
-                      { title: '入库总数', dataIndex: 'inbound_total', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
-                      { title: '出库总数', dataIndex: 'outbound_total', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
-                      { title: '结余', dataIndex: 'balance', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
-                      { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                      { title: '单价', dataIndex: 'unit_price', width: 130, align: 'right', render: (v) => fmtMoney(v) },
-                      { title: '总额', dataIndex: 'total_amount', width: 130, align: 'right', render: (v) => fmtNum(v, 2) },
-                      { title: '安全库存(月均)', dataIndex: 'safety_stock', width: 140, align: 'right', render: (v) => fmtIntPos(v) },
-                      { title: '最大库存(3个月)', dataIndex: 'max_stock', width: 150, align: 'right', render: (v) => fmtIntPos(v) }
+                      { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
+                      { title: '名称', dataIndex: 'name', ellipsis: true },
+                      { title: '规格型号', dataIndex: 'spec_model', ellipsis: true },
+                      { title: '库位', dataIndex: 'location', align: 'center', ellipsis: true },
+                      { title: '入库总数', dataIndex: 'inbound_total', align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '出库总数', dataIndex: 'outbound_total', align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '结余', dataIndex: 'balance', align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '单位', dataIndex: 'unit', align: 'center', ellipsis: true },
+                      { title: '单价', dataIndex: 'unit_price', align: 'right', render: (v) => fmtMoney(v) },
+                      { title: '总额', dataIndex: 'total_amount', align: 'right', render: (v) => fmtNum(v, 2) },
+                      { title: '安全库存(月均)', dataIndex: 'safety_stock', align: 'right', render: (v) => fmtIntPos(v) },
+                      { title: '最大库存(3个月)', dataIndex: 'max_stock', align: 'right', render: (v) => fmtIntPos(v) }
                     ]}
                   />
                 </div>
@@ -376,69 +447,80 @@ const StandardPartsManagement: React.FC = () => {
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
                     <Button type="primary" icon={<SendOutlined />} onClick={handleDraftInboundSubmit}>一键入库</Button>
+                    <Popconfirm title="确认删除选中的入库操作数据？" onConfirm={handleDeleteDraftRows}>
+                      <Button danger icon={<DeleteOutlined />}>删除</Button>
+                    </Popconfirm>
                     <Upload {...importUploadProps}>
                       <Button icon={<UploadOutlined />}>Excel导入</Button>
                     </Upload>
                     <Button icon={<DownloadOutlined />} onClick={downloadInboundTemplate}>下载导入模板</Button>
                   </Space>
                   <div className="border border-gray-200 rounded-lg p-2">
+                    <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Input
+                        allowClear
+                        placeholder="筛选：名称/规格型号/库位/单位"
+                        value={inboundOpKeyword}
+                        onChange={(e) => setInboundOpKeyword(e.target.value)}
+                        style={{ maxWidth: 360 }}
+                      />
+                    </Space>
                     <Table
                       rowKey="key"
                       size="small"
                       rowSelection={{ selectedRowKeys: draftSelectedKeys, onChange: setDraftSelectedKeys }}
-                      dataSource={draftInboundRows}
-                      scroll={{ x: 1400, y: tableY }}
+                      dataSource={draftFiltered}
+                      scroll={{ y: tableY }}
                       pagination={false}
+                      tableLayout="fixed"
                       columns={[
+                        {
+                          title: '序号',
+                          width: 72,
+                          align: 'center',
+                          render: (_v, _r, i) => i + 1
+                        },
                         {
                           title: '名称',
                           dataIndex: 'name',
-                          width: 180,
                           render: (_v, r: DraftInboundRow) => <Input value={r.name} onChange={(e) => patchDraftInboundRow(r.key, { name: e.target.value })} />
                         },
                         {
                           title: '规格型号',
                           dataIndex: 'spec_model',
-                          width: 190,
                           render: (_v, r: DraftInboundRow) => <Input value={r.spec_model} onChange={(e) => patchDraftInboundRow(r.key, { spec_model: e.target.value })} />
                         },
                         {
                           title: '库位',
                           dataIndex: 'location',
-                          width: 140,
                           render: (_v, r: DraftInboundRow) => <Input value={r.location} onChange={(e) => patchDraftInboundRow(r.key, { location: e.target.value })} />
                         },
                         {
                           title: '入库数量',
                           dataIndex: 'quantity',
-                          width: 120,
                           render: (_v, r: DraftInboundRow) => <Input value={r.quantity ? String(r.quantity) : ''} onChange={(e) => patchDraftInboundRow(r.key, { quantity: normalizePositiveInt(e.target.value) })} />
                         },
                         {
                           title: '单位',
                           dataIndex: 'unit',
-                          width: 90,
                           render: (_v, r: DraftInboundRow) => <Input value={r.unit} onChange={(e) => patchDraftInboundRow(r.key, { unit: e.target.value })} />
                         },
                         {
                           title: '单价',
                           dataIndex: 'unit_price',
-                          width: 110,
-                          render: (_v, r: DraftInboundRow) => <Input value={r.unit_price ? String(r.unit_price) : ''} onChange={(e) => patchDraftInboundRow(r.key, { unit_price: normalizePositiveMoney(e.target.value) })} />
+                          render: (_v, r: DraftInboundRow) => <Input value={r.unit_price ? fmtMoney(r.unit_price) : ''} onChange={(e) => patchDraftInboundRow(r.key, { unit_price: normalizePositiveMoney(e.target.value) })} />
                         },
                         {
                           title: '入库日期',
                           dataIndex: 'in_date',
-                          width: 130,
                           render: (_v, r: DraftInboundRow) => <Input value={r.in_date} onChange={(e) => patchDraftInboundRow(r.key, { in_date: e.target.value })} />
                         },
                         {
                           title: '操作人',
                           dataIndex: 'operator',
-                          width: 120,
                           render: (_v, r: DraftInboundRow) => <Input value={r.operator} onChange={(e) => patchDraftInboundRow(r.key, { operator: e.target.value })} />
                         },
-                        { title: '状态', dataIndex: 'status', width: 120, align: 'center' as const }
+                        { title: '状态', align: 'center' as const, render: (_v, r: DraftInboundRow) => getDraftRowStatus(r) }
                       ]}
                     />
                   </div>
@@ -451,6 +533,13 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
+                    <Input
+                      allowClear
+                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
+                      value={inboundKeyword}
+                      onChange={(e) => setInboundKeyword(e.target.value)}
+                      style={{ width: 360 }}
+                    />
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
@@ -460,19 +549,21 @@ const StandardPartsManagement: React.FC = () => {
                       rowKey="id"
                       loading={loading}
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
-                      dataSource={inboundItems}
-                      scroll={{ x: 1400, y: tableY }}
+                      dataSource={inboundFiltered}
+                      scroll={{ y: tableY }}
                       pagination={false}
+                      tableLayout="fixed"
                       columns={[
-                        { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
-                        { title: '规格型号', dataIndex: 'spec_model', width: 190 },
-                        { title: '库位', dataIndex: 'location', width: 140, align: 'center' },
-                        { title: '入库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
-                        { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtMoney(v) },
-                        { title: '入库日期', dataIndex: 'in_date', width: 120, align: 'center' },
-                        { title: '操作人', dataIndex: 'operator', width: 120, align: 'center' },
-                        { title: '状态', dataIndex: 'status', width: 100, align: 'center' }
+                        { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
+                        { title: '名称', dataIndex: 'name', ellipsis: true },
+                        { title: '规格型号', dataIndex: 'spec_model', ellipsis: true },
+                        { title: '库位', dataIndex: 'location', align: 'center', ellipsis: true },
+                        { title: '入库数量', dataIndex: 'quantity', align: 'right', render: (v) => fmtIntPos(v) },
+                        { title: '单位', dataIndex: 'unit', align: 'center', ellipsis: true },
+                        { title: '单价', dataIndex: 'unit_price', align: 'right', render: (v) => fmtMoney(v) },
+                        { title: '入库日期', dataIndex: 'in_date', align: 'center' },
+                        { title: '操作人', dataIndex: 'operator', align: 'center', ellipsis: true },
+                        { title: '状态', dataIndex: 'status', align: 'center', ellipsis: true }
                       ]}
                     />
                   </div>
@@ -485,6 +576,13 @@ const StandardPartsManagement: React.FC = () => {
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
                   <Space>
+                    <Input
+                      allowClear
+                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
+                      value={outboundKeyword}
+                      onChange={(e) => setOutboundKeyword(e.target.value)}
+                      style={{ width: 360 }}
+                    />
                     <Popconfirm title="确认删除选中的出库记录？" onConfirm={() => handleBatchAction('outbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
@@ -494,19 +592,21 @@ const StandardPartsManagement: React.FC = () => {
                       rowKey="id"
                       loading={loading}
                       rowSelection={{ selectedRowKeys: outboundSelectedKeys, onChange: setOutboundSelectedKeys }}
-                      dataSource={outboundItems}
-                      scroll={{ x: 1400, y: tableY }}
+                      dataSource={outboundFiltered}
+                      scroll={{ y: tableY }}
                       pagination={false}
+                      tableLayout="fixed"
                       columns={[
-                        { title: '名称', dataIndex: 'name', width: 180, fixed: 'left' },
-                        { title: '规格型号', dataIndex: 'spec_model', width: 190 },
-                        { title: '库位', dataIndex: 'location', width: 140, align: 'center' },
-                        { title: '出库数量', dataIndex: 'quantity', width: 120, align: 'right', render: (v) => fmtIntPos(v) },
-                        { title: '单位', dataIndex: 'unit', width: 90, align: 'center' },
-                        { title: '单价', dataIndex: 'unit_price', width: 110, align: 'right', render: (v) => fmtMoney(v) },
-                        { title: '出库日期', dataIndex: 'out_date', width: 120, align: 'center' },
-                        { title: '操作人', dataIndex: 'operator', width: 120, align: 'center' },
-                        { title: '状态', dataIndex: 'status', width: 100, align: 'center' }
+                        { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
+                        { title: '名称', dataIndex: 'name', ellipsis: true },
+                        { title: '规格型号', dataIndex: 'spec_model', ellipsis: true },
+                        { title: '库位', dataIndex: 'location', align: 'center', ellipsis: true },
+                        { title: '出库数量', dataIndex: 'quantity', align: 'right', render: (v) => fmtIntPos(v) },
+                        { title: '单位', dataIndex: 'unit', align: 'center', ellipsis: true },
+                        { title: '单价', dataIndex: 'unit_price', align: 'right', render: (v) => fmtMoney(v) },
+                        { title: '出库日期', dataIndex: 'out_date', align: 'center' },
+                        { title: '操作人', dataIndex: 'operator', align: 'center', ellipsis: true },
+                        { title: '状态', dataIndex: 'status', align: 'center', ellipsis: true }
                       ]}
                     />
                   </div>
