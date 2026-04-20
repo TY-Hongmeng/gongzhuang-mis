@@ -176,7 +176,7 @@ const Dashboard: React.FC = () => {
               <Link to="/standard-parts-issue" style={{ display: 'block' }}>
                 <Card hoverable className="text-center cursor-pointer">
                   <BuildOutlined className="text-3xl text-sky-500 mb-2" />
-                  出库记录
+                  标准件出库
                 </Card>
               </Link>
             </Col>
