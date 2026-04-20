@@ -37,6 +37,8 @@ const MODULES = [
   { name: '基础数据', code: 'base_data' },
   { name: '下料管理', code: 'cutting' },
   { name: '采购管理', code: 'purchase' },
+  { name: '标准件管理', code: 'standard_parts' },
+  { name: '出库记录', code: 'standard_parts_issue' },
   { name: '个人设置', code: 'personal_settings' },
   { name: '工时录入', code: 'work_hours_entry' },
   { name: '工时管理', code: 'work_hours' }

@@ -34,7 +34,9 @@ const Dashboard: React.FC = () => {
     '工时管理': 'work_hours', work_hours: 'work_hours',
     '权限管理': 'permission', permission: 'permission',
     '个人设置': 'personal_settings', personal_settings: 'personal_settings',
-    '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue'
+    '标准件管理': 'standard_parts', standard_parts: 'standard_parts',
+    '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue',
+    '出库记录': 'standard_parts_issue'
   }
   const perms = (user as any)?.roles?.role_permissions || []
   const can = (module: string) => {
@@ -161,7 +163,7 @@ const Dashboard: React.FC = () => {
               </Link>
             </Col>
           )}
-          {can('purchase') && (
+          {can('standard_parts') && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/standard-parts" style={{ display: 'block' }}>
                 <Card hoverable className="text-center cursor-pointer">
