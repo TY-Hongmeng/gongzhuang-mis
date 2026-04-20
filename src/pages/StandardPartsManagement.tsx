@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Button,
   Input,
+  Select,
   Popconfirm,
   Space,
   Table,
@@ -56,6 +57,7 @@ type DraftInboundRow = {
   quantity: number
   unit: string
   unit_price: number
+  unit_price_input?: string
   in_date: string
   operator: string
   status: string
@@ -88,10 +90,10 @@ const StandardPartsManagement: React.FC = () => {
   const [draftInboundRows, setDraftInboundRows] = React.useState<DraftInboundRow[]>([])
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
   const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
-  const [stockKeyword, setStockKeyword] = React.useState('')
-  const [inboundOpKeyword, setInboundOpKeyword] = React.useState('')
-  const [inboundKeyword, setInboundKeyword] = React.useState('')
-  const [outboundKeyword, setOutboundKeyword] = React.useState('')
+  const [stockFilter, setStockFilter] = React.useState({ name: '', spec: '', location: '', unit: '' })
+  const [inboundOpFilter, setInboundOpFilter] = React.useState({ name: '', spec: '', location: '', unit: '', status: 'all' })
+  const [inboundFilter, setInboundFilter] = React.useState({ name: '', spec: '', location: '', unit: '', operator: '', status: 'all' })
+  const [outboundFilter, setOutboundFilter] = React.useState({ name: '', spec: '', location: '', unit: '', operator: '', status: 'all' })
 
   const autofillDraftDefaults = React.useCallback((row: DraftInboundRow): DraftInboundRow => {
     const hasAnyInput = Boolean(
@@ -101,6 +103,7 @@ const StandardPartsManagement: React.FC = () => {
       || Number(row.quantity || 0) > 0
       || String(row.unit || '').trim()
       || Number(row.unit_price || 0) > 0
+      || String(row.unit_price_input || '').trim()
     )
     if (!hasAnyInput) return row
     return {
@@ -174,6 +177,7 @@ const StandardPartsManagement: React.FC = () => {
     quantity: 0,
     unit: '',
     unit_price: 0,
+    unit_price_input: '',
     in_date: '',
     operator: '',
     status: ''
@@ -195,36 +199,76 @@ const StandardPartsManagement: React.FC = () => {
   }, [createBlankInboundRow])
 
   const stockFiltered = React.useMemo(() => {
-    const q = stockKeyword.trim().toLowerCase()
-    if (!q) return stockItems
+    const f = {
+      name: stockFilter.name.trim().toLowerCase(),
+      spec: stockFilter.spec.trim().toLowerCase(),
+      location: stockFilter.location.trim().toLowerCase(),
+      unit: stockFilter.unit.trim().toLowerCase()
+    }
     return stockItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
+      (!f.name || String(r.name || '').toLowerCase().includes(f.name))
+      && (!f.spec || String(r.spec_model || '').toLowerCase().includes(f.spec))
+      && (!f.location || String(r.location || '').toLowerCase().includes(f.location))
+      && (!f.unit || String(r.unit || '').toLowerCase().includes(f.unit))
     )
-  }, [stockItems, stockKeyword])
+  }, [stockItems, stockFilter])
 
   const draftFiltered = React.useMemo(() => {
-    const q = inboundOpKeyword.trim().toLowerCase()
-    if (!q) return draftInboundRows
-    return draftInboundRows.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit}`.toLowerCase().includes(q)
-    )
-  }, [draftInboundRows, inboundOpKeyword])
+    const f = {
+      name: inboundOpFilter.name.trim().toLowerCase(),
+      spec: inboundOpFilter.spec.trim().toLowerCase(),
+      location: inboundOpFilter.location.trim().toLowerCase(),
+      unit: inboundOpFilter.unit.trim().toLowerCase(),
+      status: inboundOpFilter.status
+    }
+    return draftInboundRows.filter((r) => {
+      const st = getDraftRowStatus(r)
+      const stKey = st === '可入库' ? 'valid' : st === '待补全' ? 'invalid' : 'blank'
+      return (!f.name || String(r.name || '').toLowerCase().includes(f.name))
+        && (!f.spec || String(r.spec_model || '').toLowerCase().includes(f.spec))
+        && (!f.location || String(r.location || '').toLowerCase().includes(f.location))
+        && (!f.unit || String(r.unit || '').toLowerCase().includes(f.unit))
+        && (f.status === 'all' || stKey === f.status)
+    })
+  }, [draftInboundRows, inboundOpFilter, getDraftRowStatus])
 
   const inboundFiltered = React.useMemo(() => {
-    const q = inboundKeyword.trim().toLowerCase()
-    if (!q) return inboundItems
+    const f = {
+      name: inboundFilter.name.trim().toLowerCase(),
+      spec: inboundFilter.spec.trim().toLowerCase(),
+      location: inboundFilter.location.trim().toLowerCase(),
+      unit: inboundFilter.unit.trim().toLowerCase(),
+      operator: inboundFilter.operator.trim().toLowerCase(),
+      status: inboundFilter.status
+    }
     return inboundItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
-    )
-  }, [inboundItems, inboundKeyword])
+      (!f.name || String(r.name || '').toLowerCase().includes(f.name))
+      && (!f.spec || String(r.spec_model || '').toLowerCase().includes(f.spec))
+      && (!f.location || String(r.location || '').toLowerCase().includes(f.location))
+      && (!f.unit || String(r.unit || '').toLowerCase().includes(f.unit))
+      && (!f.operator || String(r.operator || '').toLowerCase().includes(f.operator))
+      && (f.status === 'all' || String(r.status || '') === f.status)
+    ).sort((a, b) => String(b.in_date || '').localeCompare(String(a.in_date || '')))
+  }, [inboundItems, inboundFilter])
 
   const outboundFiltered = React.useMemo(() => {
-    const q = outboundKeyword.trim().toLowerCase()
-    if (!q) return outboundItems
+    const f = {
+      name: outboundFilter.name.trim().toLowerCase(),
+      spec: outboundFilter.spec.trim().toLowerCase(),
+      location: outboundFilter.location.trim().toLowerCase(),
+      unit: outboundFilter.unit.trim().toLowerCase(),
+      operator: outboundFilter.operator.trim().toLowerCase(),
+      status: outboundFilter.status
+    }
     return outboundItems.filter((r) =>
-      `${r.name} ${r.spec_model} ${r.location} ${r.unit} ${r.operator} ${r.status}`.toLowerCase().includes(q)
-    )
-  }, [outboundItems, outboundKeyword])
+      (!f.name || String(r.name || '').toLowerCase().includes(f.name))
+      && (!f.spec || String(r.spec_model || '').toLowerCase().includes(f.spec))
+      && (!f.location || String(r.location || '').toLowerCase().includes(f.location))
+      && (!f.unit || String(r.unit || '').toLowerCase().includes(f.unit))
+      && (!f.operator || String(r.operator || '').toLowerCase().includes(f.operator))
+      && (f.status === 'all' || String(r.status || '') === f.status)
+    ).sort((a, b) => String(b.out_date || '').localeCompare(String(a.out_date || '')))
+  }, [outboundItems, outboundFilter])
 
   const submitInbound = async (rows: any[]) => {
     const resp = await fetchWithFallback('/api/standard-parts/inbound/batch', {
@@ -288,7 +332,10 @@ const StandardPartsManagement: React.FC = () => {
           )
           if (matched) {
             if (!patch.unit) next.unit = matched.unit
-            if (!patch.unit_price || Number(patch.unit_price) <= 0) next.unit_price = Number(matched.unit_price || 0)
+            if (!patch.unit_price || Number(patch.unit_price) <= 0) {
+              next.unit_price = Number(matched.unit_price || 0)
+              next.unit_price_input = fmtMoney(next.unit_price)
+            }
           }
         }
         return autofillDraftDefaults(next)
@@ -312,7 +359,7 @@ const StandardPartsManagement: React.FC = () => {
         location: String(r.location || '').trim(),
         quantity: normalizePositiveInt(r.quantity),
         unit: String(r.unit || '').trim(),
-        unit_price: normalizePositiveMoney(r.unit_price),
+        unit_price: normalizePositiveMoney(r.unit_price_input ?? r.unit_price),
         in_date: String(r.in_date || dayjs().format('YYYY-MM-DD')),
         operator: String(r.operator || user?.real_name || ''),
         status: '正常'
@@ -371,6 +418,7 @@ const StandardPartsManagement: React.FC = () => {
             quantity: Number(r['入库数量'] || r['quantity'] || 0),
             unit: String(r['单位'] || r['unit'] || '').trim(),
             unit_price: normalizePositiveMoney(r['单价'] || r['unit_price'] || 0),
+            unit_price_input: String(r['单价'] || r['unit_price'] || ''),
             in_date: String(r['入库日期'] || r['in_date'] || dayjs().format('YYYY-MM-DD')).trim(),
             operator: String(r['操作人'] || r['operator'] || user?.real_name || '').trim(),
             status: String(r['状态'] || r['status'] || '待入库').trim()
@@ -406,13 +454,37 @@ const StandardPartsManagement: React.FC = () => {
               label: '库存台账',
               children: (
                 <div className="border border-gray-200 rounded-lg p-2">
-                  <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Space wrap className="mb-2" style={{ width: '100%' }}>
                     <Input
                       allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位"
-                      value={stockKeyword}
-                      onChange={(e) => setStockKeyword(e.target.value)}
-                      style={{ maxWidth: 360 }}
+                      placeholder="名称"
+                      value={stockFilter.name}
+                      onChange={(e) => setStockFilter((p) => ({ ...p, name: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="规格型号"
+                      value={stockFilter.spec}
+                      onChange={(e) => setStockFilter((p) => ({ ...p, spec: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="库位"
+                      value={stockFilter.location}
+                      onChange={(e) => setStockFilter((p) => ({ ...p, location: e.target.value }))}
+                      style={{ width: 160 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="单位"
+                      value={stockFilter.unit}
+                      onChange={(e) => setStockFilter((p) => ({ ...p, unit: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    <Button onClick={() => setStockFilter({ name: '', spec: '', location: '', unit: '' })}>
+                      重置筛选
                     />
                   </Space>
                   <Table
@@ -456,14 +528,48 @@ const StandardPartsManagement: React.FC = () => {
                     <Button icon={<DownloadOutlined />} onClick={downloadInboundTemplate}>下载导入模板</Button>
                   </Space>
                   <div className="border border-gray-200 rounded-lg p-2">
-                    <Space className="mb-2" style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Space wrap className="mb-2" style={{ width: '100%' }}>
                       <Input
                         allowClear
-                        placeholder="筛选：名称/规格型号/库位/单位"
-                        value={inboundOpKeyword}
-                        onChange={(e) => setInboundOpKeyword(e.target.value)}
-                        style={{ maxWidth: 360 }}
+                        placeholder="名称"
+                        value={inboundOpFilter.name}
+                        onChange={(e) => setInboundOpFilter((p) => ({ ...p, name: e.target.value }))}
+                        style={{ width: 180 }}
                       />
+                      <Input
+                        allowClear
+                        placeholder="规格型号"
+                        value={inboundOpFilter.spec}
+                        onChange={(e) => setInboundOpFilter((p) => ({ ...p, spec: e.target.value }))}
+                        style={{ width: 180 }}
+                      />
+                      <Input
+                        allowClear
+                        placeholder="库位"
+                        value={inboundOpFilter.location}
+                        onChange={(e) => setInboundOpFilter((p) => ({ ...p, location: e.target.value }))}
+                        style={{ width: 160 }}
+                      />
+                      <Input
+                        allowClear
+                        placeholder="单位"
+                        value={inboundOpFilter.unit}
+                        onChange={(e) => setInboundOpFilter((p) => ({ ...p, unit: e.target.value }))}
+                        style={{ width: 120 }}
+                      />
+                      <Select
+                        style={{ width: 140 }}
+                        value={inboundOpFilter.status}
+                        options={[
+                          { value: 'all', label: '状态-全部' },
+                          { value: 'valid', label: '可入库' },
+                          { value: 'invalid', label: '待补全' }
+                        ]}
+                        onChange={(v) => setInboundOpFilter((p) => ({ ...p, status: v }))}
+                      />
+                      <Button onClick={() => setInboundOpFilter({ name: '', spec: '', location: '', unit: '', status: 'all' })}>
+                        重置筛选
+                      </Button>
                     </Space>
                     <Table
                       rowKey="key"
@@ -508,7 +614,19 @@ const StandardPartsManagement: React.FC = () => {
                         {
                           title: '单价',
                           dataIndex: 'unit_price',
-                          render: (_v, r: DraftInboundRow) => <Input value={r.unit_price ? fmtMoney(r.unit_price) : ''} onChange={(e) => patchDraftInboundRow(r.key, { unit_price: normalizePositiveMoney(e.target.value) })} />
+                          render: (_v, r: DraftInboundRow) => (
+                            <Input
+                              value={r.unit_price_input ?? (r.unit_price ? String(r.unit_price) : '')}
+                              onChange={(e) => patchDraftInboundRow(r.key, {
+                                unit_price_input: e.target.value,
+                                unit_price: normalizePositiveMoney(e.target.value)
+                              })}
+                              onBlur={(e) => patchDraftInboundRow(r.key, {
+                                unit_price: normalizePositiveMoney(e.target.value),
+                                unit_price_input: e.target.value ? fmtMoney(normalizePositiveMoney(e.target.value)) : ''
+                              })}
+                            />
+                          )
                         },
                         {
                           title: '入库日期',
@@ -532,17 +650,54 @@ const StandardPartsManagement: React.FC = () => {
               label: '入库台账',
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Space>
+                  <Space wrap>
                     <Input
                       allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
-                      value={inboundKeyword}
-                      onChange={(e) => setInboundKeyword(e.target.value)}
-                      style={{ width: 360 }}
+                      placeholder="名称"
+                      value={inboundFilter.name}
+                      onChange={(e) => setInboundFilter((p) => ({ ...p, name: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="规格型号"
+                      value={inboundFilter.spec}
+                      onChange={(e) => setInboundFilter((p) => ({ ...p, spec: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="库位"
+                      value={inboundFilter.location}
+                      onChange={(e) => setInboundFilter((p) => ({ ...p, location: e.target.value }))}
+                      style={{ width: 160 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="单位"
+                      value={inboundFilter.unit}
+                      onChange={(e) => setInboundFilter((p) => ({ ...p, unit: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="操作人"
+                      value={inboundFilter.operator}
+                      onChange={(e) => setInboundFilter((p) => ({ ...p, operator: e.target.value }))}
+                      style={{ width: 140 }}
+                    />
+                    <Select
+                      style={{ width: 160 }}
+                      value={inboundFilter.status}
+                      options={[{ value: 'all', label: '状态-全部' }, ...Array.from(new Set(inboundItems.map((x) => String(x.status || '')))).filter(Boolean).map((x) => ({ value: x, label: x }))]}
+                      onChange={(v) => setInboundFilter((p) => ({ ...p, status: v }))}
                     />
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
+                    <Button onClick={() => setInboundFilter({ name: '', spec: '', location: '', unit: '', operator: '', status: 'all' })}>
+                      重置筛选
+                    </Button>
                   </Space>
                   <div className="border border-gray-200 rounded-lg p-2">
                     <Table
@@ -551,7 +706,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
                       dataSource={inboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={false}
+                      pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'] }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
@@ -575,17 +730,54 @@ const StandardPartsManagement: React.FC = () => {
               label: '出库台账',
               children: (
                 <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  <Space>
+                  <Space wrap>
                     <Input
                       allowClear
-                      placeholder="筛选：名称/规格型号/库位/单位/操作人/状态"
-                      value={outboundKeyword}
-                      onChange={(e) => setOutboundKeyword(e.target.value)}
-                      style={{ width: 360 }}
+                      placeholder="名称"
+                      value={outboundFilter.name}
+                      onChange={(e) => setOutboundFilter((p) => ({ ...p, name: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="规格型号"
+                      value={outboundFilter.spec}
+                      onChange={(e) => setOutboundFilter((p) => ({ ...p, spec: e.target.value }))}
+                      style={{ width: 180 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="库位"
+                      value={outboundFilter.location}
+                      onChange={(e) => setOutboundFilter((p) => ({ ...p, location: e.target.value }))}
+                      style={{ width: 160 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="单位"
+                      value={outboundFilter.unit}
+                      onChange={(e) => setOutboundFilter((p) => ({ ...p, unit: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    <Input
+                      allowClear
+                      placeholder="操作人"
+                      value={outboundFilter.operator}
+                      onChange={(e) => setOutboundFilter((p) => ({ ...p, operator: e.target.value }))}
+                      style={{ width: 140 }}
+                    />
+                    <Select
+                      style={{ width: 160 }}
+                      value={outboundFilter.status}
+                      options={[{ value: 'all', label: '状态-全部' }, ...Array.from(new Set(outboundItems.map((x) => String(x.status || '')))).filter(Boolean).map((x) => ({ value: x, label: x }))]}
+                      onChange={(v) => setOutboundFilter((p) => ({ ...p, status: v }))}
                     />
                     <Popconfirm title="确认删除选中的出库记录？" onConfirm={() => handleBatchAction('outbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>
+                    <Button onClick={() => setOutboundFilter({ name: '', spec: '', location: '', unit: '', operator: '', status: 'all' })}>
+                      重置筛选
+                    </Button>
                   </Space>
                   <div className="border border-gray-200 rounded-lg p-2">
                     <Table
@@ -594,7 +786,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: outboundSelectedKeys, onChange: setOutboundSelectedKeys }}
                       dataSource={outboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={false}
+                      pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'] }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },

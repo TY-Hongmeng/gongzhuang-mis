@@ -145,10 +145,10 @@ const StandardPartsIssue: React.FC = () => {
       <div className="bg-white">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <Title level={2} className="mb-0">标准件出库模块</Title>
+            <Title level={2} className="mb-0">标准件出库记录</Title>
             <Space>
               <Button icon={<ReloadOutlined />} onClick={loadStock} loading={loading}>刷新</Button>
-              <Button icon={<LeftOutlined />} onClick={() => navigate('/standard-parts')}>返回台账</Button>
+              <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
             </Space>
           </div>
         </div>
