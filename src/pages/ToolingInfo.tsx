@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -545,6 +545,7 @@ const ToolingInfoPage: React.FC = () => {
   const workHoursFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number; lastKey: string }>({ timer: null, lastFetchTime: 0, lastKey: '' })
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
+  const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     weightCacheRef.current.clear()
     priceCacheRef.current.clear()
@@ -1265,6 +1266,27 @@ const ToolingInfoPage: React.FC = () => {
   const runWithPreservedScroll = async (action: () => Promise<void>) => {
     await handleExternalAction(action)
   }
+
+  // 输入后不立即全量重拉，避免旧数据覆盖导致“必须刷新才显示”的感知。
+  // 改为延迟合并刷新，既保留丝滑编辑体验，也维持后端一致性。
+  const scheduleBackgroundRefresh = useCallback((delayMs = 1500) => {
+    if (toolingRefreshTimerRef.current) {
+      clearTimeout(toolingRefreshTimerRef.current)
+    }
+    toolingRefreshTimerRef.current = setTimeout(() => {
+      runWithPreservedScroll(async () => {
+        await fetchToolingData()
+      }).catch(() => {})
+    }, delayMs)
+  }, [fetchToolingData, runWithPreservedScroll])
+
+  useEffect(() => {
+    return () => {
+      if (toolingRefreshTimerRef.current) {
+        clearTimeout(toolingRefreshTimerRef.current)
+      }
+    }
+  }, [])
   const handleRefresh = useCallback(async () => {
     await fetchAllMeta(true)
     await fetchToolingData()
@@ -1459,9 +1481,7 @@ const ToolingInfoPage: React.FC = () => {
             }
             return dedup
           })
-          await runWithPreservedScroll(async () => {
-            await fetchToolingData()
-          })
+          scheduleBackgroundRefresh(1200)
         } else {
           message.error('创建工装失败：' + (created?.error || '未知错误'))
         }
@@ -1503,10 +1523,7 @@ const ToolingInfoPage: React.FC = () => {
             await fetchToolingData()
           })
         } else {
-          // 成功后轻量重新拉取，确保派生数据一致
-          await runWithPreservedScroll(async () => {
-            await fetchToolingData()
-          })
+          scheduleBackgroundRefresh(1200)
         }
       }
     } catch (error) {
@@ -1516,7 +1533,7 @@ const ToolingInfoPage: React.FC = () => {
         await fetchToolingData()
       })
     }
-  }, [data, user, shouldAutoFillRecorder, updateAllPartsInventoryNumbers, createTooling, saveToolingData, fetchToolingData, runWithPreservedScroll])
+  }, [data, user, shouldAutoFillRecorder, updateAllPartsInventoryNumbers, createTooling, saveToolingData, fetchToolingData, runWithPreservedScroll, scheduleBackgroundRefresh])
 
   // 保存零件数据
   const handlePartSave = useCallback(async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
