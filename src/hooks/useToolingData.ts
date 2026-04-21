@@ -13,6 +13,10 @@ export const useToolingData = () => {
   const [childLoadingMap, setChildLoadingMap] = useState<Record<string, boolean>>({})
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
   const [expandedChildKeys, setExpandedChildKeys] = useState<string[]>([])
+  const dataRef = useRef(data)
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
   const partsMapRef = useRef(partsMap)
   useEffect(() => {
     partsMapRef.current = partsMap
@@ -77,9 +81,24 @@ export const useToolingData = () => {
         sets_count: item.sets_count ? Number(item.sets_count) : 1,
         recorder: String(item.recorder || '')
       }))
-      
-      setData(items)
-      return items
+      const mergedItems = silent
+        ? (() => {
+            const prevMap = new Map<string, any>((dataRef.current || []).map(row => [String(row.id || ''), row]))
+            return items.map(row => {
+              const prevRow = prevMap.get(String(row.id || ''))
+              if (!prevRow) return row
+              const serverInv = String(row.inventory_number || '').trim()
+              const localInv = String(prevRow.inventory_number || '').trim()
+              if (!serverInv && localInv) {
+                return { ...row, inventory_number: String(prevRow.inventory_number || '') }
+              }
+              return row
+            })
+          })()
+        : items
+
+      setData(mergedItems)
+      return mergedItems
     } catch (error) {
       message.error('数据加载失败')
       setData([])
