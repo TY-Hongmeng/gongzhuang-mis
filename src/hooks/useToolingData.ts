@@ -35,8 +35,10 @@ export const useToolingData = () => {
     end_date?: string
     sortField?: string
     sortOrder?: 'asc' | 'desc'
+    silent?: boolean
   }) => {
-    setLoading(true)
+    const silent = !!opts?.silent
+    if (!silent) setLoading(true)
     try {
       const p = new URLSearchParams()
       p.set('page', String(opts?.page ?? 1))
@@ -83,7 +85,7 @@ export const useToolingData = () => {
       setData([])
       return []
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 

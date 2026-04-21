@@ -16,7 +16,7 @@ interface EditableCellProps {
   partCategoryOptions?: SelectOption[]
   productionUnitOptions?: SelectOption[]
   categoryOptions?: SelectOption[]
-  onSave: (id: string, key: string, value: string) => void
+  onSave: (id: string, key: string, value: string) => void | Promise<void>
   customStyle?: React.CSSProperties
   renderDisplay?: (value: string | undefined, record: any, dataIndex: string) => React.ReactNode
 }
@@ -94,12 +94,12 @@ const EditableCell: React.FC<EditableCellProps> = ({
     const currentValue = String(value ?? '')
     if (editValue !== currentValue) {
       isSavingRef.current = true
-      try {
-        await onSave(record.id, dataIndex, editValue)
-        savedValueRef.current = editValue
-      } finally {
-        isSavingRef.current = false
-      }
+      savedValueRef.current = editValue
+      Promise.resolve(onSave(record.id, dataIndex, editValue))
+        .catch(() => {})
+        .finally(() => {
+          isSavingRef.current = false
+        })
     }
     setIsEditing(false)
   }
@@ -165,16 +165,16 @@ const EditableCell: React.FC<EditableCellProps> = ({
       <Select
         ref={selectRef}
         value={editValue}
-        onChange={async (newValue) => {
+        onChange={(newValue) => {
           if (isSavingRef.current) return
           setEditValue(newValue)
           isSavingRef.current = true
-          try {
-            await onSave(record.id, dataIndex, newValue)
-            savedValueRef.current = newValue
-          } finally {
-            isSavingRef.current = false
-          }
+          savedValueRef.current = newValue
+          Promise.resolve(onSave(record.id, dataIndex, newValue))
+            .catch(() => {})
+            .finally(() => {
+              isSavingRef.current = false
+            })
           setIsEditing(false)
         }}
         onBlur={() => {
