@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -900,7 +900,7 @@ const ToolingInfoPage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('incomplete')
   const { filteredVisibleData, counts } = useMemo(() => {
-    let result = visibleData || []
+    let result = [...(visibleData || [])]
     
     if (filterPriority) {
       result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
@@ -976,6 +976,8 @@ const ToolingInfoPage: React.FC = () => {
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
   }, [visibleData, filterPriority, filterStatus])
+
+  const tableRows = useMemo(() => ensureBlankToolings(filteredVisibleData), [filteredVisibleData])
   const applyFilters = useCallback(() => {
     const opts: any = {
       page: 1,
@@ -1347,7 +1349,7 @@ const ToolingInfoPage: React.FC = () => {
         const newInv = String(value || '').trim().toUpperCase()
         value = newInv
         if (newInv) {
-          const dup = data.find(r => !String(r.id).startsWith('blank-') && String(r.inventory_number || '').trim().toUpperCase() === newInv)
+          const dup = dataRef.current.find(r => !String(r.id).startsWith('blank-') && String(r.inventory_number || '').trim().toUpperCase() === newInv)
           if (dup && dup.id !== id) {
             message.error(`盘存编号“${newInv}”已存在，不能重复`)
             return
@@ -1533,7 +1535,7 @@ const ToolingInfoPage: React.FC = () => {
         await fetchToolingData()
       })
     }
-  }, [data, user, shouldAutoFillRecorder, updateAllPartsInventoryNumbers, createTooling, saveToolingData, fetchToolingData, runWithPreservedScroll, scheduleBackgroundRefresh])
+  }, [user, shouldAutoFillRecorder, updateAllPartsInventoryNumbers, createTooling, saveToolingData, fetchToolingData, runWithPreservedScroll, scheduleBackgroundRefresh])
 
   // 保存零件数据
   const handlePartSave = useCallback(async (toolingId: string, id: string, key: keyof PartItem, value: any) => {
@@ -5094,7 +5096,7 @@ const ToolingInfoPage: React.FC = () => {
           rowKey="id"
           loading={loading}
           components={{ header: { cell: HeaderCell } }}
-          dataSource={ensureBlankToolings(filteredVisibleData)}
+          dataSource={tableRows}
           columns={columns}
           pagination={false}
           bordered={false}
@@ -5126,7 +5128,7 @@ const ToolingInfoPage: React.FC = () => {
               })
             },
             onSelectAll: (selected) => {
-              const currentList = ensureBlankToolings(filteredVisibleData).filter(r => !String(r.id || '').startsWith('blank-'))
+              const currentList = tableRows.filter(r => !String(r.id || '').startsWith('blank-'))
               if (selected) {
                 // 仅针对当前列表的父级行选择，以及其已加载子项
                 const allKeys: string[] = []
