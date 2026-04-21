@@ -83,8 +83,9 @@ export const useToolingData = () => {
       }))
       const mergedItems = silent
         ? (() => {
-            const prevMap = new Map<string, any>((dataRef.current || []).map(row => [String(row.id || ''), row]))
-            return items.map(row => {
+            const localRows = dataRef.current || []
+            const prevMap = new Map<string, any>(localRows.map(row => [String(row.id || ''), row]))
+            const serverMerged = items.map(row => {
               const prevRow = prevMap.get(String(row.id || ''))
               if (!prevRow) return row
               const serverInv = String(row.inventory_number || '').trim()
@@ -94,6 +95,14 @@ export const useToolingData = () => {
               }
               return row
             })
+            // 静默刷新时，若后端短时间内还查不到刚创建/刚更新的行，保留本地行，避免“先消失后出现”
+            const serverIdSet = new Set(serverMerged.map(row => String(row.id || '')))
+            const keepLocalRows = localRows.filter(row => {
+              const rowId = String(row.id || '')
+              if (!rowId || rowId.startsWith('blank-')) return false
+              return !serverIdSet.has(rowId)
+            })
+            return [...serverMerged, ...keepLocalRows]
           })()
         : items
 
