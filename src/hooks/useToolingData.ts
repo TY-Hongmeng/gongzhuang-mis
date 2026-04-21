@@ -97,9 +97,16 @@ export const useToolingData = () => {
             })
             // 静默刷新时，若后端短时间内还查不到刚创建/刚更新的行，保留本地行，避免“先消失后出现”
             const serverIdSet = new Set(serverMerged.map(row => String(row.id || '')))
+            const hasDraftContent = (row: any) => {
+              const textKeys = ['inventory_number', 'project_name', 'production_unit', 'category', 'received_date', 'demand_date', 'completed_date', 'production_date', 'recorder']
+              if (textKeys.some(k => String(row?.[k] ?? '').trim() !== '')) return true
+              return Number(row?.priority_level || 0) > 0
+            }
             const keepLocalRows = localRows.filter(row => {
               const rowId = String(row.id || '')
-              if (!rowId || rowId.startsWith('blank-')) return false
+              if (!rowId) return false
+              if (serverIdSet.has(rowId)) return false
+              if (rowId.startsWith('blank-')) return hasDraftContent(row)
               return !serverIdSet.has(rowId)
             })
             return [...serverMerged, ...keepLocalRows]
