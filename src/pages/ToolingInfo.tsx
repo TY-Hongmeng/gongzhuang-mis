@@ -1251,9 +1251,7 @@ const ToolingInfoPage: React.FC = () => {
         recorder: ''
       })
     }
-    const blankRows = arr.filter(x => String(x.id || '').startsWith('blank-'))
-    const normalRows = arr.filter(x => !String(x.id || '').startsWith('blank-'))
-    return [...blankRows, ...normalRows]
+    return arr
   }
 
   // 处理外部操作（保存滚动位置）
@@ -5074,7 +5072,7 @@ const ToolingInfoPage: React.FC = () => {
           components={{ header: { cell: HeaderCell } }}
           dataSource={ensureBlankToolings(filteredVisibleData)}
           columns={columns}
-          pagination={{ pageSize: 50, showSizeChanger: true, showQuickJumper: true }}
+          pagination={false}
           bordered={false}
           tableLayout="fixed"
           scroll={{ x: 777, y: tableScrollY }}
