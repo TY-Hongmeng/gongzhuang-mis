@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1432,6 +1432,30 @@ const ToolingInfoPage: React.FC = () => {
         
         const created = await createTooling(payload)
         if (created && created.success && created.data) {
+          const keepLocalWhenServerEmpty = (serverValue: any, localValue: any) => {
+            if (serverValue === undefined || serverValue === null) return localValue
+            if (typeof serverValue === 'string') {
+              const localText = String(localValue ?? '').trim()
+              if (serverValue.trim() === '' && localText !== '') return localValue
+            }
+            return serverValue
+          }
+          const mergedCreatedRow: RowItem = {
+            ...updatedRowData!,
+            ...created.data,
+            id: String(created.data.id || updatedRowData!.id),
+            inventory_number: keepLocalWhenServerEmpty(created.data.inventory_number, updatedRowData!.inventory_number),
+            project_name: keepLocalWhenServerEmpty(created.data.project_name, updatedRowData!.project_name),
+            production_unit: keepLocalWhenServerEmpty(created.data.production_unit, updatedRowData!.production_unit),
+            category: keepLocalWhenServerEmpty(created.data.category, updatedRowData!.category),
+            received_date: keepLocalWhenServerEmpty(created.data.received_date, updatedRowData!.received_date),
+            demand_date: keepLocalWhenServerEmpty(created.data.demand_date, updatedRowData!.demand_date),
+            completed_date: keepLocalWhenServerEmpty(created.data.completed_date, updatedRowData!.completed_date),
+            production_date: keepLocalWhenServerEmpty(created.data.production_date, updatedRowData!.production_date),
+            recorder: keepLocalWhenServerEmpty(created.data.recorder, updatedRowData!.recorder),
+            priority_level: Number(keepLocalWhenServerEmpty(created.data.priority_level, updatedRowData!.priority_level || 0)) || 0,
+            sets_count: Number(keepLocalWhenServerEmpty(created.data.sets_count, updatedRowData!.sets_count || 1)) || 1
+          }
           // 使用后端返回的完整数据替换本地数据，并避免与已存在记录重复
           setData(prev => {
             const existedIdx = prev.findIndex(r => r.id === created.data.id)
@@ -1439,11 +1463,11 @@ const ToolingInfoPage: React.FC = () => {
             if (existedIdx >= 0) {
               // 已存在该记录：更新已存在记录，删除当前空白行
               newData = prev
-                .map(r => (r.id === created.data.id ? { ...r, ...created.data } : r))
+                .map(r => (r.id === created.data.id ? { ...r, ...mergedCreatedRow } : r))
                 .filter(r => r.id !== id)
             } else {
               // 不存在：用创建结果替换空白行
-              newData = prev.map(r => r.id === id ? { ...r, ...created.data, id: created.data.id } : r)
+              newData = prev.map(r => r.id === id ? mergedCreatedRow : r)
             }
 
             // 确保始终有至少2个空白行供用户连续输入
