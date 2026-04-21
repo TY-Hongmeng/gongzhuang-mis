@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1024,15 +1024,12 @@ const ToolingInfoPage: React.FC = () => {
         return
       }
       const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
-      console.log('请求工时数据URL:', url)
       const response = await fetchWithFallback(url, { cache: 'no-store' })
       if (!response.ok) {
-        console.error('获取工时数据失败，HTTP状态:', response.status)
         throw new Error('获取工时数据失败')
       }
       
       const result = await response.json()
-      console.log('工时数据API响应:', result)
       
       // 检查API响应格式
       if (!result || typeof result !== 'object') {
@@ -1051,7 +1048,6 @@ const ToolingInfoPage: React.FC = () => {
       // 提取工时数据
       const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
       
-      console.log('设置工时数据:', hoursByInventoryNo)
       setWorkHoursData(hoursByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
@@ -1078,21 +1074,17 @@ const ToolingInfoPage: React.FC = () => {
     const nextKey = invs.slice().sort().join('|')
     if (nextKey === workHoursFetchRef.current.lastKey && now - last < 3000) return
     workHoursFetchRef.current.lastKey = nextKey
-    if (now - last < 500) {
-      if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
-      workHoursFetchRef.current.timer = setTimeout(() => {
-        fetchWorkHoursData(invs)
-        workHoursFetchRef.current.lastFetchTime = Date.now()
-      }, 500)
-    } else {
+    if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
+    // 固定延迟拉取，避免盘存编号编辑后立即触发大量计算和请求，提升输入顺滑度
+    workHoursFetchRef.current.timer = setTimeout(() => {
       fetchWorkHoursData(invs)
       workHoursFetchRef.current.lastFetchTime = Date.now()
-    }
+    }, 800)
     return () => {
       if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
       workHoursFetchRef.current.timer = null
     }
-  }, [data, partsMap, expandedRowKeys, expandedChildKeys, filterSearch, filterUnit, filterCategory, filterPriority])
+  }, [data, partsMap, fetchWorkHoursData])
   
   // 监听工时提交广播，刷新工时数据
   useEffect(() => {
@@ -1525,7 +1517,8 @@ const ToolingInfoPage: React.FC = () => {
             await fetchToolingData()
           })
         } else {
-          scheduleBackgroundRefresh(1200)
+          const refreshDelay = key === 'inventory_number' ? 2200 : 1200
+          scheduleBackgroundRefresh(refreshDelay)
         }
       }
     } catch (error) {
