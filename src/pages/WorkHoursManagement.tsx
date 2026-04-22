@@ -353,53 +353,26 @@ const WorkHoursManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      // 改用 /api/users 接口获取完整用户数据，确保能正确获取车间和班组信息
-      // 同时并行获取车间和班组数据，用于建立映射
-      const [ur, wr, tr] = await Promise.all([
-        fetchWithFallback('/api/users'),
-        fetchWithFallback('/api/tooling/org/workshops'),
-        fetchWithFallback('/api/tooling/org/teams')
-      ])
-      
-      const uj = ur.ok ? await ur.json() : { items: [] }
-      const wj = wr.ok ? await wr.json() : { items: [] }
-      const tj = tr.ok ? await tr.json() : { items: [] }
-      
-      const wMap: Record<string, string> = {}
-      const tMap: Record<string, string> = {}
-      ;(wj.items || []).forEach((w: any) => { if(w.id) wMap[w.id] = w.name })
-      ;(tj.items || []).forEach((t: any) => { if(t.id) tMap[t.id] = t.name })
-      
-      // /api/users 返回的数据结构可能是 { users: [...] } 或 { items: [...] }
-      const userList = uj.users || uj.items || []
-      
-      if (userList.length > 0) {
-        const map: Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }> = {}
-        userList.forEach((u: any) => { 
-            // 尝试多种方式获取车间和班组名称
-            // 优先使用关联对象中的 name
-            let wsName = u.workshop?.name || u.workshop_name || ''
-            if (!wsName && (u.workshop_id || u.workshopId)) {
-                wsName = wMap[u.workshop_id || u.workshopId] || ''
-            }
-            
-            let teamName = u.team?.name || u.team_name || ''
-            if (!teamName && (u.team_id || u.teamId)) {
-                teamName = tMap[u.team_id || u.teamId] || ''
-            }
-
-            map[u.real_name] = { 
-                workshop: wsName, 
-                team: teamName, 
-                aux_coeff: Number(u.aux_coeff ?? 1), 
-                proc_coeff: Number(u.proc_coeff ?? 1), 
-                capability_coeff: Number(u.capability_coeff ?? 1) 
-            } 
-        })
-        setUserMap(map)
-      }
+      // 统一使用后端聚合接口，确保班组辅/加系数 + 用户能力系数实时生效
+      const resp = await fetchWithFallback(`/api/tooling/users/basic?ts=${Date.now()}`, { cache: 'no-store' })
+      const json = resp.ok ? await resp.json() : { items: [] }
+      const list = Array.isArray(json?.items) ? json.items : []
+      const map: Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }> = {}
+      list.forEach((u: any) => {
+        const name = String(u?.real_name || '').trim()
+        if (!name) return
+        map[name] = {
+          workshop: String(u?.workshop || ''),
+          team: String(u?.team || ''),
+          aux_coeff: Number(u?.aux_coeff ?? 1),
+          proc_coeff: Number(u?.proc_coeff ?? 1),
+          capability_coeff: Number(u?.capability_coeff ?? 1)
+        }
+      })
+      setUserMap(map)
     } catch (e) {
-        console.error('获取用户信息失败', e)
+      console.error('获取用户信息失败', e)
+      setUserMap({})
     }
   }
 
@@ -1134,7 +1107,7 @@ const WorkHoursManagement: React.FC = () => {
       <div className="flex items-center justify-between mb-3">
           <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-purple-500 mb-2 mr-2" /> 工时管理</Title>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={async () => { await fetchUsers(); await fetchData() }}>刷新</Button>
             <Button icon={<LeftOutlined />} onClick={() => window.history.back()}>返回</Button>
           </Space>
         </div>
