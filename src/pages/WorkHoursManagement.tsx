@@ -130,38 +130,52 @@ const WorkHoursManagement: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      // 获取所有数据，不添加筛选条件
+      // 获取完整数据：分页循环拉取，避免只取第一页导致“工时信息不全”
       const baseParams = new URLSearchParams()
-      baseParams.set('page', '1')
-      baseParams.set('pageSize', '200')
       baseParams.set('order', 'work_date')
       baseParams.set('order_dir', 'desc')
       
       if (operator) baseParams.set('operator', operator)
       if (shift) baseParams.set('shift', shift)
-      if (deviceNo) baseParams.set('device_no', deviceNo)
       if (range && Array.isArray(range)) {
         const startDate = range[0]?.format('YYYY-MM-DD')
         const endDate = range[1]?.format('YYYY-MM-DD')
-        if (startDate && endDate) { baseParams.set('start', startDate); baseParams.set('end', endDate) }
+        if (startDate && endDate) { baseParams.set('start_date', startDate); baseParams.set('end_date', endDate) }
       } else if (yearMonth) {
         const ymStart = dayjs(yearMonth).startOf('month').format('YYYY-MM-DD')
         const ymEnd = dayjs(yearMonth).endOf('month').format('YYYY-MM-DD')
-        baseParams.set('start', ymStart)
-        baseParams.set('end', ymEnd)
+        baseParams.set('start_date', ymStart)
+        baseParams.set('end_date', ymEnd)
       }
-      if (partInventoryNo) baseParams.set('keyword', partInventoryNo)
-      else if (partDrawingNo) baseParams.set('keyword', partDrawingNo)
-      else if (partName) baseParams.set('keyword', partName)
+      if (partInventoryNo) baseParams.set('search', partInventoryNo)
+      else if (partDrawingNo) baseParams.set('search', partDrawingNo)
+      else if (partName) baseParams.set('search', partName)
 
-      const resp = await fetchWithFallback(`/api/tooling/work-hours?${baseParams.toString()}`)
-      if (!resp.ok) {
-        throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+      const PAGE_SIZE = 1000
+      const MAX_PAGES = 200
+      const rawData: any[] = []
+      let page = 1
+      let total = 0
+      while (page <= MAX_PAGES) {
+        const params = new URLSearchParams(baseParams)
+        params.set('page', String(page))
+        params.set('pageSize', String(PAGE_SIZE))
+        const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
+        if (!resp.ok) {
+          throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
+        }
+        const json = await resp.json()
+        if (!json?.success) break
+        const rows = Array.isArray(json?.items) ? json.items : []
+        total = Number(json?.total || 0)
+        rawData.push(...rows)
+        if (rows.length < PAGE_SIZE) break
+        if (total > 0 && rawData.length >= total) break
+        page += 1
       }
-      const json = await resp.json()
-      if (json?.success) {
+
+      if (rawData.length > 0 || total === 0) {
           // 处理数据，将所有对象转换为基本类型，避免循环引用
-          const rawData = json.items || []
           const allData = rawData.map(item => {
             const auxCount = Math.max(Number(item.aux_count || 1), 1)
             const processQuantity = Math.max(Number(item.process_quantity || 1), 1)
