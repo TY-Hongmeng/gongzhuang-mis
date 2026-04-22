@@ -2327,6 +2327,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         for (const k of required) {
           if (!body[k]) return jsonResponse({ success: false, error: `缺少必填字段: ${k}` }, 400)
         }
+        const auxMinutes = Math.max(0, Math.round(Number(body.aux_hours || 0) * 60))
+        const procMinutes = Math.max(0, Math.round(Number(body.proc_hours || 0) * 60))
+        if (auxMinutes > 660) return jsonResponse({ success: false, error: '辅助时长不能超过660分钟' }, 400)
+        if (procMinutes > 660) return jsonResponse({ success: false, error: '程序时长不能超过660分钟' }, 400)
         const payload: any = {
           part_inventory_number: String(body.part_inventory_number || ''),
           part_drawing_number: String(body.part_drawing_number || ''),

@@ -258,7 +258,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     }
   }, [wDeviceNo])
 
-  const fetchInventory = async (q: string) => {
+  const fetchInventory = async (q: string, fixedOverride?: any[]) => {
     const requestSeq = ++invReqSeqRef.current
     const keyword = String(q || '').trim()
     const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
@@ -325,14 +325,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       const formatInventoryLabel = (inventoryNo: string, partName: string) => {
         const inv = String(inventoryNo || '').trim()
-        const name = String(partName || '').trim()
-        return name ? `${inv} | ${name}` : inv
+        return inv
       }
       const formatMaintenanceLabel = (inventoryNo: string, partName: string) => {
         const inv = String(inventoryNo || '').trim()
-        const fixedInv = inv.startsWith('维修-') ? inv : `维修-${inv}`
-        const name = String(partName || '').trim()
-        return name ? `${fixedInv} | ${name}` : fixedInv
+        return inv
       }
       const mergedByInv = new Map<string, any>()
       ;[...invItems].forEach((it: any) => {
@@ -356,51 +353,23 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       const invOpts = Array.from(mergedByInv.values())
 
       let maintenanceOpts: any[] = []
-      const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-      const isGhPages = /github\.io/i.test(host)
-      const supUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
-      const restBase = String(supUrl).replace(/\/$/, '') + '/rest/v1'
-      if (isGhPages) {
-        try {
-          const r1 = await fetch(`${restBase}/fixed_inventory_options?select=*`)
-          const d1 = r1.ok ? await r1.json() : []
-          const arr1 = Array.isArray(d1?.data) ? d1.data : (Array.isArray(d1) ? d1 : [])
-          const a = arr1.filter((x:any)=>x?.is_active!==false).map((mo:any)=>({
-            label: formatMaintenanceLabel(String(mo.option_value ?? mo.inventory_number ?? ''), String(mo.option_label ?? mo.name ?? '')),
-            value: String(mo.option_value ?? mo.inventory_number ?? ''),
+      const fixedSource = Array.isArray(fixedOverride) ? fixedOverride : fixedInvOptions
+      maintenanceOpts = fixedSource
+        .map((mo: any) => {
+          const rawVal = String(mo?.value ?? mo?.option_value ?? mo?.inventory_number ?? '').trim()
+          const rawLabel = String(mo?.label ?? mo?.option_label ?? rawVal).trim()
+          return {
+            label: formatMaintenanceLabel(rawVal, rawLabel),
+            value: rawVal,
             type: 'maintenance',
-            meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
-          })).filter((x:any)=>!!x.value)
-          const ensurePrefix = (s: string) => s.startsWith('维修-') ? s : `维修-${s}`
-          maintenanceOpts = a.map((it:any)=>({
-            ...it,
-            label: String(it.label || ''),
-            value: ensurePrefix(String(it.value || ''))
-          }))
-        } catch {}
-      } else {
-        try {
-          const respM = await fetchWithFallback(`/api/tooling/fixed-inventory-options`)
-          if (respM.ok) {
-            const jsonM = await respM.json()
-            const mData = Array.isArray(jsonM?.items) ? jsonM.items : (Array.isArray(jsonM?.data) ? jsonM.data : [])
-            const a = mData
-              .filter((mo: any) => mo?.is_active !== false)
-              .map((mo: any) => ({
-                label: formatMaintenanceLabel(String(mo.option_value ?? mo.inventory_number ?? ''), String(mo.option_label ?? mo.name ?? '')),
-                value: String(mo.option_value ?? mo.inventory_number ?? ''),
-                type: 'maintenance',
-                meta: { part_name: String(mo.option_label ?? mo.name ?? ''), part_drawing_number: '-', process_route: '' }
-              }))
-              .filter((mo: any) => !!mo.value)
-            maintenanceOpts = [...maintenanceOpts, ...a].map((it:any)=>({
-              ...it,
-              label: String(it.label || ''),
-              value: it.value.startsWith('维修-') ? it.value : `维修-${it.value}`
-            }))
+            meta: {
+              part_name: rawLabel,
+              part_drawing_number: '-',
+              process_route: ''
+            }
           }
-        } catch {}
-      }
+        })
+        .filter((x: any) => !!x.value)
       if (q) {
         const lowerQ = q.toLowerCase()
         maintenanceOpts = maintenanceOpts.filter(opt =>
@@ -408,8 +377,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           String(opt.meta.part_name).toLowerCase().includes(lowerQ)
         )
       }
-      const maintenanceValues = new Set(maintenanceOpts.map((o: any) => String(o?.value || '')))
-      const normalInvOpts = invOpts.filter((o: any) => !maintenanceValues.has(String(o?.value || '')))
+      const maintenanceValues = new Set(maintenanceOpts.map((o: any) => normalize(String(o?.value || ''))))
+      const normalInvOpts = invOpts.filter((o: any) => !maintenanceValues.has(normalize(String(o?.value || ''))))
       const combined = [...maintenanceOpts, ...normalInvOpts]
       if (requestSeq !== invReqSeqRef.current) return
       if (!keyword) {
@@ -458,9 +427,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   React.useEffect(() => {
     fetchRecent()
     if (viewMode === 'entry') {
-      fetchDevices()
-      fetchFixedOptions()
-      fetchInventory('')
+      ;(async () => {
+        const fixed = await fetchFixedOptions()
+        await fetchDevices()
+        await fetchInventory('', fixed)
+      })()
     }
     if (viewMode === 'recent') {
       fetchPartNameMap()
@@ -520,10 +491,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     }
     const j = await r.json()
     const fixedItems = Array.isArray(j?.items) ? j.items : (Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []))
-    if (fixedItems.length > 0 || j?.success) {
-      const opts = fixedItems.filter((x: any) => x.is_active !== false).map((x: any) => ({ value: x.option_value, label: x.option_value, meta: null, type: 'fixed' }))
-      setFixedInvOptions(opts)
-    }
+    const opts = fixedItems
+      .filter((x: any) => x.is_active !== false)
+      .map((x: any) => ({
+        value: String(x.option_value || x.inventory_number || '').trim(),
+        label: String(x.option_value || x.inventory_number || '').trim(),
+        option_label: String(x.option_label || x.name || '').trim(),
+        meta: null,
+        type: 'fixed'
+      }))
+      .filter((x: any) => !!x.value)
+    setFixedInvOptions(opts)
+    return opts
   }
 
   const fetchDevices = async () => {
@@ -586,7 +565,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     setDeviceName('')
     setSelectedDeviceMaxAuxMinutes(null)
     form.resetFields()
-    await Promise.all([fetchInventory(''), fetchDevices(), fetchFixedOptions()])
+    const fixed = await fetchFixedOptions()
+    await Promise.all([fetchInventory('', fixed), fetchDevices()])
     await fetchRecent()
   }
 
@@ -978,6 +958,15 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             const auxCount = Math.max(Number(vals.aux_count || 1), 1)
             const processQuantity = Math.max(Number(vals.process_quantity || 1), 1)
             const auxMinutes = Math.max(0, Number(vals.aux_duration_minutes || 0))
+            const procMinutesInput = Math.max(0, Number(vals.proc_minutes || 0))
+            if (auxMinutes > 660) {
+              message.error('辅助时长不能超过660分钟')
+              return
+            }
+            if (procMinutesInput > 660) {
+              message.error('程序时长不能超过660分钟')
+              return
+            }
             const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
             const singleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
             if (selectedDeviceMaxAuxMinutes !== null && singleAuxMinutes > selectedDeviceMaxAuxMinutes) {
@@ -1037,7 +1026,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
             const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
             const auxHours = auxMinutes / 60
-            const procHours = Number(vals.proc_minutes || 0) / 60
+            const procHours = procMinutesInput / 60
             const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
             if (!submitWorkDate) {
               hide()
@@ -1257,6 +1246,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Form.Item name="aux_duration_minutes" rules={[{ required: true, message: '请输入辅助时长' }]}>
                 <InputNumber
                   min={0}
+                  max={660}
                   step={5}
                   controls={false}
                   inputMode="numeric"
@@ -1296,6 +1286,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Form.Item name="proc_minutes" rules={[{ required: true, message: '请输入程序时长' }]}>
                 <InputNumber
                   min={0}
+                  max={660}
                   step={5}
                   controls={false}
                   inputMode="numeric"

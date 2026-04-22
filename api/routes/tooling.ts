@@ -1354,6 +1354,13 @@ router.post('/work-hours', async (req, res) => {
     const processQuantity = Math.max(Number(payload.process_quantity || 1) || 1, 1)
     const auxHoursInput = Number(payload.aux_hours || 0)
     const auxMinutes = Math.max(0, Math.round(auxHoursInput * 60))
+    const procMinutes = Math.max(0, Math.round(Number(payload.proc_hours || 0) * 60))
+    if (auxMinutes > 660) {
+      return res.status(400).json({ success: false, error: '辅助时长不能超过660分钟' })
+    }
+    if (procMinutes > 660) {
+      return res.status(400).json({ success: false, error: '程序时长不能超过660分钟' })
+    }
     const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
     const singleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
     const adjustedHours = Number(auxHoursInput) * auxCoeff + Number(payload.proc_hours || 0) * procCoeff
