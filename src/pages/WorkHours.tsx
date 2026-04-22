@@ -53,6 +53,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [processOptions, setProcessOptions] = React.useState<string[]>([])
   const [fixedInvOptions, setFixedInvOptions] = React.useState<any[]>([])
   const [useManualProcess, setUseManualProcess] = React.useState(false)
+  const [manualProcessHint, setManualProcessHint] = React.useState('请填写当前工序')
   const [recentItems, setRecentItems] = React.useState<any[]>([])
   const [loadingRecent, setLoadingRecent] = React.useState(false)
   const [selectedRecentKeys, setSelectedRecentKeys] = React.useState<React.Key[]>([])
@@ -325,7 +326,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       }
       const formatInventoryLabel = (inventoryNo: string, partName: string) => {
         const inv = String(inventoryNo || '').trim()
-        return inv
+        const name = String(partName || '').trim()
+        return name ? `${inv} | ${name}` : inv
       }
       const formatMaintenanceLabel = (inventoryNo: string, partName: string) => {
         const inv = String(inventoryNo || '').trim()
@@ -358,10 +360,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         .map((mo: any) => {
           const rawVal = String(mo?.value ?? mo?.option_value ?? mo?.inventory_number ?? '').trim()
           const rawLabel = String(mo?.label ?? mo?.option_label ?? rawVal).trim()
+          const isNonProduction = /非生产/.test(`${rawVal} ${rawLabel}`)
           return {
             label: formatMaintenanceLabel(rawVal, rawLabel),
             value: rawVal,
-            type: 'maintenance',
+            type: isNonProduction ? 'non_production' : 'maintenance',
             meta: {
               part_name: rawLabel,
               part_drawing_number: '-',
@@ -412,10 +415,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     setSelectedInv(val)
     const meta = option?.meta
     setSelectedInfo({ name: meta?.part_name || '', drawing: meta?.part_drawing_number || '' })
-    const isFixed = option?.type === 'fixed' || option?.type === 'maintenance'
+    const optType = String(option?.type || '')
+    const isFixed = optType === 'fixed' || optType === 'maintenance' || optType === 'non_production'
     const route = String(meta?.process_route || '')
     const items = route.split('→').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean)
     const shouldManual = isFixed || items.length === 0
+    if (optType === 'non_production') {
+      setManualProcessHint('请填写劳动内容')
+    } else if (optType === 'maintenance' || optType === 'fixed') {
+      setManualProcessHint('请填写维修的模具名称')
+    } else {
+      setManualProcessHint('请填写当前工序')
+    }
     setUseManualProcess(shouldManual)
     if (shouldManual) {
       setProcessOptions([])
@@ -946,6 +957,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           initialValues={{ aux_count: 1, process_quantity: 1 }}
           form={form}
           className="work-hours-form"
+          validateTrigger="onChange"
           onFinish={async (vals) => {
             if (!vals.shift) {
               message.warning('请选择班次后再提交')
@@ -1090,6 +1102,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   setSelectedInv('')
                   setSelectedInfo({})
                   setProcessOptions([])
+                  setManualProcessHint('请填写当前工序')
                   setDeviceName('')
                   setSelectedDeviceMaxAuxMinutes(null)
                   setUseManualProcess(false)
@@ -1189,7 +1202,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-value">
               <Form.Item name="process_name" rules={[{ required: true, message: '请选择或填写加工工序' }]}>
                 {useManualProcess ? (
-                  <Input placeholder="" />
+                  <Input placeholder={manualProcessHint} />
                 ) : (
                   <Select placeholder="" options={processOptions.map(p => ({ value: p, label: p }))} />
                 )}
@@ -1243,7 +1256,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           <div className="line-row">
             <div className="line-label">辅助时长：</div>
             <div className="line-value">
-              <Form.Item name="aux_duration_minutes" rules={[{ required: true, message: '请输入辅助时长' }]}>
+              <Form.Item
+                name="aux_duration_minutes"
+                rules={[
+                  { required: true, message: '请输入辅助时长' },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null || value === '') return Promise.resolve()
+                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('辅助时长不能超过660分钟'))
+                    }
+                  }
+                ]}
+              >
                 <InputNumber
                   min={0}
                   max={660}
@@ -1283,7 +1307,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           <div className="line-row">
             <div className="line-label">程序时长：</div>
             <div className="line-value">
-              <Form.Item name="proc_minutes" rules={[{ required: true, message: '请输入程序时长' }]}>
+              <Form.Item
+                name="proc_minutes"
+                rules={[
+                  { required: true, message: '请输入程序时长' },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null || value === '') return Promise.resolve()
+                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('程序时长不能超过660分钟'))
+                    }
+                  }
+                ]}
+              >
                 <InputNumber
                   min={0}
                   max={660}
