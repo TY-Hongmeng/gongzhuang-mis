@@ -631,28 +631,29 @@ const WorkHoursManagement: React.FC = () => {
   ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum])
 
   const expandColumnWidth = 48
-  const parentColumnWidths = [90, 70, 70, 140, 140, 140, 140, 140, 140, 90, 120, 160]
+  const parentColumnWidths = [60, 90, 70, 70, 140, 140, 90, 140, 140, 140, 140, 120, 160]
   const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0) + expandColumnWidth
 
   // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
   const parentColumns = React.useMemo(() => [
-    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[0] },
-    { title: '车间', dataIndex: 'workshop', align: 'center', width: parentColumnWidths[1] },
-    { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[2] },
-    { title: '辅助总时长(小时)', dataIndex: 'aux_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[3] },
-    { title: '辅助均时长(小时)', dataIndex: 'avg_aux', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
-    { title: '程序总时长(小时)', dataIndex: 'proc_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[5] },
-    { title: '程序均时长(小时)', dataIndex: 'avg_proc', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[6] },
-    { title: '统计总时长(小时)', dataIndex: 'hours_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
-    { title: '统计均时长(小时)', dataIndex: 'avg_stat', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
-    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[9] },
-    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '序号', key: '__seq', width: parentColumnWidths[0], align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
+    { title: '车间', dataIndex: 'workshop', align: 'center', width: parentColumnWidths[2] },
+    { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[3] },
+    { title: '统计总时长(小时)', dataIndex: 'hours_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
+    { title: '统计均时长(小时)', dataIndex: 'avg_stat', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[5] },
+    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[6] },
+    { title: '辅助总时长(小时)', dataIndex: 'aux_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
+    { title: '辅助均时长(小时)', dataIndex: 'avg_aux', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
+    { title: '程序总时长(小时)', dataIndex: 'proc_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
+    { title: '程序均时长(小时)', dataIndex: 'avg_proc', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
     { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
       const a = Number(r.aux_coeff || 1).toFixed(2)
       const p = Number(r.proc_coeff || 1).toFixed(2)
       const c = Number(r.capability_coeff || 1).toFixed(2)
       return `${a}/${p}/${c}`
-    }, width: parentColumnWidths[11], align: 'center' }
+    }, width: parentColumnWidths[12], align: 'center' }
   ], [])
 
   const groupedData = React.useMemo(() => {
@@ -782,7 +783,7 @@ const WorkHoursManagement: React.FC = () => {
       result = result.filter(item => item.team === team)
     }
     
-    return result
+    return [...result].sort((a, b) => Number(b.hours_total || 0) - Number(a.hours_total || 0))
   }, [groupedData, workshop, team])
 
   // 计算筛选数据的汇总值
@@ -1372,12 +1373,14 @@ const WorkHoursManagement: React.FC = () => {
             <div />
             <div />
             <div />
+            <div />
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长(小时): {summaryData.totalStat.toFixed(2)}</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长(小时): {summaryData.avgStat.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助总时长(小时): {summaryData.totalAux.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助均时长(小时): {summaryData.avgAux.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>程序总时长(小时): {summaryData.totalProc.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>程序均时长(小时): {summaryData.avgProc.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长(小时): {summaryData.totalStat.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长(小时): {summaryData.avgStat.toFixed(2)}</div>
+            <div />
             <div />
             <div />
             <div />
