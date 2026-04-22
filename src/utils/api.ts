@@ -514,20 +514,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Tooling users basic
       if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
         try {
-          // Fetch users and teams separately to avoid join issues if FK not configured
-          const [usersRes, teamsRes] = await Promise.all([
-            supabase.from('users').select('real_name, team_id'),
-            supabase.from('teams').select('id, name')
+          // 返回与后端一致的数据结构：操作者 -> 车间/班组/辅系数/加系数/能力系数
+          const [usersRes, teamsRes, workshopsRes] = await Promise.all([
+            supabase.from('users').select('real_name, workshop_id, team_id, capability_coeff'),
+            supabase.from('teams').select('id, name, aux_coeff, proc_coeff'),
+            supabase.from('workshops').select('id, name')
           ])
           
-          const teamsMap = new Map<string, string>()
+          const teamsMap = new Map<string, { name: string; aux_coeff: number; proc_coeff: number }>()
           if (teamsRes.data) {
-            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), String(t.name)))
+            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), {
+              name: String(t.name || ''),
+              aux_coeff: Number(t.aux_coeff ?? 1),
+              proc_coeff: Number(t.proc_coeff ?? 1)
+            }))
+          }
+          const workshopsMap = new Map<string, string>()
+          if (workshopsRes.data) {
+            workshopsRes.data.forEach((w: any) => workshopsMap.set(String(w.id), String(w.name || '')))
           }
 
           const items = (usersRes.data || []).map((u: any) => ({
             real_name: u.real_name,
-            team: u.team_id ? (teamsMap.get(String(u.team_id)) || '') : ''
+            workshop: u.workshop_id ? (workshopsMap.get(String(u.workshop_id)) || '') : '',
+            team: u.team_id ? (teamsMap.get(String(u.team_id))?.name || '') : '',
+            aux_coeff: Number(teamsMap.get(String(u.team_id))?.aux_coeff ?? 1),
+            proc_coeff: Number(teamsMap.get(String(u.team_id))?.proc_coeff ?? 1),
+            capability_coeff: Number(u.capability_coeff ?? 1)
           }))
           
           return jsonResponse({ success: true, items })
@@ -3120,20 +3133,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Tooling users basic (Fallback if not caught by earlier check)
       if (method === 'GET' && path === '/api/tooling/users/basic') {
         try {
-          // Fetch users and teams separately to avoid join issues if FK not configured
-          const [usersRes, teamsRes] = await Promise.all([
-            supabase.from('users').select('real_name, team_id'),
-            supabase.from('teams').select('id, name')
+          // 返回与后端一致的数据结构：操作者 -> 车间/班组/辅系数/加系数/能力系数
+          const [usersRes, teamsRes, workshopsRes] = await Promise.all([
+            supabase.from('users').select('real_name, workshop_id, team_id, capability_coeff'),
+            supabase.from('teams').select('id, name, aux_coeff, proc_coeff'),
+            supabase.from('workshops').select('id, name')
           ])
           
-          const teamsMap = new Map<string, string>()
+          const teamsMap = new Map<string, { name: string; aux_coeff: number; proc_coeff: number }>()
           if (teamsRes.data) {
-            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), String(t.name)))
+            teamsRes.data.forEach((t: any) => teamsMap.set(String(t.id), {
+              name: String(t.name || ''),
+              aux_coeff: Number(t.aux_coeff ?? 1),
+              proc_coeff: Number(t.proc_coeff ?? 1)
+            }))
+          }
+          const workshopsMap = new Map<string, string>()
+          if (workshopsRes.data) {
+            workshopsRes.data.forEach((w: any) => workshopsMap.set(String(w.id), String(w.name || '')))
           }
 
           const items = (usersRes.data || []).map((u: any) => ({
             real_name: u.real_name,
-            team: u.team_id ? (teamsMap.get(String(u.team_id)) || '') : ''
+            workshop: u.workshop_id ? (workshopsMap.get(String(u.workshop_id)) || '') : '',
+            team: u.team_id ? (teamsMap.get(String(u.team_id))?.name || '') : '',
+            aux_coeff: Number(teamsMap.get(String(u.team_id))?.aux_coeff ?? 1),
+            proc_coeff: Number(teamsMap.get(String(u.team_id))?.proc_coeff ?? 1),
+            capability_coeff: Number(u.capability_coeff ?? 1)
           }))
           
           return jsonResponse({ success: true, items })
