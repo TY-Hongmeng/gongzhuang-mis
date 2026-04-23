@@ -874,6 +874,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         }
         .work-hours-form .line-value { flex: 1; min-width: 0; }
         .work-hours-form .line-value .ant-form-item { margin-bottom: 0; }
+        .work-hours-form .line-hint {
+          margin-top: 4px;
+          color: rgba(0, 0, 0, 0.45);
+          font-size: 12px;
+          line-height: 1.35;
+        }
         .work-hours-form .line-value .ant-picker,
         .work-hours-form .line-value .ant-input,
         .work-hours-form .line-value .ant-input-number,
@@ -954,7 +960,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         <Form
           layout="vertical"
           size="small"
-          initialValues={{ aux_count: 1, process_quantity: 1 }}
           form={form}
           className="work-hours-form"
           validateTrigger="onChange"
@@ -1113,8 +1118,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   // 额外清除，确保字段被清空 - 使用适当的空值而非undefined，避免JSON.stringify循环引用警告
                   form.setFieldValue('aux_start', null)
                   form.setFieldValue('aux_duration_minutes', null)
-                  form.setFieldValue('aux_count', 1)
-                  form.setFieldValue('process_quantity', 1)
+                  form.setFieldValue('aux_count', null)
+                  form.setFieldValue('process_quantity', null)
                   form.setFieldValue('process_name', '')
                   form.setFieldValue('device_no', '')
                   form.setFieldValue('proc_minutes', null)
@@ -1142,6 +1147,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} preserve={false}>
                 <DatePicker placeholder="" style={{ width: '100%' }} />
               </Form.Item>
+              <div className="line-hint">请先选择起始日期</div>
             </div>
           </div>
 
@@ -1157,6 +1163,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   ]}
                 />
               </Form.Item>
+              <div className="line-hint">联动加工日期</div>
             </div>
           </div>
 
@@ -1185,6 +1192,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 allowClear
                 onChange={onSelectInv}
               />
+              <div className="line-hint">一物一码</div>
             </div>
           </div>
 
@@ -1194,6 +1202,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <div className="line-static">
                 <span className="line-static-value">{selectedInfo.drawing || '-'}</span>
               </div>
+              <div className="line-hint">请仔细核对</div>
             </div>
           </div>
 
@@ -1232,6 +1241,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   onClear={() => setSelectedDeviceMaxAuxMinutes(null)}
                 />
               </Form.Item>
+              <div className="line-hint">无设备请填0</div>
             </div>
           </div>
 
@@ -1241,6 +1251,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <div className="line-static">
                 <span className="line-static-value">{lastCompletedTime || '-'}</span>
               </div>
+              <div className="line-hint">上次记录结束时间</div>
             </div>
           </div>
 
@@ -1250,6 +1261,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
                 <QuickTimeInput placeholder="" displayDate={wWorkDate} />
               </Form.Item>
+              <div className="line-hint">24小时制4位数字</div>
             </div>
           </div>
 
@@ -1263,20 +1275,20 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   {
                     validator: (_, value) => {
                       if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('辅助时长不能超过660分钟'))
+                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班辅助时长上限'))
                     }
                   }
                 ]}
               >
                 <InputNumber
                   min={0}
-                  max={660}
                   step={5}
                   controls={false}
                   inputMode="numeric"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+              <div className="line-hint">当班内多次辅助填写总时长</div>
             </div>
           </div>
 
@@ -1286,13 +1298,25 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <div className="line-static">
                 <span className="line-static-value">{auxEndDisplay}</span>
               </div>
+              <div className="line-hint">程序开始运行的时间</div>
             </div>
           </div>
 
           <div className="line-row">
             <div className="line-label">辅助次数：</div>
             <div className="line-value">
-              <Form.Item name="aux_count" rules={[{ required: true, message: '请输入辅助次数' }]} initialValue={1}>
+              <Form.Item
+                name="aux_count"
+                rules={[
+                  { required: true, message: '请输入辅助次数' },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null || value === '') return Promise.resolve()
+                      return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('辅助次数至少为1'))
+                    }
+                  }
+                ]}
+              >
                 <InputNumber
                   min={1}
                   step={1}
@@ -1301,6 +1325,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+              <div className="line-hint">对应辅助时长的次数</div>
             </div>
           </div>
 
@@ -1314,20 +1339,20 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   {
                     validator: (_, value) => {
                       if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('程序时长不能超过660分钟'))
+                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班程序时长上限'))
                     }
                   }
                 ]}
               >
                 <InputNumber
                   min={0}
-                  max={660}
                   step={5}
                   controls={false}
                   inputMode="numeric"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+              <div className="line-hint">请填写机床面板程序运行的时间，而不是机床的开动时间</div>
             </div>
           </div>
 
@@ -1337,13 +1362,25 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               <div className="line-static">
                 <span className="line-static-value">{completedTime || '-'}</span>
               </div>
+              <div className="line-hint">不应超出当班时间</div>
             </div>
           </div>
 
           <div className="line-row">
             <div className="line-label">加工数量：</div>
             <div className="line-value">
-              <Form.Item name="process_quantity" rules={[{ required: true, message: '请输入加工数量' }]} initialValue={1}>
+              <Form.Item
+                name="process_quantity"
+                rules={[
+                  { required: true, message: '请输入加工数量' },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null || value === '') return Promise.resolve()
+                      return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('加工数量至少为1'))
+                    }
+                  }
+                ]}
+              >
                 <InputNumber
                   min={1}
                   step={1}
@@ -1352,6 +1389,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+              <div className="line-hint">实际加工的零件数量</div>
             </div>
           </div>
 
@@ -1367,6 +1405,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   style={{ width: '100%' }}
                 />
               </Form.Item>
+              <div className="line-hint">加工完成可以交检的数量，未完成填0</div>
             </div>
           </div>
 

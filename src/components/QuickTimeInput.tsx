@@ -79,8 +79,10 @@ const QuickTimeInput: React.FC<QuickTimeInputProps> = ({
 
     // 校验 HHmm
     if (val.length === 4) {
-      const hh = parseInt(val.slice(0, 2))
+      let hh = parseInt(val.slice(0, 2))
       const mm = parseInt(val.slice(2, 4))
+      // 兼容 24xx 输入：自动归一到 00xx，避免失焦后被清空
+      if (hh === 24 && mm >= 0 && mm <= 59) hh = 0
       if (hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
         const now = dayjs()
         const newTime = now.hour(hh).minute(mm).second(0)
