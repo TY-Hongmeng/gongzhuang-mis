@@ -925,6 +925,9 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
+        .work-hours-form .line-static-hint {
+          color: #69b1ff;
+        }
         .work-hours-form .ant-btn {
           min-height: 40px;
           font-size: 15px;
@@ -1197,7 +1200,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">零件编号：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{selectedInfo.drawing || '请仔细核对'}</span>
+                {selectedInfo.drawing ? (
+                  <span className="line-static-value">{selectedInfo.drawing}</span>
+                ) : (
+                  <span className="line-static-value line-static-hint">请仔细核对</span>
+                )}
               </div>
             </div>
           </div>
@@ -1244,7 +1251,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">上次结束：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{lastCompletedTime || '上次记录结束时间'}</span>
+                {lastCompletedTime ? (
+                  <span className="line-static-value">{lastCompletedTime}</span>
+                ) : (
+                  <span className="line-static-value line-static-hint">上次记录结束时间</span>
+                )}
               </div>
             </div>
           </div>
@@ -1289,7 +1300,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">辅助结束：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{auxEndDisplay && auxEndDisplay !== '-' ? auxEndDisplay : '程序开始运行的时间'}</span>
+                {auxEndDisplay && auxEndDisplay !== '-' ? (
+                  <span className="line-static-value">{auxEndDisplay}</span>
+                ) : (
+                  <span className="line-static-value line-static-hint">程序开始运行的时间</span>
+                )}
               </div>
             </div>
           </div>
@@ -1352,7 +1367,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">本次完成：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{completedTime || '不应超出当班时间'}</span>
+                {completedTime ? (
+                  <span className="line-static-value">{completedTime}</span>
+                ) : (
+                  <span className="line-static-value line-static-hint">不应超出当班时间</span>
+                )}
               </div>
             </div>
           </div>
