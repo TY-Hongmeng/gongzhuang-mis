@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, Button, message, Table, Space, Modal } from 'antd'
+import { Card, Typography, Form, Select, Input, InputNumber, DatePicker, Button, message, Table, Space, Modal, AutoComplete } from 'antd'
 import { ReloadOutlined, LeftOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '../stores/authStore'
@@ -1145,9 +1145,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">班次日期：</div>
             <div className="line-value">
               <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} preserve={false}>
-                <DatePicker placeholder="" style={{ width: '100%' }} />
+                <DatePicker placeholder="请先选择起始日期" style={{ width: '100%' }} />
               </Form.Item>
-              <div className="line-hint">请先选择起始日期</div>
             </div>
           </div>
 
@@ -1156,14 +1155,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-value">
               <Form.Item name="shift" rules={[{ required: true, message: '请选择班次' }]}>
                 <Select
-                  placeholder=""
+                  placeholder="联动加工日期"
                   options={[
                     { label: '白班', value: '白班' },
                     { label: '夜班', value: '夜班' }
                   ]}
                 />
               </Form.Item>
-              <div className="line-hint">联动加工日期</div>
             </div>
           </div>
 
@@ -1171,7 +1169,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">盘存编号：</div>
             <div className="line-value">
               <Select
-                placeholder=""
+                placeholder="一物一码"
                 showSearch
                 filterOption={(input, option) => {
                   const normalize = (v: string) => String(v || '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
@@ -1192,7 +1190,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 allowClear
                 onChange={onSelectInv}
               />
-              <div className="line-hint">一物一码</div>
             </div>
           </div>
 
@@ -1200,9 +1197,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">零件编号：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{selectedInfo.drawing || '-'}</span>
+                <span className="line-static-value">{selectedInfo.drawing || '请仔细核对'}</span>
               </div>
-              <div className="line-hint">请仔细核对</div>
             </div>
           </div>
 
@@ -1210,11 +1206,11 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">工艺工序：</div>
             <div className="line-value">
               <Form.Item name="process_name" rules={[{ required: true, message: '请选择或填写加工工序' }]}>
-                {useManualProcess ? (
-                  <Input placeholder={manualProcessHint} />
-                ) : (
-                  <Select placeholder="" options={processOptions.map(p => ({ value: p, label: p }))} />
-                )}
+                <AutoComplete
+                  placeholder={useManualProcess ? manualProcessHint : '请选择或填写当前工序'}
+                  options={processOptions.map(p => ({ value: p, label: p }))}
+                  filterOption={(inputValue, option) => String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())}
+                />
               </Form.Item>
             </div>
           </div>
@@ -1224,7 +1220,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-value">
               <Form.Item name="device_no" rules={[{ required: true, message: '请选择设备编号' }]}>
                 <Select
-                  placeholder=""
+                  placeholder="无设备请填0"
                   showSearch
                   filterOption={(input, option) => String(option?.label || '').includes(input)}
                   options={deviceOptions}
@@ -1241,7 +1237,6 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   onClear={() => setSelectedDeviceMaxAuxMinutes(null)}
                 />
               </Form.Item>
-              <div className="line-hint">无设备请填0</div>
             </div>
           </div>
 
@@ -1249,9 +1244,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">上次结束：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{lastCompletedTime || '-'}</span>
+                <span className="line-static-value">{lastCompletedTime || '上次记录结束时间'}</span>
               </div>
-              <div className="line-hint">上次记录结束时间</div>
             </div>
           </div>
 
@@ -1259,9 +1253,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">辅助开始：</div>
             <div className="line-value">
               <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="" displayDate={wWorkDate} />
+                <QuickTimeInput placeholder="24小时制4位数字" displayDate={wWorkDate} />
               </Form.Item>
-              <div className="line-hint">24小时制4位数字</div>
             </div>
           </div>
 
@@ -1285,10 +1278,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={5}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="当班内多次辅助填写总时长"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <div className="line-hint">当班内多次辅助填写总时长</div>
             </div>
           </div>
 
@@ -1296,9 +1289,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">辅助结束：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{auxEndDisplay}</span>
+                <span className="line-static-value">{auxEndDisplay && auxEndDisplay !== '-' ? auxEndDisplay : '程序开始运行的时间'}</span>
               </div>
-              <div className="line-hint">程序开始运行的时间</div>
             </div>
           </div>
 
@@ -1322,10 +1314,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={1}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="对应辅助时长的次数"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <div className="line-hint">对应辅助时长的次数</div>
             </div>
           </div>
 
@@ -1349,10 +1341,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={5}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="请填写机床面板程序运行的时间，而不是机床的开动时间"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <div className="line-hint">请填写机床面板程序运行的时间，而不是机床的开动时间</div>
             </div>
           </div>
 
@@ -1360,9 +1352,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">本次完成：</div>
             <div className="line-value">
               <div className="line-static">
-                <span className="line-static-value">{completedTime || '-'}</span>
+                <span className="line-static-value">{completedTime || '不应超出当班时间'}</span>
               </div>
-              <div className="line-hint">不应超出当班时间</div>
             </div>
           </div>
 
@@ -1386,10 +1377,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={1}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="实际加工的零件数量"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <div className="line-hint">实际加工的零件数量</div>
             </div>
           </div>
 
@@ -1402,10 +1393,10 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   step={1}
                   controls={false}
                   inputMode="numeric"
+                  placeholder="加工完成可以交检的数量，未完成填0"
                   style={{ width: '100%' }}
                 />
               </Form.Item>
-              <div className="line-hint">加工完成可以交检的数量，未完成填0</div>
             </div>
           </div>
 
