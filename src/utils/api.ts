@@ -1134,14 +1134,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const requestOperator = normText(q.get('operator') || '')
         const getVisibilityByOperator = async (operator: string) => {
           const op = normText(operator)
-          if (!op) return { isTechnician: false, teamName: '' }
+          if (!op) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
           const { data: usersData } = await scopedClient
             .from('users')
             .select('role_id, team_id')
             .eq('real_name', op)
             .limit(1)
           const u = (usersData || [])[0] as any
-          if (!u) return { isTechnician: false, teamName: '' }
+          if (!u) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
           let roleName = ''
           let teamName = ''
           if (u.role_id) {
@@ -1152,8 +1152,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const { data: teamData } = await scopedClient.from('teams').select('name').eq('id', String(u.team_id)).limit(1)
             teamName = String((teamData || [])[0]?.name || '')
           }
+          const isSuperAdmin = roleName.includes('超级管理员')
+          const shouldScopeTeam = !isSuperAdmin && !!normText(teamName)
           return {
-            isTechnician: roleName.includes('技术员'),
+            isSuperAdmin,
+            shouldScopeTeam,
             teamName: normText(teamName)
           }
         }
@@ -1176,7 +1179,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const items = (data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
           )
           return jsonResponse({ success: true, items })
         }
@@ -1190,7 +1193,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const items = (data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
           )
           return jsonResponse({ success: true, items })
         }
@@ -1204,11 +1207,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
           const inboundRows = (inRes.data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
           )
           const outboundRows = (outRes.data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.isTechnician || normText(r.tech_group) === visibility.teamName)
+            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
           )
 
           const inboundMap = new Map<string, any>()
@@ -1308,7 +1311,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const payload = items.map((raw: any) => ({
             name: normText(raw?.name),
             spec_model: normText(raw?.spec_model),
-            tech_group: writeVisibility.isTechnician ? writeVisibility.teamName : normText(raw?.tech_group),
+            tech_group: writeVisibility.shouldScopeTeam ? writeVisibility.teamName : normText(raw?.tech_group),
             location: normText(raw?.location),
             quantity: toNum(raw?.quantity),
             unit: normText(raw?.unit),
@@ -1354,7 +1357,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const row = {
               name: normText(raw?.name),
               spec_model: normText(raw?.spec_model),
-              tech_group: writeVisibility.isTechnician ? writeVisibility.teamName : normText(raw?.tech_group),
+              tech_group: writeVisibility.shouldScopeTeam ? writeVisibility.teamName : normText(raw?.tech_group),
               location: normText(raw?.location),
               quantity: toNum(raw?.quantity),
               unit: normText(raw?.unit),

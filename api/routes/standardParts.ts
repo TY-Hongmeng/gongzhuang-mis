@@ -74,7 +74,7 @@ const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDa
 
 const getVisibilityByOperator = async (operator: string) => {
   const op = normText(operator)
-  if (!op) return { isTechnician: false, teamName: '' }
+  if (!op) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
   const rs = await query(`
     SELECT
       COALESCE(t.name, '') AS team_name,
@@ -89,8 +89,11 @@ const getVisibilityByOperator = async (operator: string) => {
   const row = rs.rows?.[0] || {}
   const roleName = normText(row.role_name)
   const teamName = normText(row.team_name)
+  const isSuperAdmin = roleName.includes('超级管理员')
+  const shouldScopeTeam = !isSuperAdmin && !!teamName
   return {
-    isTechnician: roleName.includes('技术员'),
+    isSuperAdmin,
+    shouldScopeTeam,
     teamName
   }
 }
@@ -101,7 +104,7 @@ router.get('/stock-ledger', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator))
-    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
     const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
     const params = scopedGroup ? [scopedGroup] : []
     const sql = `
@@ -204,7 +207,7 @@ router.get('/catalog', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator))
-    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
     const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
     const params = scopedGroup ? [scopedGroup] : []
     const stockRows = (await query(`
@@ -249,7 +252,7 @@ router.get('/inbound', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator))
-    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
     const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
     const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
@@ -270,7 +273,7 @@ router.get('/outbound', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator))
-    const scopedGroup = forcedGroup || (visibility.isTechnician ? visibility.teamName : '')
+    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
     const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
     const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
@@ -297,7 +300,7 @@ router.post('/inbound/batch', async (req, res) => {
         const name = normText(raw?.name)
         const spec = normText(raw?.spec_model)
         const rawTechGroup = normText(raw?.tech_group)
-        const techGroup = visibility.isTechnician ? visibility.teamName : rawTechGroup
+        const techGroup = visibility.shouldScopeTeam ? visibility.teamName : rawTechGroup
         const location = normText(raw?.location) || defaultLocationFromGroup(techGroup)
         const quantity = toNum(raw?.quantity)
         const unit = normText(raw?.unit)
@@ -336,7 +339,7 @@ router.post('/outbound/batch', async (req, res) => {
         const name = normText(raw?.name)
         const spec = normText(raw?.spec_model)
         const rawTechGroup = normText(raw?.tech_group)
-        const techGroup = visibility.isTechnician ? visibility.teamName : rawTechGroup
+        const techGroup = visibility.shouldScopeTeam ? visibility.teamName : rawTechGroup
         const location = normText(raw?.location) || defaultLocationFromGroup(techGroup)
         const quantity = toNum(raw?.quantity)
         const unit = normText(raw?.unit)
