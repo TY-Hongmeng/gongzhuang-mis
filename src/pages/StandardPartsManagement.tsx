@@ -33,6 +33,7 @@ type StockRow = {
   total_amount: number
   safety_stock: number
   max_stock: number
+  operator?: string
 }
 
 type LedgerRow = {
@@ -455,6 +456,7 @@ const StandardPartsManagement: React.FC = () => {
                       { title: '出库总数', dataIndex: 'outbound_total', align: 'right', render: (v) => fmtIntPos(v) },
                       { title: '结余', dataIndex: 'balance', align: 'right', render: (v) => fmtIntPos(v) },
                       { title: '单位', dataIndex: 'unit', align: 'center', ellipsis: true },
+                      { title: '操作人', dataIndex: 'operator', align: 'center', ellipsis: true },
                       { title: '单价', dataIndex: 'unit_price', align: 'right', render: (v) => fmtMoney(v) },
                       { title: '总额', dataIndex: 'total_amount', align: 'right', render: (v) => fmtNum(v, 2) },
                       { title: '安全库存(月均)', dataIndex: 'safety_stock', align: 'right', render: (v) => fmtIntPos(v) },
@@ -589,7 +591,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: inboundSelectedKeys, onChange: setInboundSelectedKeys }}
                       dataSource={inboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={{ pageSize: 20, showSizeChanger: true, showQuickJumper: true }}
+                      pagination={{ pageSize: 100, showSizeChanger: true, showQuickJumper: true }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },
@@ -633,7 +635,7 @@ const StandardPartsManagement: React.FC = () => {
                       rowSelection={{ selectedRowKeys: outboundSelectedKeys, onChange: setOutboundSelectedKeys }}
                       dataSource={outboundFiltered}
                       scroll={{ y: tableY }}
-                      pagination={{ pageSize: 20, showSizeChanger: true, showQuickJumper: true }}
+                      pagination={{ pageSize: 100, showSizeChanger: true, showQuickJumper: true }}
                       tableLayout="fixed"
                       columns={[
                         { title: '序号', width: 72, align: 'center', render: (_v, _r, i) => i + 1 },

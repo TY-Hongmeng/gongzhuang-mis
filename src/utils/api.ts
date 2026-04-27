@@ -1197,8 +1197,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
         if (method === 'GET' && path === '/api/standard-parts/stock-ledger') {
           const [inRes, outRes] = await Promise.all([
-            scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,unit_price,quantity,status,in_date'),
-            scopedClient.from('standard_part_outbound').select('name,spec_model,location,unit,unit_price,quantity,status,out_date')
+            scopedClient.from('standard_part_inbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,in_date,operator,created_at'),
+            scopedClient.from('standard_part_outbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,out_date,operator,created_at')
           ])
           if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
@@ -1220,10 +1220,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               location: normText(row.location),
               unit: normText(row.unit),
               inbound_total: 0,
-              unit_price: 0
+              unit_price: 0,
+              operator: '',
+              latest_at: ''
             }
             prev.inbound_total += toNum(row.quantity)
             prev.unit_price = Math.max(toNum(prev.unit_price), toNum(row.unit_price))
+            const rowAt = normText(row.created_at) || `${normText(row.in_date)}T00:00:00`
+            if (!prev.latest_at || rowAt >= prev.latest_at) {
+              prev.latest_at = rowAt
+              prev.operator = normText(row.operator)
+            }
             inboundMap.set(key, prev)
           }
 
@@ -1238,7 +1245,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               outbound_total: 0,
               total_used_qty: 0,
               min_out_date: null as string | null,
-              max_out_date: null as string | null
+              max_out_date: null as string | null,
+              operator: '',
+              latest_at: ''
             }
             prev.outbound_total += toNum(row.quantity)
             prev.total_used_qty += toNum(row.quantity)
@@ -1246,6 +1255,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (d) {
               if (!prev.min_out_date || d < prev.min_out_date) prev.min_out_date = d
               if (!prev.max_out_date || d > prev.max_out_date) prev.max_out_date = d
+            }
+            const rowAt = normText(row.created_at) || `${normText(row.out_date)}T00:00:00`
+            if (!prev.latest_at || rowAt >= prev.latest_at) {
+              prev.latest_at = rowAt
+              prev.operator = normText(row.operator)
             }
             outboundMap.set(key, prev)
           }
@@ -1259,6 +1273,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const balance = inboundTotal - outboundTotal
             const unitPrice = toNum(i.unit_price)
             const avgMonthly = calcAverageMonthlyUsage(toNum(o.total_used_qty), o.min_out_date || null, o.max_out_date || null)
+            const iAt = normText(i.latest_at)
+            const oAt = normText(o.latest_at)
+            const operator = oAt >= iAt ? normText(o.operator) : normText(i.operator)
             return {
               name: normText(i.name || o.name),
               spec_model: normText(i.spec_model || o.spec_model),
@@ -1271,7 +1288,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               unit_price: unitPrice,
               total_amount: unitPrice * balance,
               safety_stock: avgMonthly,
-              max_stock: avgMonthly * 3
+              max_stock: avgMonthly * 3,
+              operator
             }
           }).sort((a, b) =>
             String(a.name).localeCompare(String(b.name), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
@@ -1285,10 +1303,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const items = Array.isArray(body?.items) ? body.items : []
           if (items.length === 0) return jsonResponse({ success: false, error: '缺少入库数据' }, 400)
+          const writeOperator = normText(body?.operator) || normText(items?.[0]?.operator) || requestOperator
+          const writeVisibility = await getVisibilityByOperator(writeOperator)
           const payload = items.map((raw: any) => ({
             name: normText(raw?.name),
             spec_model: normText(raw?.spec_model),
-            tech_group: visibility.isTechnician ? visibility.teamName : normText(raw?.tech_group),
+            tech_group: writeVisibility.isTechnician ? writeVisibility.teamName : normText(raw?.tech_group),
             location: normText(raw?.location),
             quantity: toNum(raw?.quantity),
             unit: normText(raw?.unit),
@@ -1308,6 +1328,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const items = Array.isArray(body?.items) ? body.items : []
           if (items.length === 0) return jsonResponse({ success: false, error: '缺少出库数据' }, 400)
+          const writeOperator = normText(body?.operator) || normText(items?.[0]?.operator) || requestOperator
+          const writeVisibility = await getVisibilityByOperator(writeOperator)
 
           const [inRes, outRes] = await Promise.all([
             scopedClient.from('standard_part_inbound').select('name,spec_model,location,unit,quantity,status'),
@@ -1332,7 +1354,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const row = {
               name: normText(raw?.name),
               spec_model: normText(raw?.spec_model),
-              tech_group: visibility.isTechnician ? visibility.teamName : normText(raw?.tech_group),
+              tech_group: writeVisibility.isTechnician ? writeVisibility.teamName : normText(raw?.tech_group),
               location: normText(raw?.location),
               quantity: toNum(raw?.quantity),
               unit: normText(raw?.unit),

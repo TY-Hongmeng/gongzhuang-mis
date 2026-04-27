@@ -113,7 +113,9 @@ router.get('/stock-ledger', async (_req, res) => {
           location,
           unit,
           SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS inbound_total,
-          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN unit_price ELSE 0 END) AS latest_inbound_price
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN unit_price ELSE 0 END) AS latest_inbound_price,
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN created_at END) AS latest_inbound_at,
+          (ARRAY_AGG(operator ORDER BY created_at DESC) FILTER (WHERE status NOT IN ('已删除','已退库','退库','退库入库')))[1] AS latest_inbound_operator
         FROM standard_part_inbound
         WHERE 1=1 ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
@@ -128,7 +130,9 @@ router.get('/stock-ledger', async (_req, res) => {
           SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS outbound_total,
           SUM(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN quantity ELSE 0 END) AS total_used_qty,
           MIN(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS min_out_date,
-          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS max_out_date
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN out_date END) AS max_out_date,
+          MAX(CASE WHEN status NOT IN ('已删除','已退库','退库','退库入库') THEN created_at END) AS latest_outbound_at,
+          (ARRAY_AGG(operator ORDER BY created_at DESC) FILTER (WHERE status NOT IN ('已删除','已退库','退库','退库入库')))[1] AS latest_outbound_operator
         FROM standard_part_outbound
         WHERE 1=1 ${whereScoped}
         GROUP BY name, spec_model, tech_group, location, unit
@@ -145,7 +149,11 @@ router.get('/stock-ledger', async (_req, res) => {
           COALESCE(i.latest_inbound_price, 0) AS unit_price,
           COALESCE(o.total_used_qty, 0) AS total_used_qty,
           o.min_out_date,
-          o.max_out_date
+          o.max_out_date,
+          i.latest_inbound_at,
+          i.latest_inbound_operator,
+          o.latest_outbound_at,
+          o.latest_outbound_operator
         FROM inbound i
         FULL OUTER JOIN outbound o
           ON i.name = o.name
@@ -178,7 +186,10 @@ router.get('/stock-ledger', async (_req, res) => {
         unit_price: unitPrice,
         total_amount: unitPrice * balance,
         safety_stock: safetyStock,
-        max_stock: maxStock
+        max_stock: maxStock,
+        operator: (r.latest_outbound_at && (!r.latest_inbound_at || String(r.latest_outbound_at) >= String(r.latest_inbound_at)))
+          ? normText(r.latest_outbound_operator)
+          : normText(r.latest_inbound_operator)
       }
     })
     res.json({ success: true, items })
