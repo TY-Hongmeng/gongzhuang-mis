@@ -1135,7 +1135,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const getVisibilityByOperator = async (operator: string) => {
           const op = normText(operator)
           if (!op) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
-          const { data: usersData } = await scopedClient
+          const { data: usersData } = await supabase
             .from('users')
             .select('role_id, team_id')
             .eq('real_name', op)
@@ -1145,11 +1145,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           let roleName = ''
           let teamName = ''
           if (u.role_id) {
-            const { data: roleData } = await scopedClient.from('roles').select('name').eq('id', String(u.role_id)).limit(1)
+            const { data: roleData } = await supabase.from('roles').select('name').eq('id', String(u.role_id)).limit(1)
             roleName = String((roleData || [])[0]?.name || '')
           }
           if (u.team_id) {
-            const { data: teamData } = await scopedClient.from('teams').select('name').eq('id', String(u.team_id)).limit(1)
+            const { data: teamData } = await supabase.from('teams').select('name').eq('id', String(u.team_id)).limit(1)
             teamName = String((teamData || [])[0]?.name || '')
           }
           const isSuperAdmin = roleName.includes('超级管理员')
@@ -1171,7 +1171,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
 
         if (method === 'GET' && path === '/api/standard-parts/inbound') {
-          const { data, error } = await scopedClient
+          const { data, error } = await supabase
             .from('standard_part_inbound')
             .select('*')
             .order('in_date', { ascending: false })
@@ -1185,7 +1185,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
 
         if (method === 'GET' && path === '/api/standard-parts/outbound') {
-          const { data, error } = await scopedClient
+          const { data, error } = await supabase
             .from('standard_part_outbound')
             .select('*')
             .order('out_date', { ascending: false })
@@ -1200,8 +1200,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
         if (method === 'GET' && path === '/api/standard-parts/stock-ledger') {
           const [inRes, outRes] = await Promise.all([
-            scopedClient.from('standard_part_inbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,in_date,operator,created_at'),
-            scopedClient.from('standard_part_outbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,out_date,operator,created_at')
+            supabase.from('standard_part_inbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,in_date,operator,created_at'),
+            supabase.from('standard_part_outbound').select('name,spec_model,tech_group,location,unit,unit_price,quantity,status,out_date,operator,created_at')
           ])
           if (inRes.error) return jsonResponse({ success: false, error: inRes.error.message }, 500)
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
