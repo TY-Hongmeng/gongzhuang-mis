@@ -1132,14 +1132,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const excludedStatuses = ['已删除', '已退库', '退库', '退库入库']
         const q = getQuery(cleanUrl)
         const requestOperator = normText(q.get('operator') || '')
-        const getVisibilityByOperator = async (operator: string) => {
+        const requestUserId = normText(q.get('userId') || '')
+        const getVisibilityByOperator = async (operator: string, userId?: string) => {
           const op = normText(operator)
-          if (!op) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('role_id, team_id')
-            .eq('real_name', op)
-            .limit(1)
+          const uid = normText(userId)
+          if (!op && !uid) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
+          const usersQuery = supabase.from('users').select('role_id, team_id')
+          const { data: usersData } = uid
+            ? await usersQuery.eq('id', uid).limit(1)
+            : await usersQuery.eq('real_name', op).limit(1)
           const u = (usersData || [])[0] as any
           if (!u) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
           let roleName = ''
@@ -1160,7 +1161,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             teamName: normText(teamName)
           }
         }
-        const visibility = await getVisibilityByOperator(requestOperator)
+        const visibility = await getVisibilityByOperator(requestOperator, requestUserId)
+        const forcedGroup = normText(q.get('tech_group') || '')
+        const [usersTeamRes, teamsRes] = await Promise.all([
+          supabase.from('users').select('real_name,team_id'),
+          supabase.from('teams').select('id,name')
+        ])
+        const teamNameById = new Map<string, string>()
+        for (const t of (teamsRes.data || [])) {
+          teamNameById.set(String((t as any).id), normText((t as any).name))
+        }
+        const teamNameByOperator = new Map<string, string>()
+        for (const u of (usersTeamRes.data || [])) {
+          const operator = normText((u as any).real_name)
+          const teamName = teamNameById.get(String((u as any).team_id || '')) || ''
+          if (operator) teamNameByOperator.set(operator, teamName)
+        }
+        const resolveRowTeam = (row: any) => {
+          const direct = normText(row?.tech_group)
+          if (direct) return direct
+          return teamNameByOperator.get(normText(row?.operator)) || ''
+        }
+        const canViewRow = (row: any) => {
+          const rowTeam = resolveRowTeam(row)
+          if (forcedGroup) return rowTeam === forcedGroup
+          if (!visibility.shouldScopeTeam) return true
+          return rowTeam === visibility.teamName
+        }
         const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
         const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
           if (!minDate || !maxDate || totalQty <= 0) return 0
@@ -1179,7 +1206,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const items = (data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
+            && canViewRow(r)
           )
           return jsonResponse({ success: true, items })
         }
@@ -1193,7 +1220,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const items = (data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
+            && canViewRow(r)
           )
           return jsonResponse({ success: true, items })
         }
@@ -1207,11 +1234,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (outRes.error) return jsonResponse({ success: false, error: outRes.error.message }, 500)
           const inboundRows = (inRes.data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
+            && canViewRow(r)
           )
           const outboundRows = (outRes.data || []).filter((r: any) =>
             !excludedStatuses.includes(String(r.status || ''))
-            && (!visibility.shouldScopeTeam || normText(r.tech_group) === visibility.teamName)
+            && canViewRow(r)
           )
 
           const inboundMap = new Map<string, any>()

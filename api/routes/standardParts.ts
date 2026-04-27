@@ -72,9 +72,10 @@ const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDa
   return totalQty / months
 }
 
-const getVisibilityByOperator = async (operator: string) => {
+const getVisibilityByOperator = async (operator: string, userId?: string) => {
   const op = normText(operator)
-  if (!op) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
+  const uid = normText(userId)
+  if (!op && !uid) return { isSuperAdmin: false, shouldScopeTeam: false, teamName: '' }
   const rs = await query(`
     SELECT
       COALESCE(t.name, '') AS team_name,
@@ -82,10 +83,11 @@ const getVisibilityByOperator = async (operator: string) => {
     FROM users u
     LEFT JOIN teams t ON t.id = u.team_id
     LEFT JOIN roles r ON r.id = u.role_id
-    WHERE u.real_name = $1
+    WHERE ($2 <> '' AND CAST(u.id AS TEXT) = $2)
+       OR ($2 = '' AND u.real_name = $1)
     ORDER BY u.updated_at DESC NULLS LAST
     LIMIT 1
-  `, [op])
+  `, [op, uid])
   const row = rs.rows?.[0] || {}
   const roleName = normText(row.role_name)
   const teamName = normText(row.team_name)
@@ -103,9 +105,16 @@ router.get('/stock-ledger', async (_req, res) => {
     await ensureSchema()
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
-    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
     const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
-    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const whereScoped = scopedGroup
+      ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
+          SELECT u.real_name
+          FROM users u
+          LEFT JOIN teams t ON t.id = u.team_id
+          WHERE COALESCE(t.name, '') = $1
+        ))) `
+      : ''
     const params = scopedGroup ? [scopedGroup] : []
     const sql = `
       WITH inbound AS (
@@ -206,9 +215,16 @@ router.get('/catalog', async (_req, res) => {
     await ensureSchema()
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
-    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
     const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
-    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const whereScoped = scopedGroup
+      ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
+          SELECT u.real_name
+          FROM users u
+          LEFT JOIN teams t ON t.id = u.team_id
+          WHERE COALESCE(t.name, '') = $1
+        ))) `
+      : ''
     const params = scopedGroup ? [scopedGroup] : []
     const stockRows = (await query(`
       WITH inbound AS (
@@ -251,9 +267,16 @@ router.get('/inbound', async (_req, res) => {
     await ensureSchema()
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
-    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
     const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
-    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const whereScoped = scopedGroup
+      ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
+          SELECT u.real_name
+          FROM users u
+          LEFT JOIN teams t ON t.id = u.team_id
+          WHERE COALESCE(t.name, '') = $1
+        ))) `
+      : ''
     const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
       SELECT * FROM standard_part_inbound
@@ -272,9 +295,16 @@ router.get('/outbound', async (_req, res) => {
     await ensureSchema()
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
-    const visibility = await getVisibilityByOperator(normText(q?.operator))
+    const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
     const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
-    const whereScoped = scopedGroup ? ` AND tech_group = $1 ` : ''
+    const whereScoped = scopedGroup
+      ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
+          SELECT u.real_name
+          FROM users u
+          LEFT JOIN teams t ON t.id = u.team_id
+          WHERE COALESCE(t.name, '') = $1
+        ))) `
+      : ''
     const params = scopedGroup ? [scopedGroup] : []
     const rows = (await query(`
       SELECT * FROM standard_part_outbound

@@ -154,10 +154,11 @@ const StandardPartsManagement: React.FC = () => {
     setLoading(true)
     try {
       const op = encodeURIComponent(String(user?.real_name || ''))
+      const uid = encodeURIComponent(String((user as any)?.id || ''))
       const [stockRes, inRes, outRes] = await Promise.all([
-        fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}`),
-        fetchWithFallback(`/api/standard-parts/inbound?operator=${op}`),
-        fetchWithFallback(`/api/standard-parts/outbound?operator=${op}`)
+        fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}&userId=${uid}`),
+        fetchWithFallback(`/api/standard-parts/inbound?operator=${op}&userId=${uid}`),
+        fetchWithFallback(`/api/standard-parts/outbound?operator=${op}&userId=${uid}`)
       ])
       const [stockJson, inJson, outJson] = await Promise.all([stockRes.json(), inRes.json(), outRes.json()])
       setStockItems(Array.isArray(stockJson?.items) ? stockJson.items : [])
