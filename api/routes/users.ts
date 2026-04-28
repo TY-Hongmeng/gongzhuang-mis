@@ -81,6 +81,14 @@ router.put('/:id', async (req, res) => {
     if (!id) {
       return res.status(400).json({ success: false, error: '缺少用户ID' })
     }
+    const { data: beforeUser } = await supabase
+      .from('users')
+      .select('real_name')
+      .eq('id', id)
+      .single()
+    const oldRealName = String((beforeUser as any)?.real_name || '').trim()
+    const newRealName = String(payload.real_name || '').trim()
+
     const allowed: any = {
       real_name: payload.real_name,
       phone: payload.phone,
@@ -99,6 +107,16 @@ router.put('/:id', async (req, res) => {
       .eq('id', id)
     if (error) {
       return res.status(500).json({ success: false, error: '更新用户失败' })
+    }
+    // 用户改名时，同步更新工时记录中的操作人名称，确保工时管理显示一致
+    if (oldRealName && newRealName && oldRealName !== newRealName) {
+      const { error: syncErr } = await supabase
+        .from('work_hours')
+        .update({ operator: newRealName })
+        .eq('operator', oldRealName)
+      if (syncErr) {
+        return res.status(500).json({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` })
+      }
     }
     res.json({ success: true })
   } catch (e: any) {

@@ -656,8 +656,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const userId = path.split('/').pop()
           if (!userId) return jsonResponse({ success: false, error: 'Invalid user ID' }, 400)
           const body = await readBody()
-          const existing = await scopedClient.from('users').select('id, phone').eq('id', userId).single()
+          const existing = await scopedClient.from('users').select('id, phone, real_name').eq('id', userId).single()
           const existingPhone = String((existing?.data as any)?.phone || '')
+          const oldRealName = String((existing?.data as any)?.real_name || '').trim()
+          const newRealName = String(body?.real_name || '').trim()
           const payload: any = {
             real_name: body.real_name,
             phone: body.phone,
@@ -674,6 +676,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           }
           const { data, error } = await scopedClient.from('users').update(payload).eq('id', userId).select('*').single()
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          // 用户改名时，同步工时表 operator，保证工时管理展示名称一致
+          if (oldRealName && newRealName && oldRealName !== newRealName) {
+            const { error: syncErr } = await supabase
+              .from('work_hours')
+              .update({ operator: newRealName })
+              .eq('operator', oldRealName)
+            if (syncErr) return jsonResponse({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` }, 500)
+          }
           return jsonResponse({ success: true, data })
         }
         if (method === 'PUT' && path.match(/^\/api\/users\/[^\/]+\/status$/)) {
