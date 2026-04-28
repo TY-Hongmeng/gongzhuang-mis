@@ -1347,8 +1347,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             operator: normText(raw?.operator),
             status: normText(raw?.status) || '正常'
           }))
-          const bad = payload.find((x: any) => !x.name || !x.spec_model || !x.location || !x.unit || x.quantity <= 0)
-          if (bad) return jsonResponse({ success: false, error: '入库数据不完整，名称/规格/库位/单位/数量为必填' }, 400)
+          const bad = payload.find((x: any) => !x.name || !x.spec_model || !x.location || !x.unit || x.quantity < 0)
+          if (bad) return jsonResponse({ success: false, error: '入库数据不完整，名称/规格/库位/单位为必填，数量不能小于0' }, 400)
           const { data, error } = await scopedClient.from('standard_part_inbound').insert(payload).select('*')
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true, items: data || [] })

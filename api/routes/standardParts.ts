@@ -338,8 +338,8 @@ router.post('/inbound/batch', async (req, res) => {
         const inDate = normText(raw?.in_date) || new Date().toISOString().slice(0, 10)
         const operator = normText(raw?.operator)
         const status = normText(raw?.status) || '正常'
-        if (!name || !spec || !location || !unit || quantity <= 0) {
-          throw new Error('入库数据不完整，名称/规格/库位/单位/数量为必填')
+        if (!name || !spec || !location || !unit || quantity < 0) {
+          throw new Error('入库数据不完整，名称/规格/库位/单位为必填，数量不能小于0')
         }
         const rs = await client.query(`
           INSERT INTO standard_part_inbound

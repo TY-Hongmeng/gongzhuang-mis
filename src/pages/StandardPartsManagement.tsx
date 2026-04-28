@@ -130,7 +130,7 @@ const StandardPartsManagement: React.FC = () => {
       String(r.name || '').trim()
       && String(r.spec_model || '').trim()
       && String(r.location || '').trim()
-      && Number(r.quantity || 0) > 0
+      && Number(r.quantity || 0) >= 0
       && String(r.unit || '').trim()
     )
   }, [])
@@ -402,7 +402,7 @@ const StandardPartsManagement: React.FC = () => {
             operator: String(r['操作人'] || r['operator'] || user?.real_name || '').trim(),
             status: String(r['状态'] || r['status'] || '待入库').trim()
           } as DraftInboundRow)
-        }).filter((x: DraftInboundRow) => x.name && x.spec_model && x.location && x.unit && x.quantity > 0)
+        }).filter((x: DraftInboundRow) => x.name && x.spec_model && x.location && x.unit && x.quantity >= 0)
         setDraftInboundRows((prev) => ensureAtLeastTwoBlankRows([...prev, ...parsed]))
         setDraftSelectedKeys((prev) => [...prev, ...parsed.map((r: DraftInboundRow) => r.key)])
         message.success(`已导入 ${parsed.length} 条待入库数据`)
