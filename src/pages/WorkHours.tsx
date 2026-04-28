@@ -46,6 +46,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [invOptions, setInvOptions] = React.useState<any[]>([])
   const [loadingInv, setLoadingInv] = React.useState(false)
   const [selectedInv, setSelectedInv] = React.useState<string>('')
+  const [selectedInvType, setSelectedInvType] = React.useState<string>('')
   const [selectedInfo, setSelectedInfo] = React.useState<{ name?: string; drawing?: string }>({})
   const [deviceOptions, setDeviceOptions] = React.useState<any[]>([])
   const [deviceName, setDeviceName] = React.useState<string>('')
@@ -117,6 +118,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 这会确保当用户选择时间时，组件会重新渲染，触发calculateAuxDuration函数重新计算
   const wAuxStart = Form.useWatch('aux_start', form)
   const wAuxDurationMinutes = Form.useWatch('aux_duration_minutes', form)
+  const isNonProduction = selectedInvType === 'non_production'
   const wAuxEnd = React.useMemo(() => {
     if (!wAuxStart || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null) return null
     const dur = Math.max(0, Number(wAuxDurationMinutes || 0))
@@ -149,7 +151,24 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     const end = endRaw.isBefore(start) ? endRaw.add(1, 'day') : endRaw
     return end.format('MM-DD HH:mm')
   }, [wWorkDate, wAuxStart, wAuxEnd])
-  const isSubmitDisabled = !wShift || !selectedInv || !wProcessName || !wDeviceNo || !wProcMinutes || wCompletedQuantity === undefined || wCompletedQuantity === null || wAuxCount === undefined || wAuxCount === null || wProcessQuantity === undefined || wProcessQuantity === null || !wAuxStart || !wAuxEnd || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null || !wShiftDate
+  const isSubmitDisabled = !wShift
+    || !selectedInv
+    || !wProcessName
+    || !wAuxStart
+    || !wAuxEnd
+    || wAuxDurationMinutes === undefined
+    || wAuxDurationMinutes === null
+    || !wShiftDate
+    || (!isNonProduction && (
+      !wDeviceNo
+      || !wProcMinutes
+      || wCompletedQuantity === undefined
+      || wCompletedQuantity === null
+      || wAuxCount === undefined
+      || wAuxCount === null
+      || wProcessQuantity === undefined
+      || wProcessQuantity === null
+    ))
 
   React.useEffect(() => {
     if (!wDeviceNo) {
@@ -412,10 +431,21 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   }
 
   const onSelectInv = (val: string, option: any) => {
-    setSelectedInv(val)
+    setSelectedInv(String(val || ''))
+    if (!val) {
+      setSelectedInvType('')
+      setSelectedInfo({})
+      setProcessOptions([])
+      setManualProcessHint('请填写当前工序')
+      setUseManualProcess(false)
+      setDeviceName('')
+      setSelectedDeviceMaxAuxMinutes(null)
+      return
+    }
     const meta = option?.meta
     setSelectedInfo({ name: meta?.part_name || '', drawing: meta?.part_drawing_number || '' })
     const optType = String(option?.type || '')
+    setSelectedInvType(optType)
     const isFixed = optType === 'fixed' || optType === 'maintenance' || optType === 'non_production'
     const route = String(meta?.process_route || '')
     const items = route.split('→').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean)
@@ -432,6 +462,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       setProcessOptions([])
     } else {
       setProcessOptions(items)
+    }
+    if (optType === 'non_production') {
+      form.setFieldsValue({
+        device_no: undefined,
+        aux_count: undefined,
+        proc_minutes: undefined,
+        process_quantity: undefined,
+        completed_quantity: undefined
+      })
+      setDeviceName('')
+      setSelectedDeviceMaxAuxMinutes(null)
+      setLastCompletedTime('')
     }
   }
 
@@ -975,26 +1017,27 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               message.warning('请先选择盘存编号')
               return
             }
-            const auxCount = Math.max(Number(vals.aux_count || 1), 1)
-            const processQuantity = Math.max(Number(vals.process_quantity || 1), 1)
+            const isNonProd = selectedInvType === 'non_production'
+            const auxCount = isNonProd ? 1 : Math.max(Number(vals.aux_count || 1), 1)
+            const processQuantity = isNonProd ? 1 : Math.max(Number(vals.process_quantity || 1), 1)
             const auxMinutes = Math.max(0, Number(vals.aux_duration_minutes || 0))
-            const procMinutesInput = Math.max(0, Number(vals.proc_minutes || 0))
+            const procMinutesInput = isNonProd ? 0 : Math.max(0, Number(vals.proc_minutes || 0))
             if (auxMinutes > 660) {
               message.error('辅助时长不能超过660分钟')
               return
             }
-            if (procMinutesInput > 660) {
+            if (!isNonProd && procMinutesInput > 660) {
               message.error('程序时长不能超过660分钟')
               return
             }
             const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
             const singleAuxCount = processQuantity > 0 ? (auxCount / processQuantity) : 0
-            if (selectedDeviceMaxAuxMinutes !== null && singleAuxMinutes > selectedDeviceMaxAuxMinutes) {
+            if (!isNonProd && selectedDeviceMaxAuxMinutes !== null && singleAuxMinutes > selectedDeviceMaxAuxMinutes) {
               message.error(`单次辅助时长(${singleAuxMinutes.toFixed(1)}分钟)不能超过设备最大辅助时间(${selectedDeviceMaxAuxMinutes}分钟)`)
               return
             }
             // Validate device time order against last record for the same device
-            const deviceNo = form.getFieldValue('device_no')
+            const deviceNo = isNonProd ? '' : form.getFieldValue('device_no')
             if (deviceNo) {
               let lastSame: any = null
               try {
@@ -1071,8 +1114,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               process_quantity: Number(processQuantity),
               single_aux_minutes: Number(singleAuxMinutes),
               single_aux_count: Number(singleAuxCount),
-              completed_quantity: Number(vals.completed_quantity || 0),
-              device_no: String(vals.device_no || ''),
+              completed_quantity: isNonProd ? 0 : Number(vals.completed_quantity || 0),
+              device_no: isNonProd ? '' : String(vals.device_no || ''),
               shift: String(vals.shift || '')
             }
             try {
@@ -1108,6 +1151,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   } catch {}
                   // 直接清空所有状态
                   setSelectedInv('')
+                  setSelectedInvType('')
                   setSelectedInfo({})
                   setProcessOptions([])
                   setManualProcessHint('请填写当前工序')
@@ -1196,18 +1240,20 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           </div>
 
-          <div className="line-row">
-            <div className="line-label">零件编号：</div>
-            <div className="line-value">
-              <div className="line-static">
-                {selectedInfo.drawing ? (
-                  <span className="line-static-value">{selectedInfo.drawing}</span>
-                ) : (
-                  <span className="line-static-value line-static-hint">请仔细核对</span>
-                )}
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">零件编号：</div>
+              <div className="line-value">
+                <div className="line-static">
+                  {selectedInfo.drawing ? (
+                    <span className="line-static-value">{selectedInfo.drawing}</span>
+                  ) : (
+                    <span className="line-static-value line-static-hint">请仔细核对</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="line-row">
             <div className="line-label">工艺工序：</div>
@@ -1222,43 +1268,47 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           </div>
 
-          <div className="line-row">
-            <div className="line-label">设备编号：</div>
-            <div className="line-value">
-              <Form.Item name="device_no" rules={[{ required: true, message: '请选择设备编号' }]}>
-                <Select
-                  placeholder="无设备请填0"
-                  showSearch
-                  filterOption={(input, option) => String(option?.label || '').includes(input)}
-                  options={deviceOptions}
-                  onOpenChange={(open) => {
-                    if (open && deviceOptions.length === 0) {
-                      fetchDevices().catch((e: any) => message.error(e?.message || '加载设备编号失败'))
-                    }
-                  }}
-                  onSelect={(_val, opt: any) => {
-                    setDeviceName(opt?.meta?.device_name || '')
-                    const maxAux = Number(opt?.meta?.max_aux_minutes)
-                    setSelectedDeviceMaxAuxMinutes(Number.isFinite(maxAux) ? maxAux : null)
-                  }}
-                  onClear={() => setSelectedDeviceMaxAuxMinutes(null)}
-                />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">上次结束：</div>
-            <div className="line-value">
-              <div className="line-static">
-                {lastCompletedTime ? (
-                  <span className="line-static-value">{lastCompletedTime}</span>
-                ) : (
-                  <span className="line-static-value line-static-hint">上次记录结束时间</span>
-                )}
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">设备编号：</div>
+              <div className="line-value">
+                <Form.Item name="device_no" rules={[{ required: true, message: '请选择设备编号' }]} preserve={false}>
+                  <Select
+                    placeholder="无设备请填0"
+                    showSearch
+                    filterOption={(input, option) => String(option?.label || '').includes(input)}
+                    options={deviceOptions}
+                    onOpenChange={(open) => {
+                      if (open && deviceOptions.length === 0) {
+                        fetchDevices().catch((e: any) => message.error(e?.message || '加载设备编号失败'))
+                      }
+                    }}
+                    onSelect={(_val, opt: any) => {
+                      setDeviceName(opt?.meta?.device_name || '')
+                      const maxAux = Number(opt?.meta?.max_aux_minutes)
+                      setSelectedDeviceMaxAuxMinutes(Number.isFinite(maxAux) ? maxAux : null)
+                    }}
+                    onClear={() => setSelectedDeviceMaxAuxMinutes(null)}
+                  />
+                </Form.Item>
               </div>
             </div>
-          </div>
+          )}
+
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">上次结束：</div>
+              <div className="line-value">
+                <div className="line-static">
+                  {lastCompletedTime ? (
+                    <span className="line-static-value">{lastCompletedTime}</span>
+                  ) : (
+                    <span className="line-static-value line-static-hint">上次记录结束时间</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="line-row">
             <div className="line-label">辅助开始：</div>
@@ -1309,115 +1359,128 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           </div>
 
-          <div className="line-row">
-            <div className="line-label">辅助次数：</div>
-            <div className="line-value">
-              <Form.Item
-                name="aux_count"
-                rules={[
-                  { required: true, message: '请输入辅助次数' },
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('辅助次数至少为1'))
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">辅助次数：</div>
+              <div className="line-value">
+                <Form.Item
+                  name="aux_count"
+                  preserve={false}
+                  rules={[
+                    { required: true, message: '请输入辅助次数' },
+                    {
+                      validator: (_, value) => {
+                        if (value === undefined || value === null || value === '') return Promise.resolve()
+                        return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('辅助次数至少为1'))
+                      }
                     }
-                  }
-                ]}
-              >
-                <InputNumber
-                  min={1}
-                  step={1}
-                  controls={false}
-                  inputMode="numeric"
-                  placeholder="对应辅助时长的次数"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">程序时长：</div>
-            <div className="line-value">
-              <Form.Item
-                name="proc_minutes"
-                rules={[
-                  { required: true, message: '请输入程序时长' },
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班程序时长上限'))
-                    }
-                  }
-                ]}
-              >
-                <InputNumber
-                  min={0}
-                  step={5}
-                  controls={false}
-                  inputMode="numeric"
-                  placeholder="请填写机床面板程序运行的时间，而不是机床的开动时间"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">本次完成：</div>
-            <div className="line-value">
-              <div className="line-static">
-                {completedTime ? (
-                  <span className="line-static-value">{completedTime}</span>
-                ) : (
-                  <span className="line-static-value line-static-hint">不应超出当班时间</span>
-                )}
+                  ]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    controls={false}
+                    inputMode="numeric"
+                    placeholder="对应辅助时长的次数"
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="line-row">
-            <div className="line-label">加工数量：</div>
-            <div className="line-value">
-              <Form.Item
-                name="process_quantity"
-                rules={[
-                  { required: true, message: '请输入加工数量' },
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('加工数量至少为1'))
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">程序时长：</div>
+              <div className="line-value">
+                <Form.Item
+                  name="proc_minutes"
+                  preserve={false}
+                  rules={[
+                    { required: true, message: '请输入程序时长' },
+                    {
+                      validator: (_, value) => {
+                        if (value === undefined || value === null || value === '') return Promise.resolve()
+                        return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班程序时长上限'))
+                      }
                     }
-                  }
-                ]}
-              >
-                <InputNumber
-                  min={1}
-                  step={1}
-                  controls={false}
-                  inputMode="numeric"
-                  placeholder="实际加工的零件数量"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
+                  ]}
+                >
+                  <InputNumber
+                    min={0}
+                    step={5}
+                    controls={false}
+                    inputMode="numeric"
+                    placeholder="请填写机床面板程序运行的时间，而不是机床的开动时间"
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="line-row">
-            <div className="line-label">完成数量：</div>
-            <div className="line-value">
-              <Form.Item name="completed_quantity" rules={[{ required: true, message: '请输入完成数量' }]}>
-                <InputNumber
-                  min={0}
-                  step={1}
-                  controls={false}
-                  inputMode="numeric"
-                  placeholder="加工完成可以交检的数量，未完成填0"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">本次完成：</div>
+              <div className="line-value">
+                <div className="line-static">
+                  {completedTime ? (
+                    <span className="line-static-value">{completedTime}</span>
+                  ) : (
+                    <span className="line-static-value line-static-hint">不应超出当班时间</span>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">加工数量：</div>
+              <div className="line-value">
+                <Form.Item
+                  name="process_quantity"
+                  preserve={false}
+                  rules={[
+                    { required: true, message: '请输入加工数量' },
+                    {
+                      validator: (_, value) => {
+                        if (value === undefined || value === null || value === '') return Promise.resolve()
+                        return Number(value) >= 1 ? Promise.resolve() : Promise.reject(new Error('加工数量至少为1'))
+                      }
+                    }
+                  ]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    controls={false}
+                    inputMode="numeric"
+                    placeholder="实际加工的零件数量"
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </div>
+            </div>
+          )}
+
+          {!isNonProduction && (
+            <div className="line-row">
+              <div className="line-label">完成数量：</div>
+              <div className="line-value">
+                <Form.Item name="completed_quantity" preserve={false} rules={[{ required: true, message: '请输入完成数量' }]}>
+                  <InputNumber
+                    min={0}
+                    step={1}
+                    controls={false}
+                    inputMode="numeric"
+                    placeholder="加工完成可以交检的数量，未完成填0"
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </div>
+            </div>
+          )}
 
           {/* 第八行：提交按钮 */}
           <Form.Item style={{ marginBottom: 0 }}>
