@@ -99,6 +99,7 @@ const StandardPartsManagement: React.FC = () => {
   const [outboundItems, setOutboundItems] = React.useState<LedgerRow[]>([])
   const [inboundSelectedKeys, setInboundSelectedKeys] = React.useState<React.Key[]>([])
   const [outboundSelectedKeys, setOutboundSelectedKeys] = React.useState<React.Key[]>([])
+  const [ledgerScope, setLedgerScope] = React.useState<'team' | 'all'>('team')
   const [draftInboundRows, setDraftInboundRows] = React.useState<DraftInboundRow[]>([])
   const [draftSelectedKeys, setDraftSelectedKeys] = React.useState<React.Key[]>([])
   const [tableY, setTableY] = React.useState(Math.max(380, window.innerHeight - 320))
@@ -155,10 +156,11 @@ const StandardPartsManagement: React.FC = () => {
     try {
       const op = encodeURIComponent(String(user?.real_name || ''))
       const uid = encodeURIComponent(String((user as any)?.id || ''))
+      const view = ledgerScope === 'all' ? '&view=all' : ''
       const [stockRes, inRes, outRes] = await Promise.all([
-        fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}&userId=${uid}`),
-        fetchWithFallback(`/api/standard-parts/inbound?operator=${op}&userId=${uid}`),
-        fetchWithFallback(`/api/standard-parts/outbound?operator=${op}&userId=${uid}`)
+        fetchWithFallback(`/api/standard-parts/stock-ledger?operator=${op}&userId=${uid}${view}`),
+        fetchWithFallback(`/api/standard-parts/inbound?operator=${op}&userId=${uid}${view}`),
+        fetchWithFallback(`/api/standard-parts/outbound?operator=${op}&userId=${uid}${view}`)
       ])
       const [stockJson, inJson, outJson] = await Promise.all([stockRes.json(), inRes.json(), outRes.json()])
       setStockItems(Array.isArray(stockJson?.items) ? stockJson.items : [])
@@ -169,7 +171,7 @@ const StandardPartsManagement: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [user?.real_name])
+  }, [ledgerScope, user?.real_name, (user as any)?.id])
 
   React.useEffect(() => {
     loadAll()
@@ -287,7 +289,7 @@ const StandardPartsManagement: React.FC = () => {
       const resp = await fetchWithFallback(`/api/standard-parts/${kind}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, operator: user?.real_name || '' })
+        body: JSON.stringify({ ids, operator: user?.real_name || '', userId: (user as any)?.id || '' })
       })
       const json = await resp.json().catch(() => ({}))
       if (!resp.ok || json?.success === false) {
@@ -439,6 +441,8 @@ const StandardPartsManagement: React.FC = () => {
                       <Input allowClear placeholder="规格型号" value={stockFilter.spec} onChange={(e) => setStockFilter((p) => ({ ...p, spec: e.target.value }))} style={{ width: 180 }} />
                       <Input allowClear placeholder="库位" value={stockFilter.location} onChange={(e) => setStockFilter((p) => ({ ...p, location: e.target.value }))} style={{ width: 160 }} />
                       <Input allowClear placeholder="单位" value={stockFilter.unit} onChange={(e) => setStockFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 120 }} />
+                      <Button type={ledgerScope === 'team' ? 'primary' : 'default'} onClick={() => setLedgerScope('team')}>本组</Button>
+                      <Button type={ledgerScope === 'all' ? 'primary' : 'default'} onClick={() => setLedgerScope('all')}>全部</Button>
                     </Space>
                   </Space>
                   <Table
@@ -580,6 +584,8 @@ const StandardPartsManagement: React.FC = () => {
                       <Input allowClear placeholder="单位" value={inboundFilter.unit} onChange={(e) => setInboundFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 100 }} />
                       <Input allowClear placeholder="操作人" value={inboundFilter.operator} onChange={(e) => setInboundFilter((p) => ({ ...p, operator: e.target.value }))} style={{ width: 130 }} />
                       <Input allowClear placeholder="状态" value={inboundFilter.status} onChange={(e) => setInboundFilter((p) => ({ ...p, status: e.target.value }))} style={{ width: 120 }} />
+                      <Button type={ledgerScope === 'team' ? 'primary' : 'default'} onClick={() => setLedgerScope('team')}>本组</Button>
+                      <Button type={ledgerScope === 'all' ? 'primary' : 'default'} onClick={() => setLedgerScope('all')}>全部</Button>
                     </Space>
                     <Popconfirm title="确认删除选中的入库记录？" onConfirm={() => handleBatchAction('inbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>
@@ -624,6 +630,8 @@ const StandardPartsManagement: React.FC = () => {
                       <Input allowClear placeholder="单位" value={outboundFilter.unit} onChange={(e) => setOutboundFilter((p) => ({ ...p, unit: e.target.value }))} style={{ width: 100 }} />
                       <Input allowClear placeholder="操作人" value={outboundFilter.operator} onChange={(e) => setOutboundFilter((p) => ({ ...p, operator: e.target.value }))} style={{ width: 130 }} />
                       <Input allowClear placeholder="状态" value={outboundFilter.status} onChange={(e) => setOutboundFilter((p) => ({ ...p, status: e.target.value }))} style={{ width: 120 }} />
+                      <Button type={ledgerScope === 'team' ? 'primary' : 'default'} onClick={() => setLedgerScope('team')}>本组</Button>
+                      <Button type={ledgerScope === 'all' ? 'primary' : 'default'} onClick={() => setLedgerScope('all')}>全部</Button>
                     </Space>
                     <Popconfirm title="确认删除选中的出库记录？" onConfirm={() => handleBatchAction('outbound', 'delete')}>
                       <Button danger icon={<DeleteOutlined />}>删除</Button>

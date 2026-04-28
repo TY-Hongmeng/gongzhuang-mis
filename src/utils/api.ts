@@ -1143,6 +1143,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const q = getQuery(cleanUrl)
         const requestOperator = normText(q.get('operator') || '')
         const requestUserId = normText(q.get('userId') || '')
+        const requestViewAll = normText(q.get('view') || '') === 'all'
         const getVisibilityByOperator = async (operator: string, userId?: string) => {
           const op = normText(operator)
           const uid = normText(userId)
@@ -1195,8 +1196,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const canViewRow = (row: any) => {
           const rowTeam = resolveRowTeam(row)
           if (forcedGroup) return rowTeam === forcedGroup
+          if (requestViewAll) return true
           if (!visibility.shouldScopeTeam) return true
           return rowTeam === visibility.teamName
+        }
+        const canOperateRow = (row: any, opVisibility: { isSuperAdmin: boolean; shouldScopeTeam: boolean; teamName: string }) => {
+          if (opVisibility.isSuperAdmin) return true
+          const rowTeam = resolveRowTeam(row)
+          if (!opVisibility.shouldScopeTeam) return true
+          return !!rowTeam && rowTeam === opVisibility.teamName
         }
         const keyOf = (r: any) => `${normText(r.name)}|${normText(r.spec_model)}|${normText(r.location)}|${normText(r.unit)}`
         const calcAverageMonthlyUsage = (totalQty: number, minDate: string | null, maxDate: string | null) => {
@@ -1423,6 +1431,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const ids = Array.isArray(body?.ids) ? body.ids : []
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
+          const opVisibility = await getVisibilityByOperator(normText(body?.operator), normText(body?.userId))
+          const { data: selected, error: selErr } = await scopedClient
+            .from('standard_part_inbound')
+            .select('*')
+            .in('id', ids as any)
+          if (selErr) return jsonResponse({ success: false, error: selErr.message }, 500)
+          const rows = selected || []
+          if (rows.some((r: any) => !canOperateRow(r, opVisibility))) {
+            return jsonResponse({ success: false, error: '仅允许操作本组数据' }, 403)
+          }
           const { error } = await scopedClient
             .from('standard_part_inbound')
             .update({ status: '已删除', updated_at: new Date().toISOString() })
@@ -1435,6 +1453,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const ids = Array.isArray(body?.ids) ? body.ids : []
           if (ids.length === 0) return jsonResponse({ success: false, error: '请选择要删除的数据' }, 400)
+          const opVisibility = await getVisibilityByOperator(normText(body?.operator), normText(body?.userId))
+          const { data: selected, error: selErr } = await scopedClient
+            .from('standard_part_outbound')
+            .select('*')
+            .in('id', ids as any)
+          if (selErr) return jsonResponse({ success: false, error: selErr.message }, 500)
+          const rows = selected || []
+          if (rows.some((r: any) => !canOperateRow(r, opVisibility))) {
+            return jsonResponse({ success: false, error: '仅允许操作本组数据' }, 403)
+          }
           const { error } = await scopedClient
             .from('standard_part_outbound')
             .update({ status: '已删除', updated_at: new Date().toISOString() })

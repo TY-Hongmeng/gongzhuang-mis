@@ -100,13 +100,21 @@ const getVisibilityByOperator = async (operator: string, userId?: string) => {
   }
 }
 
+const canOperateRow = (rowTeam: any, visibility: { isSuperAdmin: boolean; shouldScopeTeam: boolean; teamName: string }) => {
+  if (visibility.isSuperAdmin) return true
+  const team = normText(rowTeam)
+  if (!visibility.shouldScopeTeam) return true
+  return !!team && team === visibility.teamName
+}
+
 router.get('/stock-ledger', async (_req, res) => {
   try {
     await ensureSchema()
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
-    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
+    const viewAll = normText(q?.view) === 'all'
+    const scopedGroup = forcedGroup || ((!viewAll && visibility.shouldScopeTeam) ? visibility.teamName : '')
     const whereScoped = scopedGroup
       ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
           SELECT u.real_name
@@ -216,7 +224,8 @@ router.get('/catalog', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
-    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
+    const viewAll = normText(q?.view) === 'all'
+    const scopedGroup = forcedGroup || ((!viewAll && visibility.shouldScopeTeam) ? visibility.teamName : '')
     const whereScoped = scopedGroup
       ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
           SELECT u.real_name
@@ -268,7 +277,8 @@ router.get('/inbound', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
-    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
+    const viewAll = normText(q?.view) === 'all'
+    const scopedGroup = forcedGroup || ((!viewAll && visibility.shouldScopeTeam) ? visibility.teamName : '')
     const whereScoped = scopedGroup
       ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
           SELECT u.real_name
@@ -296,7 +306,8 @@ router.get('/outbound', async (_req, res) => {
     const q = _req.query as any
     const forcedGroup = normText(q?.tech_group)
     const visibility = await getVisibilityByOperator(normText(q?.operator), normText(q?.userId))
-    const scopedGroup = forcedGroup || (visibility.shouldScopeTeam ? visibility.teamName : '')
+    const viewAll = normText(q?.view) === 'all'
+    const scopedGroup = forcedGroup || ((!viewAll && visibility.shouldScopeTeam) ? visibility.teamName : '')
     const whereScoped = scopedGroup
       ? ` AND (tech_group = $1 OR (COALESCE(tech_group, '') = '' AND operator IN (
           SELECT u.real_name
@@ -411,8 +422,15 @@ router.post('/inbound/delete', async (req, res) => {
   try {
     await ensureSchema()
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : []
+    const visibility = await getVisibilityByOperator(normText(req.body?.operator), normText(req.body?.userId))
     if (ids.length === 0) return res.status(400).json({ success: false, error: '请选择要删除的数据' })
-    const rs = await query(`UPDATE standard_part_inbound SET status='已删除', updated_at=NOW() WHERE id = ANY($1::uuid[])`, [ids])
+    const selected = await query(`SELECT id, tech_group FROM standard_part_inbound WHERE id = ANY($1::uuid[])`, [ids])
+    const rows = selected.rows || []
+    const forbidden = rows.find((r: any) => !canOperateRow(r.tech_group, visibility))
+    if (forbidden) return res.status(403).json({ success: false, error: '仅允许操作本组数据' })
+    const allowedIds = rows.map((r: any) => r.id)
+    if (allowedIds.length === 0) return res.json({ success: true, affected: 0 })
+    const rs = await query(`UPDATE standard_part_inbound SET status='已删除', updated_at=NOW() WHERE id = ANY($1::uuid[])`, [allowedIds])
     res.json({ success: true, affected: rs.rowCount || 0 })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '删除入库记录失败' })
@@ -423,8 +441,15 @@ router.post('/outbound/delete', async (req, res) => {
   try {
     await ensureSchema()
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : []
+    const visibility = await getVisibilityByOperator(normText(req.body?.operator), normText(req.body?.userId))
     if (ids.length === 0) return res.status(400).json({ success: false, error: '请选择要删除的数据' })
-    const rs = await query(`UPDATE standard_part_outbound SET status='已删除', updated_at=NOW() WHERE id = ANY($1::uuid[])`, [ids])
+    const selected = await query(`SELECT id, tech_group FROM standard_part_outbound WHERE id = ANY($1::uuid[])`, [ids])
+    const rows = selected.rows || []
+    const forbidden = rows.find((r: any) => !canOperateRow(r.tech_group, visibility))
+    if (forbidden) return res.status(403).json({ success: false, error: '仅允许操作本组数据' })
+    const allowedIds = rows.map((r: any) => r.id)
+    if (allowedIds.length === 0) return res.json({ success: true, affected: 0 })
+    const rs = await query(`UPDATE standard_part_outbound SET status='已删除', updated_at=NOW() WHERE id = ANY($1::uuid[])`, [allowedIds])
     res.json({ success: true, affected: rs.rowCount || 0 })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '删除出库记录失败' })
