@@ -3,12 +3,14 @@ import { Card, Typography, DatePicker, Button, Table, Row, Col, message, Select,
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import dayjs from 'dayjs'
-// import zhCN from 'antd/locale/zh_CN'
+import 'dayjs/locale/zh-cn'
+import zhCN from 'antd/locale/zh_CN'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 
 const { Title } = Typography
 const { RangePicker } = DatePicker
+dayjs.locale('zh-cn')
 
 // 月份中文名称映射
 const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
@@ -1118,13 +1120,14 @@ const WorkHoursManagement: React.FC = () => {
             <Col span={6}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>日期范围：</span>
-                <RangePicker style={{ flex: 1 }} value={range} onChange={(v) => setRange(v)} />
+                <RangePicker locale={zhCN.DatePicker} style={{ flex: 1 }} value={range} onChange={(v) => setRange(v)} />
               </div>
             </Col>
             <Col span={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>年月：</span>
                 <DatePicker
+                  locale={zhCN.DatePicker}
                   style={{ flex: 1 }}
                   value={yearMonth}
                   onChange={(v) => setYearMonth(v)}
