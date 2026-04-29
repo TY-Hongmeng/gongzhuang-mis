@@ -137,16 +137,13 @@ const WorkHoursManagement: React.FC = () => {
     return Array.from(partNames)
   }, [allItems, resolvePartName])
 
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     try {
       setLoading(true)
       // 获取完整数据：分页循环拉取，避免只取第一页导致“工时信息不全”
       const baseParams = new URLSearchParams()
       baseParams.set('order', 'work_date')
       baseParams.set('order_dir', 'desc')
-      
-      if (operator) baseParams.set('operator', operator)
-      if (shift) baseParams.set('shift', shift)
       if (range && Array.isArray(range)) {
         const startDate = range[0]?.format('YYYY-MM-DD')
         const endDate = range[1]?.format('YYYY-MM-DD')
@@ -157,11 +154,8 @@ const WorkHoursManagement: React.FC = () => {
         baseParams.set('start_date', ymStart)
         baseParams.set('end_date', ymEnd)
       }
-      if (partInventoryNo) baseParams.set('search', partInventoryNo)
-      else if (partDrawingNo) baseParams.set('search', partDrawingNo)
-      else if (partName) baseParams.set('search', partName)
 
-      const PAGE_SIZE = 1000
+      const PAGE_SIZE = 3000
       const MAX_PAGES = 200
       const rawData: any[] = []
       let page = 1
@@ -184,117 +178,65 @@ const WorkHoursManagement: React.FC = () => {
         page += 1
       }
 
-      if (rawData.length > 0 || total === 0) {
-          // 处理数据，将所有对象转换为基本类型，避免循环引用
-          const allData = rawData.map(item => {
-            const auxCount = Math.max(Number(item.aux_count || 1), 1)
-            const processQuantity = Math.max(Number(item.process_quantity || 1), 1)
-            const auxMinutes = getAuxMinutesFromRow(item)
-            const singleAuxMinutesRaw = Number(item.single_aux_minutes)
-            const singleAuxCountRaw = Number(item.single_aux_count)
-            return ({
-            // 只保留需要的属性，并转换为基本类型
-            id: String(item.id || ''),
-            part_inventory_number: String(item.part_inventory_number || ''),
-            part_drawing_number: String(item.part_drawing_number || ''),
-            part_name: String(item.part_name || ''),
-            hours: Number(item.hours || 0),
-            aux_hours: Number(item.aux_hours || 0),
-            proc_hours: Number(item.proc_hours || 0),
-            aux_start_time: String(item.aux_start_time || ''),
-            aux_end_time: String(item.aux_end_time || ''),
-            work_date: String(item.work_date || ''),
-            shift_date: String(item.shift_date || ''),
-            process_name: String(item.process_name || ''),
-            operator: String(item.operator || ''),
-            aux_count: auxCount,
-            process_quantity: processQuantity,
-            single_aux_minutes: Number.isFinite(singleAuxMinutesRaw) && singleAuxMinutesRaw > 0 ? singleAuxMinutesRaw : (auxCount > 0 ? (auxMinutes / auxCount) : 0),
-            single_aux_count: Number.isFinite(singleAuxCountRaw) && singleAuxCountRaw > 0 ? singleAuxCountRaw : (processQuantity > 0 ? (auxCount / processQuantity) : 0),
-            completed_quantity: Number(item.completed_quantity || 0),
-            device_no: String(item.device_no || ''),
-            shift: String(item.shift || ''),
-            // 转换其他可能包含循环引用的属性
-            created_at: String(item.created_at || ''),
-            updated_at: String(item.updated_at || '')
-          })})
-          
-          // 保存所有数据，用于生成筛选选项
-          setAllItems(allData)
-          
-          // 在客户端进行筛选
-          let filteredData = allData
-        
-        // 日期范围筛选
-        if (range) {
-          const startDate = range[0]?.format('YYYY-MM-DD')
-          const endDate = range[1]?.format('YYYY-MM-DD')
-          if (startDate && endDate) {
-            filteredData = filteredData.filter(item => {
-              const itemDate = item.work_date
-              return itemDate >= startDate && itemDate <= endDate
-            })
-          }
-        }
-        
-        // 年月筛选
-        if (yearMonth) {
-          const selectedYearMonth = yearMonth.format('YYYY-MM')
-          filteredData = filteredData.filter(item => {
-            const itemDate = item.work_date
-            return itemDate.startsWith(selectedYearMonth)
-          })
-        }
-        
-        // 操作者筛选
-        if (operator) {
-          filteredData = filteredData.filter(item => item.operator === operator)
-        }
-        
-        // 班次筛选
-        if (shift) {
-          filteredData = filteredData.filter(item => item.shift === shift)
-        }
-        
-        // 设备编号筛选
-        if (deviceNo) {
-          filteredData = filteredData.filter(item => item.device_no === deviceNo)
-        }
-        
-        // 盘存编号筛选
-        if (partInventoryNo) {
-          filteredData = filteredData.filter(item => item.part_inventory_number === partInventoryNo)
-        }
-        
-        // 图号筛选
-        if (partDrawingNo) {
-          filteredData = filteredData.filter(item => resolvePartDrawingNumber(item) === partDrawingNo)
-        }
-        
-        // 零件名称筛选
-        if (partName) {
-          filteredData = filteredData.filter(item => {
-            return resolvePartName(item) === partName
-          })
-        }
-        
-        // 设置筛选后的数据
-        setItems(filteredData)
-      }
+      // 处理数据，将所有对象转换为基本类型，避免循环引用
+      const allData = rawData.map(item => {
+        const auxCount = Math.max(Number(item.aux_count || 1), 1)
+        const processQuantity = Math.max(Number(item.process_quantity || 1), 1)
+        const auxMinutes = getAuxMinutesFromRow(item)
+        const singleAuxMinutesRaw = Number(item.single_aux_minutes)
+        const singleAuxCountRaw = Number(item.single_aux_count)
+        return ({
+          id: String(item.id || ''),
+          part_inventory_number: String(item.part_inventory_number || ''),
+          part_drawing_number: String(item.part_drawing_number || ''),
+          part_name: String(item.part_name || ''),
+          hours: Number(item.hours || 0),
+          aux_hours: Number(item.aux_hours || 0),
+          proc_hours: Number(item.proc_hours || 0),
+          aux_start_time: String(item.aux_start_time || ''),
+          aux_end_time: String(item.aux_end_time || ''),
+          work_date: String(item.work_date || ''),
+          shift_date: String(item.shift_date || ''),
+          process_name: String(item.process_name || ''),
+          operator: String(item.operator || ''),
+          aux_count: auxCount,
+          process_quantity: processQuantity,
+          single_aux_minutes: Number.isFinite(singleAuxMinutesRaw) && singleAuxMinutesRaw > 0 ? singleAuxMinutesRaw : (auxCount > 0 ? (auxMinutes / auxCount) : 0),
+          single_aux_count: Number.isFinite(singleAuxCountRaw) && singleAuxCountRaw > 0 ? singleAuxCountRaw : (processQuantity > 0 ? (auxCount / processQuantity) : 0),
+          completed_quantity: Number(item.completed_quantity || 0),
+          device_no: String(item.device_no || ''),
+          shift: String(item.shift || ''),
+          created_at: String(item.created_at || ''),
+          updated_at: String(item.updated_at || '')
+        })
+      })
+      setAllItems(allData)
     } finally {
       setLoading(false)
     }
-  }
+  }, [getAuxMinutesFromRow, range, yearMonth])
 
   // 组件初始化时获取用户信息
   React.useEffect(() => {
     fetchUsers()
   }, [])
 
-  // 当筛选条件变化时，重新获取数据并在客户端进行筛选
+  // 仅在日期条件变化时重新拉取，其他筛选使用本地过滤，提升页面响应速度
   React.useEffect(() => {
     fetchData()
-  }, [range, yearMonth, operator, workshop, team, shift, deviceNo, partInventoryNo, partDrawingNo, partName, resolvePartDrawingNumber, resolvePartName])
+  }, [fetchData])
+
+  // 本地筛选，避免每次改筛选项都触发后端全量分页拉取
+  React.useEffect(() => {
+    let filteredData = allItems
+    if (operator) filteredData = filteredData.filter(item => item.operator === operator)
+    if (shift) filteredData = filteredData.filter(item => item.shift === shift)
+    if (deviceNo) filteredData = filteredData.filter(item => item.device_no === deviceNo)
+    if (partInventoryNo) filteredData = filteredData.filter(item => item.part_inventory_number === partInventoryNo)
+    if (partDrawingNo) filteredData = filteredData.filter(item => resolvePartDrawingNumber(item) === partDrawingNo)
+    if (partName) filteredData = filteredData.filter(item => resolvePartName(item) === partName)
+    setItems(filteredData)
+  }, [allItems, operator, shift, deviceNo, partInventoryNo, partDrawingNo, partName, resolvePartDrawingNumber, resolvePartName])
 
   React.useEffect(() => {
     (async () => {
@@ -1148,12 +1090,6 @@ const WorkHoursManagement: React.FC = () => {
               </div>
             </Col>
             <Col span={4}>
-              <Space>
-                <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
-                <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
-              </Space>
-            </Col>
-            <Col span={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>操作者：</span>
                 <Select
@@ -1342,6 +1278,8 @@ const WorkHoursManagement: React.FC = () => {
             }
           }}>批量删除</Button>
           <Button type="primary" onClick={exportWorkHoursExcel}>导出工时</Button>
+          <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
+          <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
         </div>
 
         {/* 汇总行 */}
