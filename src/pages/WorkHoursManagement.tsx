@@ -156,11 +156,10 @@ const WorkHoursManagement: React.FC = () => {
       }
 
       const PAGE_SIZE = 1000
-      const MAX_PAGES = 200
       const rawData: any[] = []
       let page = 1
       let total = 0
-      while (page <= MAX_PAGES) {
+      while (true) {
         const params = new URLSearchParams(baseParams)
         params.set('page', String(page))
         params.set('pageSize', String(PAGE_SIZE))
