@@ -1096,6 +1096,18 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               message.error('班次日期无效，请重新选择')
               return
             }
+            let latestOperator = String(user?.real_name || '')
+            try {
+              const uid = String((user as any)?.id || '').trim()
+              if (uid) {
+                const meResp = await fetchWithFallback(`/api/auth/me?userId=${encodeURIComponent(uid)}`)
+                if (meResp.ok) {
+                  const meJson = await meResp.json()
+                  const meName = String(meJson?.user?.real_name || '').trim()
+                  if (meName) latestOperator = meName
+                }
+              }
+            } catch {}
             // 确保payload中的所有属性都是基本类型，避免循环引用警告
             const payload = {
               part_inventory_number: String(selectedInv),
@@ -1109,7 +1121,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               work_date: String(submitWorkDate.format('YYYY-MM-DD')),
               shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
               process_name: String(vals.process_name || ''),
-              operator: String(user?.real_name || ''),
+              operator: latestOperator,
               user_id: String((user as any)?.id || ''),
               user_phone: String((user as any)?.phone || ''),
               aux_count: Number(auxCount),

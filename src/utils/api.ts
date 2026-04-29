@@ -2459,6 +2459,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           else if (canonicalOperator) uq = uq.ilike('real_name', canonicalOperator)
           const { data: userRows } = await uq
           const userRow = Array.isArray(userRows) ? userRows[0] : null
+          if ((userId || userPhone) && !userRow) {
+            return jsonResponse({ success: false, error: '用户信息已变更，请重新登录后再提交' }, 400)
+          }
           if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
         } catch {}
         try {

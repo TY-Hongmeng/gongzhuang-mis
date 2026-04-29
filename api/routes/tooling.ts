@@ -1349,6 +1349,9 @@ router.post('/work-hours', async (req, res) => {
       else if (requestedOperator) uq = uq.ilike('real_name', requestedOperator)
       const { data: usr } = await uq
       const userRow = Array.isArray(usr) ? usr[0] : null
+      if ((userId || userPhone) && !userRow) {
+        return res.status(400).json({ success: false, error: '用户信息已变更，请重新登录后再提交' })
+      }
       if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
       teamId = String((userRow as any)?.team_id || '')
     } catch {}
