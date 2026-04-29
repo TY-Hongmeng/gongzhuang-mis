@@ -2461,6 +2461,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const userRow = Array.isArray(userRows) ? userRows[0] : null
           if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
         } catch {}
+        try {
+          const requestedOperator = String(body.operator || '').trim()
+          if (requestedOperator && canonicalOperator && requestedOperator !== canonicalOperator) {
+            await supabase
+              .from('work_hours')
+              .update({ operator: canonicalOperator })
+              .eq('operator', requestedOperator)
+          }
+        } catch {}
         const payload: any = {
           part_inventory_number: String(body.part_inventory_number || ''),
           part_drawing_number: String(body.part_drawing_number || ''),

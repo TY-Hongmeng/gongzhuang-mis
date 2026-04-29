@@ -1352,6 +1352,15 @@ router.post('/work-hours', async (req, res) => {
       if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
       teamId = String((userRow as any)?.team_id || '')
     } catch {}
+    // 若提交人名仍是旧名，立即做历史合并，避免工时管理出现新旧姓名并存
+    try {
+      if (requestedOperator && canonicalOperator && requestedOperator !== canonicalOperator) {
+        await supabase
+          .from('work_hours')
+          .update({ operator: canonicalOperator })
+          .eq('operator', requestedOperator)
+      }
+    } catch {}
 
     // Apply team coefficients if available
     let auxCoeff = 1, procCoeff = 1
