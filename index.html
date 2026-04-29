@@ -81,6 +81,30 @@
               if (window.__APP_BOOT_DONE__) return
               var root = document.getElementById('root')
               if (root && root.children && root.children.length > 0) return
+              var cacheReset = location.search.indexOf('boot_cache_reset=1') !== -1
+              if (!cacheReset) {
+                try {
+                  var clearTasks = []
+                  if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+                    clearTasks.push(
+                      navigator.serviceWorker.getRegistrations().then(function(regs){
+                        regs.forEach(function(reg){ try { reg.unregister() } catch(_) {} })
+                      }).catch(function(){})
+                    )
+                  }
+                  if (window.caches && caches.keys) {
+                    clearTasks.push(
+                      caches.keys().then(function(names){
+                        return Promise.all(names.map(function(name){ return caches.delete(name) }))
+                      }).catch(function(){})
+                    )
+                  }
+                  Promise.all(clearTasks).finally(function(){
+                    location.replace(withBust(location.href, 'boot_cache_reset', '1'))
+                  })
+                  return
+                } catch (_) {}
+              }
               var once = location.search.indexOf('boot_retry_once=1') !== -1
               if (!once) {
                 location.replace(withBust(location.href, 'boot_retry_once', '1'))
