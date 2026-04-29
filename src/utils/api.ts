@@ -658,8 +658,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const existing = await scopedClient.from('users').select('id, phone, real_name').eq('id', userId).single()
           const existingPhone = String((existing?.data as any)?.phone || '')
-          const oldRealName = String((existing?.data as any)?.real_name || '').trim()
-          const newRealName = String(body?.real_name || '').trim()
+          const oldRealNameRaw = String((existing?.data as any)?.real_name || '')
+          const newRealNameRaw = String(body?.real_name || '')
+          const oldRealName = oldRealNameRaw.trim()
+          const newRealName = newRealNameRaw.trim()
           const payload: any = {
             real_name: body.real_name,
             phone: body.phone,
@@ -683,6 +685,32 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               .update({ operator: newRealName })
               .eq('operator', oldRealName)
             if (syncErr) return jsonResponse({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` }, 500)
+            // 兜底：处理首尾空格/不可见字符等导致的漏同步
+            const normalizeName = (v: any) =>
+              String(v || '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/\s+/g, '')
+                .toLowerCase()
+            const targetOld = normalizeName(oldRealNameRaw)
+            if (targetOld) {
+              const keyword = oldRealName || oldRealNameRaw.trim()
+              const { data: fuzzyRows, error: fuzzyErr } = await supabase
+                .from('work_hours')
+                .select('id, operator')
+                .ilike('operator', `%${keyword}%`)
+                .limit(5000)
+              if (fuzzyErr) return jsonResponse({ success: false, error: `用户已更新，但工时补同步失败: ${fuzzyErr.message}` }, 500)
+              const ids = (fuzzyRows || [])
+                .filter((r: any) => normalizeName((r as any)?.operator) === targetOld)
+                .map((r: any) => (r as any).id)
+              if (ids.length > 0) {
+                const { error: patchErr } = await supabase
+                  .from('work_hours')
+                  .update({ operator: newRealName })
+                  .in('id', ids as any)
+                if (patchErr) return jsonResponse({ success: false, error: `用户已更新，但工时补同步失败: ${patchErr.message}` }, 500)
+              }
+            }
           }
           return jsonResponse({ success: true, data })
         }

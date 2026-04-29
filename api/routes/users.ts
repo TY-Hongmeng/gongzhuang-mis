@@ -86,8 +86,10 @@ router.put('/:id', async (req, res) => {
       .select('real_name')
       .eq('id', id)
       .single()
-    const oldRealName = String((beforeUser as any)?.real_name || '').trim()
-    const newRealName = String(payload.real_name || '').trim()
+    const oldRealNameRaw = String((beforeUser as any)?.real_name || '')
+    const newRealNameRaw = String(payload.real_name || '')
+    const oldRealName = oldRealNameRaw.trim()
+    const newRealName = newRealNameRaw.trim()
 
     const allowed: any = {
       real_name: payload.real_name,
@@ -116,6 +118,36 @@ router.put('/:id', async (req, res) => {
         .eq('operator', oldRealName)
       if (syncErr) {
         return res.status(500).json({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` })
+      }
+      // 兜底：处理名称中包含首尾空格、大小写或不可见字符导致的遗漏记录，避免工时管理出现新旧姓名并存
+      const normalizeName = (v: any) =>
+        String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/\s+/g, '')
+          .toLowerCase()
+      const targetOld = normalizeName(oldRealNameRaw)
+      if (targetOld) {
+        const keyword = oldRealName || oldRealNameRaw.trim()
+        const { data: fuzzyRows, error: fuzzyErr } = await supabase
+          .from('work_hours')
+          .select('id, operator')
+          .ilike('operator', `%${keyword}%`)
+          .limit(5000)
+        if (fuzzyErr) {
+          return res.status(500).json({ success: false, error: `用户已更新，但工时补同步失败: ${fuzzyErr.message}` })
+        }
+        const ids = (fuzzyRows || [])
+          .filter((r: any) => normalizeName(r?.operator) === targetOld)
+          .map((r: any) => r.id)
+        if (ids.length > 0) {
+          const { error: patchErr } = await supabase
+            .from('work_hours')
+            .update({ operator: newRealName })
+            .in('id', ids as any)
+          if (patchErr) {
+            return res.status(500).json({ success: false, error: `用户已更新，但工时补同步失败: ${patchErr.message}` })
+          }
+        }
       }
     }
     res.json({ success: true })

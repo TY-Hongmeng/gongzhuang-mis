@@ -155,7 +155,7 @@ const WorkHoursManagement: React.FC = () => {
         baseParams.set('end_date', ymEnd)
       }
 
-      const PAGE_SIZE = 3000
+      const PAGE_SIZE = 1000
       const MAX_PAGES = 200
       const rawData: any[] = []
       let page = 1
@@ -173,7 +173,7 @@ const WorkHoursManagement: React.FC = () => {
         const rows = Array.isArray(json?.items) ? json.items : []
         total = Number(json?.total || 0)
         rawData.push(...rows)
-        if (rows.length < PAGE_SIZE) break
+        if (rows.length === 0) break
         if (total > 0 && rawData.length >= total) break
         page += 1
       }
