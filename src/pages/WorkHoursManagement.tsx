@@ -30,7 +30,7 @@ const WorkHoursManagement: React.FC = () => {
   
   // 筛选条件状态
   const [range, setRange] = React.useState<any>(null)
-  const [yearMonth, setYearMonth] = React.useState<any>(null)
+  const [yearMonth, setYearMonth] = React.useState<any>(dayjs())
   const [operator, setOperator] = React.useState('')
   const [workshop, setWorkshop] = React.useState<string>('')
   const [team, setTeam] = React.useState<string>('')
@@ -49,6 +49,14 @@ const WorkHoursManagement: React.FC = () => {
   const [selectedKeys, setSelectedKeys] = React.useState<React.Key[]>([])
   const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
   const [deviceMap, setDeviceMap] = React.useState<Record<string, { name: string; max_aux_minutes?: number }>>({})
+  const handleThisMonth = React.useCallback(() => {
+    setRange(null)
+    setYearMonth(dayjs())
+  }, [])
+  const handleAllMonths = React.useCallback(() => {
+    setRange(null)
+    setYearMonth(null)
+  }, [])
   const normalizePartKey = React.useCallback((v: any) => {
     return String(v || '')
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -1120,7 +1128,7 @@ const WorkHoursManagement: React.FC = () => {
             <Col span={6}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>日期范围：</span>
-                <RangePicker locale={zhCN.DatePicker} style={{ flex: 1 }} value={range} onChange={(v) => setRange(v)} />
+                <RangePicker locale={zhCN.DatePicker} style={{ flex: 1 }} value={range} onChange={(v) => { setRange(v); if (v) setYearMonth(null) }} />
               </div>
             </Col>
             <Col span={4}>
@@ -1130,7 +1138,7 @@ const WorkHoursManagement: React.FC = () => {
                   locale={zhCN.DatePicker}
                   style={{ flex: 1 }}
                   value={yearMonth}
-                  onChange={(v) => setYearMonth(v)}
+                  onChange={(v) => { setYearMonth(v); if (v) setRange(null) }}
                   picker="month"
                   placeholder="请选择年月"
                   allowClear
@@ -1138,6 +1146,12 @@ const WorkHoursManagement: React.FC = () => {
                   format="YYYY年MM月"
                 />
               </div>
+            </Col>
+            <Col span={4}>
+              <Space>
+                <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
+                <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
+              </Space>
             </Col>
             <Col span={4}>
               <div className="flex items-center gap-2">
