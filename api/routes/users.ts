@@ -119,7 +119,7 @@ router.put('/:id', async (req, res) => {
       if (syncErr) {
         return res.status(500).json({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` })
       }
-      // 兜底：处理名称中包含首尾空格、大小写或不可见字符导致的遗漏记录，避免工时管理出现新旧姓名并存
+      // 兜底：全量分页扫描，避免历史数据量大时遗漏，确保新旧姓名不会并存
       const normalizeName = (v: any) =>
         String(v || '')
           .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -127,23 +127,33 @@ router.put('/:id', async (req, res) => {
           .toLowerCase()
       const targetOld = normalizeName(oldRealNameRaw)
       if (targetOld) {
-        const keyword = oldRealName || oldRealNameRaw.trim()
-        const { data: fuzzyRows, error: fuzzyErr } = await supabase
-          .from('work_hours')
-          .select('id, operator')
-          .ilike('operator', `%${keyword}%`)
-          .limit(5000)
-        if (fuzzyErr) {
-          return res.status(500).json({ success: false, error: `用户已更新，但工时补同步失败: ${fuzzyErr.message}` })
+        const pageSize = 1000
+        let from = 0
+        const ids: string[] = []
+        while (true) {
+          const { data: rows, error: scanErr } = await supabase
+            .from('work_hours')
+            .select('id, operator')
+            .order('id', { ascending: true })
+            .range(from, from + pageSize - 1)
+          if (scanErr) {
+            return res.status(500).json({ success: false, error: `用户已更新，但工时补同步失败: ${scanErr.message}` })
+          }
+          const list = rows || []
+          if (list.length === 0) break
+          list.forEach((r: any) => {
+            if (normalizeName(r?.operator) === targetOld) ids.push(String(r.id || ''))
+          })
+          if (list.length < pageSize) break
+          from += pageSize
         }
-        const ids = (fuzzyRows || [])
-          .filter((r: any) => normalizeName(r?.operator) === targetOld)
-          .map((r: any) => r.id)
-        if (ids.length > 0) {
+        for (let i = 0; i < ids.length; i += 500) {
+          const chunk = ids.slice(i, i + 500)
+          if (!chunk.length) continue
           const { error: patchErr } = await supabase
             .from('work_hours')
             .update({ operator: newRealName })
-            .in('id', ids as any)
+            .in('id', chunk as any)
           if (patchErr) {
             return res.status(500).json({ success: false, error: `用户已更新，但工时补同步失败: ${patchErr.message}` })
           }

@@ -1358,10 +1358,38 @@ router.post('/work-hours', async (req, res) => {
     // 若提交人名仍是旧名，立即做历史合并，避免工时管理出现新旧姓名并存
     try {
       if (requestedOperator && canonicalOperator && requestedOperator !== canonicalOperator) {
-        await supabase
-          .from('work_hours')
-          .update({ operator: canonicalOperator })
-          .eq('operator', requestedOperator)
+        const normalizeName = (v: any) =>
+          String(v || '')
+            .replace(/[\u200B-\u200D\uFEFF]/g, '')
+            .replace(/\s+/g, '')
+            .toLowerCase()
+        const targetOld = normalizeName(requestedOperator)
+        const pageSize = 1000
+        let from = 0
+        const ids: string[] = []
+        while (true) {
+          const { data: rows, error: scanErr } = await supabase
+            .from('work_hours')
+            .select('id, operator')
+            .order('id', { ascending: true })
+            .range(from, from + pageSize - 1)
+          if (scanErr) break
+          const list = rows || []
+          if (list.length === 0) break
+          list.forEach((r: any) => {
+            if (normalizeName(r?.operator) === targetOld) ids.push(String(r.id || ''))
+          })
+          if (list.length < pageSize) break
+          from += pageSize
+        }
+        for (let i = 0; i < ids.length; i += 500) {
+          const chunk = ids.slice(i, i + 500)
+          if (!chunk.length) continue
+          await supabase
+            .from('work_hours')
+            .update({ operator: canonicalOperator })
+            .in('id', chunk as any)
+        }
       }
     } catch {}
 

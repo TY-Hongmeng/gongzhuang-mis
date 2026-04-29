@@ -685,7 +685,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               .update({ operator: newRealName })
               .eq('operator', oldRealName)
             if (syncErr) return jsonResponse({ success: false, error: `用户已更新，但工时同步失败: ${syncErr.message}` }, 500)
-            // 兜底：处理首尾空格/不可见字符等导致的漏同步
+            // 兜底：全量分页扫描，避免历史数据量大时遗漏
             const normalizeName = (v: any) =>
               String(v || '')
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -693,21 +693,31 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 .toLowerCase()
             const targetOld = normalizeName(oldRealNameRaw)
             if (targetOld) {
-              const keyword = oldRealName || oldRealNameRaw.trim()
-              const { data: fuzzyRows, error: fuzzyErr } = await supabase
-                .from('work_hours')
-                .select('id, operator')
-                .ilike('operator', `%${keyword}%`)
-                .limit(5000)
-              if (fuzzyErr) return jsonResponse({ success: false, error: `用户已更新，但工时补同步失败: ${fuzzyErr.message}` }, 500)
-              const ids = (fuzzyRows || [])
-                .filter((r: any) => normalizeName((r as any)?.operator) === targetOld)
-                .map((r: any) => (r as any).id)
-              if (ids.length > 0) {
+              const pageSize = 1000
+              let from = 0
+              const ids: string[] = []
+              while (true) {
+                const { data: rows, error: scanErr } = await supabase
+                  .from('work_hours')
+                  .select('id, operator')
+                  .order('id', { ascending: true })
+                  .range(from, from + pageSize - 1)
+                if (scanErr) return jsonResponse({ success: false, error: `用户已更新，但工时补同步失败: ${scanErr.message}` }, 500)
+                const list = rows || []
+                if (list.length === 0) break
+                list.forEach((r: any) => {
+                  if (normalizeName((r as any)?.operator) === targetOld) ids.push(String((r as any).id || ''))
+                })
+                if (list.length < pageSize) break
+                from += pageSize
+              }
+              for (let i = 0; i < ids.length; i += 500) {
+                const chunk = ids.slice(i, i + 500)
+                if (!chunk.length) continue
                 const { error: patchErr } = await supabase
                   .from('work_hours')
                   .update({ operator: newRealName })
-                  .in('id', ids as any)
+                  .in('id', chunk as any)
                 if (patchErr) return jsonResponse({ success: false, error: `用户已更新，但工时补同步失败: ${patchErr.message}` }, 500)
               }
             }
@@ -2467,10 +2477,38 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         try {
           const requestedOperator = String(body.operator || '').trim()
           if (requestedOperator && canonicalOperator && requestedOperator !== canonicalOperator) {
-            await supabase
-              .from('work_hours')
-              .update({ operator: canonicalOperator })
-              .eq('operator', requestedOperator)
+            const normalizeName = (v: any) =>
+              String(v || '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/\s+/g, '')
+                .toLowerCase()
+            const targetOld = normalizeName(requestedOperator)
+            const pageSize = 1000
+            let from = 0
+            const ids: string[] = []
+            while (true) {
+              const { data: rows, error: scanErr } = await supabase
+                .from('work_hours')
+                .select('id, operator')
+                .order('id', { ascending: true })
+                .range(from, from + pageSize - 1)
+              if (scanErr) break
+              const list = rows || []
+              if (list.length === 0) break
+              list.forEach((r: any) => {
+                if (normalizeName((r as any)?.operator) === targetOld) ids.push(String((r as any).id || ''))
+              })
+              if (list.length < pageSize) break
+              from += pageSize
+            }
+            for (let i = 0; i < ids.length; i += 500) {
+              const chunk = ids.slice(i, i + 500)
+              if (!chunk.length) continue
+              await supabase
+                .from('work_hours')
+                .update({ operator: canonicalOperator })
+                .in('id', chunk as any)
+            }
           }
         } catch {}
         const payload: any = {
