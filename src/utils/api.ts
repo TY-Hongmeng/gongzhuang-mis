@@ -2449,6 +2449,18 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const procMinutes = Math.max(0, Math.round(Number(body.proc_hours || 0) * 60))
         if (auxMinutes > 660) return jsonResponse({ success: false, error: '辅助时长不能超过660分钟' }, 400)
         if (procMinutes > 660) return jsonResponse({ success: false, error: '程序时长不能超过660分钟' }, 400)
+        let canonicalOperator = String(body.operator || '').trim()
+        try {
+          const userId = String(body.user_id || '').trim()
+          const userPhone = String(body.user_phone || '').trim()
+          let uq = supabase.from('users').select('id, real_name').limit(1)
+          if (userId) uq = uq.eq('id', userId)
+          else if (userPhone) uq = uq.eq('phone', userPhone)
+          else if (canonicalOperator) uq = uq.ilike('real_name', canonicalOperator)
+          const { data: userRows } = await uq
+          const userRow = Array.isArray(userRows) ? userRows[0] : null
+          if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
+        } catch {}
         const payload: any = {
           part_inventory_number: String(body.part_inventory_number || ''),
           part_drawing_number: String(body.part_drawing_number || ''),
@@ -2461,7 +2473,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           work_date: String(body.work_date || ''),
           shift_date: String(body.shift_date || ''),
           process_name: String(body.process_name || ''),
-          operator: String(body.operator || ''),
+          operator: canonicalOperator,
           completed_quantity: Number(body.completed_quantity || 0),
           device_no: String(body.device_no || ''),
           shift: String(body.shift || '')

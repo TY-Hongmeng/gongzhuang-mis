@@ -1110,6 +1110,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
               process_name: String(vals.process_name || ''),
               operator: String(user?.real_name || ''),
+              user_id: String((user as any)?.id || ''),
+              user_phone: String((user as any)?.phone || ''),
               aux_count: Number(auxCount),
               process_quantity: Number(processQuantity),
               single_aux_minutes: Number(singleAuxMinutes),

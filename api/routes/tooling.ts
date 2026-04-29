@@ -1336,13 +1336,32 @@ router.post('/work-hours', async (req, res) => {
     for (const k of required) {
       if (!payload[k]) return res.status(400).json({ success: false, error: `缺少必填字段: ${k}` })
     }
-    // Apply team coefficients if available (operator -> users.team_id -> teams.aux_coeff/proc_coeff)
+    // 以用户ID/手机号为锚点解析最新姓名，避免改名后继续写入旧operator
+    const requestedOperator = String(payload.operator || '').trim()
+    const userId = String(payload.user_id || '').trim()
+    const userPhone = String(payload.user_phone || '').trim()
+    let canonicalOperator = requestedOperator
+    let teamId = ''
+    try {
+      let uq = supabase.from('users').select('id, real_name, team_id').limit(1)
+      if (userId) uq = uq.eq('id', userId)
+      else if (userPhone) uq = uq.eq('phone', userPhone)
+      else if (requestedOperator) uq = uq.ilike('real_name', requestedOperator)
+      const { data: usr } = await uq
+      const userRow = Array.isArray(usr) ? usr[0] : null
+      if (userRow?.real_name) canonicalOperator = String(userRow.real_name || '').trim() || canonicalOperator
+      teamId = String((userRow as any)?.team_id || '')
+    } catch {}
+
+    // Apply team coefficients if available
     let auxCoeff = 1, procCoeff = 1
     try {
-      const { data: usr } = await supabase.from('users').select('id, team_id').ilike('real_name', payload.operator || '').limit(1)
-      const userRow = Array.isArray(usr) ? usr[0] : null
-      if (userRow?.team_id) {
-        const { data: team } = await supabase.from('teams').select('aux_coeff, proc_coeff').eq('id', userRow.team_id).single()
+      if (!teamId && canonicalOperator) {
+        const { data: usrByName } = await supabase.from('users').select('team_id').ilike('real_name', canonicalOperator).limit(1)
+        teamId = String((Array.isArray(usrByName) ? usrByName[0] : null)?.team_id || '')
+      }
+      if (teamId) {
+        const { data: team } = await supabase.from('teams').select('aux_coeff, proc_coeff').eq('id', teamId).single()
         if (team) {
           auxCoeff = Number(team.aux_coeff || 1) || 1
           procCoeff = Number(team.proc_coeff || 1) || 1
@@ -1414,7 +1433,20 @@ router.post('/work-hours', async (req, res) => {
     } catch {}
 
     const insertBody = {
-      ...payload,
+      part_inventory_number: String(payload.part_inventory_number || ''),
+      part_drawing_number: String(payload.part_drawing_number || ''),
+      part_name: String(payload.part_name || ''),
+      aux_hours: Number(payload.aux_hours || 0),
+      proc_hours: Number(payload.proc_hours || 0),
+      aux_start_time: String(payload.aux_start_time || ''),
+      aux_end_time: String(payload.aux_end_time || ''),
+      work_date: String(payload.work_date || ''),
+      shift_date: String(payload.shift_date || ''),
+      process_name: String(payload.process_name || ''),
+      operator: canonicalOperator,
+      completed_quantity: Number(payload.completed_quantity || 0),
+      device_no: String(payload.device_no || ''),
+      shift: String(payload.shift || ''),
       hours: adjustedHours,
       aux_count: auxCount,
       process_quantity: processQuantity,
