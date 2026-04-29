@@ -86,10 +86,9 @@
                 location.replace(withBust(location.href, 'boot_retry_once', '1'))
                 return
               }
+              // 仅检测当前页面可达性，避免外部地址在部分环境下固定返回404导致误判
               var checks = [
-                { name: 'origin', url: location.origin + '/' },
-                { name: 'supabase', url: 'https://oltsiocyesbgezlrcxze.supabase.co' },
-                { name: 'functions', url: 'https://oltsiocyesbgezlrcxze.functions.supabase.co/functions/v1/' }
+                { name: 'page', url: location.href.split('#')[0] }
               ]
               var testOne = function(item){
                 return new Promise(function(resolve){
