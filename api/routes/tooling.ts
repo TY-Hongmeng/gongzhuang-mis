@@ -89,6 +89,23 @@ const ensureWorkHoursExtraColumns = async () => {
   } catch (e) {}
 };
 
+const resolveIsWorkHoursSuperAdmin = async (userIdInput?: string, operatorInput?: string) => {
+  const userId = String(userIdInput || '').trim()
+  const operator = String(operatorInput || '').trim()
+  let user: any = null
+  if (userId) {
+    const { data } = await supabase.from('users').select('id, role_id').eq('id', userId).limit(1)
+    user = Array.isArray(data) ? data[0] : null
+  } else if (operator) {
+    const { data } = await supabase.from('users').select('id, role_id').ilike('real_name', operator).limit(1)
+    user = Array.isArray(data) ? data[0] : null
+  }
+  if (!user?.role_id) return false
+  const { data: roleData } = await supabase.from('roles').select('name').eq('id', String(user.role_id)).limit(1)
+  const roleName = String((Array.isArray(roleData) ? roleData[0] : null)?.name || '')
+  return roleName.includes('超级管理员')
+}
+
 // GET /api/tooling
 // 支持分页、搜索、筛选与排序
 router.get('/', async (req, res) => {
@@ -1731,6 +1748,11 @@ router.delete('/work-hours/:id', async (req, res) => {
   try {
     const { id } = req.params
     if (!id) return res.status(400).json({ success: false, error: '缺少记录ID' })
+    const body = (req.body || {}) as any
+    const userId = String((req.headers['x-user-id'] as any) || body.userId || req.query.userId || '').trim()
+    const operator = String((req.headers['x-operator'] as any) || body.operator || req.query.operator || '').trim()
+    const isSuperAdmin = await resolveIsWorkHoursSuperAdmin(userId, operator)
+    if (!isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
     const { error } = await supabase.from('work_hours').delete().eq('id', id)
     if (error) throw error
     res.json({ success: true })
@@ -1742,10 +1764,12 @@ router.delete('/work-hours/:id', async (req, res) => {
 // 批量删除工时记录
 router.post('/work-hours/batch-delete', async (req, res) => {
   try {
-    const { ids } = req.body || {}
+    const { ids, userId, operator } = req.body || {}
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, error: '缺少要删除的ID列表' })
     }
+    const isSuperAdmin = await resolveIsWorkHoursSuperAdmin(userId, operator)
+    if (!isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
     try {
       const { error } = await supabase.from('work_hours').delete().in('id', ids)
       if (error) throw error

@@ -7,6 +7,7 @@ import 'dayjs/locale/zh-cn'
 import zhCN from 'antd/locale/zh_CN'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
+import { useAuthStore } from '../stores/authStore'
 
 const { Title } = Typography
 const { RangePicker } = DatePicker
@@ -27,6 +28,8 @@ const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', 
 const WorkHoursManagement: React.FC = () => {
   // 路由导航对象
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const isSuperAdmin = String((user as any)?.roles?.name || '').includes('超级管理员')
   
   // 筛选条件状态
   const [range, setRange] = React.useState<any>(null)
@@ -1255,11 +1258,15 @@ const WorkHoursManagement: React.FC = () => {
         <div className="mb-2 flex items-center gap-2">
           <Button onClick={() => setExpandedRowKeys(groupedData.map((g: any) => g.operator))}>▾ 展开全部</Button>
           <Button onClick={() => setExpandedRowKeys([])}>▸ 折叠全部</Button>
-          <Button danger disabled={!selectedKeys.length} onClick={async () => {
+          <Button danger disabled={!isSuperAdmin || !selectedKeys.length} onClick={async () => {
             try {
               const ids = (selectedKeys as any[]).map(String)
               const hide = (message as any).loading('删除中...', 0)
-              const resp = await fetch('/api/tooling/work-hours/batch-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
+              const resp = await fetchWithFallback('/api/tooling/work-hours/batch-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids, userId: String((user as any)?.id || ''), operator: String((user as any)?.real_name || '') })
+              })
               if (!resp.ok) {
                 throw new Error(`API请求失败: ${resp.status} ${resp.statusText}`)
               }
@@ -1275,7 +1282,7 @@ const WorkHoursManagement: React.FC = () => {
             } catch (e: any) {
               message.error(e?.message || '删除失败')
             }
-          }}>批量删除</Button>
+          }}>{isSuperAdmin ? '批量删除' : '仅超级管理员可删除'}</Button>
           <Button type="primary" onClick={exportWorkHoursExcel}>导出工时</Button>
           <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
           <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>

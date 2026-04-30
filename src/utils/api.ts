@@ -2554,6 +2554,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (m && method === 'DELETE') {
           const id = m[1]
           if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
+          const body = await readBody()
+          const userId = normText((req.headers.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
+          const operator = normText((req.headers.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
+          const visibility = await getVisibilityByOperator(operator, userId)
+          if (!visibility.isSuperAdmin) return jsonResponse({ success: false, error: '仅超级管理员可删除工时数据' }, 403)
           try {
             const { error } = await supabase.from('work_hours').delete().eq('id', id)
             if (error) return jsonResponse({ success: false, error: error.message }, 500)
@@ -2569,6 +2574,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const body = await readBody()
         const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
         if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+        const userId = normText(body?.userId)
+        const operator = normText(body?.operator)
+        const visibility = await getVisibilityByOperator(operator, userId)
+        if (!visibility.isSuperAdmin) return jsonResponse({ success: false, error: '仅超级管理员可删除工时数据' }, 403)
         try {
           const { error } = await supabase.from('work_hours').delete().in('id', ids)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
