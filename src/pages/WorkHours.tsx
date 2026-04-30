@@ -38,7 +38,6 @@ type WorkHoursMode = 'entry' | 'recent'
 
 const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const { user } = useAuthStore()
-  const isSuperAdmin = String((user as any)?.roles?.name || '').includes('超级管理员')
   const navigate = useNavigate()
   const [form] = Form.useForm()
   const viewMode = mode || 'entry'
@@ -1515,7 +1514,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       <Card className="mt-3 work-hours-card" styles={{ body: { padding: 12 } }}>
         <div className="flex items-center justify-between mb-2">
           <Typography.Text strong>最近提交</Typography.Text>
-          <Button danger disabled={!isSuperAdmin || !selectedRecentKeys.length} onClick={async () => {
+          <Button danger disabled={!selectedRecentKeys.length} onClick={async () => {
             try {
               if (!selectedRecentKeys.length) return
               const ok = await new Promise<boolean>((resolve) => {
@@ -1545,7 +1544,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             } catch {
               message.error({ content: '删除失败', key: 'del' })
             }
-          }}>{isSuperAdmin ? '删除选中' : '仅超级管理员可删除'}</Button>
+          }}>删除选中</Button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <Table

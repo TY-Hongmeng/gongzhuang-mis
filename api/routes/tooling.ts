@@ -89,21 +89,28 @@ const ensureWorkHoursExtraColumns = async () => {
   } catch (e) {}
 };
 
-const resolveIsWorkHoursSuperAdmin = async (userIdInput?: string, operatorInput?: string) => {
+const normalizeWorkHoursOperator = (v: any) =>
+  String(v || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+
+const resolveWorkHoursActor = async (userIdInput?: string, operatorInput?: string) => {
   const userId = String(userIdInput || '').trim()
   const operator = String(operatorInput || '').trim()
   let user: any = null
   if (userId) {
-    const { data } = await supabase.from('users').select('id, role_id').eq('id', userId).limit(1)
+    const { data } = await supabase.from('users').select('id, role_id, real_name').eq('id', userId).limit(1)
     user = Array.isArray(data) ? data[0] : null
   } else if (operator) {
-    const { data } = await supabase.from('users').select('id, role_id').ilike('real_name', operator).limit(1)
+    const { data } = await supabase.from('users').select('id, role_id, real_name').ilike('real_name', operator).limit(1)
     user = Array.isArray(data) ? data[0] : null
   }
-  if (!user?.role_id) return false
+  const actorName = String(user?.real_name || operator || '').trim()
+  if (!user?.role_id) return { isSuperAdmin: false, actorName }
   const { data: roleData } = await supabase.from('roles').select('name').eq('id', String(user.role_id)).limit(1)
   const roleName = String((Array.isArray(roleData) ? roleData[0] : null)?.name || '')
-  return roleName.includes('超级管理员')
+  return { isSuperAdmin: roleName.includes('超级管理员'), actorName }
 }
 
 // GET /api/tooling
@@ -1751,8 +1758,17 @@ router.delete('/work-hours/:id', async (req, res) => {
     const body = (req.body || {}) as any
     const userId = String((req.headers['x-user-id'] as any) || body.userId || req.query.userId || '').trim()
     const operator = String((req.headers['x-operator'] as any) || body.operator || req.query.operator || '').trim()
-    const isSuperAdmin = await resolveIsWorkHoursSuperAdmin(userId, operator)
-    if (!isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
+    const actor = await resolveWorkHoursActor(userId, operator)
+    if (!actor.isSuperAdmin) {
+      const { data: row, error: rowErr } = await supabase
+        .from('work_hours')
+        .select('id, operator')
+        .eq('id', id)
+        .single()
+      if (rowErr || !row) return res.status(404).json({ success: false, error: '记录不存在' })
+      const canDeleteOwn = normalizeWorkHoursOperator((row as any).operator) === normalizeWorkHoursOperator(actor.actorName)
+      if (!canDeleteOwn) return res.status(403).json({ success: false, error: '仅可删除自己提交的数据' })
+    }
     const { error } = await supabase.from('work_hours').delete().eq('id', id)
     if (error) throw error
     res.json({ success: true })
@@ -1768,8 +1784,8 @@ router.post('/work-hours/batch-delete', async (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, error: '缺少要删除的ID列表' })
     }
-    const isSuperAdmin = await resolveIsWorkHoursSuperAdmin(userId, operator)
-    if (!isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
+    const actor = await resolveWorkHoursActor(userId, operator)
+    if (!actor.isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
     try {
       const { error } = await supabase.from('work_hours').delete().in('id', ids)
       if (error) throw error

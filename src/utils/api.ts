@@ -2558,7 +2558,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const userId = normText((req.headers.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
           const operator = normText((req.headers.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
           const visibility = await getVisibilityByOperator(operator, userId)
-          if (!visibility.isSuperAdmin) return jsonResponse({ success: false, error: '仅超级管理员可删除工时数据' }, 403)
+          if (!visibility.isSuperAdmin) {
+            const normalizeName = (v: any) =>
+              String(v || '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/\s+/g, '')
+                .toLowerCase()
+            const { data: row, error: rowErr } = await supabase
+              .from('work_hours')
+              .select('id, operator')
+              .eq('id', id)
+              .single()
+            if (rowErr || !row) return jsonResponse({ success: false, error: '记录不存在' }, 404)
+            if (normalizeName((row as any).operator) !== normalizeName(operator)) {
+              return jsonResponse({ success: false, error: '仅可删除自己提交的数据' }, 403)
+            }
+          }
           try {
             const { error } = await supabase.from('work_hours').delete().eq('id', id)
             if (error) return jsonResponse({ success: false, error: error.message }, 500)
