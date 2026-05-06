@@ -547,21 +547,6 @@ export default function PurchaseOrdersList() {
         serialNo += 1
         return rowHtml
       }).join('')
-      const usedUnits = getUnits(pageRows)
-      const emptyCount = Math.max(0, pageUnitBudget - usedUnits)
-      const emptyRowsHtml = Array.from({ length: emptyCount }).map(() => `
-        <tr class="empty-row">
-          <td>&nbsp;</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>
-      `).join('')
       return `
         <div class="print-page">
         <table class="sheet">
@@ -594,7 +579,6 @@ export default function PurchaseOrdersList() {
           </thead>
           <tbody>
             ${rowsHtml}
-            ${emptyRowsHtml}
           </tbody>
           <tfoot>
             <tr>
@@ -619,8 +603,8 @@ export default function PurchaseOrdersList() {
             @page { size: A4 portrait; margin: 0; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
-            .print-page { height: calc(297mm - 20mm); box-sizing: border-box; }
-            table.sheet { width: 100%; height: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+            .print-page { box-sizing: border-box; }
+            table.sheet { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
             th, td {
               border: 1px solid #333;
               padding: 1.2mm 1.4mm;
@@ -644,7 +628,6 @@ export default function PurchaseOrdersList() {
               word-break: break-word;
               overflow-wrap: anywhere;
             }
-            .empty-row td { height: 8mm; padding-top: 0; padding-bottom: 0; }
             tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; line-height: 1.2; }
             .page-break { page-break-after: always; break-after: page; height: 0; }
           </style>
