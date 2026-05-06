@@ -2412,8 +2412,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const shift = String(qs.get('shift') || '').trim()
         const deviceNo = String(qs.get('device_no') || '').trim()
         const processName = String(qs.get('process_name') || '').trim()
-        const start = String(qs.get('start') || '').trim()
-        const end = String(qs.get('end') || '').trim()
+        const start = String(qs.get('start_date') || qs.get('start') || '').trim()
+        const end = String(qs.get('end_date') || qs.get('end') || '').trim()
         const keyword = String(qs.get('keyword') || '').trim()
 
         let query = supabase.from('work_hours').select('*', { count: 'planned' })
