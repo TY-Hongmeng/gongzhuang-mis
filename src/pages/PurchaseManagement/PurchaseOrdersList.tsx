@@ -565,6 +565,17 @@ export default function PurchaseOrdersList() {
       return `
         <div class="print-page">
         <table class="sheet">
+          <colgroup>
+            <col style="width:7%">
+            <col style="width:11%">
+            <col style="width:11%">
+            <col style="width:8%">
+            <col style="width:13%">
+            <col style="width:11%">
+            <col style="width:11%">
+            <col style="width:11%">
+            <col style="width:17%">
+          </colgroup>
           <thead>
             <tr>
               <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
@@ -610,11 +621,21 @@ export default function PurchaseOrdersList() {
             .header-line { font-size: 16px; font-weight: 700; text-align: center; }
             .print-page { height: calc(297mm - 20mm); box-sizing: border-box; }
             table.sheet { width: 100%; height: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-            th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; }
-            th { background: #f3f3f3; }
-            thead th, tbody td { height: 7mm; }
-            .empty-row td { height: 7mm; }
-            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; }
+            th, td {
+              border: 1px solid #333;
+              padding: 1.2mm 1.4mm;
+              text-align: center;
+              vertical-align: middle;
+              line-height: 1.35;
+              white-space: normal;
+              word-break: break-word;
+              overflow-wrap: anywhere;
+            }
+            th { background: #f3f3f3; font-weight: 700; }
+            thead th { min-height: 8mm; }
+            tbody tr { height: 8mm; }
+            .empty-row td { height: 8mm; padding-top: 0; padding-bottom: 0; }
+            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; line-height: 1.2; }
             .page-break { page-break-after: always; break-after: page; height: 0; }
           </style>
         </head>
