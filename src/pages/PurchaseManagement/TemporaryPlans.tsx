@@ -3,6 +3,8 @@ import { Table, Space, Button, Checkbox, DatePicker, message } from 'antd'
 import dayjs from 'dayjs'
 import EditableCell from '../../components/EditableCell'
 import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService'
+import { fetchWithFallback } from '../../utils/api'
+import { useAuthStore } from '../../stores/authStore'
 
 interface TempItem {
   id: string
@@ -18,6 +20,8 @@ interface TempItem {
   applicant?: string
   purchaser?: string
   arrival_date?: string
+  standard_inbound_done?: boolean
+  standard_inbound_at?: string
 }
 
 interface TempGroup {
@@ -32,8 +36,10 @@ const readPlans = (): TempGroup[] => {
 }
 
 export default function TemporaryPlans() {
+  const { user } = useAuthStore()
   const [groups, setGroups] = useState<TempGroup[]>(readPlans())
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
 
   useEffect(() => {
     const handler = () => setGroups(readPlans())
@@ -111,6 +117,88 @@ export default function TemporaryPlans() {
       if (cid) updateChildPurchaseStatus(String(cid), newStatus)
       return next
     })
+  }
+
+  const handleToggleInbound = async (rowId: string, checked: boolean) => {
+    if (!checked) {
+      message.info('已入库数据不支持取消勾选')
+      return
+    }
+    const key = String(rowId || '')
+    const [code, origId] = key.split(':')
+    const group = groups.find((g) => g.code === code)
+    const item = group?.items.find((it) => it.id === origId)
+    if (!item) {
+      message.error('未找到对应数据')
+      return
+    }
+    if (item.standard_inbound_done) return
+    if (inboundSubmittingKeys.includes(key)) return
+
+    const name = String(item.part_name || '').trim()
+    const specModel = String(item.model || '').trim()
+    const qty = Number(item.part_quantity || 0)
+    const unit = String(item.unit || '').trim() || '件'
+    const productionUnit = String(item.production_unit || '').trim()
+    const location = productionUnit ? (productionUnit.endsWith('库') ? productionUnit : `${productionUnit}库`) : '临时计划库'
+    const operator = String((user as any)?.real_name || '').trim()
+    const userId = String((user as any)?.id || '').trim()
+    const inDate = String(item.arrival_date || dayjs().format('YYYY-MM-DD'))
+
+    if (!name || !specModel || !unit || !location || qty <= 0) {
+      message.error('入库失败：名称/型号/数量/单位/库位需完整且数量大于0')
+      return
+    }
+    if (!operator) {
+      message.error('入库失败：缺少当前登录用户信息')
+      return
+    }
+
+    setInboundSubmittingKeys((prev) => [...prev, key])
+    try {
+      const resp = await fetchWithFallback('/api/standard-parts/inbound/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator,
+          userId,
+          items: [{
+            name,
+            spec_model: specModel,
+            location,
+            quantity: qty,
+            unit,
+            unit_price: 0,
+            in_date: inDate,
+            operator,
+            status: '正常'
+          }]
+        })
+      })
+      const json = await resp.json().catch(() => ({} as any))
+      if (!resp.ok || !json?.success) {
+        message.error(String(json?.error || '入库失败'))
+        return
+      }
+      setGroups((prev) => {
+        const next = prev.map((g) => {
+          if (g.code !== code) return g
+          const items = g.items.map((it) => {
+            if (it.id !== origId) return it
+            return { ...it, standard_inbound_done: true, standard_inbound_at: dayjs().format('YYYY-MM-DD HH:mm:ss') }
+          })
+          return { ...g, items }
+        })
+        localStorage.setItem('temporary_plans', JSON.stringify(next))
+        window.dispatchEvent(new Event('temporary_plans_updated'))
+        return next
+      })
+      message.success('已入库并同步到标准件入库台账')
+    } catch (e: any) {
+      message.error(String(e?.message || '入库失败'))
+    } finally {
+      setInboundSubmittingKeys((prev) => prev.filter((k) => k !== key))
+    }
   }
 
   return (
@@ -205,6 +293,23 @@ export default function TemporaryPlans() {
               </Space>
             )
           },
+          {
+            title: '入库',
+            dataIndex: 'standard_inbound_done',
+            width: 100,
+            render: (_text: any, record: any) => {
+              const key = String(record.id || '')
+              const done = !!record.standard_inbound_done
+              const loading = inboundSubmittingKeys.includes(key)
+              return (
+                <Checkbox
+                  checked={done}
+                  disabled={done || loading}
+                  onChange={(e) => handleToggleInbound(record.id, e.target.checked)}
+                />
+              )
+            }
+          }
         ]}
       />
     </div>
