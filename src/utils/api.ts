@@ -2580,8 +2580,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const id = m[1]
           if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
           const body = await readBody()
-          const userId = normTextSafe((req.headers.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
-          const operator = normTextSafe((req.headers.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
+          const reqHeaders = new Headers((init as any)?.headers || undefined)
+          const userId = normTextSafe((reqHeaders.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
+          const operator = normTextSafe((reqHeaders.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
           const auth = await getWorkHoursDeleteContext(operator, userId)
           if (!auth.isSuperAdmin) {
             const normalizeName = (v: any) =>
