@@ -14,6 +14,7 @@ interface TempItem {
   part_quantity: number
   unit: string
   model?: string
+  tech_group?: string
   supplier?: string
   required_date?: string
   production_unit?: string
@@ -33,6 +34,15 @@ interface TempGroup {
 
 const readPlans = (): TempGroup[] => {
   try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] }
+}
+
+const resolveInboundLocationByGroup = (rawGroup: string) => {
+  const g = String(rawGroup || '').trim()
+  if (!g) return ''
+  const base = g.includes('技术组') ? g.replace(/技术组/g, '').trim() : g
+  if (!base) return ''
+  if (base.endsWith('库')) return base
+  return `${base}库`
 }
 
 export default function TemporaryPlans() {
@@ -139,8 +149,8 @@ export default function TemporaryPlans() {
     const specModel = String(item.model || '').trim()
     const qty = Number(item.part_quantity || 0)
     const unit = String(item.unit || '').trim() || '件'
-    const productionUnit = String(item.production_unit || '').trim()
-    const location = productionUnit ? (productionUnit.endsWith('库') ? productionUnit : `${productionUnit}库`) : '临时计划库'
+    const techGroup = String((item as any).tech_group || item.production_unit || '').trim()
+    const location = resolveInboundLocationByGroup(techGroup) || '临时计划库'
     const operator = String((user as any)?.real_name || '').trim()
     const userId = String((user as any)?.id || '').trim()
     const inDate = String(item.arrival_date || dayjs().format('YYYY-MM-DD'))
