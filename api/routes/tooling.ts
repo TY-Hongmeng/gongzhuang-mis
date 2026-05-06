@@ -1769,8 +1769,9 @@ router.delete('/work-hours/:id', async (req, res) => {
       const canDeleteOwn = normalizeWorkHoursOperator((row as any).operator) === normalizeWorkHoursOperator(actor.actorName)
       if (!canDeleteOwn) return res.status(403).json({ success: false, error: '仅可删除自己提交的数据' })
     }
-    const { error } = await supabase.from('work_hours').delete().eq('id', id)
+    const { error, count } = await supabase.from('work_hours').delete({ count: 'exact' }).eq('id', id)
     if (error) throw error
+    if (Number(count || 0) === 0) return res.status(404).json({ success: false, error: '记录不存在或无权限删除' })
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })

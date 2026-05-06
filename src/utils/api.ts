@@ -2589,8 +2589,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }
           }
           try {
-            const { error } = await supabase.from('work_hours').delete().eq('id', id)
+            const { error, count } = await supabase.from('work_hours').delete({ count: 'exact' }).eq('id', id)
             if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            if (Number(count || 0) === 0) return jsonResponse({ success: false, error: '记录不存在或无权限删除' }, 404)
             return jsonResponse({ success: true })
           } catch (e: any) {
             return jsonResponse({ success: false, error: e?.message || '删除失败' }, 500)

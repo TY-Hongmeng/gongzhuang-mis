@@ -1529,16 +1529,32 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               })
               if (!ok) return
               message.loading({ content: '删除中...', key: 'del' })
-              await Promise.all(selectedRecentKeys.map((id) => fetchWithFallback(`/api/tooling/work-hours/${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-user-id': String((user as any)?.id || ''),
-                  'x-operator': String((user as any)?.real_name || '')
-                },
-                body: JSON.stringify({ userId: String((user as any)?.id || ''), operator: String((user as any)?.real_name || '') })
-              })))
-              message.success({ content: '删除成功', key: 'del' })
+              const uuidReg = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+              const ids = selectedRecentKeys.map((k) => String(k || '')).filter((id) => uuidReg.test(id))
+              if (!ids.length) {
+                message.error({ content: '未选中有效记录，删除失败', key: 'del' })
+                return
+              }
+              const results = await Promise.all(ids.map(async (id) => {
+                const resp = await fetchWithFallback(`/api/tooling/work-hours/${id}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String((user as any)?.id || ''),
+                    'x-operator': String((user as any)?.real_name || '')
+                  },
+                  body: JSON.stringify({ userId: String((user as any)?.id || ''), operator: String((user as any)?.real_name || '') })
+                })
+                const json = await resp.json().catch(() => ({} as any))
+                return { ok: resp.ok && !!json?.success, error: String(json?.error || '') }
+              }))
+              const failed = results.filter((r) => !r.ok)
+              if (failed.length > 0) {
+                const err = failed.find((f) => f.error)?.error || '部分记录删除失败'
+                message.error({ content: err, key: 'del' })
+              } else {
+                message.success({ content: '删除成功', key: 'del' })
+              }
               setSelectedRecentKeys([])
               fetchRecent()
             } catch {
