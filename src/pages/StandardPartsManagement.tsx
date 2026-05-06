@@ -89,6 +89,28 @@ const includesByKeyword = (val: any, keyword: string) => {
   return v.includes(k)
 }
 
+const buildInboundRefSig = (raw: {
+  name: any
+  spec_model: any
+  location: any
+  quantity: any
+  unit: any
+  in_date: any
+  operator: any
+}) => {
+  const norm = (v: any) => String(v || '').trim()
+  const qty = Number(raw.quantity || 0)
+  return [
+    norm(raw.name),
+    norm(raw.spec_model),
+    norm(raw.location),
+    Number.isFinite(qty) ? String(qty) : '0',
+    norm(raw.unit),
+    norm(raw.in_date),
+    norm(raw.operator)
+  ].join('|')
+}
+
 const StandardPartsManagement: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
@@ -294,6 +316,51 @@ const StandardPartsManagement: React.FC = () => {
       const json = await resp.json().catch(() => ({}))
       if (!resp.ok || json?.success === false) {
         throw new Error(String(json?.error || '操作失败'))
+      }
+      if (kind === 'inbound' && action === 'delete') {
+        const deletedRows = inboundItems.filter((r) => ids.includes(String(r.id || '')))
+        if (deletedRows.length > 0) {
+          try {
+            const deletedIdSet = new Set(deletedRows.map((r) => String(r.id || '').trim()).filter(Boolean))
+            const deletedSigSet = new Set(
+              deletedRows.map((r) => buildInboundRefSig({
+                name: r.name,
+                spec_model: r.spec_model,
+                location: r.location,
+                quantity: r.quantity,
+                unit: r.unit,
+                in_date: r.in_date,
+                operator: r.operator
+              }))
+            )
+            const raw = localStorage.getItem('temporary_plans') || '[]'
+            const plans = JSON.parse(raw)
+            if (Array.isArray(plans)) {
+              let changed = false
+              const next = plans.map((g: any) => {
+                const items = Array.isArray(g?.items) ? g.items.map((it: any) => {
+                  const refId = String(it?.standard_inbound_ref_id || '').trim()
+                  const refSig = String(it?.standard_inbound_ref_sig || '').trim()
+                  const hit = (refId && deletedIdSet.has(refId)) || (refSig && deletedSigSet.has(refSig))
+                  if (!hit) return it
+                  changed = true
+                  return {
+                    ...it,
+                    standard_inbound_done: false,
+                    standard_inbound_at: '',
+                    standard_inbound_ref_id: '',
+                    standard_inbound_ref_sig: ''
+                  }
+                }) : []
+                return { ...g, items }
+              })
+              if (changed) {
+                localStorage.setItem('temporary_plans', JSON.stringify(next))
+                window.dispatchEvent(new Event('temporary_plans_updated'))
+              }
+            }
+          } catch {}
+        }
       }
       message.success('删除成功')
       if (kind === 'inbound') setInboundSelectedKeys([])

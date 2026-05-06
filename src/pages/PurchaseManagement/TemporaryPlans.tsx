@@ -23,6 +23,8 @@ interface TempItem {
   arrival_date?: string
   standard_inbound_done?: boolean
   standard_inbound_at?: string
+  standard_inbound_ref_id?: string
+  standard_inbound_ref_sig?: string
 }
 
 interface TempGroup {
@@ -43,6 +45,28 @@ const resolveInboundLocationByGroup = (rawGroup: string) => {
   if (!base) return ''
   if (base.endsWith('库')) return base
   return `${base}库`
+}
+
+const buildInboundRefSig = (raw: {
+  name: any
+  spec_model: any
+  location: any
+  quantity: any
+  unit: any
+  in_date: any
+  operator: any
+}) => {
+  const norm = (v: any) => String(v || '').trim()
+  const qty = Number(raw.quantity || 0)
+  return [
+    norm(raw.name),
+    norm(raw.spec_model),
+    norm(raw.location),
+    Number.isFinite(qty) ? String(qty) : '0',
+    norm(raw.unit),
+    norm(raw.in_date),
+    norm(raw.operator)
+  ].join('|')
 }
 
 export default function TemporaryPlans() {
@@ -190,12 +214,29 @@ export default function TemporaryPlans() {
         message.error(String(json?.error || '入库失败'))
         return
       }
+      const inserted = Array.isArray(json?.items) ? json.items[0] : null
+      const inboundRefId = String((inserted as any)?.id || '').trim()
+      const inboundRefSig = buildInboundRefSig({
+        name,
+        spec_model: specModel,
+        location,
+        quantity: qty,
+        unit,
+        in_date: inDate,
+        operator
+      })
       setGroups((prev) => {
         const next = prev.map((g) => {
           if (g.code !== code) return g
           const items = g.items.map((it) => {
             if (it.id !== origId) return it
-            return { ...it, standard_inbound_done: true, standard_inbound_at: dayjs().format('YYYY-MM-DD HH:mm:ss') }
+            return {
+              ...it,
+              standard_inbound_done: true,
+              standard_inbound_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+              standard_inbound_ref_id: inboundRefId,
+              standard_inbound_ref_sig: inboundRefSig
+            }
           })
           return { ...g, items }
         })
