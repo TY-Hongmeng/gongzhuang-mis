@@ -2564,13 +2564,27 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
                 .replace(/\s+/g, '')
                 .toLowerCase()
+            // 优先用 userId 解析当前真实姓名，避免改名后本地缓存旧姓名导致“本人删除”被误拒绝
+            let actorName = operator
+            if (userId) {
+              try {
+                const { data: actorRows } = await supabase
+                  .from('users')
+                  .select('real_name')
+                  .eq('id', userId)
+                  .limit(1)
+                const actor = Array.isArray(actorRows) ? actorRows[0] : null
+                const latestName = String((actor as any)?.real_name || '').trim()
+                if (latestName) actorName = latestName
+              } catch {}
+            }
             const { data: row, error: rowErr } = await supabase
               .from('work_hours')
               .select('id, operator')
               .eq('id', id)
               .single()
             if (rowErr || !row) return jsonResponse({ success: false, error: '记录不存在' }, 404)
-            if (normalizeName((row as any).operator) !== normalizeName(operator)) {
+            if (normalizeName((row as any).operator) !== normalizeName(actorName)) {
               return jsonResponse({ success: false, error: '仅可删除自己提交的数据' }, 403)
             }
           }
