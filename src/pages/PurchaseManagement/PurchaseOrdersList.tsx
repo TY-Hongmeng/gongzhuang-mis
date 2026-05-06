@@ -534,9 +534,9 @@ export default function PurchaseOrdersList() {
         const rowHtml = `
           <tr>
           <td class="cell-no">${serialNo}</td>
-          <td class="cell-name">${escapeHtml(item.name || '')}</td>
-          <td class="cell-model">${escapeHtml(item.spec_model || '')}</td>
-          <td class="cell-qty">${escapeHtml(formatQty(item.quantity))}</td>
+          <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
+          <td class="cell-model">${escapeHtml(item.model || '')}</td>
+          <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
           ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
           ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
           ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
