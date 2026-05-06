@@ -2548,6 +2548,31 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      const normTextSafe = (v: any) => String(v || '').trim()
+      const getWorkHoursDeleteContext = async (operator: string, userId: string) => {
+        const uid = normTextSafe(userId)
+        const op = normTextSafe(operator)
+        const usersQuery = supabase.from('users').select('id, real_name, role_id')
+        const { data: userRows } = uid
+          ? await usersQuery.eq('id', uid).limit(1)
+          : await usersQuery.eq('real_name', op).limit(1)
+        const userRow = Array.isArray(userRows) ? (userRows[0] as any) : null
+        const actorName = normTextSafe(userRow?.real_name || op)
+        let roleName = ''
+        if (userRow?.role_id) {
+          const { data: roleRows } = await supabase
+            .from('roles')
+            .select('name')
+            .eq('id', String(userRow.role_id))
+            .limit(1)
+          roleName = String((roleRows || [])[0]?.name || '')
+        }
+        return {
+          actorName,
+          isSuperAdmin: roleName.includes('超级管理员')
+        }
+      }
+
       // Work hours delete
       {
         const m = path.match(/^\/api\/tooling\/work-hours\/([^\/]+)$/)
@@ -2555,36 +2580,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const id = m[1]
           if (!id) return jsonResponse({ success: false, error: '缺少ID' }, 400)
           const body = await readBody()
-          const userId = normText((req.headers.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
-          const operator = normText((req.headers.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
-          const visibility = await getVisibilityByOperator(operator, userId)
-          if (!visibility.isSuperAdmin) {
+          const userId = normTextSafe((req.headers.get('x-user-id') || body?.userId || getQuery(cleanUrl).get('userId') || ''))
+          const operator = normTextSafe((req.headers.get('x-operator') || body?.operator || getQuery(cleanUrl).get('operator') || ''))
+          const auth = await getWorkHoursDeleteContext(operator, userId)
+          if (!auth.isSuperAdmin) {
             const normalizeName = (v: any) =>
               String(v || '')
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
                 .replace(/\s+/g, '')
                 .toLowerCase()
-            // 优先用 userId 解析当前真实姓名，避免改名后本地缓存旧姓名导致“本人删除”被误拒绝
-            let actorName = operator
-            if (userId) {
-              try {
-                const { data: actorRows } = await supabase
-                  .from('users')
-                  .select('real_name')
-                  .eq('id', userId)
-                  .limit(1)
-                const actor = Array.isArray(actorRows) ? actorRows[0] : null
-                const latestName = String((actor as any)?.real_name || '').trim()
-                if (latestName) actorName = latestName
-              } catch {}
-            }
             const { data: row, error: rowErr } = await supabase
               .from('work_hours')
               .select('id, operator')
               .eq('id', id)
               .single()
             if (rowErr || !row) return jsonResponse({ success: false, error: '记录不存在' }, 404)
-            if (normalizeName((row as any).operator) !== normalizeName(actorName)) {
+            if (normalizeName((row as any).operator) !== normalizeName(auth.actorName)) {
               return jsonResponse({ success: false, error: '仅可删除自己提交的数据' }, 403)
             }
           }
@@ -2604,10 +2615,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const body = await readBody()
         const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
         if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
-        const userId = normText(body?.userId)
-        const operator = normText(body?.operator)
-        const visibility = await getVisibilityByOperator(operator, userId)
-        if (!visibility.isSuperAdmin) return jsonResponse({ success: false, error: '仅超级管理员可删除工时数据' }, 403)
+        const userId = normTextSafe(body?.userId)
+        const operator = normTextSafe(body?.operator)
+        const auth = await getWorkHoursDeleteContext(operator, userId)
+        if (!auth.isSuperAdmin) return jsonResponse({ success: false, error: '仅超级管理员可删除工时数据' }, 403)
         try {
           const { error } = await supabase.from('work_hours').delete().in('id', ids)
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
