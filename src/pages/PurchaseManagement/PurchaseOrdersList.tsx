@@ -533,15 +533,15 @@ export default function PurchaseOrdersList() {
       const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
         const rowHtml = `
           <tr>
-            <td>${serialNo}</td>
-            <td>${escapeHtml(item.part_name)}</td>
-            <td>${escapeHtml(item.model || '')}</td>
-            <td>${escapeHtml(qtyText(item))}</td>
-            ${projectSpans[idx] > 0 ? `<td rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-            ${productionSpans[idx] > 0 ? `<td rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-            ${createdDateSpans[idx] > 0 ? `<td rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-            ${demandDateSpans[idx] > 0 ? `<td rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-            ${applicantSpans[idx] > 0 ? `<td rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          <td class="cell-no">${serialNo}</td>
+          <td class="cell-name">${escapeHtml(item.name || '')}</td>
+          <td class="cell-model">${escapeHtml(item.spec_model || '')}</td>
+          <td class="cell-qty">${escapeHtml(formatQty(item.quantity))}</td>
+          ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+          ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+          ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+          ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+          ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>
         `
         serialNo += 1
@@ -566,15 +566,15 @@ export default function PurchaseOrdersList() {
         <div class="print-page">
         <table class="sheet">
           <colgroup>
-            <col style="width:7%">
-            <col style="width:11%">
-            <col style="width:11%">
+            <col style="width:6%">
+            <col style="width:10%">
+            <col style="width:26%">
             <col style="width:8%">
-            <col style="width:13%">
-            <col style="width:11%">
-            <col style="width:11%">
-            <col style="width:11%">
-            <col style="width:17%">
+            <col style="width:10%">
+            <col style="width:8%">
+            <col style="width:12%">
+            <col style="width:12%">
+            <col style="width:8%">
           </colgroup>
           <thead>
             <tr>
@@ -634,6 +634,16 @@ export default function PurchaseOrdersList() {
             th { background: #f3f3f3; font-weight: 700; }
             thead th { min-height: 8mm; }
             tbody tr { height: 8mm; }
+            td.cell-name, td.cell-model, td.cell-qty, td.cell-unit, td.cell-applicant {
+              white-space: nowrap;
+              word-break: normal;
+              overflow-wrap: normal;
+            }
+            td.cell-project {
+              white-space: normal;
+              word-break: break-word;
+              overflow-wrap: anywhere;
+            }
             .empty-row td { height: 8mm; padding-top: 0; padding-bottom: 0; }
             tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; line-height: 1.2; }
             .page-break { page-break-after: always; break-after: page; height: 0; }
