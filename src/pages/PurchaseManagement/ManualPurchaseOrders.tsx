@@ -965,6 +965,9 @@ export default function ManualPurchaseOrders() {
         updatedRow.specifications = typeof value === 'string' ? parseProductionSpecifications(String(value), updatedRow.material_type || '') : (value || {});
         const formattedModel = formatSpecificationsForProduction(updatedRow.specifications as any, updatedRow.material_type || '');
         updatedRow.model = formattedModel;
+      } else if (key === 'model') {
+        // 规格组件保存时会先写 model，这里同步反解规格，避免后续重算使用旧规格
+        updatedRow.specifications = parseProductionSpecifications(String(value || ''), updatedRow.material_type || '')
       } else if (typeof updatedRow.specifications === 'string') {
         updatedRow.specifications = parseProductionSpecifications(String(updatedRow.specifications), updatedRow.material_type || '');
       }
@@ -1511,7 +1514,7 @@ export default function ManualPurchaseOrders() {
               ...r,
               specifications: newSpecs as any,
               model: formatted,
-              weight,
+              weight: totalWeight,
               unit_price: unitPrice,
               total_price: totalPrice
             } : r))
