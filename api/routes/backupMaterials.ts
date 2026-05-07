@@ -100,6 +100,20 @@ router.post('/', async (req, res) => {
           }
         }
 
+        // 处理重量/单价/金额（允许为0）
+        if (material.weight !== undefined && material.weight !== null && material.weight !== '') {
+          const weight = parseFloat(String(material.weight));
+          if (!isNaN(weight) && weight >= 0) dbData.weight = weight;
+        }
+        if (material.unit_price !== undefined && material.unit_price !== null && material.unit_price !== '') {
+          const unitPrice = parseFloat(String(material.unit_price));
+          if (!isNaN(unitPrice) && unitPrice >= 0) dbData.unit_price = unitPrice;
+        }
+        if (material.total_price !== undefined && material.total_price !== null && material.total_price !== '') {
+          const totalPrice = parseFloat(String(material.total_price));
+          if (!isNaN(totalPrice) && totalPrice >= 0) dbData.total_price = totalPrice;
+        }
+
         console.log('插入数据库的数据:', dbData);
 
         const { data, error } = await supabase
@@ -228,10 +242,23 @@ router.post('/', async (req, res) => {
     // 仅允许白名单字段更新，避免未知字段导致数据库错误
     const allowedKeys = new Set([
       'material_name', 'unit', 'project_name', 'supplier', 'model', 'material', 'material_type',
-      'applicant', 'created_date', 'demand_date', 'quantity', 'price'
+      'applicant', 'created_date', 'demand_date', 'quantity', 'price', 'weight', 'unit_price', 'total_price'
     ])
     Object.keys(updateData).forEach((k) => {
       if (!allowedKeys.has(k)) delete updateData[k]
+    })
+
+    // 处理重量/单价/金额（允许为0；空值则移除）
+    ;(['weight', 'unit_price', 'total_price'] as const).forEach((k) => {
+      if (updateData[k] !== undefined) {
+        if (updateData[k] === '' || updateData[k] === null) {
+          delete updateData[k]
+        } else {
+          const n = parseFloat(String(updateData[k]))
+          if (!isNaN(n) && n >= 0) updateData[k] = n
+          else delete updateData[k]
+        }
+      }
     })
 
     // 如果清理后没有任何可更新字段，直接返回成功（无变化）

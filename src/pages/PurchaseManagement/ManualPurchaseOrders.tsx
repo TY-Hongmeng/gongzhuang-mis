@@ -969,8 +969,13 @@ export default function ManualPurchaseOrders() {
         updatedRow.specifications = parseProductionSpecifications(String(updatedRow.specifications), updatedRow.material_type || '');
       }
       
-      // 如果更新了材质、料型、规格或数量，需要重新计算重量和价格
-      if (key === 'material' || key === 'material_type' || key === 'specifications' || key === 'quantity') {
+      // 若名称未填，选择材质时自动回填，避免“名称填写不上”体验问题
+      if (key === 'material' && !String(updatedRow.material_name || '').trim()) {
+        updatedRow.material_name = String(value || '').trim()
+      }
+
+      // 如果更新了材质、料型、规格、规格文本或数量，需要重新计算重量和价格
+      if (key === 'material' || key === 'material_type' || key === 'specifications' || key === 'model' || key === 'quantity') {
         const currentMaterial = materials.find(m => m.name === updatedRow.material);
         const materialId = currentMaterial?.id || '';
         const weight = calculatePartWeight(updatedRow.specifications || {}, materialId, updatedRow.material_type || '', partTypes, materials);
@@ -980,7 +985,8 @@ export default function ManualPurchaseOrders() {
         const unitPrice = Number((mat as any)?.unit_price || 0)
         const totalPrice = calculateTotalPrice(totalWeight, unitPrice);
         
-        updatedRow.weight = weight;
+        // 采购申请页展示与入库链路都使用总重量
+        updatedRow.weight = totalWeight;
         updatedRow.unit_price = unitPrice;
         updatedRow.total_price = totalPrice;
       }
@@ -1131,16 +1137,6 @@ export default function ManualPurchaseOrders() {
         try {
           console.log('更新现有备用材料记录:', { id, key, value });
           
-          // 仅在修改必填字段时进行校验（名称、单位）
-          const isRequiredField = key === 'material_name' || key === 'unit';
-          if (isRequiredField) {
-            const validationErrors = validateBackupMaterial(updatedRow);
-            if (validationErrors.length > 0) {
-              console.warn('字段验证失败(静默):', validationErrors.join(', '));
-              return;
-            }
-          }
-          
           // 构建更新数据（最小字段集），避免无关字段阻塞保存
           let updateData: any = { [key]: value };
           if (key === 'specifications') {
@@ -1154,6 +1150,11 @@ export default function ManualPurchaseOrders() {
             // 同步本地 supplier 以便刷新后仍显示
             updatedRow.supplier = String(value || '').trim();
           }
+
+          // 计算字段一并持久化，避免刷新后重量/金额丢失
+          updateData.weight = updatedRow.weight ?? 0
+          updateData.unit_price = updatedRow.unit_price ?? 0
+          updateData.total_price = updatedRow.total_price ?? 0
           
           // 规格对象不持久化；材质/料型更新仅提交该字段本身
           
@@ -1161,8 +1162,12 @@ export default function ManualPurchaseOrders() {
           setBackupDataPreserveScroll(prev => prev.map(r => r.id === id ? {
             ...r,
             [key]: value,
+            ...(key === 'material' && !String((r as any).material_name || '').trim() ? { material_name: String(value || '').trim() } : {}),
             ...(key === 'specifications' ? { model: updatedRow.model } : {}),
             ...(key === 'production_unit' ? { supplier: String(value || '').trim() } : {}),
+            weight: updatedRow.weight ?? 0,
+            unit_price: updatedRow.unit_price ?? 0,
+            total_price: updatedRow.total_price ?? 0,
           } : r))
 
           const response = await fetch(`/api/backup-materials/${id}`, {
