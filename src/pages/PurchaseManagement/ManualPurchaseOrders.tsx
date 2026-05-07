@@ -238,6 +238,44 @@ export default function ManualPurchaseOrders() {
 
   const [partTypes, setPartTypes] = useState<{id: string, name: string, volume_formula?: string, input_format?: string}[]>([]);
 
+  // 兜底重算：材质/料型加载后，为已存在的备用料补算重量和金额（含历史数据）
+  useEffect(() => {
+    if (backupData.length === 0) return
+    if (materials.length === 0 || partTypes.length === 0) return
+
+    setBackupDataPreserveScroll((prev) => {
+      let changed = false
+      const next = prev.map((row) => {
+        const specsObj = (() => {
+          const s = row.specifications as any
+          if (s && typeof s === 'object' && Object.keys(s).length > 0) return s
+          return parseProductionSpecifications(String(row.model || ''), row.material_type || '')
+        })()
+        const currentMaterial = materials.find((m) => String(m.name || '').trim() === String(row.material || '').trim())
+        const materialId = currentMaterial?.id || ''
+        const unitWeight = calculatePartWeight(specsObj, materialId, row.material_type || '', partTypes, materials)
+        const qty = parseInt(String(row.quantity || '0'), 10) || 0
+        const totalWeight = qty > 0 ? unitWeight * qty : 0
+        const unitPrice = Number((currentMaterial as any)?.unit_price || 0)
+        const totalPrice = calculateTotalPrice(totalWeight, unitPrice)
+        const oldW = Number(row.weight || 0)
+        const oldP = Number(row.total_price || 0)
+        if (Math.abs(oldW - totalWeight) > 0.0005 || Math.abs(oldP - totalPrice) > 0.005) {
+          changed = true
+          return {
+            ...row,
+            specifications: specsObj,
+            weight: totalWeight,
+            unit_price: unitPrice,
+            total_price: totalPrice
+          }
+        }
+        return row
+      })
+      return changed ? next : prev
+    })
+  }, [backupData.length, materials, partTypes, calculatePartWeight])
+
   const handleGeneratePurchaseAll = async () => {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
     const backupIds = selectedBackupRowKeys.filter(id => !String(id).startsWith('blank-'))
