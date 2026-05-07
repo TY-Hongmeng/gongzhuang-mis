@@ -303,7 +303,7 @@ export default function ManualPurchaseOrders() {
       const prodUnitOk = !!String(r.production_unit || '').trim()
       const demandDateOk = !!String(r.demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
       const amountOk = !(r.total_price === '' || r.total_price === null || typeof r.total_price === 'undefined')
-      const applicantOk = !!String(user?.real_name || '').trim()
+      const applicantOk = !!String(r.applicant || user?.real_name || '').trim()
       return nameOk && qtyOk && projectOk && prodUnitOk && demandDateOk && amountOk && applicantOk
     }
 
@@ -372,7 +372,7 @@ export default function ManualPurchaseOrders() {
         created_date: new Date().toISOString(),
         production_unit: '',
         demand_date: String(r.demand_date || '').trim(),
-        applicant: String(user?.real_name || '手动录入'),
+        applicant: String(r.applicant || user?.real_name || '手动录入'),
         status: 'pending',
         weight: totalW || 0,
         total_price: totalPrice || 0
@@ -658,6 +658,7 @@ export default function ManualPurchaseOrders() {
               ...material,
               quantity: String(material.quantity || ''),
               price: String(material.price || ''),
+              applicant: String(material.applicant || user?.real_name || ''),
               specifications: parsedSpecs,
               weight: material.weight || 0,
               unit_price: material.unit_price || 0,
@@ -1643,7 +1644,7 @@ export default function ManualPurchaseOrders() {
       width: 100,
       render: (text: string, record: BackupMaterial) => (
         <EditableCell
-          value={text}
+          value={text || user?.real_name || ''}
           record={record}
           dataIndex="applicant"
           onSave={handleBackupSave}
@@ -1871,7 +1872,7 @@ export default function ManualPurchaseOrders() {
                 const prodUnitOk = !!String((record as any).production_unit || '').trim()
                 const demandDateOk = !!String((record as any).demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
                 const amountOk = !( (record as any).total_price === '' || (record as any).total_price === null || typeof (record as any).total_price === 'undefined')
-                const applicantOk = !!String(user?.real_name || '').trim()
+                const applicantOk = !!String((record as any).applicant || user?.real_name || '').trim()
                 return nameOk && qtyOk && projectOk && prodUnitOk && demandDateOk && amountOk && applicantOk ? 'text-blue-600' : undefined
               })()),
               style: { height: `${rowH}px` }
