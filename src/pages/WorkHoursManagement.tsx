@@ -330,11 +330,11 @@ const WorkHoursManagement: React.FC = () => {
     }
   }
 
-  // 计算每个日期、班次的开动设备数量
-  const getRunningDevicesCount = (date: string, shift: string, allItems: any[]) => {
+  // 计算每个日期下指定操作者开动的设备数量（去重设备编号）
+  const getRunningDevicesCount = (date: string, operator: string, allItems: any[]) => {
     const runningDevices = new Set<string>();
     allItems.forEach((item: any) => {
-      if (item.work_date === date && item.shift === shift) {
+      if (item.work_date === date && item.operator === operator) {
         const procMinutes = Math.round(Number(item.proc_hours || 0) * 60);
         if (procMinutes > 0 && item.device_no) {
           runningDevices.add(item.device_no);
@@ -446,8 +446,8 @@ const WorkHoursManagement: React.FC = () => {
       return (sum / 60).toFixed(2);
     }, width: 60, align: 'center' },
     { title: '开动', key: 'running_count', render: (_: any, r: any) => {
-      // 统计同一日期、同一班次内开动的不同设备数量
-      return getRunningDevicesCount(r.work_date, r.shift, items);
+      // 统计同一日期内该用户开动的不同设备数量
+      return getRunningDevicesCount(r.work_date, r.operator, items);
     }, width: 50, align: 'center' },
     { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
     { title: '图号', key: 'part_drawing_number', render: (_: any, r: any) => resolvePartDrawingNumber(r), align: 'center' },
@@ -499,10 +499,10 @@ const WorkHoursManagement: React.FC = () => {
       return String(eff)
     }, width: 60, align: 'center' },
     { title: '程序', dataIndex: 'proc_hours', render: (v: number) => ((Number(v||0)*60).toFixed(0)), width: 60, align: 'center' },
-    { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
-    { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 70, align: 'center' },
-    { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 90, align: 'center' },
-    { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 90, align: 'center' },
+    { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 35, align: 'center' },
+    { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 35, align: 'center' },
+    { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 45, align: 'center' },
+    { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 45, align: 'center' },
     { title: '统计', key: 'stat_hours', render: (_: any, r: any) => {
       const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
       let auxMinutes = 0
@@ -883,8 +883,8 @@ const WorkHoursManagement: React.FC = () => {
               }
             }
             
-            // 统计同一日期、同一班次内开动的不同设备数量
-            const runningCount = getRunningDevicesCount(row.work_date, row.shift, items);
+            // 统计同一日期内该用户开动的不同设备数量
+            const runningCount = getRunningDevicesCount(row.work_date, group.operator, items);
             
             currentChildData.push({
               '班次日期': row.shift_date || '-',
@@ -977,10 +977,10 @@ const WorkHoursManagement: React.FC = () => {
               { wch: 30 },  // 辅助时间
               { wch: 8 },   // 辅助
               { wch: 8 },   // 程序
-              { wch: 8 },   // 辅助次数
-              { wch: 8 },   // 加工数量
-              { wch: 12 },  // 单次辅助时长
-              { wch: 12 },  // 单件辅助次数
+              { wch: 4 },   // 辅助次数
+              { wch: 4 },   // 加工数量
+              { wch: 6 },   // 单次辅助时长
+              { wch: 6 },   // 单件辅助次数
               { wch: 8 },   // 统计
               { wch: 12 },  // 完成时间
               { wch: 10 }   // 完成数量
