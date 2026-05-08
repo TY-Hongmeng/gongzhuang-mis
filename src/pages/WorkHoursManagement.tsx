@@ -455,18 +455,12 @@ const WorkHoursManagement: React.FC = () => {
   const childColumns = React.useMemo(() => [
     { title: '班次日期', dataIndex: 'shift_date', align: 'center' },
     { title: '班次', dataIndex: 'shift', align: 'center' },
-    { title: '日工作', key: 'daily_work_range', render: (_: any, r: any) => {
+    { title: '日工作', key: 'daily_work_hours', render: (_: any, r: any) => {
       const key = `${r.operator}-${r.shift}-${r.work_date}`
       const range = dailyWorkRangeMap[key]
       if (!range) return '-'
-      const fmt = (mins: number) => {
-        const dayOffset = Math.floor(mins / 1440)
-        const minuteOfDay = ((mins % 1440) + 1440) % 1440
-        const hh = String(Math.floor(minuteOfDay / 60)).padStart(2, '0')
-        const mm = String(minuteOfDay % 60).padStart(2, '0')
-        return dayOffset > 0 ? `次日${hh}:${mm}` : `${hh}:${mm}`
-      }
-      return `${fmt(range.start)}--${fmt(range.end)}`
+      const workHours = (range.end - range.start) / 60
+      return workHours.toFixed(2)
     }, width: 120, align: 'center' },
     { title: '日统计', key: 'daily_stat_hours', render: (_: any, r: any) => {
       // 使用操作者、班次、日期作为唯一键，查找对应的统计工时之和
@@ -896,17 +890,11 @@ const WorkHoursManagement: React.FC = () => {
             const dailyStat = (dailySum.statHours / 60).toFixed(2);
             const dailyAux = (dailySum.auxHours / 60).toFixed(2);
             const dailyProc = (dailySum.procHours / 60).toFixed(2);
-            const dailyWorkRange = (() => {
+            const dailyWorkHours = (() => {
               const range = dailyWorkRangeMap[dailyKey]
               if (!range) return '-'
-              const fmt = (mins: number) => {
-                const dayOffset = Math.floor(mins / 1440)
-                const minuteOfDay = ((mins % 1440) + 1440) % 1440
-                const hh = String(Math.floor(minuteOfDay / 60)).padStart(2, '0')
-                const mm = String(minuteOfDay % 60).padStart(2, '0')
-                return dayOffset > 0 ? `次日${hh}:${mm}` : `${hh}:${mm}`
-              }
-              return `${fmt(range.start)}--${fmt(range.end)}`
+              const workHours = (range.end - range.start) / 60
+              return workHours.toFixed(2)
             })()
             
             // 计算辅助、程序、统计（分钟）
@@ -942,7 +930,7 @@ const WorkHoursManagement: React.FC = () => {
             currentChildData.push({
               '班次日期': row.shift_date || '-',
               '班次': row.shift,
-              '日工作': dailyWorkRange,
+              '日工作': dailyWorkHours === '-' ? '-' : `${dailyWorkHours}小时`,
               '日统计': `${dailyStat}小时`,
               '日辅助': `${dailyAux}小时`,
               '日程序': `${dailyProc}小时`,
@@ -1396,7 +1384,7 @@ const WorkHoursManagement: React.FC = () => {
               // 动态生成包含rowSpan的列配置
               const columnsWithRowSpan = childColumns.map(col => {
                 // 需要合并的列
-                const mergeColumns = ['shift_date', 'shift', 'daily_stat_hours', 'daily_aux_hours', 'daily_proc_hours', 'running_count'];
+                const mergeColumns = ['shift_date', 'shift', 'daily_work_hours', 'daily_stat_hours', 'daily_aux_hours', 'daily_proc_hours', 'running_count'];
                 const shouldMerge = mergeColumns.includes(col.dataIndex || col.key);
                 
                 if (shouldMerge) {
