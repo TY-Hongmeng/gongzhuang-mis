@@ -387,6 +387,34 @@ const WorkHoursManagement: React.FC = () => {
     return sumMap;
   }, [items, deviceMap, userMap]);
 
+  // 计算每个操作者、每个班次、每个日期的日工作区间（最早辅助开始 -- 最后程序完成）
+  const dailyWorkRangeMap = React.useMemo(() => {
+    const rangeMap: Record<string, { start: number; end: number }> = {}
+    const toMin = (t: string) => {
+      const [h, m] = String(t || '').split(':').map((x) => Number(x || 0))
+      return h * 60 + m
+    }
+
+    items.forEach((r: any) => {
+      if (!r?.work_date || !r?.shift || !r?.operator || !r?.aux_start_time || !r?.aux_end_time) return
+      const key = `${r.operator}-${r.shift}-${r.work_date}`
+      const startMin = toMin(r.aux_start_time)
+      let auxEndMin = toMin(r.aux_end_time)
+      if (auxEndMin < startMin) auxEndMin += 1440
+      const procMin = Math.round(Number(r.proc_hours || 0) * 60)
+      const completedMin = auxEndMin + Math.max(procMin, 0)
+
+      if (!rangeMap[key]) {
+        rangeMap[key] = { start: startMin, end: completedMin }
+      } else {
+        if (startMin < rangeMap[key].start) rangeMap[key].start = startMin
+        if (completedMin > rangeMap[key].end) rangeMap[key].end = completedMin
+      }
+    })
+
+    return rangeMap
+  }, [items])
+
   // 计算子表格中需要合并的列的rowSpan
   const getRowSpanConfig = (data: any[]) => {
     // 按日期和班次分组，计算每个组的rowSpan
@@ -427,6 +455,19 @@ const WorkHoursManagement: React.FC = () => {
   const childColumns = React.useMemo(() => [
     { title: '班次日期', dataIndex: 'shift_date', align: 'center' },
     { title: '班次', dataIndex: 'shift', align: 'center' },
+    { title: '日工作', key: 'daily_work_range', render: (_: any, r: any) => {
+      const key = `${r.operator}-${r.shift}-${r.work_date}`
+      const range = dailyWorkRangeMap[key]
+      if (!range) return '-'
+      const fmt = (mins: number) => {
+        const dayOffset = Math.floor(mins / 1440)
+        const minuteOfDay = ((mins % 1440) + 1440) % 1440
+        const hh = String(Math.floor(minuteOfDay / 60)).padStart(2, '0')
+        const mm = String(minuteOfDay % 60).padStart(2, '0')
+        return dayOffset > 0 ? `次日${hh}:${mm}` : `${hh}:${mm}`
+      }
+      return `${fmt(range.start)}--${fmt(range.end)}`
+    }, width: 120, align: 'center' },
     { title: '日统计', key: 'daily_stat_hours', render: (_: any, r: any) => {
       // 使用操作者、班次、日期作为唯一键，查找对应的统计工时之和
       const key = `${r.operator}-${r.shift}-${r.work_date}`;
@@ -555,7 +596,7 @@ const WorkHoursManagement: React.FC = () => {
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
     { title: '完成数量', dataIndex: 'completed_quantity', align: 'center' }
-  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum])
+  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap])
 
   const expandColumnWidth = 48
   const parentColumnWidths = [60, 90, 70, 70, 140, 140, 90, 140, 140, 140, 140, 120, 160]
@@ -855,6 +896,18 @@ const WorkHoursManagement: React.FC = () => {
             const dailyStat = (dailySum.statHours / 60).toFixed(2);
             const dailyAux = (dailySum.auxHours / 60).toFixed(2);
             const dailyProc = (dailySum.procHours / 60).toFixed(2);
+            const dailyWorkRange = (() => {
+              const range = dailyWorkRangeMap[dailyKey]
+              if (!range) return '-'
+              const fmt = (mins: number) => {
+                const dayOffset = Math.floor(mins / 1440)
+                const minuteOfDay = ((mins % 1440) + 1440) % 1440
+                const hh = String(Math.floor(minuteOfDay / 60)).padStart(2, '0')
+                const mm = String(minuteOfDay % 60).padStart(2, '0')
+                return dayOffset > 0 ? `次日${hh}:${mm}` : `${hh}:${mm}`
+              }
+              return `${fmt(range.start)}--${fmt(range.end)}`
+            })()
             
             // 计算辅助、程序、统计（分钟）
             const procMinutes = Math.round(Number(row.proc_hours || 0) * 60);
@@ -889,6 +942,7 @@ const WorkHoursManagement: React.FC = () => {
             currentChildData.push({
               '班次日期': row.shift_date || '-',
               '班次': row.shift,
+              '日工作': dailyWorkRange,
               '日统计': `${dailyStat}小时`,
               '日辅助': `${dailyAux}小时`,
               '日程序': `${dailyProc}小时`,
@@ -965,6 +1019,7 @@ const WorkHoursManagement: React.FC = () => {
             const childColumnWidths = [
               { wch: 12 },  // 班次日期
               { wch: 8 },   // 班次
+              { wch: 16 },  // 日工作
               { wch: 8 },   // 日统计
               { wch: 8 },   // 日辅助
               { wch: 8 },   // 日程序
