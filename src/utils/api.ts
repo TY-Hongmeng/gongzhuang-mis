@@ -2994,7 +2994,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
              part_quantity: Number(order.part_quantity),
              unit: order.unit || '件',
              model: order.model || null,
-            material_source: order.material_source || null,
              supplier: order.supplier || null,
              required_date: order.required_date || null,
              remark: order.remark || null,
@@ -3095,6 +3094,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (match) return { material: match[1], specs: match[2] }
             return { material: modelText, specs: modelText }
           }
+          const parseMaterialTypeFromRemark = (remarkText: string) => {
+            const text = String(remarkText || '')
+            const m = text.match(/\[MT:([^\]]+)\]/)
+            return m ? String(m[1] || '').trim() : ''
+          }
 
           for (const item of orders) {
             if (!item?.id) continue
@@ -3131,8 +3135,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 unit: item.unit,
                 project_name: item.project_name,
                 supplier: item.supplier || item.production_unit,
-                material_type: String(item.material_source || '').trim(),
-                material_source: String(item.material_source || '').trim(),
+                material_type: String(item.material_source || '').trim() || parseMaterialTypeFromRemark(String(item.remark || '')),
+                material_source: String(item.material_source || '').trim() || parseMaterialTypeFromRemark(String(item.remark || '')),
                 demand_date: item.demand_date,
                 applicant: item.applicant,
                 ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),

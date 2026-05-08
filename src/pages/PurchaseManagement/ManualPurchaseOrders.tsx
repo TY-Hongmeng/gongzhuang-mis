@@ -359,6 +359,12 @@ export default function ManualPurchaseOrders() {
       const unitPrice = Number((currentMaterial as any)?.unit_price || 0)
       const totalPrice = calculateTotalPrice(totalW, unitPrice)
 
+      const materialTypeText = String((r as any).material_type || (r as any).material_source || '').trim()
+      const remarkBase = String(r.remark || '').trim()
+      const encodedRemark = materialTypeText
+        ? `${remarkBase}${remarkBase ? ' ' : ''}[MT:${materialTypeText}]`
+        : remarkBase
+
       orders.push({
         inventory_number: `BACKUP-${r.id}`,
         project_name: r.project_name || '临时计划',
@@ -366,10 +372,9 @@ export default function ManualPurchaseOrders() {
         part_quantity: qty,
         unit: (String(r.unit ?? '').trim() || '件'),
         model: modelText,
-        material_source: String((r as any).material_type || (r as any).material_source || '').trim(),
         supplier: String(r.supplier || '').trim(),
         required_date: String(r.demand_date || '').trim(),
-        remark: String(r.remark || '').trim(),
+        remark: encodedRemark,
         created_date: new Date().toISOString(),
         // 备用料的投产单位在前端使用 production_unit 展示，后端历史数据可能落在 supplier，做兼容透传
         production_unit: String(r.production_unit || r.supplier || '').trim(),
