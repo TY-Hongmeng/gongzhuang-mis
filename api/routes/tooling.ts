@@ -1124,34 +1124,46 @@ router.post('/parts/process-routes', async (req, res) => {
       return res.status(400).json({ success: false, error: '缺少工艺路线映射' })
     }
     let updated = 0
+    const failed: Array<{ key: string; reason: string }> = []
     for (const m of mappings) {
       const inv = String(m.part_inventory_number || '').trim()
       const drawing = String(m.part_drawing_number || '').trim()
       const route = String(m.process_route || '').trim()
       if ((!inv && !drawing) || !route) continue
       try {
-        let q = supabase.from('parts_info').update({ process_route: route })
-        if (inv) q = q.eq('part_inventory_number', inv)
-        else q = q.eq('part_drawing_number', drawing)
-        const { error } = await q
+        let q = supabase.from('parts_info').update({ process_route: route }).select('id')
+        if (inv) {
+          q = q.or(`part_inventory_number.eq.${inv},part_inventory_number.ilike.${inv}`)
+        } else {
+          q = q.eq('part_drawing_number', drawing)
+        }
+        const { data, error } = await q
         if (error) throw error
-        updated++
+        const affected = Array.isArray(data) ? data.length : 0
+        if (affected > 0) {
+          updated += affected
+        } else {
+          failed.push({ key: inv || drawing, reason: '未匹配到记录' })
+        }
       } catch (e: any) {
         // PG fallback
         try {
           let r
           if (inv) {
-            r = await query('UPDATE parts_info SET process_route = $1 WHERE part_inventory_number = $2', [route, inv])
+            r = await query('UPDATE parts_info SET process_route = $1 WHERE UPPER(part_inventory_number) = UPPER($2)', [route, inv])
           } else {
             r = await query('UPDATE parts_info SET process_route = $1 WHERE part_drawing_number = $2', [route, drawing])
           }
-          updated += r.rowCount || 0
+          const affected = r.rowCount || 0
+          if (affected > 0) updated += affected
+          else failed.push({ key: inv || drawing, reason: '未匹配到记录' })
         } catch (pgErr) {
           console.warn('[Tooling] process-route update failed for', inv || drawing, pgErr)
+          failed.push({ key: inv || drawing, reason: String((pgErr as any)?.message || '更新失败') })
         }
       }
     }
-    return res.json({ success: true, updated })
+    return res.json({ success: true, updated, failedCount: failed.length, failed: failed.slice(0, 50) })
   } catch (err) {
     console.error('Batch set process routes error:', err)
     return res.status(500).json({ success: false, error: '服务器错误' })

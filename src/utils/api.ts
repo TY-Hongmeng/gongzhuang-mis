@@ -3370,24 +3370,34 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const mappings: any[] = Array.isArray(body?.mappings) ? body.mappings : []
         if (!mappings.length) return jsonResponse({ success: false, error: '缺少mappings' }, 400)
         try {
+          let updated = 0
+          const failed: Array<{ key: string; reason: string }> = []
           for (const m of mappings) {
             const inv = String(m?.part_inventory_number || '').trim().toUpperCase()
             const drawing = String(m?.part_drawing_number || '').trim()
             const route = String(m?.process_route || '')
             if (!route) continue
             if (inv) {
-              await withTimeout(
-                supabase.from('parts_info').update({ process_route: route }).eq('part_inventory_number', inv),
+              const { data, error } = await withTimeout(
+                supabase.from('parts_info').update({ process_route: route }).eq('part_inventory_number', inv).select('id'),
                 8000
               )
+              if (error) throw error
+              const affected = Array.isArray(data) ? data.length : 0
+              if (affected > 0) updated += affected
+              else failed.push({ key: inv, reason: '未匹配到记录' })
             } else if (drawing) {
-              await withTimeout(
-                supabase.from('parts_info').update({ process_route: route }).eq('part_drawing_number', drawing),
+              const { data, error } = await withTimeout(
+                supabase.from('parts_info').update({ process_route: route }).eq('part_drawing_number', drawing).select('id'),
                 8000
               )
+              if (error) throw error
+              const affected = Array.isArray(data) ? data.length : 0
+              if (affected > 0) updated += affected
+              else failed.push({ key: drawing, reason: '未匹配到记录' })
             }
           }
-          return jsonResponse({ success: true })
+          return jsonResponse({ success: true, updated, failedCount: failed.length, failed: failed.slice(0, 50) })
         } catch (e: any) {
           const msg = String(e?.message || '更新工艺路线失败')
           return jsonResponse({ success: false, error: msg }, /TIMEOUT/.test(msg) ? 504 : 500)

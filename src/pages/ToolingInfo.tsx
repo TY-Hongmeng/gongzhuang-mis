@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3086,6 +3086,28 @@ const ToolingInfoPage: React.FC = () => {
     }))
 
     const mapUpdates: Record<string, string> = {}
+    const unresolvedInvs: string[] = []
+    const serverMatchCache = new Map<string, string[]>()
+    const queryServerMatches = async (invKey: string): Promise<string[]> => {
+      const key = String(invKey || '').trim().toUpperCase()
+      if (!key) return []
+      if (serverMatchCache.has(key)) return serverMatchCache.get(key) || []
+      try {
+        const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=500&search=${encodeURIComponent(key)}`, { cache: 'no-store' })
+        if (!resp.ok) throw new Error(String(resp.status))
+        const js = await resp.json().catch(() => ({}))
+        const items = Array.isArray(js?.items) ? js.items : []
+        const keys = items
+          .map((it: any) => String(it?.part_inventory_number || '').trim().toUpperCase())
+          .filter((k: string) => !!k && (k === key || k.startsWith(key)))
+        const uniq = Array.from(new Set(keys))
+        serverMatchCache.set(key, uniq)
+        return uniq
+      } catch {
+        serverMatchCache.set(key, [])
+        return []
+      }
+    }
     for (const [invK, routeText] of Object.entries(cardRoutes)) {
       // 首先尝试精确匹配
       let matchedKeys = allChildKeysOnPage.filter(k => k === invK)
@@ -3093,28 +3115,14 @@ const ToolingInfoPage: React.FC = () => {
       if (matchedKeys.length === 0) {
         matchedKeys = allChildKeysOnPage.filter(k => k.startsWith(invK))
       }
-      // 如果还是没有匹配，尝试从父表数据重新获取零件数据
+      // 如果还是没有匹配，走服务端查询做最终匹配（避免受本地状态异步刷新影响）
       if (matchedKeys.length === 0) {
-        // 查找可能匹配的父表（工艺卡片盘存编号以父表盘存编号开头）
-        const candidates = (data || []).filter(d => {
-          const parentInv = String(d.inventory_number || '').trim().toUpperCase()
-          return parentInv && invK.startsWith(parentInv)
-        }).map(d => d.id)
-        for (const tid of candidates) {
-          if (!partsMap[tid] || partsMap[tid].length === 0) await fetchPartsData(tid)
-        }
-        // 重新扫描所有零件
-        const reScan: string[] = []
-        Object.values(partsMap).forEach(list => (list || []).forEach((p: any) => {
-          const k = String(p.part_inventory_number || '').trim().toUpperCase()
-          if (k && (k === invK || k.startsWith(invK))) reScan.push(k)
-        }))
-        matchedKeys = [...new Set(reScan)]
+        matchedKeys = await queryServerMatches(invK)
       }
       if (matchedKeys.length === 0) {
         // 未匹配到，记录日志以便调试
         console.warn(`[ProcessImport] 未找到匹配的零件: ${invK}`)
-        mapUpdates[invK] = routeText
+        unresolvedInvs.push(invK)
       } else {
         matchedKeys.forEach(k => { mapUpdates[k] = routeText })
       }
@@ -3209,9 +3217,16 @@ const ToolingInfoPage: React.FC = () => {
           })
           return next
         })
-        const msg = `生成并保存工艺路线：共${Object.keys(mapUpdates).length}条映射`
+        const backendUpdated = Number(result?.updated || 0)
+        const backendFailed = Number(result?.failedCount || 0)
+        const msg = backendFailed > 0
+          ? `工艺路线导入完成：成功更新${backendUpdated}条，未匹配${backendFailed}条`
+          : `生成并保存工艺路线：共${Object.keys(mapUpdates).length}条映射`
         console.table({ 映射条数: Object.keys(mapUpdates).length, 页面子编号数: allChildKeysOnPage.length })
         message.success({ content: msg, key: loadingKey })
+        if (unresolvedInvs.length > 0) {
+          message.warning(`有${unresolvedInvs.length}个盘存编号未匹配到零件：${unresolvedInvs.slice(0, 5).join('，')}${unresolvedInvs.length > 5 ? ' 等' : ''}`)
+        }
         // 刷新当前工装零件信息以展示后端值
         fetchToolingData()
       } else {
