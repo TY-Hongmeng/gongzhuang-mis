@@ -31,6 +31,7 @@ const WorkHoursManagement: React.FC = () => {
   const { user } = useAuthStore()
   const isSuperAdmin = String((user as any)?.roles?.name || '').includes('超级管理员')
   const [isMobile, setIsMobile] = React.useState(false)
+  const [isMobilePortrait, setIsMobilePortrait] = React.useState(false)
   
   // 筛选条件状态
   const [range, setRange] = React.useState<any>(null)
@@ -102,6 +103,7 @@ const WorkHoursManagement: React.FC = () => {
       const mobile = window.innerWidth <= 900
       const portrait = window.matchMedia('(orientation: portrait)').matches
       setIsMobile(mobile)
+      setIsMobilePortrait(mobile && portrait)
       // 手机端进入页面自动尝试横屏（浏览器不支持时静默降级）
       if (mobile && portrait) {
         const orientationApi = (screen as any)?.orientation
@@ -118,6 +120,23 @@ const WorkHoursManagement: React.FC = () => {
       window.removeEventListener('orientationchange', updateViewportState)
     }
   }, [])
+
+  const forceLandscapeStyle = React.useMemo<React.CSSProperties>(() => {
+    if (!(isMobile && isMobilePortrait)) return {}
+    // 兜底方案：当浏览器不允许 lock 时，页面容器自动旋转为横屏布局
+    return {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vh',
+      height: '100vw',
+      transform: 'rotate(90deg) translateY(-100%)',
+      transformOrigin: 'top left',
+      overflow: 'auto',
+      background: '#fff',
+      zIndex: 1
+    }
+  }, [isMobile, isMobilePortrait])
 
   // 获取唯一的操作者列表
   const uniqueOperators = React.useMemo(() => {
@@ -1128,7 +1147,7 @@ const WorkHoursManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6" style={forceLandscapeStyle}>
       <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
           <Title level={2} className="mb-0"><ExperimentOutlined className="text-3xl text-purple-500 mb-2 mr-2" /> 工时管理</Title>
           <Space>
