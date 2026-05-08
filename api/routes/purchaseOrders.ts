@@ -1021,6 +1021,7 @@ router.post('/rollback', async (req, res) => {
           // 备用料的 supplier 字段可能被映射到了 production_unit 显示，回退时需还原
           supplier: item.supplier || item.production_unit,
           material_type: String(item.material_source || '').trim(),
+          material_source: String(item.material_source || '').trim(),
           demand_date: item.demand_date,
           applicant: item.applicant,
           ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),

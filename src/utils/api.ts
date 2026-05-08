@@ -3132,6 +3132,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 project_name: item.project_name,
                 supplier: item.supplier || item.production_unit,
                 material_type: String(item.material_source || '').trim(),
+                material_source: String(item.material_source || '').trim(),
                 demand_date: item.demand_date,
                 applicant: item.applicant,
                 ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),

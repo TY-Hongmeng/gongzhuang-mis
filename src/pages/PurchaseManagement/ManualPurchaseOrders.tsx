@@ -366,7 +366,7 @@ export default function ManualPurchaseOrders() {
         part_quantity: qty,
         unit: (String(r.unit ?? '').trim() || '件'),
         model: modelText,
-        material_source: String(r.material_type || '').trim(),
+        material_source: String((r as any).material_type || (r as any).material_source || '').trim(),
         supplier: String(r.supplier || '').trim(),
         required_date: String(r.demand_date || '').trim(),
         remark: String(r.remark || '').trim(),
@@ -658,6 +658,7 @@ export default function ManualPurchaseOrders() {
               : (material.model ? parseProductionSpecifications(String(material.model), material.material_type || '') : {})
             return {
               ...material,
+              material_type: material.material_type || material.material_source || '',
               quantity: String(material.quantity || ''),
               price: String(material.price || ''),
               applicant: String(material.applicant || user?.real_name || ''),
