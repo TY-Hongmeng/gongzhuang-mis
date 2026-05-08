@@ -370,7 +370,8 @@ export default function ManualPurchaseOrders() {
         required_date: String(r.demand_date || '').trim(),
         remark: String(r.remark || '').trim(),
         created_date: new Date().toISOString(),
-        production_unit: '',
+        // 备用料的投产单位在前端使用 production_unit 展示，后端历史数据可能落在 supplier，做兼容透传
+        production_unit: String(r.production_unit || r.supplier || '').trim(),
         demand_date: String(r.demand_date || '').trim(),
         applicant: String(r.applicant || user?.real_name || '手动录入'),
         status: 'pending',

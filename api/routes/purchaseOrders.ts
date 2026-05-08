@@ -1004,21 +1004,22 @@ router.post('/rollback', async (req, res) => {
         console.log(`[Rollback] Detected Backup record, originalId=${originalId}`);
         // 恢复到 backup_materials
         const { material, specs } = parseModel(item.model || '');
+        const qtyNum = Number(item.part_quantity);
+        const totalPriceNum = Number(item.total_price);
         backupRestores.push({
           id: originalId, // 尝试恢复原始 ID 以保持位置映射
           material_name: item.part_name, 
           material: material,
           model: specs, // 将规格放入 model 字段 (因为原始 model 字段可能就是规格)
-          quantity: item.part_quantity,
+          quantity: Number.isFinite(qtyNum) ? qtyNum : 0,
           unit: item.unit,
           project_name: item.project_name,
           // 备用料的 supplier 字段可能被映射到了 production_unit 显示，回退时需还原
           supplier: item.supplier || item.production_unit,
           demand_date: item.demand_date,
           applicant: item.applicant,
-          weight: item.weight,
-          total_price: item.total_price,
-          unit_price: (item.total_price && item.part_quantity) ? (Number(item.total_price) / Number(item.part_quantity)) : 0,
+          // 回退到最小兼容字段集，避免 backup_materials 在不同环境列不一致导致插入失败
+          ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { price: totalPriceNum } : {}),
           created_date: new Date().toISOString(),
           is_manual: true
         });
