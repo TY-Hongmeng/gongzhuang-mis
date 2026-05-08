@@ -640,7 +640,7 @@ const WorkHoursManagement: React.FC = () => {
   ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap])
 
   const expandColumnWidth = 48
-  const parentColumnWidths = [60, 90, 70, 70, 140, 140, 90, 140, 140, 140, 140, 120, 160]
+  const parentColumnWidths = [60, 90, 70, 70, 90, 90, 140, 140, 140, 140, 140, 140, 120, 160]
   const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0) + expandColumnWidth
 
   // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
@@ -649,20 +649,21 @@ const WorkHoursManagement: React.FC = () => {
     { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
     { title: '车间', dataIndex: 'workshop', align: 'center', width: parentColumnWidths[2] },
     { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[3] },
-    { title: '统计总时长(小时)', dataIndex: 'hours_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
-    { title: '统计均时长(小时)', dataIndex: 'avg_stat', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[5] },
-    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[6] },
-    { title: '辅助总时长(小时)', dataIndex: 'aux_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
-    { title: '辅助均时长(小时)', dataIndex: 'avg_aux', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
-    { title: '程序总时长(小时)', dataIndex: 'proc_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
-    { title: '程序均时长(小时)', dataIndex: 'avg_proc', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
-    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+    { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
+    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
+    { title: '统计总时长(小时)', dataIndex: 'hours_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[6] },
+    { title: '统计均时长(小时)', dataIndex: 'avg_stat', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
+    { title: '辅助总时长(小时)', dataIndex: 'aux_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
+    { title: '辅助均时长(小时)', dataIndex: 'avg_aux', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
+    { title: '程序总时长(小时)', dataIndex: 'proc_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '程序均时长(小时)', dataIndex: 'avg_proc', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
     { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
       const a = Number(r.aux_coeff || 1).toFixed(2)
       const p = Number(r.proc_coeff || 1).toFixed(2)
       const c = Number(r.capability_coeff || 1).toFixed(2)
       return `${a}/${p}/${c}`
-    }, width: parentColumnWidths[12], align: 'center' }
+    }, width: parentColumnWidths[13], align: 'center' }
   ], [])
 
   const groupedData = React.useMemo(() => {
@@ -687,7 +688,8 @@ const WorkHoursManagement: React.FC = () => {
           proc_coeff: Number(info.proc_coeff ?? 1), 
           capability_coeff: Number(info.capability_coeff ?? 1), 
           // 使用普通对象替代Map，避免React内部处理时的序列化问题
-          _device_shifts: {} // 使用对象模拟Map: { 'date-shift': { 'device_no': true } }
+          _device_shifts: {}, // 使用对象模拟Map: { 'date-shift': { 'device_no': true } }
+          _work_ranges: {} // 使用对象模拟Map: { 'date-shift': { start:number, end:number } }
         }
       }
       map[key].rows.push(r)
@@ -719,6 +721,21 @@ const WorkHoursManagement: React.FC = () => {
         }
         map[key]._device_shifts[dateShiftKey][r.device_no || ''] = true
       }
+
+      // 统计日工作：同一日期班次取最早辅助开始与最后程序完成
+      if (r.aux_start_time && r.aux_end_time) {
+        const dateShiftKey = `${r.work_date}-${r.shift || ''}`
+        const s = toMin(r.aux_start_time)
+        let e = toMin(r.aux_end_time)
+        if (e < s) e += 1440
+        const completed = e + Math.max(procMinutes, 0)
+        if (!map[key]._work_ranges[dateShiftKey]) {
+          map[key]._work_ranges[dateShiftKey] = { start: s, end: completed }
+        } else {
+          if (s < map[key]._work_ranges[dateShiftKey].start) map[key]._work_ranges[dateShiftKey].start = s
+          if (completed > map[key]._work_ranges[dateShiftKey].end) map[key]._work_ranges[dateShiftKey].end = completed
+        }
+      }
       
       // 使用对象模拟Set
       map[key]._dayset[`${r.work_date}-${r.shift || ''}`] = true
@@ -745,6 +762,16 @@ const WorkHoursManagement: React.FC = () => {
       
       // 计算平均开动设备：每天每个班次开动的数量总和除以上班天数，保留2位小数
       g.average_running = g.work_days > 0 ? Number((runningTotal / g.work_days).toFixed(2)) : 0
+
+      // 计算工作天数：子表日工作求和/8
+      let totalDailyWorkHours = 0
+      for (const dateShiftKey in g._work_ranges) {
+        if (g._work_ranges.hasOwnProperty(dateShiftKey)) {
+          const range = g._work_ranges[dateShiftKey]
+          totalDailyWorkHours += Math.max(0, (Number(range.end || 0) - Number(range.start || 0)) / 60)
+        }
+      }
+      g.work_day_equiv = Number((totalDailyWorkHours / 8).toFixed(2))
       
       // 计算日均辅助、日均程序、日均统计
       g.avg_aux = g.work_days > 0 ? Number((g.aux_total / g.work_days).toFixed(2)) : 0
@@ -754,6 +781,7 @@ const WorkHoursManagement: React.FC = () => {
       // 移除临时属性，确保返回的对象是纯数据对象
       delete g._dayset
       delete g._device_shifts
+      delete g._work_ranges
       
       // 创建一个新的纯数据对象，确保没有原型链污染和循环引用
       return {
@@ -767,6 +795,7 @@ const WorkHoursManagement: React.FC = () => {
         avg_proc: g.avg_proc,
         avg_stat: g.avg_stat,
         days_total: g.days_total,
+        work_day_equiv: g.work_day_equiv,
         work_days: g.work_days,
         running_total: g.running_total,
         average_running: g.average_running,
@@ -845,13 +874,14 @@ const WorkHoursManagement: React.FC = () => {
           '操作者': group.operator,
           '车间': group.workshop || '-',
           '班组': group.team || '-',
+          '工作天数': Number(group.work_day_equiv || 0).toFixed(2),
+          '上班天数': group.work_days,
           '辅助总时长': `${group.aux_total}小时`,
           '辅助均时长': `${group.avg_aux}小时`,
           '程序总时长': `${group.proc_total}小时`,
           '程序均时长': `${group.avg_proc}小时`,
           '统计总时长': `${group.hours_total}小时`,
           '统计均时长': `${group.avg_stat}小时`,
-          '上班天数': group.work_days,
           '平均开动设备': group.average_running,
           '辅/加能力系数': `${group.aux_coeff}/${group.proc_coeff}/${group.capability_coeff}`
         });
@@ -865,13 +895,14 @@ const WorkHoursManagement: React.FC = () => {
         { wch: 10 },  // 操作者
         { wch: 8 },   // 车间
         { wch: 8 },   // 班组
+        { wch: 10 },  // 工作天数
+        { wch: 10 },  // 上班天数
         { wch: 12 },  // 辅助总时长
         { wch: 12 },  // 辅助均时长
         { wch: 12 },  // 程序总时长
         { wch: 12 },  // 程序均时长
         { wch: 12 },  // 统计总时长
         { wch: 12 },  // 统计均时长
-        { wch: 10 },  // 上班天数
         { wch: 12 },  // 平均开动设备
         { wch: 15 }   // 辅/加能力系数
       ];
@@ -1400,14 +1431,13 @@ const WorkHoursManagement: React.FC = () => {
             <div />
             <div />
             <div />
+            <div />
             <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长(小时): {summaryData.totalStat.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长(小时): {summaryData.avgStat.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助总时长(小时): {summaryData.totalAux.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助均时长(小时): {summaryData.avgAux.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>程序总时长(小时): {summaryData.totalProc.toFixed(2)}</div>
             <div style={{ textAlign: 'center', fontWeight: 600 }}>程序均时长(小时): {summaryData.avgProc.toFixed(2)}</div>
-            <div />
-            <div />
             <div />
             <div />
           </div>
