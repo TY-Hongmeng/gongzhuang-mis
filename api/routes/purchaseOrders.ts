@@ -1006,6 +1006,7 @@ router.post('/rollback', async (req, res) => {
         const { material, specs } = parseModel(item.model || '');
         const qtyNum = Number(item.part_quantity);
         const totalPriceNum = Number(item.total_price);
+        const weightNum = Number(item.weight);
         backupRestores.push({
           id: originalId, // 尝试恢复原始 ID 以保持位置映射
           material_name: item.part_name, 
@@ -1018,7 +1019,12 @@ router.post('/rollback', async (req, res) => {
           supplier: item.supplier || item.production_unit,
           demand_date: item.demand_date,
           applicant: item.applicant,
-          // 回退到最小兼容字段集，避免 backup_materials 在不同环境列不一致导致插入失败
+          ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),
+          ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 && Number.isFinite(qtyNum) && qtyNum > 0
+            ? { unit_price: Number((totalPriceNum / qtyNum).toFixed(6)) }
+            : {}),
+          ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { total_price: totalPriceNum } : {}),
+          // 同时兼容老库仅有 price 的场景
           ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { price: totalPriceNum } : {}),
           created_date: new Date().toISOString(),
           is_manual: true
@@ -1040,7 +1046,19 @@ router.post('/rollback', async (req, res) => {
     
     if (backupRestores.length > 0) {
       console.log(`[Rollback] Attempting to restore ${backupRestores.length} backup records:`, JSON.stringify(backupRestores, null, 2));
-      const { data: bData, error: bError } = await supabase.from('backup_materials').insert(backupRestores).select();
+      // 按数据库实际列动态裁剪，尽量保留数据同时避免列不一致导致报错
+      const colResult = await queryDatabase(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'backup_materials'`
+      );
+      const allowedCols = new Set<string>((colResult.rows || []).map((r: any) => String(r.column_name)));
+      const payload = backupRestores.map((row) => {
+        const next: Record<string, any> = {};
+        Object.keys(row).forEach((k) => {
+          if (allowedCols.has(k) && row[k] !== undefined) next[k] = row[k];
+        });
+        return next;
+      });
+      const { data: bData, error: bError } = await supabase.from('backup_materials').insert(payload).select();
       if (bError) {
          console.error('[Rollback] Failed to restore backup records:', bError);
          throw new Error('恢复备用材料失败: ' + bError.message);

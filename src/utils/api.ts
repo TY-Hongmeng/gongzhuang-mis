@@ -3120,6 +3120,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               const { material, specs } = parseModel(item.model || '')
               const qtyNum = Number(item.part_quantity)
               const totalPriceNum = Number(item.total_price)
+              const weightNum = Number(item.weight)
               backupRestores.push({
                 id: originalId,
                 material_name: item.part_name,
@@ -3131,7 +3132,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 supplier: item.supplier || item.production_unit,
                 demand_date: item.demand_date,
                 applicant: item.applicant,
-                // 与后端保持一致：回退时仅写入最小兼容字段，避免不同环境列不一致报错
+                ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),
+                ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 && Number.isFinite(qtyNum) && qtyNum > 0
+                  ? { unit_price: Number((totalPriceNum / qtyNum).toFixed(6)) }
+                  : {}),
+                ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { total_price: totalPriceNum } : {}),
+                // 与后端保持一致：同时兼容仅有 price 的库结构
                 ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { price: totalPriceNum } : {}),
                 created_date: new Date().toISOString(),
                 is_manual: true
@@ -3147,8 +3153,23 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
           if (backupRestores.length > 0) {
             console.log(`[PurchaseOrders] Restoring backup records: ${backupRestores.length}`)
-            const { error: bError } = await scopedClient.from('backup_materials').insert(backupRestores)
-            if (bError) throw bError
+            // 兼容不同环境列差异：若提示缺少列则自动移除该列后重试
+            let backupPayload = backupRestores.map((x) => ({ ...x }))
+            for (let i = 0; i < 6; i += 1) {
+              const { error: bError } = await scopedClient.from('backup_materials').insert(backupPayload)
+              if (!bError) break
+              const msg = String((bError as any)?.message || '')
+              const missing = msg.match(/Could not find the '([^']+)' column/i)?.[1]
+              if (missing) {
+                backupPayload = backupPayload.map((row) => {
+                  const next = { ...row } as any
+                  delete next[missing]
+                  return next
+                })
+                continue
+              }
+              throw bError
+            }
           }
 
           if (idsToDelete.length > 0) {
