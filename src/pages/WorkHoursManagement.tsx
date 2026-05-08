@@ -652,7 +652,12 @@ const WorkHoursManagement: React.FC = () => {
     { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[3] },
     { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
     { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
-    { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[6] },
+    { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
+      const value = Number(v || 0)
+      const workDays = Number(r?.work_day_equiv || 0)
+      const danger = value > workDays
+      return <span style={danger ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
+    }, align: 'center', width: parentColumnWidths[6] },
     { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
     { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
     { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
@@ -834,28 +839,6 @@ const WorkHoursManagement: React.FC = () => {
     
     return [...result].sort((a, b) => Number(b.hours_total || 0) - Number(a.hours_total || 0))
   }, [groupedData, workshop, team])
-
-  // 计算筛选数据的汇总值（父表展示为天时，8小时=1天）
-  const summaryData = React.useMemo(() => {
-    // 计算总和
-    const totalAux = filteredGroupedData.reduce((sum, item) => sum + (Number(item.aux_total) || 0), 0)
-    const totalProc = filteredGroupedData.reduce((sum, item) => sum + (Number(item.proc_total) || 0), 0)
-    const totalStat = filteredGroupedData.reduce((sum, item) => sum + (Number(item.hours_total) || 0), 0)
-    
-    // 计算平均值（先计算总和，再除以数量）
-    const avgAux = filteredGroupedData.length > 0 ? totalAux / filteredGroupedData.length : 0
-    const avgProc = filteredGroupedData.length > 0 ? totalProc / filteredGroupedData.length : 0
-    const avgStat = filteredGroupedData.length > 0 ? totalStat / filteredGroupedData.length : 0
-    
-    return {
-      totalAux: Number((totalAux / 8).toFixed(2)),
-      avgAux: Number((avgAux / 8).toFixed(2)),
-      totalProc: Number((totalProc / 8).toFixed(2)),
-      avgProc: Number((avgProc / 8).toFixed(2)),
-      totalStat: Number((totalStat / 8).toFixed(2)),
-      avgStat: Number((avgStat / 8).toFixed(2))
-    }
-  }, [filteredGroupedData])
 
   // 从groupedData中获取唯一的车间列表
   const uniqueWorkshops = React.useMemo(() => {
@@ -1422,38 +1405,6 @@ const WorkHoursManagement: React.FC = () => {
           <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
         </div>
 
-        {/* 汇总行 */}
-        <div style={{ marginBottom: 16, overflowX: 'auto' }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: [expandColumnWidth, ...parentColumnWidths].map(w => `${w}px`).join(' '),
-              alignItems: 'center',
-              gap: 0,
-              width: parentTableWidth,
-              padding: '6px 0',
-              border: '1px solid #f0f0f0',
-              borderRadius: 8,
-              background: '#fafafa'
-            }}
-          >
-            <div />
-            <div />
-            <div />
-            <div />
-            <div />
-            <div />
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长: {summaryData.totalStat.toFixed(2)}天</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长: {summaryData.avgStat.toFixed(2)}天</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助总时长: {summaryData.totalAux.toFixed(2)}天</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助均时长: {summaryData.avgAux.toFixed(2)}天</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序总时长: {summaryData.totalProc.toFixed(2)}天</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序均时长: {summaryData.avgProc.toFixed(2)}天</div>
-            <div />
-            <div />
-          </div>
-        </div>
-        
         <Table
           rowKey={(r) => r.operator}
           loading={loading}
