@@ -423,7 +423,8 @@ const WorkHoursManagement: React.FC = () => {
       }
       sumMap[key].statHours += statMinutes;
       sumMap[key].auxHours += effectiveAuxMinutes;
-      sumMap[key].procHours += procMinutes;
+      // 子表“日程序”按加工系数后的程序时长统计
+      sumMap[key].procHours += procMinutes * proc_coeff;
     });
     
     return sumMap;
@@ -651,12 +652,12 @@ const WorkHoursManagement: React.FC = () => {
     { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[3] },
     { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
     { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
-    { title: '统计总时长(小时)', dataIndex: 'hours_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[6] },
-    { title: '统计均时长(小时)', dataIndex: 'avg_stat', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
-    { title: '辅助总时长(小时)', dataIndex: 'aux_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
-    { title: '辅助均时长(小时)', dataIndex: 'avg_aux', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
-    { title: '程序总时长(小时)', dataIndex: 'proc_total', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
-    { title: '程序均时长(小时)', dataIndex: 'avg_proc', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+    { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[6] },
+    { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
+    { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
+    { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
+    { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
     { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
     { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
       const a = Number(r.aux_coeff || 1).toFixed(2)
@@ -667,6 +668,7 @@ const WorkHoursManagement: React.FC = () => {
   ], [])
 
   const groupedData = React.useMemo(() => {
+    const toDayValue = (hours: number) => Number((Number(hours || 0) / 8).toFixed(2))
     const map: Record<string, any> = {}
     for (const r of items) {
       const key = r.operator || '未填'
@@ -678,6 +680,7 @@ const WorkHoursManagement: React.FC = () => {
           team: info.team || '-', 
           aux_total: 0, 
           proc_total: 0, 
+          proc_total_adj: 0,
           days_total: 0, 
           work_days: 0, 
           running_total: 0, 
@@ -712,6 +715,7 @@ const WorkHoursManagement: React.FC = () => {
       // 先将程序时长转换为分钟，累加后再转换为小时，避免浮点数精度误差
       const procMinutes = Math.round(Number(r.proc_hours || 0) * 60)
       map[key].proc_total += procMinutes
+      map[key].proc_total_adj += procMinutes * map[key].proc_coeff
       
       // 统计开动设备：使用对象模拟Map和Set
       if (procMinutes > 0) {
@@ -743,10 +747,11 @@ const WorkHoursManagement: React.FC = () => {
     return Object.values(map).map((g: any) => {
       // 将总分钟数转换为小时，保留2位小数
       g.proc_total = Number((g.proc_total / 60).toFixed(2))
+      g.proc_total_adj = Number((g.proc_total_adj / 60).toFixed(2))
       // 辅助总工时也保留2位小数
       g.aux_total = Number(g.aux_total.toFixed(2))
       // 统计总工时 = (辅助总工时*辅系数 + 程序总时长*加系数) * 能力系数，保留2位小数
-      const hours_total = Number(((g.aux_total * g.aux_coeff + g.proc_total * g.proc_coeff) * g.capability_coeff).toFixed(2))
+      const hours_total = Number(((g.aux_total * g.aux_coeff + g.proc_total_adj) * g.capability_coeff).toFixed(2))
       g.hours_total = hours_total
       // 使用Object.keys获取对象长度，替代Set.size
       g.work_days = Object.keys(g._dayset).length
@@ -775,7 +780,7 @@ const WorkHoursManagement: React.FC = () => {
       
       // 计算日均辅助、日均程序、日均统计
       g.avg_aux = g.work_days > 0 ? Number((g.aux_total / g.work_days).toFixed(2)) : 0
-      g.avg_proc = g.work_days > 0 ? Number((g.proc_total / g.work_days).toFixed(2)) : 0
+      g.avg_proc = g.work_days > 0 ? Number((g.proc_total_adj / g.work_days).toFixed(2)) : 0
       g.avg_stat = g.work_days > 0 ? Number((g.hours_total / g.work_days).toFixed(2)) : 0
       
       // 移除临时属性，确保返回的对象是纯数据对象
@@ -789,11 +794,17 @@ const WorkHoursManagement: React.FC = () => {
         workshop: g.workshop,
         team: g.team,
         aux_total: g.aux_total,
-        proc_total: g.proc_total,
+        proc_total: g.proc_total_adj,
         hours_total: g.hours_total,
         avg_aux: g.avg_aux,
         avg_proc: g.avg_proc,
         avg_stat: g.avg_stat,
+        aux_total_days: toDayValue(g.aux_total),
+        proc_total_days: toDayValue(g.proc_total_adj),
+        hours_total_days: toDayValue(g.hours_total),
+        avg_aux_days: toDayValue(g.avg_aux),
+        avg_proc_days: toDayValue(g.avg_proc),
+        avg_stat_days: toDayValue(g.avg_stat),
         days_total: g.days_total,
         work_day_equiv: g.work_day_equiv,
         work_days: g.work_days,
@@ -824,7 +835,7 @@ const WorkHoursManagement: React.FC = () => {
     return [...result].sort((a, b) => Number(b.hours_total || 0) - Number(a.hours_total || 0))
   }, [groupedData, workshop, team])
 
-  // 计算筛选数据的汇总值
+  // 计算筛选数据的汇总值（父表展示为天时，8小时=1天）
   const summaryData = React.useMemo(() => {
     // 计算总和
     const totalAux = filteredGroupedData.reduce((sum, item) => sum + (Number(item.aux_total) || 0), 0)
@@ -837,12 +848,12 @@ const WorkHoursManagement: React.FC = () => {
     const avgStat = filteredGroupedData.length > 0 ? totalStat / filteredGroupedData.length : 0
     
     return {
-      totalAux: Number(totalAux.toFixed(2)),
-      avgAux: Number(avgAux.toFixed(2)),
-      totalProc: Number(totalProc.toFixed(2)),
-      avgProc: Number(avgProc.toFixed(2)),
-      totalStat: Number(totalStat.toFixed(2)),
-      avgStat: Number(avgStat.toFixed(2))
+      totalAux: Number((totalAux / 8).toFixed(2)),
+      avgAux: Number((avgAux / 8).toFixed(2)),
+      totalProc: Number((totalProc / 8).toFixed(2)),
+      avgProc: Number((avgProc / 8).toFixed(2)),
+      totalStat: Number((totalStat / 8).toFixed(2)),
+      avgStat: Number((avgStat / 8).toFixed(2))
     }
   }, [filteredGroupedData])
 
@@ -876,12 +887,12 @@ const WorkHoursManagement: React.FC = () => {
           '班组': group.team || '-',
           '工作天数': Number(group.work_day_equiv || 0).toFixed(2),
           '上班天数': group.work_days,
-          '辅助总时长': `${group.aux_total}小时`,
-          '辅助均时长': `${group.avg_aux}小时`,
-          '程序总时长': `${group.proc_total}小时`,
-          '程序均时长': `${group.avg_proc}小时`,
-          '统计总时长': `${group.hours_total}小时`,
-          '统计均时长': `${group.avg_stat}小时`,
+          '辅助总时长': `${Number(group.aux_total_days || 0).toFixed(2)}天`,
+          '辅助均时长': `${Number(group.avg_aux_days || 0).toFixed(2)}天`,
+          '程序总时长': `${Number(group.proc_total_days || 0).toFixed(2)}天`,
+          '程序均时长': `${Number(group.avg_proc_days || 0).toFixed(2)}天`,
+          '统计总时长': `${Number(group.hours_total_days || 0).toFixed(2)}天`,
+          '统计均时长': `${Number(group.avg_stat_days || 0).toFixed(2)}天`,
           '平均开动设备': group.average_running,
           '辅/加能力系数': `${group.aux_coeff}/${group.proc_coeff}/${group.capability_coeff}`
         });
@@ -1011,7 +1022,7 @@ const WorkHoursManagement: React.FC = () => {
               '日工作': dailyWorkHours === '-' ? '-' : `${dailyWorkHours}小时`,
               '日统计': `${dailyStat}小时`,
               '日辅助': `${dailyAux}小时`,
-              '日程序': `${dailyProc}小时`,
+              '日程序': `${dailyProc}`,
               '开动': runningCount,
               '盘存编号': row.part_inventory_number || '-',
               '图号': partDrawingDisplay || '-',
@@ -1432,12 +1443,12 @@ const WorkHoursManagement: React.FC = () => {
             <div />
             <div />
             <div />
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长(小时): {summaryData.totalStat.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长(小时): {summaryData.avgStat.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助总时长(小时): {summaryData.totalAux.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助均时长(小时): {summaryData.avgAux.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序总时长(小时): {summaryData.totalProc.toFixed(2)}</div>
-            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序均时长(小时): {summaryData.avgProc.toFixed(2)}</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计总时长: {summaryData.totalStat.toFixed(2)}天</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>统计均时长: {summaryData.avgStat.toFixed(2)}天</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助总时长: {summaryData.totalAux.toFixed(2)}天</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>辅助均时长: {summaryData.avgAux.toFixed(2)}天</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序总时长: {summaryData.totalProc.toFixed(2)}天</div>
+            <div style={{ textAlign: 'center', fontWeight: 600 }}>程序均时长: {summaryData.avgProc.toFixed(2)}天</div>
             <div />
             <div />
           </div>
