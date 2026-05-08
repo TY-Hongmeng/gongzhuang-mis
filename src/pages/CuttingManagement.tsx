@@ -66,6 +66,7 @@ const CuttingManagement: React.FC = () => {
     search: ''
   });
   const [responsibleMap, setResponsibleMap] = useState<Record<string, string>>({})
+  const [sortMode, setSortMode] = useState<'inventory' | 'spec'>('inventory')
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10000,  // 修改为10000，获取所有数据
@@ -144,8 +145,21 @@ const CuttingManagement: React.FC = () => {
     return sortedOrders;
   };
 
+  // 按盘存编号排序（默认）
+  const sortOrdersByInventory = (orders: CuttingOrder[]) => {
+    return orders.sort((a, b) => {
+      const invA = String(a.inventory_number || '')
+      const invB = String(b.inventory_number || '')
+      return invA.localeCompare(invB, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+    })
+  }
+
   // 分组函数 - 包含编制信息
-  const groupDataByDateMaterialAndResponsible = (orders: CuttingOrder[], responsiblePersonMap: Record<string, string>) => {
+  const groupDataByDateMaterialAndResponsible = (
+    orders: CuttingOrder[],
+    responsiblePersonMap: Record<string, string>,
+    mode: 'inventory' | 'spec'
+  ) => {
     const groups: Record<string, CuttingOrder[]> = {};
     
     if (DEBUG) console.log(`=== 开始分组处理 ===`);
@@ -218,11 +232,13 @@ const CuttingManagement: React.FC = () => {
       console.error(`数据丢失警告: 输入${orders.length}条，分组后${totalInGroups}条`);
     }
     
-    // 对每个分组内的订单进行自动排序
-    if (DEBUG) console.log('开始对每个分组进行自动排序...');
+    // 对每个分组内的订单进行排序
+    if (DEBUG) console.log('开始对每个分组进行排序...');
     Object.keys(groups).forEach(groupKey => {
       if (DEBUG) console.log(`分组 "${groupKey}" 有 ${groups[groupKey].length} 个订单`);
-      groups[groupKey] = sortOrdersBySpecifications(groups[groupKey]);
+      groups[groupKey] = mode === 'spec'
+        ? sortOrdersBySpecifications(groups[groupKey])
+        : sortOrdersByInventory(groups[groupKey])
     });
     
     if (DEBUG) console.log('分组和排序完成！');
@@ -419,7 +435,7 @@ const CuttingManagement: React.FC = () => {
             })
           }
         }
-        const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap);
+        const groups = groupDataByDateMaterialAndResponsible(items, responsiblePersonMap, sortMode);
         setData(items)
         
         console.log('=== 最终分组结果 ===');
@@ -508,6 +524,16 @@ const CuttingManagement: React.FC = () => {
       }
     };
   }, [filters, pagination.pageSize, location.key]);
+
+  // 切换排序模式时，本地重排分组，无需重新请求
+  useEffect(() => {
+    if (!data.length) {
+      setGroupedData({})
+      return
+    }
+    const groups = groupDataByDateMaterialAndResponsible([...data], responsibleMap, sortMode)
+    setGroupedData(groups)
+  }, [data, responsibleMap, sortMode])
 
   const handleDelete = async (id: string) => {
     try {
@@ -947,6 +973,9 @@ const CuttingManagement: React.FC = () => {
         <div className="mb-4">
           <Space>
             <span>已选择 {selectedRowKeys.length} 条记录</span>
+            <Button onClick={() => setSortMode(prev => (prev === 'inventory' ? 'spec' : 'inventory'))}>
+              {sortMode === 'inventory' ? '切换当前排序' : '按盘存号排序'}
+            </Button>
             <Button 
               danger 
               onClick={handleBatchDelete}
