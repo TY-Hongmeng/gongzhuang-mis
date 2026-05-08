@@ -460,13 +460,18 @@ const WorkHoursManagement: React.FC = () => {
       const range = dailyWorkRangeMap[key]
       if (!range) return '-'
       const workHours = (range.end - range.start) / 60
-      return workHours.toFixed(2)
-    }, width: 120, align: 'center' },
+      const text = workHours.toFixed(2)
+      return <span style={{ color: workHours > 12 ? '#ff4d4f' : undefined }}>{text}</span>
+    }, width: 60, align: 'center' },
     { title: '日统计', key: 'daily_stat_hours', render: (_: any, r: any) => {
       // 使用操作者、班次、日期作为唯一键，查找对应的统计工时之和
       const key = `${r.operator}-${r.shift}-${r.work_date}`;
       const sum = dailyHoursSum[key]?.statHours || 0;
-      return (sum / 60).toFixed(2);
+      const statHours = sum / 60
+      const range = dailyWorkRangeMap[key]
+      const workHours = range ? (range.end - range.start) / 60 : undefined
+      const danger = typeof workHours === 'number' && statHours > workHours
+      return <span style={{ color: danger ? '#ff4d4f' : undefined }}>{statHours.toFixed(2)}</span>;
     }, width: 60, align: 'center' },
     { title: '日辅助', key: 'daily_aux_hours', render: (_: any, r: any) => {
       // 使用操作者、班次、日期作为唯一键，查找对应的辅助工时之和
@@ -1007,7 +1012,7 @@ const WorkHoursManagement: React.FC = () => {
             const childColumnWidths = [
               { wch: 12 },  // 班次日期
               { wch: 8 },   // 班次
-              { wch: 16 },  // 日工作
+              { wch: 8 },   // 日工作
               { wch: 8 },   // 日统计
               { wch: 8 },   // 日辅助
               { wch: 8 },   // 日程序
