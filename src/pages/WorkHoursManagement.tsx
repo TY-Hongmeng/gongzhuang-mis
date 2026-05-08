@@ -499,10 +499,10 @@ const WorkHoursManagement: React.FC = () => {
       return String(eff)
     }, width: 60, align: 'center' },
     { title: '程序', dataIndex: 'proc_hours', render: (v: number) => ((Number(v||0)*60).toFixed(0)), width: 60, align: 'center' },
-    { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 35, align: 'center' },
-    { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 35, align: 'center' },
-    { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 45, align: 'center' },
-    { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 45, align: 'center' },
+    { title: '辅助次数', dataIndex: 'aux_count', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 56, align: 'center' },
+    { title: '加工数量', dataIndex: 'process_quantity', render: (v: any) => String(Math.max(Number(v || 1), 1)), width: 56, align: 'center' },
+    { title: '单次辅助时长', dataIndex: 'single_aux_minutes', render: (v: any) => Number(v || 0).toFixed(1), width: 78, align: 'center' },
+    { title: '单件辅助次数', dataIndex: 'single_aux_count', render: (v: any) => Number(v || 0).toFixed(2), width: 78, align: 'center' },
     { title: '统计', key: 'stat_hours', render: (_: any, r: any) => {
       const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
       let auxMinutes = 0
@@ -977,10 +977,10 @@ const WorkHoursManagement: React.FC = () => {
               { wch: 30 },  // 辅助时间
               { wch: 8 },   // 辅助
               { wch: 8 },   // 程序
-              { wch: 4 },   // 辅助次数
-              { wch: 4 },   // 加工数量
-              { wch: 6 },   // 单次辅助时长
-              { wch: 6 },   // 单件辅助次数
+              { wch: 6 },   // 辅助次数
+              { wch: 6 },   // 加工数量
+              { wch: 9 },   // 单次辅助时长
+              { wch: 9 },   // 单件辅助次数
               { wch: 8 },   // 统计
               { wch: 12 },  // 完成时间
               { wch: 10 }   // 完成数量
