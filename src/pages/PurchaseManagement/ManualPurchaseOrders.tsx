@@ -366,6 +366,7 @@ export default function ManualPurchaseOrders() {
         part_quantity: qty,
         unit: (String(r.unit ?? '').trim() || '件'),
         model: modelText,
+        material_source: String(r.material_type || '').trim(),
         supplier: String(r.supplier || '').trim(),
         required_date: String(r.demand_date || '').trim(),
         remark: String(r.remark || '').trim(),

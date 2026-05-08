@@ -753,7 +753,7 @@ router.post('/', async (req, res) => {
         if (order.inventory_number && String(order.inventory_number).trim() !== '') {
           try {
             const exRes = await queryDatabase(
-              'SELECT id, inventory_number, project_name, part_name, part_quantity, unit, model, supplier, required_date, remark, production_unit, applicant, demand_date FROM purchase_orders WHERE inventory_number = $1',
+            'SELECT id, inventory_number, project_name, part_name, part_quantity, unit, model, supplier, required_date, remark, production_unit, applicant, demand_date, material_source FROM purchase_orders WHERE inventory_number = $1',
               [order.inventory_number]
             )
 
@@ -771,6 +771,7 @@ router.post('/', async (req, res) => {
                 existing.production_unit !== (productionUnit || null) ||
                 existing.demand_date !== (demandDate || null) ||
                 existing.applicant !== (recorder || null) ||
+                existing.material_source !== (order.material_source || null) ||
                 existing.weight !== (order.weight ?? null) ||
                 existing.total_price !== (order.total_price ?? null)
 
@@ -779,8 +780,8 @@ router.post('/', async (req, res) => {
                   `UPDATE purchase_orders SET 
                     project_name = $1, part_name = $2, part_quantity = $3, unit = $4, model = $5, supplier = $6, 
                     required_date = $7, remark = $8, updated_date = $9, production_unit = $10, demand_date = $11, applicant = $12,
-                    weight = $13, total_price = $14
-                   WHERE id = $15 RETURNING *`,
+                    material_source = $13, weight = $14, total_price = $15
+                   WHERE id = $16 RETURNING *`,
                   [
                     order.project_name,
                     order.part_name,
@@ -794,6 +795,7 @@ router.post('/', async (req, res) => {
                     productionUnit || null,
                     demandDate || null,
                     recorder || null,
+                    order.material_source || null,
                     order.weight ?? null,
                     order.total_price ?? null,
                     existing.id
@@ -817,8 +819,8 @@ router.post('/', async (req, res) => {
         const insertResult = await queryDatabase(`
           INSERT INTO purchase_orders (inventory_number, project_name, part_name, part_quantity, unit, 
             model, supplier, required_date, remark, created_date, tooling_id, child_item_id, part_id, status,
-            production_unit, demand_date, applicant, weight, total_price)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            production_unit, demand_date, applicant, material_source, weight, total_price)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
           RETURNING *
         `, [
           order.inventory_number,
@@ -838,6 +840,7 @@ router.post('/', async (req, res) => {
           productionUnit || null,
           demandDate || null,
           recorder || null,
+          order.material_source || null,
           order.weight ?? null,
           order.total_price ?? null
         ]);
@@ -1017,6 +1020,7 @@ router.post('/rollback', async (req, res) => {
           project_name: item.project_name,
           // 备用料的 supplier 字段可能被映射到了 production_unit 显示，回退时需还原
           supplier: item.supplier || item.production_unit,
+          material_type: String(item.material_source || '').trim(),
           demand_date: item.demand_date,
           applicant: item.applicant,
           ...(Number.isFinite(weightNum) && weightNum >= 0 ? { weight: weightNum } : {}),
@@ -1277,8 +1281,8 @@ router.post('/manual', async (req, res) => {
             INSERT INTO purchase_orders (
               inventory_number, project_name, part_name, part_quantity, unit,
               model, supplier, required_date, remark, status, created_date, updated_date,
-              production_unit, demand_date, applicant
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13, $14)
+              production_unit, demand_date, applicant, material_source
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, $13, $14, $15)
             RETURNING *
           `, [
             inventoryNumber,
@@ -1294,7 +1298,8 @@ router.post('/manual', async (req, res) => {
             createdDate,
             productionUnit,
             requiredDate, // demand_date maps to required_date
-            recorder // applicant maps to recorder
+            recorder, // applicant maps to recorder
+            mappedOrder.material_source || null
           ]);
           
           console.log('插入结果:', result.rows);
