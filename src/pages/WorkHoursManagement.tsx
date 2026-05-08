@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Typography, DatePicker, Button, Table, Row, Col, message, Select, Space, Alert } from 'antd'
+import { Card, Typography, DatePicker, Button, Table, Row, Col, message, Select, Space } from 'antd'
 import { ReloadOutlined, LeftOutlined, ExperimentOutlined } from '@ant-design/icons'
 import { fetchWithFallback } from '../utils/api'
 import dayjs from 'dayjs'
@@ -31,7 +31,6 @@ const WorkHoursManagement: React.FC = () => {
   const { user } = useAuthStore()
   const isSuperAdmin = String((user as any)?.roles?.name || '').includes('超级管理员')
   const [isMobile, setIsMobile] = React.useState(false)
-  const [isMobilePortrait, setIsMobilePortrait] = React.useState(false)
   
   // 筛选条件状态
   const [range, setRange] = React.useState<any>(null)
@@ -103,7 +102,13 @@ const WorkHoursManagement: React.FC = () => {
       const mobile = window.innerWidth <= 900
       const portrait = window.matchMedia('(orientation: portrait)').matches
       setIsMobile(mobile)
-      setIsMobilePortrait(mobile && portrait)
+      // 手机端进入页面自动尝试横屏（浏览器不支持时静默降级）
+      if (mobile && portrait) {
+        const orientationApi = (screen as any)?.orientation
+        if (orientationApi?.lock) {
+          orientationApi.lock('landscape').catch(() => {})
+        }
+      }
     }
     updateViewportState()
     window.addEventListener('resize', updateViewportState)
@@ -111,19 +116,6 @@ const WorkHoursManagement: React.FC = () => {
     return () => {
       window.removeEventListener('resize', updateViewportState)
       window.removeEventListener('orientationchange', updateViewportState)
-    }
-  }, [])
-
-  const requestLandscape = React.useCallback(async () => {
-    try {
-      const orientationApi = (screen as any)?.orientation
-      if (orientationApi?.lock) {
-        await orientationApi.lock('landscape')
-      } else {
-        message.info('当前浏览器不支持自动横屏，请手动旋转手机横向查看')
-      }
-    } catch {
-      message.info('请手动旋转手机横向查看，体验更佳')
     }
   }, [])
 
@@ -1145,25 +1137,16 @@ const WorkHoursManagement: React.FC = () => {
           </Space>
         </div>
       <Card styles={{ body: { padding: isMobile ? 8 : 12 } }}>
-        {isMobilePortrait && (
-          <Alert
-            type="info"
-            showIcon
-            style={{ marginBottom: 12 }}
-            message="手机竖屏下内容较密集，建议横屏查看工时管理页面"
-            action={<Button size="small" type="primary" onClick={requestLandscape}>横屏查看</Button>}
-          />
-        )}
         {/* 筛选条件 */}
         <div className="mb-4">
           <Row gutter={[12, 8]} align="middle">
-            <Col xs={24} sm={24} md={12} lg={10} xl={6}>
+            <Col xs={12} sm={24} md={12} lg={10} xl={6}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>日期范围：</span>
                 <RangePicker locale={zhCN.DatePicker} style={{ flex: 1 }} value={range} onChange={(v) => { setRange(v); if (v) setYearMonth(null) }} />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>年月：</span>
                 <DatePicker
@@ -1179,7 +1162,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>操作者：</span>
                 <Select
@@ -1199,7 +1182,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>车间：</span>
                 <Select
@@ -1219,7 +1202,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>班组：</span>
                 <Select
@@ -1239,7 +1222,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 50, textAlign: 'right', whiteSpace: 'nowrap' }}>班次：</span>
                 <Select
@@ -1259,7 +1242,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>设备编号：</span>
                 <Select
@@ -1279,7 +1262,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>盘存编号：</span>
                 <Select
@@ -1299,7 +1282,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>图号：</span>
                 <Select
@@ -1319,7 +1302,7 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={7} xl={4}>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
                 <span style={{ width: 65, textAlign: 'right', whiteSpace: 'nowrap' }}>零件名称：</span>
                 <Select
