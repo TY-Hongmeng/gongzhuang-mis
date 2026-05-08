@@ -826,15 +826,15 @@ const CuttingManagement: React.FC = () => {
   const printSelected = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择要打印的记录'); return }
     const setIds = new Set(selectedRowKeys.map(String))
-    const rows = data.filter(d => setIds.has(String(d.id)))
+    const pageOrderedRows = Object.values(groupedData).flat()
+    const rows = pageOrderedRows.filter(d => setIds.has(String(d.id)))
     if (rows.length === 0) { message.warning('没有可打印的记录'); return }
 
-    const sortedRows = sortOrdersBySpecifications([...rows])
-    const dateSet = new Set(sortedRows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
+    const dateSet = new Set(rows.map(r => dayjs(r.created_date).format('YYYY年MM月DD日')))
     const dateText = dateSet.size === 1 ? Array.from(dateSet)[0] : `${Array.from(dateSet)[0]} 等`
-    const sourceSet = new Set(sortedRows.map(r => r.material_source || ''))
+    const sourceSet = new Set(rows.map(r => r.material_source || ''))
     const sourceText = sourceSet.size === 1 ? Array.from(sourceSet)[0] : '混合'
-    const firstToolingId = sortedRows[0] ? getToolingId(sortedRows[0]) : ''
+    const firstToolingId = rows[0] ? getToolingId(rows[0]) : ''
     const rawResp = firstToolingId ? (responsibleMap[firstToolingId] || '') : ''
     const compiledName = rawResp ? (idToNameMap[String(rawResp)] || rawResp) : ''
     const compiledText = compiledName && compiledName !== '未分配' ? `编制: ${compiledName}` : '编制: '
@@ -845,7 +845,7 @@ const CuttingManagement: React.FC = () => {
       return
     }
 
-    const rowsHtml = sortedRows.map((o, i) => {
+    const rowsHtml = rows.map((o, i) => {
       const weightNum = Number(o.total_weight || 0)
       return `
         <tr>
@@ -879,7 +879,7 @@ const CuttingManagement: React.FC = () => {
         </head>
         <body>
           <h1>下料单</h1>
-          <div class="meta">${escapeHtml(dateText)} / ${escapeHtml(sourceText)} / ${escapeHtml(compiledText)} / 共 ${sortedRows.length} 条</div>
+          <div class="meta">${escapeHtml(dateText)} / ${escapeHtml(sourceText)} / ${escapeHtml(compiledText)} / 共 ${rows.length} 条</div>
           <table>
             <thead>
               <tr>
@@ -974,7 +974,7 @@ const CuttingManagement: React.FC = () => {
           <Space>
             <span>已选择 {selectedRowKeys.length} 条记录</span>
             <Button onClick={() => setSortMode(prev => (prev === 'inventory' ? 'spec' : 'inventory'))}>
-              {sortMode === 'inventory' ? '切换当前排序' : '按盘存号排序'}
+              排序
             </Button>
             <Button 
               danger 
