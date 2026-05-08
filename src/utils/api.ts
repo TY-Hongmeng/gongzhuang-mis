@@ -3118,20 +3118,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             } else if (inv.toUpperCase().startsWith('BACKUP-')) {
               const originalId = inv.slice(7).trim()
               const { material, specs } = parseModel(item.model || '')
+              const qtyNum = Number(item.part_quantity)
+              const totalPriceNum = Number(item.total_price)
               backupRestores.push({
                 id: originalId,
                 material_name: item.part_name,
                 material: material,
                 model: specs,
-                quantity: item.part_quantity,
+                quantity: Number.isFinite(qtyNum) ? qtyNum : 0,
                 unit: item.unit,
                 project_name: item.project_name,
                 supplier: item.supplier || item.production_unit,
                 demand_date: item.demand_date,
                 applicant: item.applicant,
-                weight: item.weight,
-                total_price: item.total_price,
-                unit_price: (item.total_price && item.part_quantity) ? (Number(item.total_price) / Number(item.part_quantity)) : 0,
+                // 与后端保持一致：回退时仅写入最小兼容字段，避免不同环境列不一致报错
+                ...(Number.isFinite(totalPriceNum) && totalPriceNum >= 0 ? { price: totalPriceNum } : {}),
                 created_date: new Date().toISOString(),
                 is_manual: true
               })
