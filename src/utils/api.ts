@@ -2307,10 +2307,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
       // Work hours aggregates
       if (method === 'GET' && path === '/api/tooling/work-hours/aggregates') {
+        const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
         try {
           let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity')
           q = q.in('part_inventory_number', invs)
@@ -2318,17 +2319,24 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const map: Record<string, string[]> = {}
           const completedQtyMap: Record<string, number> = {}
+          const processCompletedQtyMap: Record<string, Record<string, number>> = {}
           ;(data || []).forEach((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
+            const processKey = normalizeProcessKey(name)
+            const completedQty = Number(r.completed_quantity || 0)
             if (!inv || !name) return
             const norm = name.trim().toLowerCase()
             const arr = map[inv] || []
             if (!arr.some(x => String(x).trim().toLowerCase() === norm)) arr.push(name)
             map[inv] = arr
-            completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + Number(r.completed_quantity || 0)
+            completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + completedQty
+            if (processKey) {
+              if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
+              processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
+            }
           })
-          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap })
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1014,7 +1014,7 @@ const ToolingInfoPage: React.FC = () => {
   
   // 工时数据状态，存储所有已录入的工时记录
   const [workHoursData, setWorkHoursData] = useState<Record<string, string[]>>({})
-  const [workHoursCompletedQtyData, setWorkHoursCompletedQtyData] = useState<Record<string, number>>({})
+  const [workHoursProcessCompletedQtyData, setWorkHoursProcessCompletedQtyData] = useState<Record<string, Record<string, number>>>({})
   
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
@@ -1022,7 +1022,7 @@ const ToolingInfoPage: React.FC = () => {
       const hasInvs = Array.isArray(invs) && invs.length > 0
       if (!hasInvs) {
         setWorkHoursData({})
-        setWorkHoursCompletedQtyData({})
+        setWorkHoursProcessCompletedQtyData({})
         return
       }
       const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
@@ -1044,22 +1044,22 @@ const ToolingInfoPage: React.FC = () => {
         console.error('获取工时数据失败，API返回错误:', result.error)
         // 即使API返回错误，也不抛出异常，避免影响页面其他功能
         setWorkHoursData({})
-        setWorkHoursCompletedQtyData({})
+        setWorkHoursProcessCompletedQtyData({})
         return
       }
       
       // 提取工时数据
       const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
-      const completedQtyByInventoryNo: Record<string, number> = result?.completedQtyData || {}
+      const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
       
       setWorkHoursData(hoursByInventoryNo)
-      setWorkHoursCompletedQtyData(completedQtyByInventoryNo)
+      setWorkHoursProcessCompletedQtyData(processCompletedQtyByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
       console.error('获取工时数据失败:', error)
       // 即使发生异常，也不影响页面其他功能
       setWorkHoursData({})
-      setWorkHoursCompletedQtyData({})
+      setWorkHoursProcessCompletedQtyData({})
     }
   }, [])
   
@@ -2437,18 +2437,6 @@ const ToolingInfoPage: React.FC = () => {
         }
       },
       {
-        title: '完成数量',
-        dataIndex: '__completed_quantity',
-        width: 90,
-        onCell: () => ({ onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
-        render: (_t: any, rec: PartItem) => {
-          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const completedQty = Number(workHoursCompletedQtyData[inventoryNo] || 0)
-          const text = Number.isFinite(completedQty) ? String(Number(completedQty.toFixed(3))) : '0'
-          return <span>{text}</span>
-        }
-      },
-      {
         title: '工艺路线',
         dataIndex: 'process_route',
         width: 600,
@@ -2460,10 +2448,15 @@ const ToolingInfoPage: React.FC = () => {
             currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
           }
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const completedQty = Number(workHoursCompletedQtyData[inventoryNo] || 0)
+          const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
           const requiredQty = Number(rec.part_quantity || 0)
-          const routeDone = Number.isFinite(requiredQty) && requiredQty > 0 && completedQty >= requiredQty
-          const routeColor = routeDone ? '#28a745' : '#1890ff'
+          const normalizeProcessKey = (v: string) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+          const getStepCompletedQty = (step: string) => {
+            const key = normalizeProcessKey(step)
+            const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
+            if (!Number.isFinite(qty)) return 0
+            return qty
+          }
           // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
           const workHoursForThisInv = workHoursData[inventoryNo] || []
           const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => x.trim().toLowerCase()))
@@ -2506,6 +2499,10 @@ const ToolingInfoPage: React.FC = () => {
               <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'center' }}>
                 {steps.map((s, i) => {
                   const stepDone = completedSet.has(s.trim().toLowerCase())
+                  const stepCompletedQty = getStepCompletedQty(s)
+                  const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
+                  const stepColor = stepDoneByQty ? '#28a745' : '#1890ff'
+                  const qtyText = String(Number(stepCompletedQty.toFixed(3)))
                   return (
                     <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <input
@@ -2515,7 +2512,7 @@ const ToolingInfoPage: React.FC = () => {
                         style={{ cursor: 'pointer', margin: 0 }}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <span style={{ color: routeColor, fontWeight: 500 }}>{s}</span>
+                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}(${qtyText})`}</span>
                       {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
                     </span>
                   )
@@ -2573,7 +2570,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [renderStatusText, saveStatusInput, workHoursData, workHoursCompletedQtyData])
+  }, [renderStatusText, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -2757,9 +2754,15 @@ const ToolingInfoPage: React.FC = () => {
 
     // 生成包含工时数据的缓存键，确保工时数据变化时重新创建列
     const workHoursKey = Object.keys(workHoursData).sort().join(',')
-    const completedQtyKey = Object.entries(workHoursCompletedQtyData)
+    const completedQtyKey = Object.entries(workHoursProcessCompletedQtyData)
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
-      .map(([k, v]) => `${k}:${v}`)
+      .map(([k, v]) => {
+        const processMap = Object.entries(v || {})
+          .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
+          .map(([p, qty]) => `${p}:${qty}`)
+          .join(',')
+        return `${k}:{${processMap}}`
+      })
       .join('|')
     const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
@@ -2829,7 +2832,7 @@ const ToolingInfoPage: React.FC = () => {
     setChildItemsMap,
     setPartBatchModal,
     workHoursData,
-    workHoursCompletedQtyData
+    workHoursProcessCompletedQtyData
   ])
 
   const confirmPartBatchAdd = useCallback(() => {

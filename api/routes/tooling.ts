@@ -1856,14 +1856,15 @@ router.post('/test-completed-steps', async (req, res) => {
 // 获取工时数据聚合（用于工艺路线完成状态与完成数量统计）
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
+    const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
     const { invs } = req.query as { invs?: string }
     if (!invs) {
-      return res.json({ success: true, data: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
     }
 
     const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
     if (invList.length === 0) {
-      return res.json({ success: true, data: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
     }
 
     // 查询这些盘存编号对应的所有工时记录
@@ -1877,19 +1878,26 @@ router.get('/work-hours/aggregates', async (req, res) => {
     // 按盘存编号聚合工序
     const aggregates: Record<string, string[]> = {}
     const completedQtyMap: Record<string, number> = {}
+    const processCompletedQtyMap: Record<string, Record<string, number>> = {}
     ;(data || []).forEach((row: any) => {
       const inv = String(row.inventory_no || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
+      const processKey = normalizeProcessKey(process)
+      const completedQty = Number(row.completed_quantity || 0)
       if (inv && process) {
         if (!aggregates[inv]) aggregates[inv] = []
         if (!aggregates[inv].includes(process)) aggregates[inv].push(process)
       }
       if (inv) {
-        completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + Number(row.completed_quantity || 0)
+        completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + completedQty
+      }
+      if (inv && processKey) {
+        if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
+        processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
       }
     })
 
-    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap })
+    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
