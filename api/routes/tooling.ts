@@ -1856,7 +1856,11 @@ router.post('/test-completed-steps', async (req, res) => {
 // 获取工时数据聚合（用于工艺路线完成状态与完成数量统计）
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
-    const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+    const normalizeProcessKey = (v: any) => String(v || '')
+      .replace(/\s+/g, '')
+      .replace(/^[0-9]+[.\-、:：]*/g, '')
+      .trim()
+      .toLowerCase()
     const toTime = (row: any) => {
       const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
       const ts = Date.parse(t)

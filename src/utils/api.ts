@@ -2307,7 +2307,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
       // Work hours aggregates
       if (method === 'GET' && path === '/api/tooling/work-hours/aggregates') {
-        const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+        const normalizeProcessKey = (v: any) => String(v || '')
+          .replace(/\s+/g, '')
+          .replace(/^[0-9]+[.\-、:：]*/g, '')
+          .trim()
+          .toLowerCase()
         const toTime = (row: any) => {
           const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
           const ts = Date.parse(t)
