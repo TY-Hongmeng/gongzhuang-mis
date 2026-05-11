@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2233,31 +2233,45 @@ const ToolingInfoPage: React.FC = () => {
       const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
       const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => normalizeProcessKey(String(x || ''))))
       const completedSet = new Set<string>([...workHoursCompleted, ...dbCompleted])
-      const manualSteps = statesFromRoute(steps).filter((s: any) => dbCompleted.has(s.key) && !workHoursCompleted.has(s.key))
-      const manualUpdate = manualStepUpdateMap[String(rec.id || '')]
-      if (manualSteps.length > 0) {
-        const manualStep = (() => {
-          if (manualUpdate?.step_key) {
-            const hit = manualSteps.find((s: any) => s.key === manualUpdate.step_key)
-            if (hit) return hit
-          }
-          return manualSteps[manualSteps.length - 1]
-        })()
-        const operatorName = String(manualUpdate?.operator || user?.real_name || '当前用户').trim() || '当前用户'
-        return { text: `${operatorName}更新了${manualStep.step}工序完成`, color: '#28a745', hasRoute: true }
-      }
       function statesFromRoute(stepsRaw: string[]) {
         return stepsRaw.map((step) => {
           const key = normalizeProcessKey(step)
           const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
           const stepQty = Number.isFinite(qty) ? qty : 0
           const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
-          const inProgress = completedSet.has(key) || stepQty > 0
+          const inProgressByWork = workHoursCompleted.has(key) || stepQty > 0
+          const inProgress = completedSet.has(key) || inProgressByWork
           const latestMeta = (processLatestMetaMap as Record<string, any>)[key] || null
-          return { step, key, stepQty, doneByQty, inProgress, latestMeta }
+          return { step, key, stepQty, doneByQty, inProgressByWork, inProgress, latestMeta }
         })
       }
       const states = statesFromRoute(steps)
+      const currentWorkStepIdx = (() => {
+        const activeIdx = states.findIndex((s) => s.inProgressByWork && !s.doneByQty)
+        if (activeIdx >= 0) return activeIdx
+        let lastIdx = -1
+        states.forEach((s, idx) => {
+          if (s.inProgressByWork || s.doneByQty) lastIdx = idx
+        })
+        return lastIdx
+      })()
+      const manualSteps = states.filter((s: any) => dbCompleted.has(s.key) && !workHoursCompleted.has(s.key))
+      const manualUpdate = manualStepUpdateMap[String(rec.id || '')]
+      const eligibleManualSteps = manualSteps.filter((s: any) => {
+        const idx = states.findIndex((it: any) => it.key === s.key)
+        return idx >= 0 && (currentWorkStepIdx < 0 || idx >= currentWorkStepIdx)
+      })
+      if (eligibleManualSteps.length > 0) {
+        const manualStep = (() => {
+          if (manualUpdate?.step_key) {
+            const hit = eligibleManualSteps.find((s: any) => s.key === manualUpdate.step_key)
+            if (hit) return hit
+          }
+          return eligibleManualSteps[eligibleManualSteps.length - 1]
+        })()
+        const operatorName = String(manualUpdate?.operator || user?.real_name || '当前用户').trim() || '当前用户'
+        return { text: `${operatorName}更新了${manualStep.step}工序完成`, color: '#28a745', hasRoute: true }
+      }
       const allDone = states.length > 0 && states.every(s => s.doneByQty)
       const formatActorText = (state: any) => {
         const teamName = String(state?.latestMeta?.team_name || '').trim()
