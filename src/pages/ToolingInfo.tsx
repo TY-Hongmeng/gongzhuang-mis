@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1009,35 +1009,35 @@ const ToolingInfoPage: React.FC = () => {
       autoExpandSearchRef.current = ''
       return
     }
+    if (keyword.length < 2) return
     let cancelled = false
     const timer = setTimeout(async () => {
       try {
-        const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=1000&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
+        const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=120&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
         const js = await resp.json().catch(() => ({}))
         const items = Array.isArray(js?.items) ? js.items : []
         if (cancelled || items.length === 0) return
-        const hitIdsAll = Array.from(new Set(
+        const hitIdSet = new Set(
           items
             .map((it: any) => String(it?.tooling_id || '').trim())
             .filter(Boolean)
-        ))
-        if (hitIdsAll.length === 0) return
-        const visibleParentSet = new Set(
-          (filteredVisibleData || [])
-            .map((row: any) => String(row?.id || '').trim())
-            .filter((id: string) => id && !id.startsWith('blank-'))
         )
-        const hitIds = hitIdsAll.filter((id) => visibleParentSet.has(id))
-        if (hitIds.length === 0) return
-        const signature = `${keyword}|${hitIds.slice().sort().join(',')}`
+        if (hitIdSet.size === 0) return
+        const visibleParentIds = (filteredVisibleData || [])
+          .map((row: any) => String(row?.id || '').trim())
+          .filter((id: string) => id && !id.startsWith('blank-'))
+        if (visibleParentIds.length === 0) return
+        const targetId = visibleParentIds.find((id) => hitIdSet.has(id)) || ''
+        if (!targetId) return
+        const signature = `${keyword}|${targetId}`
         if (autoExpandSearchRef.current === signature) return
         autoExpandSearchRef.current = signature
         if (cancelled) return
-        setExpandedRowKeys(prev => Array.from(new Set([...prev, ...hitIds])))
-        setExpandedChildKeys(prev => Array.from(new Set([...prev, ...hitIds])))
-        await Promise.all(hitIds.map((id) => ensureExpandedDataLoaded(id, false)))
+        setExpandedRowKeys(prev => (prev.includes(targetId) ? prev : [...prev, targetId]))
+        setExpandedChildKeys(prev => (prev.includes(targetId) ? prev : [...prev, targetId]))
+        await ensureExpandedDataLoaded(targetId, false)
       } catch {}
-    }, 250)
+    }, 320)
     return () => {
       cancelled = true
       clearTimeout(timer)
