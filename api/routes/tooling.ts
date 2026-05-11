@@ -167,7 +167,9 @@ router.get('/', async (req, res) => {
 
       const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`;
       if (partsToolingIds.length > 0) {
-        const inList = partsToolingIds.join(',');
+        const inList = partsToolingIds
+          .map((id) => `"${String(id || '').replace(/"/g, '')}"`)
+          .join(',');
         // 将子表命中的父ID也纳入OR条件
         query = query.or(`${baseExpr},id.in.(${inList})`);
       } else {
