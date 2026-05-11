@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -346,10 +346,10 @@ const ExpandedSubTables: React.FC<{
           text-overflow: ellipsis !important;
         }
         .subtable-no-hover .ant-table-tbody > tr > td.process-route-cell {
-          white-space: normal !important;
-          overflow: visible !important;
-          text-overflow: clip !important;
-          line-height: 1.4 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          line-height: 1.2 !important;
         }
       `}</style>
       <div style={{ marginBottom: 16 }}>
@@ -2194,6 +2194,35 @@ const ToolingInfoPage: React.FC = () => {
       }
       return val
     }
+    const normalizeProcessKey = (v: string) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+    const getRouteProgressStatus = (rec: PartItem, routeText: string) => {
+      const route = String(routeText || '')
+      const steps = route.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
+      if (steps.length === 0) return null
+      const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+      const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
+      const requiredQty = Number(rec.part_quantity || 0)
+      const workHoursForThisInv = workHoursData[inventoryNo] || []
+      const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
+      const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+      const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => normalizeProcessKey(String(x || ''))))
+      const completedSet = new Set<string>([...workHoursCompleted, ...dbCompleted])
+      const states = steps.map((step) => {
+        const key = normalizeProcessKey(step)
+        const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
+        const stepQty = Number.isFinite(qty) ? qty : 0
+        const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
+        const inProgress = completedSet.has(key) || stepQty > 0
+        return { step, doneByQty, inProgress }
+      })
+      const allDone = states.length > 0 && states.every(s => s.doneByQty)
+      if (allDone) return { text: `${states[states.length - 1].step}加工完成`, color: '#28a745' }
+      const active = states.find(s => s.inProgress && !s.doneByQty)
+      if (active) return { text: `${active.step}加工中`, color: '#1890ff' }
+      const completed = [...states].reverse().find(s => s.doneByQty)
+      if (completed) return { text: `${completed.step}加工完成`, color: '#28a745' }
+      return { text: `${states[0].step}未加工`, color: '#333' }
+    }
     return [
       {
         title: '盘存编号',
@@ -2406,9 +2435,11 @@ const ToolingInfoPage: React.FC = () => {
       {
         title: '状态',
         dataIndex: '__status',
-        width: 140,
+        width: 220,
         render: (_text: any, rec: PartItem) => {
           const purchaseStatus = String((rec as any).purchase_status || '').trim()
+          const currentRoute = String((rec as any).process_route || (processRoutes[String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()] || ''))
+          const routeProgressStatus = getRouteProgressStatus(rec, currentRoute)
           const nameOk = !!String(rec.part_name || '').trim()
           const q = rec.part_quantity
           const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
@@ -2429,7 +2460,16 @@ const ToolingInfoPage: React.FC = () => {
               onSave={(pid, _k, v) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
+                if (raw && routeProgressStatus) {
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+                      <span>{renderStatusText(raw)}</span>
+                      <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
+                    </span>
+                  )
+                }
                 if (raw) return renderStatusText(raw)
+                if (routeProgressStatus) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
                 return ready ? <span style={{ color: '#1890ff' }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
               }}
             />
@@ -2450,7 +2490,6 @@ const ToolingInfoPage: React.FC = () => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
           const requiredQty = Number(rec.part_quantity || 0)
-          const normalizeProcessKey = (v: string) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
           const getStepCompletedQty = (step: string) => {
             const key = normalizeProcessKey(step)
             const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
@@ -2496,7 +2535,7 @@ const ToolingInfoPage: React.FC = () => {
             if (!route) return <span style={{ color: '#999' }}>-</span>
             const steps = route.split(/\s*→\s*/).filter(Boolean)
             return (
-              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'center' }}>
+              <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                 {steps.map((s, i) => {
                   const stepDone = completedSet.has(s.trim().toLowerCase())
                   const stepCompletedQty = getStepCompletedQty(s)
