@@ -1019,6 +1019,7 @@ const ToolingInfoPage: React.FC = () => {
     process_name: string
     operator: string
     shift: string
+    team_name: string
     device_no: string
     device_name: string
     completed_quantity: number
@@ -2233,11 +2234,11 @@ const ToolingInfoPage: React.FC = () => {
       })
       const allDone = states.length > 0 && states.every(s => s.doneByQty)
       const formatActorText = (state: any) => {
-        const shift = String(state?.latestMeta?.shift || '').trim()
+        const teamName = String(state?.latestMeta?.team_name || '').trim()
         const operator = String(state?.latestMeta?.operator || '').trim()
         const deviceNo = String(state?.latestMeta?.device_no || '').trim()
         const deviceName = String(state?.latestMeta?.device_name || '').trim()
-        const teamText = shift ? `${shift}班组` : '班组未知'
+        const teamText = teamName || '班组未知'
         const operatorText = operator || '操作者未知'
         const deviceText = deviceNo
           ? (deviceName ? `${deviceNo}号${deviceName}` : `${deviceNo}号设备`)
@@ -2246,14 +2247,14 @@ const ToolingInfoPage: React.FC = () => {
       }
       if (allDone) {
         const last = states[states.length - 1]
-        return { text: `${formatActorText(last)}${last.step}加工完成`, color: '#28a745', hasRoute: true }
+        return { text: `${formatActorText(last)}加工完成`, color: '#28a745', hasRoute: true }
       }
       const active = states.find(s => s.inProgress && !s.doneByQty)
-      if (active) return { text: `${formatActorText(active)}${active.step}加工中`, color: '#1890ff', hasRoute: true }
+      if (active) return { text: `${formatActorText(active)}加工中`, color: '#1890ff', hasRoute: true }
       const completed = [...states].reverse().find(s => s.doneByQty)
-      if (completed) return { text: `${formatActorText(completed)}${completed.step}加工完成`, color: '#28a745', hasRoute: true }
-      // 有工艺路线但尚未开始，业务上视为已下料
-      return { text: `下料完成，待${states[0].step}加工`, color: '#595959', hasRoute: true }
+      if (completed) return { text: `${formatActorText(completed)}加工完成`, color: '#28a745', hasRoute: true }
+      // 工艺路线存在但无工时进展，不覆盖原状态（如下料中）
+      return null
     }
     return [
       {
@@ -2834,7 +2835,7 @@ const ToolingInfoPage: React.FC = () => {
       .map(([k, v]) => {
         const processMap = Object.entries(v || {})
           .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
-          .map(([p, meta]: any) => `${p}:${meta?.operator || ''}|${meta?.shift || ''}|${meta?.device_no || ''}|${meta?.device_name || ''}|${meta?.at || ''}`)
+          .map(([p, meta]: any) => `${p}:${meta?.operator || ''}|${meta?.team_name || ''}|${meta?.device_no || ''}|${meta?.device_name || ''}|${meta?.at || ''}`)
           .join(',')
         return `${k}:{${processMap}}`
       })

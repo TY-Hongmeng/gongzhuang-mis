@@ -1895,7 +1895,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
     const aggregates: Record<string, string[]> = {}
     const completedQtyMap: Record<string, number> = {}
     const processCompletedQtyMap: Record<string, Record<string, number>> = {}
-    const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
+    const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
     ;(data || []).forEach((row: any) => {
       const inv = String(row.inventory_no || row.part_inventory_number || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
@@ -1921,6 +1921,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
             process_name: process,
             operator: String(row.operator || '').trim(),
             shift: String(row.shift || '').trim(),
+            team_name: '',
             device_no: deviceNo,
             device_name: '',
             completed_quantity: completedQty,
@@ -1952,6 +1953,49 @@ router.get('/work-hours/aggregates', async (req, res) => {
         })
       } catch {}
     }
+
+    // 通过操作者反查真实班组名称（不是班次）
+    try {
+      const normalizeName = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+      const operatorSet = new Set<string>()
+      Object.keys(processLatestMetaData).forEach((inv) => {
+        const processMap = processLatestMetaData[inv] || {}
+        Object.keys(processMap).forEach((pk) => {
+          const op = String(processMap[pk]?.operator || '').trim()
+          if (op) operatorSet.add(op)
+        })
+      })
+      const operatorList = Array.from(operatorSet)
+      if (operatorList.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('real_name, team_id')
+          .in('real_name', operatorList)
+        const teamIds = Array.from(new Set((users || []).map((u: any) => String(u.team_id || '')).filter(Boolean)))
+        let teamMap = new Map<string, string>()
+        if (teamIds.length > 0) {
+          const { data: teams } = await supabase
+            .from('teams')
+            .select('id, name')
+            .in('id', teamIds)
+          teamMap = new Map((teams || []).map((t: any) => [String(t.id || ''), String(t.name || '')]))
+        }
+        const userTeamByName = new Map<string, string>()
+        ;(users || []).forEach((u: any) => {
+          const k = normalizeName(u.real_name)
+          const teamName = teamMap.get(String(u.team_id || '')) || ''
+          if (k && teamName && !userTeamByName.has(k)) userTeamByName.set(k, teamName)
+        })
+        Object.keys(processLatestMetaData).forEach((inv) => {
+          const processMap = processLatestMetaData[inv] || {}
+          Object.keys(processMap).forEach((pk) => {
+            const meta = processMap[pk]
+            const teamName = userTeamByName.get(normalizeName(meta?.operator))
+            if (teamName) meta.team_name = teamName
+          })
+        })
+      }
+    } catch {}
 
     res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processLatestMetaData })
   } catch (err: any) {
