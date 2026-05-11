@@ -1857,33 +1857,52 @@ router.post('/test-completed-steps', async (req, res) => {
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
     const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+    const toTime = (row: any) => {
+      const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
+      const ts = Date.parse(t)
+      return Number.isFinite(ts) ? ts : 0
+    }
     const { invs } = req.query as { invs?: string }
     if (!invs) {
-      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
     }
 
     const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
     if (invList.length === 0) {
-      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
     }
 
-    // 查询这些盘存编号对应的所有工时记录
-    const { data, error } = await supabase
+    // 查询这些盘存编号对应的所有工时记录（兼容 inventory_no / part_inventory_number 两种字段）
+    const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, operator, shift, device_no, created_at, work_date'
+    const { data: dataByInvNo, error: errByInvNo } = await supabase
       .from('work_hours')
-      .select('inventory_no, process_name, completed_quantity')
+      .select(baseSelect)
       .in('inventory_no', invList)
+    const { data: dataByPartInvNo, error: errByPartInvNo } = await supabase
+      .from('work_hours')
+      .select(baseSelect)
+      .in('part_inventory_number', invList)
+    if (errByInvNo && errByPartInvNo) throw errByPartInvNo
+    const mergeMap = new Map<string, any>()
+    ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
+      const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
+      if (!mergeMap.has(key)) mergeMap.set(key, r)
+    })
+    const data = Array.from(mergeMap.values())
 
-    if (error) throw error
-
+    const invForDevice = new Set<string>()
     // 按盘存编号聚合工序
     const aggregates: Record<string, string[]> = {}
     const completedQtyMap: Record<string, number> = {}
     const processCompletedQtyMap: Record<string, Record<string, number>> = {}
+    const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
     ;(data || []).forEach((row: any) => {
-      const inv = String(row.inventory_no || '').trim().toUpperCase()
+      const inv = String(row.inventory_no || row.part_inventory_number || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
       const processKey = normalizeProcessKey(process)
       const completedQty = Number(row.completed_quantity || 0)
+      const deviceNo = String(row.device_no || '').trim()
+      if (deviceNo) invForDevice.add(deviceNo)
       if (inv && process) {
         if (!aggregates[inv]) aggregates[inv] = []
         if (!aggregates[inv].includes(process)) aggregates[inv].push(process)
@@ -1894,10 +1913,47 @@ router.get('/work-hours/aggregates', async (req, res) => {
       if (inv && processKey) {
         if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
         processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
+        if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
+        const prev = processLatestMetaData[inv][processKey]
+        const at = toTime(row)
+        if (!prev || at >= Number(prev.at || 0)) {
+          processLatestMetaData[inv][processKey] = {
+            process_name: process,
+            operator: String(row.operator || '').trim(),
+            shift: String(row.shift || '').trim(),
+            device_no: deviceNo,
+            device_name: '',
+            completed_quantity: completedQty,
+            at
+          }
+        }
       }
     })
 
-    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap })
+    const deviceNoList = Array.from(invForDevice)
+    if (deviceNoList.length > 0) {
+      try {
+        const { data: deviceRows } = await supabase
+          .from('devices')
+          .select('device_no, device_name')
+          .in('device_no', deviceNoList)
+        const deviceMap = new Map<string, string>()
+        ;(deviceRows || []).forEach((d: any) => {
+          const no = String(d.device_no || '').trim()
+          if (no) deviceMap.set(no, String(d.device_name || '').trim())
+        })
+        Object.keys(processLatestMetaData).forEach((inv) => {
+          const processMap = processLatestMetaData[inv] || {}
+          Object.keys(processMap).forEach((pk) => {
+            const meta = processMap[pk]
+            const no = String(meta?.device_no || '').trim()
+            if (no && deviceMap.has(no)) meta.device_name = String(deviceMap.get(no) || '')
+          })
+        })
+      } catch {}
+    }
+
+    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processLatestMetaData })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })

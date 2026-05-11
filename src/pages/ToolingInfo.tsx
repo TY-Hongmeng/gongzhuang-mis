@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1015,6 +1015,15 @@ const ToolingInfoPage: React.FC = () => {
   // 工时数据状态，存储所有已录入的工时记录
   const [workHoursData, setWorkHoursData] = useState<Record<string, string[]>>({})
   const [workHoursProcessCompletedQtyData, setWorkHoursProcessCompletedQtyData] = useState<Record<string, Record<string, number>>>({})
+  const [workHoursProcessLatestMetaData, setWorkHoursProcessLatestMetaData] = useState<Record<string, Record<string, {
+    process_name: string
+    operator: string
+    shift: string
+    device_no: string
+    device_name: string
+    completed_quantity: number
+    at: number
+  }>>>({})
   
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
@@ -1023,6 +1032,7 @@ const ToolingInfoPage: React.FC = () => {
       if (!hasInvs) {
         setWorkHoursData({})
         setWorkHoursProcessCompletedQtyData({})
+        setWorkHoursProcessLatestMetaData({})
         return
       }
       const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
@@ -1045,21 +1055,25 @@ const ToolingInfoPage: React.FC = () => {
         // 即使API返回错误，也不抛出异常，避免影响页面其他功能
         setWorkHoursData({})
         setWorkHoursProcessCompletedQtyData({})
+        setWorkHoursProcessLatestMetaData({})
         return
       }
       
       // 提取工时数据
       const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
       const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
+      const processLatestMetaByInventoryNo = result?.processLatestMetaData || {}
       
       setWorkHoursData(hoursByInventoryNo)
       setWorkHoursProcessCompletedQtyData(processCompletedQtyByInventoryNo)
+      setWorkHoursProcessLatestMetaData(processLatestMetaByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
       console.error('获取工时数据失败:', error)
       // 即使发生异常，也不影响页面其他功能
       setWorkHoursData({})
       setWorkHoursProcessCompletedQtyData({})
+      setWorkHoursProcessLatestMetaData({})
     }
   }, [])
   
@@ -2201,6 +2215,7 @@ const ToolingInfoPage: React.FC = () => {
       if (steps.length === 0) return null
       const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
       const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
+      const processLatestMetaMap = workHoursProcessLatestMetaData[inventoryNo] || {}
       const requiredQty = Number(rec.part_quantity || 0)
       const workHoursForThisInv = workHoursData[inventoryNo] || []
       const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
@@ -2213,15 +2228,32 @@ const ToolingInfoPage: React.FC = () => {
         const stepQty = Number.isFinite(qty) ? qty : 0
         const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
         const inProgress = completedSet.has(key) || stepQty > 0
-        return { step, doneByQty, inProgress }
+        const latestMeta = (processLatestMetaMap as Record<string, any>)[key] || null
+        return { step, key, doneByQty, inProgress, latestMeta }
       })
       const allDone = states.length > 0 && states.every(s => s.doneByQty)
-      if (allDone) return { text: `${states[states.length - 1].step}加工完成`, color: '#28a745' }
+      const formatActorText = (state: any) => {
+        const shift = String(state?.latestMeta?.shift || '').trim()
+        const operator = String(state?.latestMeta?.operator || '').trim()
+        const deviceNo = String(state?.latestMeta?.device_no || '').trim()
+        const deviceName = String(state?.latestMeta?.device_name || '').trim()
+        const teamText = shift ? `${shift}班组` : '班组未知'
+        const operatorText = operator || '操作者未知'
+        const deviceText = deviceNo
+          ? (deviceName ? `${deviceNo}号${deviceName}` : `${deviceNo}号设备`)
+          : (deviceName || '设备未知')
+        return `${teamText} ${operatorText} 用${deviceText}`
+      }
+      if (allDone) {
+        const last = states[states.length - 1]
+        return { text: `${formatActorText(last)}${last.step}加工完成`, color: '#28a745', hasRoute: true }
+      }
       const active = states.find(s => s.inProgress && !s.doneByQty)
-      if (active) return { text: `${active.step}加工中`, color: '#1890ff' }
+      if (active) return { text: `${formatActorText(active)}${active.step}加工中`, color: '#1890ff', hasRoute: true }
       const completed = [...states].reverse().find(s => s.doneByQty)
-      if (completed) return { text: `${completed.step}加工完成`, color: '#28a745' }
-      return { text: `${states[0].step}未加工`, color: '#333' }
+      if (completed) return { text: `${formatActorText(completed)}${completed.step}加工完成`, color: '#28a745', hasRoute: true }
+      // 有工艺路线但尚未开始，业务上视为已下料
+      return { text: `下料完成，待${states[0].step}加工`, color: '#595959', hasRoute: true }
     }
     return [
       {
@@ -2460,14 +2492,7 @@ const ToolingInfoPage: React.FC = () => {
               onSave={(pid, _k, v) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
-                if (raw && routeProgressStatus) {
-                  return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
-                      <span>{renderStatusText(raw)}</span>
-                      <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
-                    </span>
-                  )
-                }
+                if (routeProgressStatus?.hasRoute) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
                 if (raw) return renderStatusText(raw)
                 if (routeProgressStatus) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
                 return ready ? <span style={{ color: '#1890ff' }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
@@ -2610,7 +2635,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [renderStatusText, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData])
+  }, [renderStatusText, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData, workHoursProcessLatestMetaData])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -2804,7 +2829,17 @@ const ToolingInfoPage: React.FC = () => {
         return `${k}:{${processMap}}`
       })
       .join('|')
-    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}`
+    const latestMetaKey = Object.entries(workHoursProcessLatestMetaData)
+      .sort(([a], [b]) => String(a).localeCompare(String(b)))
+      .map(([k, v]) => {
+        const processMap = Object.entries(v || {})
+          .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
+          .map(([p, meta]: any) => `${p}:${meta?.operator || ''}|${meta?.shift || ''}|${meta?.device_no || ''}|${meta?.device_name || ''}|${meta?.at || ''}`)
+          .join(',')
+        return `${k}:{${processMap}}`
+      })
+      .join('|')
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${latestMetaKey}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
     if (!cols) {
       cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
@@ -2872,7 +2907,8 @@ const ToolingInfoPage: React.FC = () => {
     setChildItemsMap,
     setPartBatchModal,
     workHoursData,
-    workHoursProcessCompletedQtyData
+    workHoursProcessCompletedQtyData,
+    workHoursProcessLatestMetaData
   ])
 
   const confirmPartBatchAdd = useCallback(() => {

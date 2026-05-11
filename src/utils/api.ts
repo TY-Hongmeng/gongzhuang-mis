@@ -2308,23 +2308,32 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Work hours aggregates
       if (method === 'GET' && path === '/api/tooling/work-hours/aggregates') {
         const normalizeProcessKey = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+        const toTime = (row: any) => {
+          const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
+          const ts = Date.parse(t)
+          return Number.isFinite(ts) ? ts : 0
+        }
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
         try {
-          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity')
+          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,operator,shift,device_no,created_at,work_date')
           q = q.in('part_inventory_number', invs)
           const { data, error } = await q
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const map: Record<string, string[]> = {}
           const completedQtyMap: Record<string, number> = {}
           const processCompletedQtyMap: Record<string, Record<string, number>> = {}
+          const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
+          const deviceSet = new Set<string>()
           ;(data || []).forEach((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
             const completedQty = Number(r.completed_quantity || 0)
+            const deviceNo = String(r.device_no || '').trim()
+            if (deviceNo) deviceSet.add(deviceNo)
             if (!inv || !name) return
             const norm = name.trim().toLowerCase()
             const arr = map[inv] || []
@@ -2334,9 +2343,45 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (processKey) {
               if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
               processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
+              if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
+              const prev = processLatestMetaData[inv][processKey]
+              const at = toTime(r)
+              if (!prev || at >= Number(prev.at || 0)) {
+                processLatestMetaData[inv][processKey] = {
+                  process_name: name,
+                  operator: String(r.operator || '').trim(),
+                  shift: String(r.shift || '').trim(),
+                  device_no: deviceNo,
+                  device_name: '',
+                  completed_quantity: completedQty,
+                  at
+                }
+              }
             }
           })
-          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap })
+          const deviceNos = Array.from(deviceSet)
+          if (deviceNos.length > 0) {
+            try {
+              const { data: devices } = await supabase
+                .from('devices')
+                .select('device_no,device_name')
+                .in('device_no', deviceNos)
+              const deviceMap = new Map<string, string>()
+              ;(devices || []).forEach((d: any) => {
+                const no = String(d.device_no || '').trim()
+                if (no) deviceMap.set(no, String(d.device_name || '').trim())
+              })
+              Object.keys(processLatestMetaData).forEach((inv) => {
+                const processMap = processLatestMetaData[inv] || {}
+                Object.keys(processMap).forEach((pk) => {
+                  const meta = processMap[pk]
+                  const no = String(meta?.device_no || '').trim()
+                  if (no && deviceMap.has(no)) meta.device_name = String(deviceMap.get(no) || '')
+                })
+              })
+            } catch {}
+          }
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processLatestMetaData })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }
