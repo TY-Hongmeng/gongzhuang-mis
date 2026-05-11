@@ -57,6 +57,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [manualProcessHint, setManualProcessHint] = React.useState('请填写当前工序')
   const [recentItems, setRecentItems] = React.useState<any[]>([])
   const [loadingRecent, setLoadingRecent] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
   const [selectedRecentKeys, setSelectedRecentKeys] = React.useState<React.Key[]>([])
   const [lastCompletedTime, setLastCompletedTime] = React.useState<string>('')
   // 添加 completedTime 状态来替代 form 中的 completed_time 字段
@@ -1009,6 +1010,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
           className="work-hours-form"
           validateTrigger="onChange"
           onFinish={async (vals) => {
+            if (submitting) return
             if (!vals.shift) {
               message.warning('请选择班次后再提交')
               return
@@ -1086,6 +1088,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               }
             }
             const hide = message.loading('提交中...', 0)
+            setSubmitting(true)
             const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
             const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
             const auxHours = auxMinutes / 60
@@ -1146,7 +1149,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               const json = await resp.json()
               if (json?.success) {
                 hide()
-                message.success('提交成功')
+                if (json?.deduplicated) message.warning('检测到重复提交，已自动忽略')
+                else message.success('提交成功')
                 
                 // 广播工时提交事件，通知其他页面刷新数据
                 try {
@@ -1199,6 +1203,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             } catch (e: any) {
               hide()
               message.error(e?.message || '网络错误')
+            } finally {
+              setSubmitting(false)
             }
           }}
         >
@@ -1502,7 +1508,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               type="primary" 
               htmlType="submit" 
               block
-              disabled={isSubmitDisabled}
+              disabled={isSubmitDisabled || submitting}
+              loading={submitting}
             >
               提交
             </Button>

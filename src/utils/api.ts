@@ -2436,6 +2436,53 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      const normalizeWorkHourDedupText = (v: any) => String(v || '')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s+/g, '')
+        .trim()
+        .toLowerCase()
+      const toWorkHourDedupNum = (v: any) => {
+        const n = Number(v || 0)
+        return Number.isFinite(n) ? n.toFixed(6) : '0.000000'
+      }
+      const buildWorkHourDedupKey = (row: any) => [
+        String(row?.work_date || '').trim(),
+        String(row?.shift_date || '').trim(),
+        normalizeWorkHourDedupText(row?.shift),
+        normalizeWorkHourDedupText(row?.operator),
+        normalizeWorkHourDedupText(row?.part_inventory_number),
+        normalizeWorkHourDedupText(row?.part_drawing_number),
+        normalizeWorkHourDedupText(row?.part_name),
+        normalizeWorkHourDedupText(row?.process_name),
+        normalizeWorkHourDedupText(row?.device_no),
+        String(row?.aux_start_time || '').trim(),
+        String(row?.aux_end_time || '').trim(),
+        toWorkHourDedupNum(row?.aux_hours),
+        toWorkHourDedupNum(row?.proc_hours),
+        toWorkHourDedupNum(row?.completed_quantity),
+        toWorkHourDedupNum(row?.aux_count),
+        toWorkHourDedupNum(row?.process_quantity)
+      ].join('|')
+      const dedupeWorkHoursRows = (rows: any[]) => {
+        const list = Array.isArray(rows) ? rows : []
+        if (list.length <= 1) return list
+        const keyed = new Map<string, any>()
+        list.forEach((row: any) => {
+          const key = buildWorkHourDedupKey(row)
+          const prev = keyed.get(key)
+          if (!prev) {
+            keyed.set(key, row)
+            return
+          }
+          const prevTs = Date.parse(String(prev?.created_at || prev?.updated_at || ''))
+          const rowTs = Date.parse(String(row?.created_at || row?.updated_at || ''))
+          if ((Number.isFinite(rowTs) ? rowTs : 0) > (Number.isFinite(prevTs) ? prevTs : 0)) {
+            keyed.set(key, row)
+          }
+        })
+        return Array.from(keyed.values())
+      }
+
       // Work hours
       if (method === 'GET' && path === '/api/tooling/work-hours') {
         const normalizePartLookupKey = (value: any) => String(value || '')
@@ -2492,7 +2539,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (invs.length > 0) q = q.in('part_inventory_number', invs)
             const { data, error } = await q
             if (error) return jsonResponse({ success: true, items: [], total: 0, page: 1, pageSize: invs.length || 0, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
-            const items = await enrichWorkHourPartMeta(data || [])
+            const items = dedupeWorkHoursRows(await enrichWorkHourPartMeta(data || []))
             const totals = (items as any[]).reduce(
               (acc, r: any) => {
                 acc.total_hours += Number(r.hours || 0)
@@ -2538,7 +2585,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         query = query.range((page - 1) * pageSize, (page - 1) * pageSize + pageSize - 1)
         const { data, error, count } = await query
         if (error) return jsonResponse({ success: true, items: [], total: 0, page, pageSize, totals: { total_hours: 0, aux_hours: 0, proc_hours: 0, completed_quantity: 0 }, data: [] })
-        const items = await enrichWorkHourPartMeta(data || [])
+        const items = dedupeWorkHoursRows(await enrichWorkHourPartMeta(data || []))
         const totals = (items as any[]).reduce(
           (acc, r: any) => {
             acc.total_hours += Number(r.hours || 0)
@@ -2632,6 +2679,23 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           device_no: String(body.device_no || ''),
           shift: String(body.shift || '')
         }
+        try {
+          let dupQuery = supabase
+            .from('work_hours')
+            .select('*')
+            .eq('work_date', payload.work_date)
+            .eq('part_inventory_number', payload.part_inventory_number)
+            .eq('operator', payload.operator)
+            .order('created_at', { ascending: false })
+            .limit(50)
+          if (payload.process_name) dupQuery = dupQuery.eq('process_name', payload.process_name)
+          if (payload.device_no) dupQuery = dupQuery.eq('device_no', payload.device_no)
+          if (payload.shift) dupQuery = dupQuery.eq('shift', payload.shift)
+          const { data: dupRows } = await dupQuery
+          const incomingKey = buildWorkHourDedupKey(payload)
+          const duplicated = (dupRows || []).find((r: any) => buildWorkHourDedupKey(r) === incomingKey)
+          if (duplicated) return jsonResponse({ success: true, data: duplicated, deduplicated: true, message: '检测到重复提交，已自动忽略' })
+        } catch {}
         try {
           let result = await supabase.from('work_hours').insert(payload).select('*').single()
           if (result.error) {

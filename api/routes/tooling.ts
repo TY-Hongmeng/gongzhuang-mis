@@ -1532,6 +1532,25 @@ router.post('/work-hours', async (req, res) => {
       single_aux_count: singleAuxCount
     }
     try {
+      let dupQuery = supabase
+        .from('work_hours')
+        .select('*')
+        .eq('work_date', insertBody.work_date)
+        .eq('part_inventory_number', insertBody.part_inventory_number)
+        .eq('operator', insertBody.operator)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (insertBody.process_name) dupQuery = dupQuery.eq('process_name', insertBody.process_name)
+      if (insertBody.device_no) dupQuery = dupQuery.eq('device_no', insertBody.device_no)
+      if (insertBody.shift) dupQuery = dupQuery.eq('shift', insertBody.shift)
+      const { data: dupRows } = await dupQuery
+      const incomingKey = buildWorkHourDedupKey(insertBody)
+      const duplicated = (dupRows || []).find((r: any) => buildWorkHourDedupKey(r) === incomingKey)
+      if (duplicated) {
+        return res.json({ success: true, data: duplicated, deduplicated: true, message: '检测到重复提交，已自动忽略' })
+      }
+    } catch {}
+    try {
       const { data, error } = await supabase
         .from('work_hours')
         .insert([insertBody])
@@ -1607,6 +1626,56 @@ const enrichWorkHourAuxMetrics = (rows: any[]) => {
       single_aux_count: Number.isFinite(singleAuxCount) && singleAuxCount > 0 ? singleAuxCount : computedSingleAuxCount
     }
   })
+}
+
+const normalizeWorkHourDedupText = (v: any) => String(v || '')
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/\s+/g, '')
+  .trim()
+  .toLowerCase()
+
+const toWorkHourDedupNum = (v: any) => {
+  const n = Number(v || 0)
+  return Number.isFinite(n) ? n.toFixed(6) : '0.000000'
+}
+
+const buildWorkHourDedupKey = (row: any) => [
+  String(row?.work_date || '').trim(),
+  String(row?.shift_date || '').trim(),
+  normalizeWorkHourDedupText(row?.shift),
+  normalizeWorkHourDedupText(row?.operator),
+  normalizeWorkHourDedupText(row?.part_inventory_number),
+  normalizeWorkHourDedupText(row?.part_drawing_number),
+  normalizeWorkHourDedupText(row?.part_name),
+  normalizeWorkHourDedupText(row?.process_name),
+  normalizeWorkHourDedupText(row?.device_no),
+  String(row?.aux_start_time || '').trim(),
+  String(row?.aux_end_time || '').trim(),
+  toWorkHourDedupNum(row?.aux_hours),
+  toWorkHourDedupNum(row?.proc_hours),
+  toWorkHourDedupNum(row?.completed_quantity),
+  toWorkHourDedupNum(row?.aux_count),
+  toWorkHourDedupNum(row?.process_quantity)
+].join('|')
+
+const dedupeWorkHoursRows = (rows: any[]) => {
+  const list = Array.isArray(rows) ? rows : []
+  if (list.length <= 1) return list
+  const keyed = new Map<string, any>()
+  list.forEach((row: any) => {
+    const key = buildWorkHourDedupKey(row)
+    const prev = keyed.get(key)
+    if (!prev) {
+      keyed.set(key, row)
+      return
+    }
+    const prevTs = Date.parse(String(prev?.created_at || prev?.updated_at || ''))
+    const rowTs = Date.parse(String(row?.created_at || row?.updated_at || ''))
+    if ((Number.isFinite(rowTs) ? rowTs : 0) > (Number.isFinite(prevTs) ? prevTs : 0)) {
+      keyed.set(key, row)
+    }
+  })
+  return Array.from(keyed.values())
 }
 
 const enrichWorkHourPartMeta = async (rows: any[]) => {
@@ -1744,6 +1813,7 @@ router.get('/work-hours', async (req, res) => {
 
     items = enrichWorkHourAuxMetrics(items)
     items = await enrichWorkHourPartMeta(items)
+    items = dedupeWorkHoursRows(items)
 
     const totals = items.reduce(
       (acc: any, r: any) => {
