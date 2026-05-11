@@ -1853,7 +1853,7 @@ router.post('/test-completed-steps', async (req, res) => {
   }
 })
 
-// 获取工时数据聚合（用于工艺路线完成状态）
+// 获取工时数据聚合（用于工艺路线完成状态与完成数量统计）
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
     const { invs } = req.query as { invs?: string }
@@ -1869,13 +1869,14 @@ router.get('/work-hours/aggregates', async (req, res) => {
     // 查询这些盘存编号对应的所有工时记录
     const { data, error } = await supabase
       .from('work_hours')
-      .select('inventory_no, process_name')
+      .select('inventory_no, process_name, completed_quantity')
       .in('inventory_no', invList)
 
     if (error) throw error
 
     // 按盘存编号聚合工序
     const aggregates: Record<string, string[]> = {}
+    const completedQtyMap: Record<string, number> = {}
     ;(data || []).forEach((row: any) => {
       const inv = String(row.inventory_no || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
@@ -1883,9 +1884,12 @@ router.get('/work-hours/aggregates', async (req, res) => {
         if (!aggregates[inv]) aggregates[inv] = []
         if (!aggregates[inv].includes(process)) aggregates[inv].push(process)
       }
+      if (inv) {
+        completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + Number(row.completed_quantity || 0)
+      }
     })
 
-    res.json({ success: true, data: aggregates })
+    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })

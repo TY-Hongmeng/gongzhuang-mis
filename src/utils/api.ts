@@ -2310,13 +2310,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {} })
         try {
-          let q = supabase.from('work_hours').select('part_inventory_number,process_name')
+          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity')
           q = q.in('part_inventory_number', invs)
           const { data, error } = await q
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const map: Record<string, string[]> = {}
+          const completedQtyMap: Record<string, number> = {}
           ;(data || []).forEach((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
@@ -2325,8 +2326,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const arr = map[inv] || []
             if (!arr.some(x => String(x).trim().toLowerCase() === norm)) arr.push(name)
             map[inv] = arr
+            completedQtyMap[inv] = Number(completedQtyMap[inv] || 0) + Number(r.completed_quantity || 0)
           })
-          return jsonResponse({ success: true, data: map })
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }
