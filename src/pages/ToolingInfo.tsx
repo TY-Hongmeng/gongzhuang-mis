@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -744,6 +744,7 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     setExpandedChildKeysRef.current = setExpandedChildKeys
   }, [setExpandedChildKeys])
+  const autoExpandSearchRef = useRef('')
 
   useEffect(() => {
     const invs = new Set<string>()
@@ -1000,6 +1001,48 @@ const ToolingInfoPage: React.FC = () => {
     
     return () => clearTimeout(timeoutId)
   }, [filterSearch, filterUnit, filterCategory, filterPriority, applyFilters])
+
+  // 当筛选词命中子级（零件盘存编号/零件名称/图号）时，自动展开对应父级子表
+  useEffect(() => {
+    const keyword = String(filterSearch || '').trim()
+    if (!keyword) {
+      autoExpandSearchRef.current = ''
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=1000&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
+        const js = await resp.json().catch(() => ({}))
+        const items = Array.isArray(js?.items) ? js.items : []
+        if (cancelled || items.length === 0) return
+        const hitIdsAll = Array.from(new Set(
+          items
+            .map((it: any) => String(it?.tooling_id || '').trim())
+            .filter(Boolean)
+        ))
+        if (hitIdsAll.length === 0) return
+        const visibleParentSet = new Set(
+          (filteredVisibleData || [])
+            .map((row: any) => String(row?.id || '').trim())
+            .filter((id: string) => id && !id.startsWith('blank-'))
+        )
+        const hitIds = hitIdsAll.filter((id) => visibleParentSet.has(id))
+        if (hitIds.length === 0) return
+        const signature = `${keyword}|${hitIds.slice().sort().join(',')}`
+        if (autoExpandSearchRef.current === signature) return
+        autoExpandSearchRef.current = signature
+        if (cancelled) return
+        setExpandedRowKeys(prev => Array.from(new Set([...prev, ...hitIds])))
+        setExpandedChildKeys(prev => Array.from(new Set([...prev, ...hitIds])))
+        await Promise.all(hitIds.map((id) => ensureExpandedDataLoaded(id, false)))
+      } catch {}
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filterSearch, filteredVisibleData, ensureExpandedDataLoaded, setExpandedRowKeys, setExpandedChildKeys])
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>()
