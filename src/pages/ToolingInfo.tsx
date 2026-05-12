@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2263,6 +2263,32 @@ const ToolingInfoPage: React.FC = () => {
       .replace(/^[0-9]+[.\-、:：]*/g, '')
       .trim()
       .toLowerCase()
+    const buildManualStepToken = (step: string, index: number) => `__STEP__${index}__${normalizeProcessKey(step)}`
+    const resolveManualCompletedTokens = (steps: string[], completedStepsRaw: any[]) => {
+      const savedValues = Array.isArray(completedStepsRaw)
+        ? completedStepsRaw.map((x: any) => String(x || '').trim()).filter(Boolean)
+        : []
+      const tokenSet = new Set<string>()
+      const legacyCounts: Record<string, number> = {}
+      savedValues.forEach((value) => {
+        if (value.startsWith('__STEP__')) {
+          tokenSet.add(value)
+          return
+        }
+        const key = normalizeProcessKey(value)
+        if (!key) return
+        legacyCounts[key] = (legacyCounts[key] || 0) + 1
+      })
+      steps.forEach((step, index) => {
+        const key = normalizeProcessKey(step)
+        if (!key) return
+        if ((legacyCounts[key] || 0) > 0) {
+          tokenSet.add(buildManualStepToken(step, index))
+          legacyCounts[key] -= 1
+        }
+      })
+      return tokenSet
+    }
     const getRouteProgressStatus = (rec: PartItem, routeText: string) => {
       const route = String(routeText || '')
       const steps = route.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
@@ -2274,18 +2300,19 @@ const ToolingInfoPage: React.FC = () => {
       const workHoursForThisInv = workHoursData[inventoryNo] || []
       const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
       const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
-      const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => normalizeProcessKey(String(x || ''))))
-      const completedSet = new Set<string>([...workHoursCompleted, ...dbCompleted])
+      const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
       function statesFromRoute(stepsRaw: string[]) {
-        return stepsRaw.map((step) => {
+        return stepsRaw.map((step, index) => {
           const key = normalizeProcessKey(step)
+          const token = buildManualStepToken(step, index)
           const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
           const stepQty = Number.isFinite(qty) ? qty : 0
           const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
           const inProgressByWork = workHoursCompleted.has(key) || stepQty > 0
-          const inProgress = completedSet.has(key) || inProgressByWork
+          const manualChecked = manualCompletedTokens.has(token)
+          const inProgress = manualChecked || inProgressByWork
           const latestMeta = (processLatestMetaMap as Record<string, any>)[key] || null
-          return { step, key, stepQty, doneByQty, inProgressByWork, inProgress, latestMeta }
+          return { step, key, token, stepQty, doneByQty, inProgressByWork, inProgress, manualChecked, latestMeta }
         })
       }
       const states = statesFromRoute(steps)
@@ -2298,16 +2325,16 @@ const ToolingInfoPage: React.FC = () => {
         })
         return lastIdx
       })()
-      const manualSteps = states.filter((s: any) => dbCompleted.has(s.key) && !workHoursCompleted.has(s.key))
+      const manualSteps = states.filter((s: any) => s.manualChecked && !s.inProgressByWork)
       const manualUpdate = manualStepUpdateMap[String(rec.id || '')]
       const eligibleManualSteps = manualSteps.filter((s: any) => {
-        const idx = states.findIndex((it: any) => it.key === s.key)
+        const idx = states.findIndex((it: any) => it.token === s.token)
         return idx >= 0 && (currentWorkStepIdx < 0 || idx >= currentWorkStepIdx)
       })
       if (eligibleManualSteps.length > 0) {
         const manualStep = (() => {
           if (manualUpdate?.step_key) {
-            const hit = eligibleManualSteps.find((s: any) => s.key === manualUpdate.step_key)
+            const hit = eligibleManualSteps.find((s: any) => s.token === manualUpdate.step_key)
             if (hit) return hit
           }
           return eligibleManualSteps[eligibleManualSteps.length - 1]
@@ -2586,6 +2613,7 @@ const ToolingInfoPage: React.FC = () => {
               onSave={(pid, _k, v) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
               renderDisplay={(val) => {
                 const raw = String(val || '').trim()
+                if (isDateString(raw)) return renderStatusText(raw)
                 if (routeProgressStatus?.hasRoute) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
                 if (raw) return renderStatusText(raw)
                 if (routeProgressStatus) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
@@ -2609,6 +2637,9 @@ const ToolingInfoPage: React.FC = () => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
           const requiredQty = Number(rec.part_quantity || 0)
+          const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
+          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+          const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
           const getStepCompletedQty = (step: string) => {
             const key = normalizeProcessKey(step)
             const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
@@ -2618,19 +2649,15 @@ const ToolingInfoPage: React.FC = () => {
           // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
           const workHoursForThisInv = workHoursData[inventoryNo] || []
           const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
-          // 从后端数据获取手动勾选的工序（completed_steps 字段）
-          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
-          const dbCompleted = new Set<string>(dbCompletedSteps.map((x: string) => normalizeProcessKey(String(x || ''))))
-          // 合并两种完成状态（工时录入 + 数据库手动勾选）
-          const completedSet = new Set<string>([...workHoursCompleted, ...dbCompleted])
 
-          const handleStepToggle = async (step: string, checked: boolean) => {
+          const handleStepToggle = async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
-            const newCompleted = new Set<string>(dbCompleted)
+            const stepToken = buildManualStepToken(step, index)
+            const newCompleted = new Set<string>(manualCompletedTokens)
             if (checked) {
-              newCompleted.add(stepKey)
+              newCompleted.add(stepToken)
             } else {
-              newCompleted.delete(stepKey)
+              newCompleted.delete(stepToken)
             }
             // 保存到后端数据库
             const completedStepsArray = Array.from(newCompleted)
@@ -2649,14 +2676,14 @@ const ToolingInfoPage: React.FC = () => {
               setManualStepUpdateMap(prev => {
                 const next = { ...prev }
                 const manualKeys = completedStepsArray
-                  .map((x) => normalizeProcessKey(String(x || '')))
-                  .filter((k) => k && !workHoursCompleted.has(k))
-                if (!manualKeys.includes(stepKey)) {
+                  .map((x) => String(x || '').trim())
+                  .filter((k) => k && !workHoursCompleted.has(k.replace(/^__STEP__\d+__/, '')))
+                if (!manualKeys.includes(stepToken)) {
                   delete next[String(rec.id || '')]
                   return next
                 }
                 next[String(rec.id || '')] = {
-                  step_key: stepKey,
+                  step_key: stepToken,
                   step_name: step,
                   operator: String(user?.real_name || '当前用户').trim() || '当前用户',
                   updated_at: Date.now()
@@ -2669,11 +2696,10 @@ const ToolingInfoPage: React.FC = () => {
           const display = (val: string | undefined) => {
             const route = String(val || '')
             if (!route) return <span style={{ color: '#999' }}>-</span>
-            const steps = route.split(/\s*→\s*/).filter(Boolean)
             return (
               <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                 {steps.map((s, i) => {
-                  const stepDone = completedSet.has(normalizeProcessKey(s))
+                  const stepDone = workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i))
                   const stepCompletedQty = getStepCompletedQty(s)
                   const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
                   const stepInProgress = stepDone || stepCompletedQty > 0
@@ -2684,7 +2710,7 @@ const ToolingInfoPage: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={stepDone}
-                        onChange={(e) => handleStepToggle(s, e.target.checked)}
+                        onChange={(e) => handleStepToggle(s, i, e.target.checked)}
                         style={{ cursor: 'pointer', margin: 0 }}
                         onClick={(e) => e.stopPropagation()}
                       />
