@@ -1928,6 +1928,7 @@ router.post('/test-completed-steps', async (req, res) => {
 // 获取工时数据聚合（用于工艺路线完成状态与完成数量统计）
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
+    await ensureDeviceProcessUnitPriceColumn()
     const normalizeProcessKey = (v: any) => String(v || '')
       .replace(/\s+/g, '')
       .replace(/^[0-9]+[.\-、:：]*/g, '')
@@ -2017,10 +2018,23 @@ router.get('/work-hours/aggregates', async (req, res) => {
     const deviceNoList = Array.from(invForDevice)
     if (deviceNoList.length > 0) {
       try {
-        const { data: deviceRows } = await supabase
+        let deviceRows: any[] = []
+        try {
+          const r = await supabase
           .from('devices')
           .select('device_no, device_name, process_unit_price')
           .in('device_no', deviceNoList)
+          if (r.error) throw r.error
+          deviceRows = Array.isArray(r.data) ? r.data : []
+        } catch {
+          try {
+            const q = await query(
+              'SELECT device_no, device_name, process_unit_price FROM devices WHERE device_no = ANY($1)',
+              [deviceNoList]
+            )
+            deviceRows = Array.isArray((q as any)?.rows) ? (q as any).rows : []
+          } catch {}
+        }
         const deviceNameMap = new Map<string, string>()
         const devicePriceMap = new Map<string, number>()
         ;(deviceRows || []).forEach((d: any) => {
