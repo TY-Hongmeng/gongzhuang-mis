@@ -2310,6 +2310,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
       // Work hours aggregates
       if (method === 'GET' && path === '/api/tooling/work-hours/aggregates') {
+        const normalizeDeviceNo = (v: any) => {
+          const raw = String(v || '').trim()
+          if (!raw) return ''
+          const dash = raw.split('-')[0]
+          const leadingDigits = dash.match(/^\d+/)?.[0]
+          if (leadingDigits) return leadingDigits
+          return dash.trim()
+        }
         const normalizeProcessKey = (v: any) => String(v || '')
           .replace(/\s+/g, '')
           .replace(/^[0-9]+[.\-、:：]*/g, '')
@@ -2343,7 +2351,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const auxHours = Number(r.aux_hours || 0)
             const procHours = Number(r.proc_hours || 0)
             const totalHours = (Number.isFinite(auxHours) ? auxHours : 0) + (Number.isFinite(procHours) ? procHours : 0)
-            const deviceNo = String(r.device_no || '').trim()
+            const deviceNo = normalizeDeviceNo(r.device_no)
             if (deviceNo) deviceSet.add(deviceNo)
             if (!inv || !name) return
             const norm = name.trim().toLowerCase()

@@ -1929,6 +1929,14 @@ router.post('/test-completed-steps', async (req, res) => {
 router.get('/work-hours/aggregates', async (req, res) => {
   try {
     await ensureDeviceProcessUnitPriceColumn()
+    const normalizeDeviceNo = (v: any) => {
+      const raw = String(v || '').trim()
+      if (!raw) return ''
+      const dash = raw.split('-')[0]
+      const leadingDigits = dash.match(/^\d+/)?.[0]
+      if (leadingDigits) return leadingDigits
+      return dash.trim()
+    }
     const normalizeProcessKey = (v: any) => String(v || '')
       .replace(/\s+/g, '')
       .replace(/^[0-9]+[.\-、:：]*/g, '')
@@ -1982,7 +1990,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
       const auxHours = Number(row.aux_hours || 0)
       const procHours = Number(row.proc_hours || 0)
       const totalHours = (Number.isFinite(auxHours) ? auxHours : 0) + (Number.isFinite(procHours) ? procHours : 0)
-      const deviceNo = String(row.device_no || '').trim()
+      const deviceNo = normalizeDeviceNo(row.device_no)
       if (deviceNo) invForDevice.add(deviceNo)
       if (inv && process) {
         if (!aggregates[inv]) aggregates[inv] = []
