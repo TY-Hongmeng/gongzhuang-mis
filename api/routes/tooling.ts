@@ -1978,7 +1978,9 @@ router.get('/work-hours/aggregates', async (req, res) => {
       const process = String(row.process_name || '').trim()
       const processKey = normalizeProcessKey(process)
       const completedQty = Number(row.completed_quantity || 0)
-      const totalHours = Number(row.aux_hours || 0) + Number(row.proc_hours || 0)
+      const auxHours = Number(row.aux_hours || 0)
+      const procHours = Number(row.proc_hours || 0)
+      const totalHours = (Number.isFinite(auxHours) ? auxHours : 0) + (Number.isFinite(procHours) ? procHours : 0)
       const deviceNo = String(row.device_no || '').trim()
       if (deviceNo) invForDevice.add(deviceNo)
       if (inv && process) {
@@ -1992,7 +1994,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
         if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
         processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
         if (!processHoursMap[inv]) processHoursMap[inv] = {}
-        processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + (Number.isFinite(totalHours) ? totalHours : 0)
+        processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + totalHours
         if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
         const prev = processLatestMetaData[inv][processKey]
         const at = toTime(row)

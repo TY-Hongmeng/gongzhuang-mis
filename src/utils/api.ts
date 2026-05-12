@@ -2340,7 +2340,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
             const completedQty = Number(r.completed_quantity || 0)
-            const totalHours = Number(r.aux_hours || 0) + Number(r.proc_hours || 0)
+            const auxHours = Number(r.aux_hours || 0)
+            const procHours = Number(r.proc_hours || 0)
+            const totalHours = (Number.isFinite(auxHours) ? auxHours : 0) + (Number.isFinite(procHours) ? procHours : 0)
             const deviceNo = String(r.device_no || '').trim()
             if (deviceNo) deviceSet.add(deviceNo)
             if (!inv || !name) return
@@ -2353,7 +2355,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
               processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
               if (!processHoursMap[inv]) processHoursMap[inv] = {}
-              processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + (Number.isFinite(totalHours) ? totalHours : 0)
+              processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + totalHours
               if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
               const prev = processLatestMetaData[inv][processKey]
               const at = toTime(r)

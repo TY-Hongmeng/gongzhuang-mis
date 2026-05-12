@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -2295,6 +2295,18 @@ const ToolingInfoPage: React.FC = () => {
       })
       return tokenSet
     }
+    const fmtPieces = (v: any) => {
+      const n = Number(v || 0)
+      if (!Number.isFinite(n)) return '0'
+      const s = n.toFixed(3)
+      return s.replace(/\.?0+$/, '')
+    }
+    const fmtHours = (v: any) => {
+      const n = Number(v || 0)
+      if (!Number.isFinite(n)) return '0'
+      const s = n.toFixed(2)
+      return s.replace(/\.?0+$/, '')
+    }
     const getRouteProgressStatus = (rec: PartItem, routeText: string) => {
       const route = String(routeText || '')
       const steps = route.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
@@ -2313,9 +2325,8 @@ const ToolingInfoPage: React.FC = () => {
           const key = normalizeProcessKey(step)
           const token = buildManualStepToken(step, index)
           const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
-          const hours = Number((processHoursMap as Record<string, number>)[key] || 0)
           const stepQty = Number.isFinite(qty) ? qty : 0
-          const stepHours = Number.isFinite(hours) ? hours : 0
+          const stepHours = Number((processHoursMap as Record<string, number>)[key] || 0)
           const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
           const inProgressByWork = workHoursCompleted.has(key) || stepQty > 0
           const manualChecked = manualCompletedTokens.has(token)
@@ -2349,7 +2360,7 @@ const ToolingInfoPage: React.FC = () => {
           return eligibleManualSteps[eligibleManualSteps.length - 1]
         })()
         const operatorName = String(manualUpdate?.operator || user?.real_name || '当前用户').trim() || '当前用户'
-        return { text: `${operatorName}更新了${manualStep.step}工序完成${Number(manualStep.stepQty || 0)}件`, color: '#28a745', hasRoute: true }
+        return { text: `${operatorName}更新了${manualStep.step}工序完成`, color: '#28a745', hasRoute: true }
       }
       const allDone = states.length > 0 && states.every(s => s.doneByQty)
       const formatActorText = (state: any) => {
@@ -2370,20 +2381,19 @@ const ToolingInfoPage: React.FC = () => {
       if (allDone) {
         const last = states[states.length - 1]
         const actorText = formatActorText(last)
-        const qtyText = `${Number(last?.stepQty || 0)}件`
-        return { text: actorText ? `${actorText}加工完成${qtyText}` : `加工完成${qtyText}`, color: '#28a745', hasRoute: true }
+        const pieces = Number.isFinite(requiredQty) && requiredQty > 0 ? requiredQty : Number(last?.stepQty || 0)
+        return { text: actorText ? `${actorText}加工完成${fmtPieces(pieces)}件` : `加工完成${fmtPieces(pieces)}件`, color: '#28a745', hasRoute: true }
       }
       const active = states.find(s => s.inProgress && !s.doneByQty)
       if (active) {
         const actorText = formatActorText(active)
-        const qtyText = `${Number(active?.stepQty || 0)}件`
-        return { text: actorText ? `${actorText}加工中${qtyText}` : `加工中${qtyText}`, color: '#1890ff', hasRoute: true }
+        return { text: actorText ? `${actorText}加工中${fmtPieces(active.stepQty)}件` : `加工中${fmtPieces(active.stepQty)}件`, color: '#1890ff', hasRoute: true }
       }
       const completed = [...states].reverse().find(s => s.doneByQty)
       if (completed) {
         const actorText = formatActorText(completed)
-        const qtyText = `${Number(completed?.stepQty || 0)}件`
-        return { text: actorText ? `${actorText}加工完成${qtyText}` : `加工完成${qtyText}`, color: '#28a745', hasRoute: true }
+        const pieces = Number.isFinite(requiredQty) && requiredQty > 0 ? requiredQty : Number(completed?.stepQty || 0)
+        return { text: actorText ? `${actorText}加工完成${fmtPieces(pieces)}件` : `加工完成${fmtPieces(pieces)}件`, color: '#28a745', hasRoute: true }
       }
       // 工艺路线存在但无工时进展，不覆盖原状态（如下料中）
       return null
@@ -2661,9 +2671,9 @@ const ToolingInfoPage: React.FC = () => {
           }
           const getStepHours = (step: string) => {
             const key = normalizeProcessKey(step)
-            const hours = Number((processHoursMap as Record<string, number>)[key] || 0)
-            if (!Number.isFinite(hours)) return 0
-            return hours
+            const h = Number((processHoursMap as Record<string, number>)[key] || 0)
+            if (!Number.isFinite(h)) return 0
+            return h
           }
           // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
           const workHoursForThisInv = workHoursData[inventoryNo] || []
@@ -2724,7 +2734,7 @@ const ToolingInfoPage: React.FC = () => {
                   const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
                   const stepInProgress = stepDone || stepCompletedQty > 0
                   const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
-                  const hoursText = stepHours > 0 ? `(${String(Number(stepHours.toFixed(2)))})` : ''
+                  const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
                   return (
                     <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <input
@@ -2734,7 +2744,7 @@ const ToolingInfoPage: React.FC = () => {
                         style={{ cursor: 'pointer', margin: 0 }}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${hoursText}`}</span>
+                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
                       {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
                     </span>
                   )
@@ -2997,12 +3007,12 @@ const ToolingInfoPage: React.FC = () => {
         return `${k}:{${processMap}}`
       })
       .join('|')
-    const processHoursKey = Object.entries(workHoursProcessHoursData)
+    const hoursKey = Object.entries(workHoursProcessHoursData)
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([k, v]) => {
         const processMap = Object.entries(v || {})
           .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
-          .map(([p, hours]) => `${p}:${hours}`)
+          .map(([p, h]) => `${p}:${h}`)
           .join(',')
         return `${k}:{${processMap}}`
       })
@@ -3021,7 +3031,7 @@ const ToolingInfoPage: React.FC = () => {
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([pid, info]) => `${pid}:${info?.step_key || ''}|${info?.operator || ''}|${info?.updated_at || 0}`)
       .join(',')
-    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${processHoursKey}-${latestMetaKey}-${manualUpdateKey}`
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${hoursKey}-${latestMetaKey}-${manualUpdateKey}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
     if (!cols) {
       cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
