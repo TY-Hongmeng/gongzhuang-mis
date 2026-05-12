@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Save, X, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Popconfirm, Modal, Button, Typography, Space, message, Table } from 'antd';
-import { DatabaseOutlined, ReloadOutlined, LeftOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, ReloadOutlined, LeftOutlined, UploadOutlined, DownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { PartType } from '../types/tooling';
 import { fetchWithFallback } from '../utils/api'
 import * as XLSX from 'xlsx'
@@ -318,6 +318,25 @@ export default function OptionsManagement() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '设备')
     XLSX.writeFile(wb, `设备导入模板_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const handleExportDevices = () => {
+    const exportRows = (devices || []).map((d: any) => ({
+      设备编号: String(d?.device_no ?? ''),
+      设备名称: String(d?.device_name ?? ''),
+      '最大辅助时间(分钟)': d?.max_aux_minutes ?? '',
+      工序单价: d?.process_unit_price ?? ''
+    }))
+    const ws = XLSX.utils.json_to_sheet(exportRows)
+    ;(ws as any)['!cols'] = [
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 10 }
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '设备管理')
+    XLSX.writeFile(wb, `设备管理导出_${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   const normalizeDeviceNo = (deviceNo: string) => String(deviceNo || '').trim().toLowerCase()
@@ -1144,6 +1163,9 @@ export default function OptionsManagement() {
                     <div className="mb-4 flex justify-end space-x-2">
                       <Button icon={<DownloadOutlined />} onClick={handleDownloadDeviceTemplate} disabled={loading}>
                         下载模板
+                      </Button>
+                      <Button icon={<ExportOutlined />} onClick={handleExportDevices} disabled={loading}>
+                        导出
                       </Button>
                       <Button icon={<UploadOutlined />} onClick={() => setDeviceImportVisible(true)} disabled={loading}>
                         导入
