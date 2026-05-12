@@ -2333,7 +2333,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const completedQtyMap: Record<string, number> = {}
           const processCompletedQtyMap: Record<string, Record<string, number>> = {}
           const processHoursMap: Record<string, Record<string, number>> = {}
-          const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
+          const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
           ;(data || []).forEach((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
@@ -2367,6 +2367,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                   team_name: '',
                   device_no: deviceNo,
                   device_name: '',
+                  process_unit_price: 0,
                   completed_quantity: completedQty,
                   at
                 }
@@ -2378,19 +2379,25 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             try {
               const { data: devices } = await supabase
                 .from('devices')
-                .select('device_no,device_name')
+                .select('device_no,device_name,process_unit_price')
                 .in('device_no', deviceNos)
-              const deviceMap = new Map<string, string>()
+              const deviceNameMap = new Map<string, string>()
+              const devicePriceMap = new Map<string, number>()
               ;(devices || []).forEach((d: any) => {
                 const no = String(d.device_no || '').trim()
-                if (no) deviceMap.set(no, String(d.device_name || '').trim())
+                if (!no) return
+                deviceNameMap.set(no, String(d.device_name || '').trim())
+                const price = Number(d.process_unit_price || 0)
+                devicePriceMap.set(no, Number.isFinite(price) ? price : 0)
               })
               Object.keys(processLatestMetaData).forEach((inv) => {
                 const processMap = processLatestMetaData[inv] || {}
                 Object.keys(processMap).forEach((pk) => {
                   const meta = processMap[pk]
                   const no = String(meta?.device_no || '').trim()
-                  if (no && deviceMap.has(no)) meta.device_name = String(deviceMap.get(no) || '')
+                  if (!no) return
+                  if (deviceNameMap.has(no)) meta.device_name = String(deviceNameMap.get(no) || '')
+                  if (devicePriceMap.has(no)) meta.process_unit_price = Number(devicePriceMap.get(no) || 0)
                 })
               })
             } catch {}

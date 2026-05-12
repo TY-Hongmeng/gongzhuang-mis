@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1066,6 +1066,7 @@ const ToolingInfoPage: React.FC = () => {
     team_name: string
     device_no: string
     device_name: string
+    process_unit_price: number
     completed_quantity: number
     at: number
   }>>>({})
@@ -2599,12 +2600,36 @@ const ToolingInfoPage: React.FC = () => {
         }
       },
       {
-        title: '金额(元)',
+        title: '材料金额(元)',
         dataIndex: 'total_price',
         width: 100,
         render: (text: number, rec: PartItem) => {
           const { total } = getPriceCached(rec)
           return <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
+        }
+      },
+      {
+        title: '加工金额(元)',
+        dataIndex: '__process_price',
+        width: 110,
+        render: (_text: any, rec: PartItem) => {
+          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
+          const processLatestMetaMap = workHoursProcessLatestMetaData[inventoryNo] || {}
+          let currentRoute = String((rec as any).process_route || '')
+          if (!currentRoute && inventoryNo) currentRoute = (inventoryNo && processRoutes[inventoryNo]) || ''
+          const steps = String(currentRoute || '').split(/\\s*→\\s*/).map(s => s.trim()).filter(Boolean)
+          let sum = 0
+          steps.forEach((s) => {
+            const key = normalizeProcessKey(s)
+            const hours = Number((processHoursMap as any)?.[key] || 0)
+            if (!Number.isFinite(hours) || hours <= 0) return
+            const unitPrice = Number((processLatestMetaMap as any)?.[key]?.process_unit_price || 0)
+            const price = Number.isFinite(unitPrice) ? unitPrice : 0
+            if (price <= 0) return
+            sum += hours * price
+          })
+          return <span style={{ color: '#000000' }}>{Number.isFinite(sum) ? sum.toFixed(2) : '0.00'}</span>
         }
       },
       {
@@ -3022,7 +3047,7 @@ const ToolingInfoPage: React.FC = () => {
       .map(([k, v]) => {
         const processMap = Object.entries(v || {})
           .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
-          .map(([p, meta]: any) => `${p}:${meta?.operator || ''}|${meta?.team_name || ''}|${meta?.device_no || ''}|${meta?.device_name || ''}|${meta?.at || ''}`)
+          .map(([p, meta]: any) => `${p}:${meta?.operator || ''}|${meta?.team_name || ''}|${meta?.device_no || ''}|${meta?.device_name || ''}|${meta?.process_unit_price || ''}|${meta?.at || ''}`)
           .join(',')
         return `${k}:{${processMap}}`
       })
