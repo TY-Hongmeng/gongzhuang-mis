@@ -2323,15 +2323,16 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processLatestMetaData: {} })
         try {
-          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,operator,shift,device_no,created_at,work_date')
+          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
           q = q.in('part_inventory_number', invs)
           const { data, error } = await q
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const map: Record<string, string[]> = {}
           const completedQtyMap: Record<string, number> = {}
           const processCompletedQtyMap: Record<string, Record<string, number>> = {}
+          const processHoursMap: Record<string, Record<string, number>> = {}
           const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
           ;(data || []).forEach((r: any) => {
@@ -2339,6 +2340,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
             const completedQty = Number(r.completed_quantity || 0)
+            const totalHours = Number(r.aux_hours || 0) + Number(r.proc_hours || 0)
             const deviceNo = String(r.device_no || '').trim()
             if (deviceNo) deviceSet.add(deviceNo)
             if (!inv || !name) return
@@ -2350,6 +2352,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (processKey) {
               if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
               processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
+              if (!processHoursMap[inv]) processHoursMap[inv] = {}
+              processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + (Number.isFinite(totalHours) ? totalHours : 0)
               if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
               const prev = processLatestMetaData[inv][processKey]
               const at = toTime(r)
@@ -2430,7 +2434,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               })
             }
           } catch {}
-          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processLatestMetaData })
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processLatestMetaData })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }

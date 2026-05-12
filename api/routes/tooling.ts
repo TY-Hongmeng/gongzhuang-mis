@@ -1940,16 +1940,16 @@ router.get('/work-hours/aggregates', async (req, res) => {
     }
     const { invs } = req.query as { invs?: string }
     if (!invs) {
-      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processLatestMetaData: {} })
     }
 
     const invList = String(invs).split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
     if (invList.length === 0) {
-      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processLatestMetaData: {} })
+      return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processLatestMetaData: {} })
     }
 
     // 查询这些盘存编号对应的所有工时记录（兼容 inventory_no / part_inventory_number 两种字段）
-    const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, operator, shift, device_no, created_at, work_date'
+    const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, aux_hours, proc_hours, operator, shift, device_no, created_at, work_date'
     const { data: dataByInvNo, error: errByInvNo } = await supabase
       .from('work_hours')
       .select(baseSelect)
@@ -1971,12 +1971,14 @@ router.get('/work-hours/aggregates', async (req, res) => {
     const aggregates: Record<string, string[]> = {}
     const completedQtyMap: Record<string, number> = {}
     const processCompletedQtyMap: Record<string, Record<string, number>> = {}
+    const processHoursMap: Record<string, Record<string, number>> = {}
     const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; completed_quantity: number; at: number }>> = {}
     ;(data || []).forEach((row: any) => {
       const inv = String(row.inventory_no || row.part_inventory_number || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
       const processKey = normalizeProcessKey(process)
       const completedQty = Number(row.completed_quantity || 0)
+      const totalHours = Number(row.aux_hours || 0) + Number(row.proc_hours || 0)
       const deviceNo = String(row.device_no || '').trim()
       if (deviceNo) invForDevice.add(deviceNo)
       if (inv && process) {
@@ -1989,6 +1991,8 @@ router.get('/work-hours/aggregates', async (req, res) => {
       if (inv && processKey) {
         if (!processCompletedQtyMap[inv]) processCompletedQtyMap[inv] = {}
         processCompletedQtyMap[inv][processKey] = Number(processCompletedQtyMap[inv][processKey] || 0) + completedQty
+        if (!processHoursMap[inv]) processHoursMap[inv] = {}
+        processHoursMap[inv][processKey] = Number(processHoursMap[inv][processKey] || 0) + (Number.isFinite(totalHours) ? totalHours : 0)
         if (!processLatestMetaData[inv]) processLatestMetaData[inv] = {}
         const prev = processLatestMetaData[inv][processKey]
         const at = toTime(row)
@@ -2073,7 +2077,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
       }
     } catch {}
 
-    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processLatestMetaData })
+    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processLatestMetaData })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
