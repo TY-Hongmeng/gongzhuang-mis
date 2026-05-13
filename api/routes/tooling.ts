@@ -129,6 +129,7 @@ const resolveWorkHoursActor = async (userIdInput?: string, operatorInput?: strin
 // 支持分页、搜索、筛选与排序
 router.get('/', async (req, res) => {
   try {
+    await ensureToolingTotalsColumns()
     const {
       page = '1',
       pageSize = '20',
@@ -257,6 +258,36 @@ router.get('/', async (req, res) => {
         page: pageNum,
         pageSize: sizeNum
       });
+    }
+
+    if (process.env.SUPABASE_DB_URL || '') {
+      try {
+        const ids = (data || []).map((item: any) => String(item?.id || '')).filter(Boolean)
+        if (ids.length > 0) {
+          const pgTotals = await query(
+            'SELECT id::text AS id, material_total, process_total, totals_updated_at FROM tooling_info WHERE id = ANY($1::text[])',
+            [ids]
+          )
+          const totalsMap = new Map<string, any>()
+          ;(pgTotals.rows || []).forEach((row: any) => {
+            const id = String(row?.id || '')
+            if (!id) return
+            totalsMap.set(id, row)
+          })
+          data = (data || []).map((item: any) => {
+            const extra = totalsMap.get(String(item?.id || ''))
+            if (!extra) return item
+            return {
+              ...item,
+              material_total: extra.material_total,
+              process_total: extra.process_total,
+              totals_updated_at: extra.totals_updated_at
+            }
+          })
+        }
+      } catch (mergeErr) {
+        console.warn('Merge tooling totals from PG failed:', mergeErr)
+      }
     }
 
     res.json({
