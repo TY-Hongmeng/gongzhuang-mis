@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -771,6 +771,63 @@ const ToolingInfoPage: React.FC = () => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
   }, [])
+  const applyToolingTotalsToRow = useCallback((toolingId: string, totals: {
+    material_total?: any
+    process_total?: any
+    totals_updated_at?: any
+  }) => {
+    const normalizedId = String(toolingId || '').trim()
+    if (!normalizedId) return
+    setData(prev => prev.map((row: any) => {
+      if (String(row?.id || '') !== normalizedId) return row
+      return {
+        ...row,
+        material_total: toNullableTotal(totals.material_total),
+        process_total: toNullableTotal(totals.process_total),
+        totals_updated_at: String(totals.totals_updated_at || row?.totals_updated_at || '')
+      }
+    }))
+  }, [setData, toNullableTotal])
+  const syncLocalToolingTotals = useCallback((toolingId: string) => {
+    const normalizedId = String(toolingId || '').trim()
+    if (!normalizedId) return
+    const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+    const meaningfulParts = parts.filter((part: any) => {
+      return [
+        part?.part_inventory_number,
+        part?.part_drawing_number,
+        part?.part_name,
+        part?.part_quantity,
+        part?.material_id,
+        part?.process_route
+      ].some((v) => String(v ?? '').trim() !== '' && String(v ?? '').trim() !== '0')
+    })
+    if (meaningfulParts.length === 0) {
+      applyToolingTotalsToRow(normalizedId, {
+        material_total: null,
+        process_total: null,
+        totals_updated_at: new Date().toISOString()
+      })
+      return
+    }
+    const materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+      const unitWeight = Number(part?.weight || 0)
+      const qty = Number(part?.part_quantity || 0)
+      const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
+      const unitPrice = Number(materialUnitPriceMapRef.current[String(part?.material_id || '')] || 0)
+      const totalPrice = totalWeight > 0 && unitPrice > 0 ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice)) : Number(part?.total_price || 0)
+      return sum + (Number.isFinite(totalPrice) ? totalPrice : 0)
+    }, 0)
+    const processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+      const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+      return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
+    }, 0)
+    applyToolingTotalsToRow(normalizedId, {
+      material_total: materialTotal,
+      process_total: processTotal,
+      totals_updated_at: new Date().toISOString()
+    })
+  }, [applyToolingTotalsToRow])
   const refreshToolingTotals = useCallback(async (toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId || normalizedId.startsWith('blank-')) return
@@ -786,21 +843,14 @@ const ToolingInfoPage: React.FC = () => {
         throw new Error(String(result?.error || `刷新工装总额失败(${response.status})`))
       }
       const totals = result?.data || {}
-      setData(prev => prev.map((row: any) => {
-        if (String(row?.id || '') !== normalizedId) return row
-        return {
-          ...row,
-          material_total: toNullableTotal(totals.material_total),
-          process_total: toNullableTotal(totals.process_total),
-          totals_updated_at: String(totals.totals_updated_at || '')
-        }
-      }))
+      applyToolingTotalsToRow(normalizedId, totals)
     } catch (error) {
       console.error('刷新工装总额失败:', error)
+      syncLocalToolingTotals(normalizedId)
     } finally {
       refreshTotalsInflightRef.current.delete(normalizedId)
     }
-  }, [setData, toNullableTotal])
+  }, [applyToolingTotalsToRow, syncLocalToolingTotals])
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
@@ -828,11 +878,12 @@ const ToolingInfoPage: React.FC = () => {
       if (tasks.length > 0) {
         await Promise.all(tasks)
       }
+      syncLocalToolingTotals(toolingId)
       await refreshToolingTotals(toolingId)
     } finally {
       expandedLoadInflightRef.current.delete(toolingId)
     }
-  }, [setPartsLoadingMap, setChildLoadingMap, refreshToolingTotals])
+  }, [setPartsLoadingMap, setChildLoadingMap, syncLocalToolingTotals, refreshToolingTotals])
 
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
@@ -1193,6 +1244,10 @@ const ToolingInfoPage: React.FC = () => {
     operator: string
     updated_at: number
   }>>({})
+  const workHoursAmountDataRef = useRef(workHoursAmountData)
+  useEffect(() => {
+    workHoursAmountDataRef.current = workHoursAmountData
+  }, [workHoursAmountData])
   
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
