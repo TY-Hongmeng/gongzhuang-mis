@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -739,6 +739,27 @@ const ToolingInfoPage: React.FC = () => {
       expandedLoadInflightRef.current.delete(toolingId)
     }
   }, [setPartsLoadingMap, setChildLoadingMap])
+
+  useEffect(() => {
+    const parentIds = (filteredVisibleData || [])
+      .map((row: any) => String(row?.id || '').trim())
+      .filter((id: string) => id && !id.startsWith('blank-'))
+    const needFetch = parentIds.filter((id) => !Object.prototype.hasOwnProperty.call(partsMapRef.current, id) && !partsLoadingMapRef.current[id])
+    if (needFetch.length === 0) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const chunkSize = 8
+      for (let i = 0; i < needFetch.length; i += chunkSize) {
+        if (cancelled) return
+        const group = needFetch.slice(i, i + chunkSize)
+        await Promise.all(group.map((id) => fetchPartsDataRef.current(id).catch(() => null)))
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filteredVisibleData, partsMap, partsLoadingMap])
   
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
@@ -3598,6 +3619,17 @@ const ToolingInfoPage: React.FC = () => {
     </th>
   )
 
+  const hasPartMeaningfulContent = useCallback((part: any) => {
+    return [
+      part?.part_inventory_number,
+      part?.part_drawing_number,
+      part?.part_name,
+      part?.part_quantity,
+      part?.material_id,
+      part?.process_route
+    ].some((v) => String(v ?? '').trim() !== '' && String(v ?? '').trim() !== '0')
+  }, [])
+
   const columns = useMemo(() => [
     {
       title: '序号',
@@ -3762,7 +3794,14 @@ const ToolingInfoPage: React.FC = () => {
       dataIndex: '__material_total',
       width: 90,
       render: (_text: any, record: RowItem) => {
+        const toolingId = String(record.id || '')
+        if (!Object.prototype.hasOwnProperty.call(partsMap, toolingId)) {
+          return <span style={{ color: '#999' }}>-</span>
+        }
         const parts = (partsMap[String(record.id || '')] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+        if (parts.length === 0 || !parts.some((p: any) => hasPartMeaningfulContent(p))) {
+          return <span style={{ color: '#999' }}>-</span>
+        }
         const total = parts.reduce((sum: number, part: any) => sum + Number(calcPartMetrics(part).totalPrice || 0), 0)
         return <span style={{ color: '#000000' }}>{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
       }
@@ -3772,12 +3811,21 @@ const ToolingInfoPage: React.FC = () => {
       dataIndex: '__process_total',
       width: 90,
       render: (_text: any, record: RowItem) => {
+        const toolingId = String(record.id || '')
+        if (!Object.prototype.hasOwnProperty.call(partsMap, toolingId)) {
+          return <span style={{ color: '#999' }}>-</span>
+        }
         const parts = (partsMap[String(record.id || '')] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+        if (parts.length === 0 || !parts.some((p: any) => hasPartMeaningfulContent(p))) {
+          return <span style={{ color: '#999' }}>-</span>
+        }
         const total = parts.reduce((sum: number, part: any) => {
           const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
           return sum + Number(workHoursAmountData[inventoryNo] || 0)
         }, 0)
-        return <span style={{ color: '#000000' }}>{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
+        return Number.isFinite(total) && total > 0
+          ? <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
+          : <span style={{ color: '#999' }}>-</span>
       }
     },
     {
@@ -3788,7 +3836,7 @@ const ToolingInfoPage: React.FC = () => {
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
-  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories, partsMap, calcPartMetrics, workHoursAmountData])
+  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories, partsMap, calcPartMetrics, workHoursAmountData, hasPartMeaningfulContent])
 
   // 导出工装信息为Excel
   const handleExport = async () => {
