@@ -79,7 +79,14 @@ export const useToolingData = () => {
         project_name: String(item.project_name || ''),
         production_date: String(item.production_date || ''),
         sets_count: item.sets_count ? Number(item.sets_count) : 1,
-        recorder: String(item.recorder || '')
+        recorder: String(item.recorder || ''),
+        material_total: item.material_total === null || typeof item.material_total === 'undefined' || item.material_total === ''
+          ? null
+          : Number(item.material_total),
+        process_total: item.process_total === null || typeof item.process_total === 'undefined' || item.process_total === ''
+          ? null
+          : Number(item.process_total),
+        totals_updated_at: String(item.totals_updated_at || '')
       }))
       const mergedItems = silent
         ? (() => {

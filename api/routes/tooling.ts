@@ -88,6 +88,18 @@ const ensureWorkHoursExtraColumns = async () => {
     workHoursExtraColumnsReady = true;
   } catch (e) {}
 };
+let toolingTotalsColumnsReady = false;
+const ensureToolingTotalsColumns = async () => {
+  if (toolingTotalsColumnsReady) return;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS material_total NUMERIC`);
+    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS process_total NUMERIC`);
+    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS totals_updated_at TIMESTAMPTZ`);
+    toolingTotalsColumnsReady = true;
+  } catch (e) {}
+};
 
 const normalizeWorkHoursOperator = (v: any) =>
   String(v || '')
@@ -2145,6 +2157,140 @@ router.get('/work-hours/aggregates', async (req, res) => {
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
+router.post('/:id/refresh-totals', async (req, res) => {
+  try {
+    await ensureToolingTotalsColumns()
+    await ensureDeviceProcessUnitPriceColumn()
+    const { id } = req.params
+    const toolingId = String(id || '').trim()
+    if (!toolingId) {
+      return res.status(400).json({ success: false, error: '缺少工装ID' })
+    }
+
+    const { data: parts, error: partsError } = await supabase
+      .from('parts_info')
+      .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price')
+      .eq('tooling_id', toolingId)
+    if (partsError) {
+      return res.status(500).json({ success: false, error: partsError.message })
+    }
+
+    const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+    const hasPartMeaningfulContent = (part: any) => {
+      const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
+      const name = String(part?.part_name || '').trim()
+      const qty = Number(part?.part_quantity || 0)
+      const weight = Number(part?.weight || 0)
+      const unitPrice = Number(part?.unit_price || 0)
+      const totalPrice = Number(part?.total_price || 0)
+      return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
+    }
+    const meaningfulParts = validParts.filter((part: any) => hasPartMeaningfulContent(part))
+
+    let materialTotal: number | null = null
+    let processTotal: number | null = null
+    if (meaningfulParts.length > 0) {
+      materialTotal = meaningfulParts.reduce((sum: number, part: any) => sum + Number(part?.total_price || 0), 0)
+
+      const normalizeDeviceNo = (v: any) => {
+        const raw = String(v || '').trim()
+        if (!raw) return ''
+        const dash = raw.split('-')[0]
+        const leadingDigits = dash.match(/^\d+/)?.[0]
+        if (leadingDigits) return leadingDigits
+        return dash.trim()
+      }
+      const normalizeProcessKey = (v: any) => String(v || '')
+        .replace(/\s+/g, '')
+        .replace(/^[0-9]+[.\-、:：]*/g, '')
+        .trim()
+        .toLowerCase()
+      const invSet = new Set(
+        meaningfulParts
+          .map((part: any) => String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase())
+          .filter(Boolean)
+      )
+      const invList = Array.from(invSet)
+      const chunkArray = <T,>(items: T[], size: number): T[][] => {
+        const safeSize = Math.max(1, size)
+        const chunks: T[][] = []
+        for (let i = 0; i < items.length; i += safeSize) {
+          chunks.push(items.slice(i, i + safeSize))
+        }
+        return chunks
+      }
+      const workHourRows: any[] = []
+      for (const invChunk of chunkArray(invList, 120)) {
+        const [{ data: dataByInvNo }, { data: dataByPartInvNo }] = await Promise.all([
+          supabase
+            .from('work_hours')
+            .select('inventory_no,part_inventory_number,process_name,aux_hours,proc_hours,device_no')
+            .in('inventory_no', invChunk),
+          supabase
+            .from('work_hours')
+            .select('inventory_no,part_inventory_number,process_name,aux_hours,proc_hours,device_no')
+            .in('part_inventory_number', invChunk)
+        ])
+        workHourRows.push(...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[]))
+      }
+
+      const deviceNoSet = new Set<string>()
+      const normalizedRows = workHourRows.map((row: any) => {
+        const inv = String(row?.inventory_no || row?.part_inventory_number || '').trim().toUpperCase()
+        const processKey = normalizeProcessKey(row?.process_name)
+        const totalHours = Number(row?.aux_hours || 0) + Number(row?.proc_hours || 0)
+        const deviceNo = normalizeDeviceNo(row?.device_no)
+        if (deviceNo) deviceNoSet.add(deviceNo)
+        return { inv, processKey, totalHours, deviceNo }
+      })
+
+      const devicePriceMap = new Map<string, number>()
+      const deviceNos = Array.from(deviceNoSet)
+      for (const deviceChunk of chunkArray(deviceNos, 120)) {
+        const { data: devices } = await supabase
+          .from('devices')
+          .select('device_no,process_unit_price')
+          .in('device_no', deviceChunk)
+        ;(devices || []).forEach((device: any) => {
+          const no = normalizeDeviceNo(device?.device_no)
+          if (!no) return
+          devicePriceMap.set(no, Number(device?.process_unit_price || 0))
+        })
+      }
+
+      const amountByInv: Record<string, number> = {}
+      normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
+        if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
+        const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
+        if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+        amountByInv[inv] = Number(amountByInv[inv] || 0) + totalHours * unitPrice
+      })
+      processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+        const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+        return sum + Number(amountByInv[inv] || 0)
+      }, 0)
+    }
+
+    const payload = {
+      material_total: materialTotal,
+      process_total: processTotal,
+      totals_updated_at: new Date().toISOString()
+    }
+    const { error: updateError } = await supabase
+      .from('tooling_info')
+      .update(payload)
+      .eq('id', toolingId)
+    if (updateError) {
+      return res.status(500).json({ success: false, error: updateError.message })
+    }
+
+    return res.json({ success: true, data: payload })
+  } catch (err: any) {
+    console.error('刷新工装总额失败:', err)
+    return res.status(500).json({ success: false, error: err?.message || '服务器错误' })
   }
 })
 

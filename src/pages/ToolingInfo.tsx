@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -149,6 +149,9 @@ interface RowItem {
   production_date?: string
   sets_count?: number
   recorder?: string
+  material_total?: number | null
+  process_total?: number | null
+  totals_updated_at?: string
 }
 
 interface PartItem {
@@ -762,6 +765,42 @@ const ToolingInfoPage: React.FC = () => {
   }, [childLoadingMap])
   
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
+  const refreshTotalsInflightRef = useRef<Set<string>>(new Set())
+  const toNullableTotal = useCallback((value: any): number | null => {
+    if (value === null || typeof value === 'undefined' || value === '') return null
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }, [])
+  const refreshToolingTotals = useCallback(async (toolingId: string) => {
+    const normalizedId = String(toolingId || '').trim()
+    if (!normalizedId || normalizedId.startsWith('blank-')) return
+    if (refreshTotalsInflightRef.current.has(normalizedId)) return
+    refreshTotalsInflightRef.current.add(normalizedId)
+    try {
+      const response = await fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/refresh-totals`, {
+        method: 'POST',
+        cache: 'no-store'
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result?.success === false) {
+        throw new Error(String(result?.error || `刷新工装总额失败(${response.status})`))
+      }
+      const totals = result?.data || {}
+      setData(prev => prev.map((row: any) => {
+        if (String(row?.id || '') !== normalizedId) return row
+        return {
+          ...row,
+          material_total: toNullableTotal(totals.material_total),
+          process_total: toNullableTotal(totals.process_total),
+          totals_updated_at: String(totals.totals_updated_at || '')
+        }
+      }))
+    } catch (error) {
+      console.error('刷新工装总额失败:', error)
+    } finally {
+      refreshTotalsInflightRef.current.delete(normalizedId)
+    }
+  }, [setData, toNullableTotal])
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
@@ -789,10 +828,11 @@ const ToolingInfoPage: React.FC = () => {
       if (tasks.length > 0) {
         await Promise.all(tasks)
       }
+      await refreshToolingTotals(toolingId)
     } finally {
       expandedLoadInflightRef.current.delete(toolingId)
     }
-  }, [setPartsLoadingMap, setChildLoadingMap])
+  }, [setPartsLoadingMap, setChildLoadingMap, refreshToolingTotals])
 
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
@@ -3891,16 +3931,10 @@ const ToolingInfoPage: React.FC = () => {
       dataIndex: '__material_total',
       width: 90,
       render: (_text: any, record: RowItem) => {
-        const toolingId = String(record.id || '')
-        if (!Object.prototype.hasOwnProperty.call(partsMap, toolingId)) {
-          return <span style={{ color: '#999' }}>-</span>
-        }
-        const parts = (partsMap[String(record.id || '')] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-        if (parts.length === 0 || !parts.some((p: any) => hasPartMeaningfulContent(p))) {
-          return <span style={{ color: '#999' }}>-</span>
-        }
-        const total = parts.reduce((sum: number, part: any) => sum + Number(calcPartMetrics(part).totalPrice || 0), 0)
-        return <span style={{ color: '#000000' }}>{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
+        const total = toNullableTotal(record.material_total)
+        return total === null
+          ? <span style={{ color: '#999' }}>-</span>
+          : <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
       }
     },
     {
@@ -3908,21 +3942,10 @@ const ToolingInfoPage: React.FC = () => {
       dataIndex: '__process_total',
       width: 90,
       render: (_text: any, record: RowItem) => {
-        const toolingId = String(record.id || '')
-        if (!Object.prototype.hasOwnProperty.call(partsMap, toolingId)) {
-          return <span style={{ color: '#999' }}>-</span>
-        }
-        const parts = (partsMap[String(record.id || '')] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-        if (parts.length === 0 || !parts.some((p: any) => hasPartMeaningfulContent(p))) {
-          return <span style={{ color: '#999' }}>-</span>
-        }
-        const total = parts.reduce((sum: number, part: any) => {
-          const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-          return sum + Number(workHoursAmountData[inventoryNo] || 0)
-        }, 0)
-        return Number.isFinite(total) && total > 0
-          ? <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
-          : <span style={{ color: '#999' }}>-</span>
+        const total = toNullableTotal(record.process_total)
+        return total === null
+          ? <span style={{ color: '#999' }}>-</span>
+          : <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
       }
     },
     {
@@ -3933,7 +3956,7 @@ const ToolingInfoPage: React.FC = () => {
         <span style={{ color: '#000000' }}>{text || '-'}</span>
       )
     }
-  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories, partsMap, calcPartMetrics, workHoursAmountData, hasPartMeaningfulContent])
+  ], [handleSave, expandedRowKeys, expandedChildKeys, setExpandedRowKeys, setExpandedChildKeys, ensureExpandedDataLoaded, productionUnits, toolingCategories, toNullableTotal])
 
   // 导出工装信息为Excel
   const handleExport = async () => {

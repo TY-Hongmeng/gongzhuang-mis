@@ -1770,7 +1770,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           project_name: x.project_name || '',
           production_date: x.production_date || '',
           sets_count: typeof x.sets_count === 'number' ? x.sets_count : 1,
-          recorder: x.recorder || ''
+          recorder: x.recorder || '',
+          material_total: x.material_total === null || typeof x.material_total === 'undefined' || x.material_total === '' ? null : Number(x.material_total),
+          process_total: x.process_total === null || typeof x.process_total === 'undefined' || x.process_total === '' ? null : Number(x.process_total),
+          totals_updated_at: x.totals_updated_at || ''
         }))
         return jsonResponse({ success: true, items, total: typeof count === 'number' ? count : items.length, page, pageSize, data: items })
       }
@@ -1863,6 +1866,121 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .single()
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true, data })
+      }
+
+      if (method === 'POST' && path.match(/^\/api\/tooling\/[^\/]+\/refresh-totals$/)) {
+        const match = path.match(/^\/api\/tooling\/([^\/]+)\/refresh-totals$/)
+        const toolingId = String(match?.[1] || '').trim()
+        if (!toolingId) return jsonResponse({ success: false, error: '缺少工装ID' }, 400)
+        const hasPartMeaningfulContent = (part: any) => {
+          const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
+          const name = String(part?.part_name || '').trim()
+          const qty = Number(part?.part_quantity || 0)
+          const weight = Number(part?.weight || 0)
+          const unitPrice = Number(part?.unit_price || 0)
+          const totalPrice = Number(part?.total_price || 0)
+          return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
+        }
+        const normalizeDeviceNo = (v: any) => {
+          const raw = String(v || '').trim()
+          if (!raw) return ''
+          const dash = raw.split('-')[0]
+          const leadingDigits = dash.match(/^\d+/)?.[0]
+          if (leadingDigits) return leadingDigits
+          return dash.trim()
+        }
+        const chunkArray = <T,>(items: T[], size: number): T[][] => {
+          const safeSize = Math.max(1, size)
+          const chunks: T[][] = []
+          for (let i = 0; i < items.length; i += safeSize) {
+            chunks.push(items.slice(i, i + safeSize))
+          }
+          return chunks
+        }
+        try {
+          const { data: parts, error: partsError } = await supabase
+            .from('parts_info')
+            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price')
+            .eq('tooling_id', toolingId)
+          if (partsError) return jsonResponse({ success: false, error: partsError.message }, 500)
+
+          const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+          const meaningfulParts = validParts.filter((part: any) => hasPartMeaningfulContent(part))
+
+          let materialTotal: number | null = null
+          let processTotal: number | null = null
+          if (meaningfulParts.length > 0) {
+            materialTotal = meaningfulParts.reduce((sum: number, part: any) => sum + Number(part?.total_price || 0), 0)
+
+            const invList = Array.from(new Set(
+              meaningfulParts
+                .map((part: any) => String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase())
+                .filter(Boolean)
+            ))
+            const workHourRows: any[] = []
+            for (const invChunk of chunkArray(invList, 120)) {
+              const [{ data: rowsByInv }, { data: rowsByPartInv }] = await Promise.all([
+                supabase
+                  .from('work_hours')
+                  .select('inventory_no,part_inventory_number,aux_hours,proc_hours,device_no')
+                  .in('inventory_no', invChunk),
+                supabase
+                  .from('work_hours')
+                  .select('inventory_no,part_inventory_number,aux_hours,proc_hours,device_no')
+                  .in('part_inventory_number', invChunk)
+              ])
+              workHourRows.push(...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[]))
+            }
+
+            const deviceNoSet = new Set<string>()
+            const normalizedRows = workHourRows.map((row: any) => {
+              const inv = String(row?.inventory_no || row?.part_inventory_number || '').trim().toUpperCase()
+              const totalHours = Number(row?.aux_hours || 0) + Number(row?.proc_hours || 0)
+              const deviceNo = normalizeDeviceNo(row?.device_no)
+              if (deviceNo) deviceNoSet.add(deviceNo)
+              return { inv, totalHours, deviceNo }
+            })
+
+            const devicePriceMap = new Map<string, number>()
+            for (const deviceChunk of chunkArray(Array.from(deviceNoSet), 120)) {
+              const { data: devices } = await supabase
+                .from('devices')
+                .select('device_no,process_unit_price')
+                .in('device_no', deviceChunk)
+              ;(devices || []).forEach((device: any) => {
+                const no = normalizeDeviceNo(device?.device_no)
+                if (!no) return
+                devicePriceMap.set(no, Number(device?.process_unit_price || 0))
+              })
+            }
+
+            const amountByInv: Record<string, number> = {}
+            normalizedRows.forEach(({ inv, totalHours, deviceNo }: any) => {
+              if (!inv || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
+              const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
+              if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+              amountByInv[inv] = Number(amountByInv[inv] || 0) + totalHours * unitPrice
+            })
+            processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+              const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+              return sum + Number(amountByInv[inv] || 0)
+            }, 0)
+          }
+
+          const payload = {
+            material_total: materialTotal,
+            process_total: processTotal,
+            totals_updated_at: new Date().toISOString()
+          }
+          const { error: updateError } = await supabase
+            .from('tooling_info')
+            .update(payload)
+            .eq('id', toolingId)
+          if (updateError) return jsonResponse({ success: false, error: updateError.message }, 500)
+          return jsonResponse({ success: true, data: payload })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '刷新工装总额失败' }, 500)
+        }
       }
       
       // Batch delete tooling (cascade children)
@@ -3600,19 +3718,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const route = String(m?.process_route || '')
             if (!route) continue
             if (inv) {
-              const { data, error } = await withTimeout(
+              const result: any = await withTimeout(
                 supabase.from('parts_info').update({ process_route: route }).eq('part_inventory_number', inv).select('id'),
                 8000
               )
+              const { data, error } = result || {}
               if (error) throw error
               const affected = Array.isArray(data) ? data.length : 0
               if (affected > 0) updated += affected
               else failed.push({ key: inv, reason: '未匹配到记录' })
             } else if (drawing) {
-              const { data, error } = await withTimeout(
+              const result: any = await withTimeout(
                 supabase.from('parts_info').update({ process_route: route }).eq('part_drawing_number', drawing).select('id'),
                 8000
               )
+              const { data, error } = result || {}
               if (error) throw error
               const affected = Array.isArray(data) ? data.length : 0
               if (affected > 0) updated += affected
