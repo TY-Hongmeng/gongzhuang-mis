@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -31,6 +31,59 @@ const summarizeImportErrors = (errors: string[], maxItems = 8, maxLength = 360) 
   const summary = items.join('；')
   const trimmed = summary.length > maxLength ? `${summary.slice(0, maxLength)}...` : summary
   return remain > 0 ? `${trimmed}；其余${remain}条请查看导入源数据` : trimmed
+}
+
+const WORK_HOURS_AGG_CHUNK_SIZE = 120
+const WORK_HOURS_CACHE_TTL = 5 * 60 * 1000
+
+type WorkHoursLatestMetaMap = Record<string, {
+  process_name: string
+  operator: string
+  shift: string
+  team_name: string
+  device_no: string
+  device_name: string
+  process_unit_price: number
+  completed_quantity: number
+  at: number
+}>
+
+type WorkHoursAggregateResult = {
+  data: Record<string, string[]>
+  processCompletedQtyData: Record<string, Record<string, number>>
+  processHoursData: Record<string, Record<string, number>>
+  processAmountData: Record<string, Record<string, number>>
+  amountData: Record<string, number>
+  processLatestMetaData: Record<string, WorkHoursLatestMetaMap>
+}
+
+type WorkHoursAggregateCacheEntry = {
+  fetchedAt: number
+  data: string[]
+  processCompletedQtyData: Record<string, number>
+  processHoursData: Record<string, number>
+  processAmountData: Record<string, number>
+  amountData: number
+  processLatestMetaData: WorkHoursLatestMetaMap
+}
+
+const createEmptyWorkHoursAggregateResult = (): WorkHoursAggregateResult => ({
+  data: {},
+  processCompletedQtyData: {},
+  processHoursData: {},
+  processAmountData: {},
+  amountData: {},
+  processLatestMetaData: {}
+})
+
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  if (!Array.isArray(items) || items.length === 0) return []
+  const safeSize = Math.max(1, size)
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += safeSize) {
+    chunks.push(items.slice(i, i + safeSize))
+  }
+  return chunks
 }
 
 const getBatchSize = () => {
@@ -543,6 +596,7 @@ const ToolingInfoPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const processDoneFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number }>({ timer: null, lastFetchTime: 0 })
   const workHoursFetchRef = useRef<{ timer: NodeJS.Timeout | null; lastFetchTime: number; lastKey: string }>({ timer: null, lastFetchTime: 0, lastKey: '' })
+  const workHoursAggregateCacheRef = useRef<Record<string, WorkHoursAggregateCacheEntry>>({})
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1102,68 +1156,106 @@ const ToolingInfoPage: React.FC = () => {
   
   // 获取工时数据，用于判断工艺路线是否已录入工时
   const fetchWorkHoursData = useCallback(async (invs?: string[]) => {
-    try {
-      const hasInvs = Array.isArray(invs) && invs.length > 0
-      if (!hasInvs) {
-        setWorkHoursData({})
-        setWorkHoursProcessCompletedQtyData({})
-        setWorkHoursProcessHoursData({})
-        setWorkHoursProcessAmountData({})
-        setWorkHoursAmountData({})
-        setWorkHoursProcessLatestMetaData({})
-        return
-      }
-      const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(invs!.join(','))}`
-      const response = await fetchWithFallback(url, { cache: 'no-store' })
-      if (!response.ok) {
-        throw new Error('获取工时数据失败')
-      }
-      
-      const result = await response.json()
-      
-      // 检查API响应格式
-      if (!result || typeof result !== 'object') {
-        console.error('获取工时数据失败，响应格式错误:', result)
-        throw new Error('获取工时数据失败，响应格式错误')
-      }
-      
-      // 检查响应是否成功
-      if (result.success !== true) {
-        console.error('获取工时数据失败，API返回错误:', result.error)
-        // 即使API返回错误，也不抛出异常，避免影响页面其他功能
-        setWorkHoursData({})
-        setWorkHoursProcessCompletedQtyData({})
-        setWorkHoursProcessHoursData({})
-        setWorkHoursProcessAmountData({})
-        setWorkHoursAmountData({})
-        setWorkHoursProcessLatestMetaData({})
-        return
-      }
-      
-      // 提取工时数据
-      const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
-      const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
-      const processHoursByInventoryNo: Record<string, Record<string, number>> = result?.processHoursData || {}
-      const processAmountByInventoryNo: Record<string, Record<string, number>> = result?.processAmountData || {}
-      const amountByInventoryNo: Record<string, number> = result?.amountData || {}
-      const processLatestMetaByInventoryNo = result?.processLatestMetaData || {}
-      
-      setWorkHoursData(hoursByInventoryNo)
-      setWorkHoursProcessCompletedQtyData(processCompletedQtyByInventoryNo)
-      setWorkHoursProcessHoursData(processHoursByInventoryNo)
-      setWorkHoursProcessAmountData(processAmountByInventoryNo)
-      setWorkHoursAmountData(amountByInventoryNo)
-      setWorkHoursProcessLatestMetaData(processLatestMetaByInventoryNo)
-      debugLog('成功获取工时数据:', hoursByInventoryNo)
-    } catch (error) {
-      console.error('获取工时数据失败:', error)
-      // 即使发生异常，也不影响页面其他功能
+    const normalizedInvs = Array.from(new Set(
+      (Array.isArray(invs) ? invs : [])
+        .map((inv) => String(inv || '').trim().toUpperCase())
+        .filter(Boolean)
+    ))
+    if (normalizedInvs.length === 0) {
       setWorkHoursData({})
       setWorkHoursProcessCompletedQtyData({})
       setWorkHoursProcessHoursData({})
       setWorkHoursProcessAmountData({})
       setWorkHoursAmountData({})
       setWorkHoursProcessLatestMetaData({})
+      return
+    }
+
+    const buildStateFromCache = (targetInvs: string[]) => {
+      const nextData: Record<string, string[]> = {}
+      const nextProcessCompletedQty: Record<string, Record<string, number>> = {}
+      const nextProcessHours: Record<string, Record<string, number>> = {}
+      const nextProcessAmount: Record<string, Record<string, number>> = {}
+      const nextAmount: Record<string, number> = {}
+      const nextLatestMeta: Record<string, WorkHoursLatestMetaMap> = {}
+      targetInvs.forEach((inv) => {
+        const entry = workHoursAggregateCacheRef.current[inv]
+        if (!entry) return
+        nextData[inv] = Array.isArray(entry.data) ? [...entry.data] : []
+        nextProcessCompletedQty[inv] = { ...(entry.processCompletedQtyData || {}) }
+        nextProcessHours[inv] = { ...(entry.processHoursData || {}) }
+        nextProcessAmount[inv] = { ...(entry.processAmountData || {}) }
+        nextAmount[inv] = Number(entry.amountData || 0)
+        nextLatestMeta[inv] = { ...(entry.processLatestMetaData || {}) }
+      })
+      setWorkHoursData(nextData)
+      setWorkHoursProcessCompletedQtyData(nextProcessCompletedQty)
+      setWorkHoursProcessHoursData(nextProcessHours)
+      setWorkHoursProcessAmountData(nextProcessAmount)
+      setWorkHoursAmountData(nextAmount)
+      setWorkHoursProcessLatestMetaData(nextLatestMeta)
+      return nextData
+    }
+
+    const now = Date.now()
+    const staleInvs = normalizedInvs.filter((inv) => {
+      const entry = workHoursAggregateCacheRef.current[inv]
+      return !entry || now - Number(entry.fetchedAt || 0) > WORK_HOURS_CACHE_TTL
+    })
+
+    if (staleInvs.length === 0) {
+      const cachedData = buildStateFromCache(normalizedInvs)
+      debugLog('命中工时缓存:', cachedData)
+      return
+    }
+
+    let hasFreshData = false
+    let lastError: any = null
+    for (const chunk of chunkArray(staleInvs, WORK_HOURS_AGG_CHUNK_SIZE)) {
+      try {
+        const url = `/api/tooling/work-hours/aggregates?invs=${encodeURIComponent(chunk.join(','))}`
+        const response = await fetchWithFallback(url, { cache: 'no-store' })
+        if (!response.ok) {
+          throw new Error(`获取工时数据失败(${response.status})`)
+        }
+        const result = await response.json()
+        if (!result || typeof result !== 'object') {
+          throw new Error('获取工时数据失败，响应格式错误')
+        }
+        if (result.success !== true) {
+          throw new Error(String(result.error || '获取工时数据失败'))
+        }
+
+        const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
+        const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
+        const processHoursByInventoryNo: Record<string, Record<string, number>> = result?.processHoursData || {}
+        const processAmountByInventoryNo: Record<string, Record<string, number>> = result?.processAmountData || {}
+        const amountByInventoryNo: Record<string, number> = result?.amountData || {}
+        const processLatestMetaByInventoryNo: Record<string, WorkHoursLatestMetaMap> = result?.processLatestMetaData || {}
+
+        chunk.forEach((inv) => {
+          workHoursAggregateCacheRef.current[inv] = {
+            fetchedAt: Date.now(),
+            data: Array.isArray(hoursByInventoryNo[inv]) ? [...hoursByInventoryNo[inv]] : [],
+            processCompletedQtyData: { ...(processCompletedQtyByInventoryNo[inv] || {}) },
+            processHoursData: { ...(processHoursByInventoryNo[inv] || {}) },
+            processAmountData: { ...(processAmountByInventoryNo[inv] || {}) },
+            amountData: Number(amountByInventoryNo[inv] || 0),
+            processLatestMetaData: { ...(processLatestMetaByInventoryNo[inv] || {}) }
+          }
+        })
+        hasFreshData = true
+      } catch (error) {
+        lastError = error
+        console.error('获取工时数据失败:', error)
+      }
+    }
+
+    const mergedData = buildStateFromCache(normalizedInvs)
+    if (!hasFreshData && lastError) {
+      console.error('工时聚合全部请求失败，继续使用已有缓存/空结果:', lastError)
+    } else {
+      debugLog('成功获取工时数据:', mergedData)
     }
   }, [])
   
@@ -1207,11 +1299,16 @@ const ToolingInfoPage: React.FC = () => {
           // 清除缓存，强制刷新工时数据
           workHoursFetchRef.current.lastKey = ''
           workHoursFetchRef.current.lastFetchTime = 0
+          const submittedInv = String(event.data?.inventoryNo || '').trim().toUpperCase()
+          if (submittedInv) {
+            delete workHoursAggregateCacheRef.current[submittedInv]
+          } else {
+            workHoursAggregateCacheRef.current = {}
+          }
           // 清除列缓存，确保列定义重新创建
           partColumnsCacheRef.current.clear()
           childColumnsCacheRef.current.clear()
           // 使用广播中的盘存编号，同时收集当前页面所有相关盘存编号
-          const submittedInv = String(event.data?.inventoryNo || '').trim().toUpperCase()
           const invsSet = new Set<string>()
           if (submittedInv) invsSet.add(submittedInv)
           ensureBlankToolings(data).forEach(d => {
@@ -3461,7 +3558,7 @@ const ToolingInfoPage: React.FC = () => {
         const keys = items
           .map((it: any) => String(it?.part_inventory_number || '').trim().toUpperCase())
           .filter((k: string) => !!k && (k === key || k.startsWith(key)))
-        const uniq = Array.from(new Set(keys))
+        const uniq: string[] = Array.from(new Set<string>(keys))
         serverMatchCache.set(key, uniq)
         return uniq
       } catch {

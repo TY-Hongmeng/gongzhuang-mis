@@ -1957,22 +1957,40 @@ router.get('/work-hours/aggregates', async (req, res) => {
       return res.json({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, processLatestMetaData: {} })
     }
 
+    const chunkArray = <T,>(items: T[], size: number): T[][] => {
+      const safeSize = Math.max(1, size)
+      const chunks: T[][] = []
+      for (let i = 0; i < items.length; i += safeSize) {
+        chunks.push(items.slice(i, i + safeSize))
+      }
+      return chunks
+    }
+
     // 查询这些盘存编号对应的所有工时记录（兼容 inventory_no / part_inventory_number 两种字段）
     const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, aux_hours, proc_hours, operator, shift, device_no, created_at, work_date'
-    const { data: dataByInvNo, error: errByInvNo } = await supabase
-      .from('work_hours')
-      .select(baseSelect)
-      .in('inventory_no', invList)
-    const { data: dataByPartInvNo, error: errByPartInvNo } = await supabase
-      .from('work_hours')
-      .select(baseSelect)
-      .in('part_inventory_number', invList)
-    if (errByInvNo && errByPartInvNo) throw errByPartInvNo
     const mergeMap = new Map<string, any>()
-    ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
-      const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
-      if (!mergeMap.has(key)) mergeMap.set(key, r)
-    })
+    let lastQueryError: any = null
+    for (const invChunk of chunkArray(invList, 120)) {
+      const [{ data: dataByInvNo, error: errByInvNo }, { data: dataByPartInvNo, error: errByPartInvNo }] = await Promise.all([
+        supabase
+          .from('work_hours')
+          .select(baseSelect)
+          .in('inventory_no', invChunk),
+        supabase
+          .from('work_hours')
+          .select(baseSelect)
+          .in('part_inventory_number', invChunk)
+      ])
+      if (errByInvNo && errByPartInvNo) {
+        lastQueryError = errByPartInvNo
+        continue
+      }
+      ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
+        const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
+        if (!mergeMap.has(key)) mergeMap.set(key, r)
+      })
+    }
+    if (mergeMap.size === 0 && lastQueryError) throw lastQueryError
     const data = Array.from(mergeMap.values())
 
     const invForDevice = new Set<string>()

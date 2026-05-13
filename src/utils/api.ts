@@ -2333,10 +2333,28 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
         if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, amountData: {}, processLatestMetaData: {} })
         try {
-          let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
-          q = q.in('part_inventory_number', invs)
-          const { data, error } = await q
-          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const chunkArray = <T,>(items: T[], size: number): T[][] => {
+            const safeSize = Math.max(1, size)
+            const chunks: T[][] = []
+            for (let i = 0; i < items.length; i += safeSize) {
+              chunks.push(items.slice(i, i + safeSize))
+            }
+            return chunks
+          }
+          const rows: any[] = []
+          let lastQueryError: any = null
+          for (const invChunk of chunkArray(invs, 120)) {
+            const { data, error } = await supabase
+              .from('work_hours')
+              .select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
+              .in('part_inventory_number', invChunk)
+            if (error) {
+              lastQueryError = error
+              continue
+            }
+            rows.push(...(data || []))
+          }
+          if (rows.length === 0 && lastQueryError) return jsonResponse({ success: false, error: lastQueryError.message }, 500)
           const map: Record<string, string[]> = {}
           const completedQtyMap: Record<string, number> = {}
           const processCompletedQtyMap: Record<string, Record<string, number>> = {}
@@ -2344,7 +2362,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const processAmountMap: Record<string, Record<string, number>> = {}
           const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
-          const normalizedRows = (data || []).map((r: any) => {
+          const normalizedRows = rows.map((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
