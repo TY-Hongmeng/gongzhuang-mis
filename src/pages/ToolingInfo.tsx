@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -740,27 +740,6 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [setPartsLoadingMap, setChildLoadingMap])
 
-  useEffect(() => {
-    const parentIds = (filteredVisibleData || [])
-      .map((row: any) => String(row?.id || '').trim())
-      .filter((id: string) => id && !id.startsWith('blank-'))
-    const needFetch = parentIds.filter((id) => !Object.prototype.hasOwnProperty.call(partsMapRef.current, id) && !partsLoadingMapRef.current[id])
-    if (needFetch.length === 0) return
-    let cancelled = false
-    const timer = setTimeout(async () => {
-      const chunkSize = 8
-      for (let i = 0; i < needFetch.length; i += chunkSize) {
-        if (cancelled) return
-        const group = needFetch.slice(i, i + chunkSize)
-        await Promise.all(group.map((id) => fetchPartsDataRef.current(id).catch(() => null)))
-      }
-    }, 300)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [filteredVisibleData, partsMap, partsLoadingMap])
-  
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
     setExpandedChildKeysRef.current = setExpandedChildKeys
@@ -998,6 +977,27 @@ const ToolingInfoPage: React.FC = () => {
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
   }, [visibleData, filterPriority, filterStatus])
+
+  useEffect(() => {
+    const parentIds = (filteredVisibleData || [])
+      .map((row: any) => String(row?.id || '').trim())
+      .filter((id: string) => id && !id.startsWith('blank-'))
+    const needFetch = parentIds.filter((id) => !Object.prototype.hasOwnProperty.call(partsMapRef.current, id) && !partsLoadingMapRef.current[id])
+    if (needFetch.length === 0) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const chunkSize = 8
+      for (let i = 0; i < needFetch.length; i += chunkSize) {
+        if (cancelled) return
+        const group = needFetch.slice(i, i + chunkSize)
+        await Promise.all(group.map((id) => fetchPartsDataRef.current(id).catch(() => null)))
+      }
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filteredVisibleData, partsMap, partsLoadingMap])
 
   const tableRows = useMemo(() => ensureBlankToolings(filteredVisibleData), [filteredVisibleData])
   const applyFilters = useCallback(() => {
