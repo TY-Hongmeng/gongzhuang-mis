@@ -2193,7 +2193,37 @@ router.post('/:id/refresh-totals', async (req, res) => {
     let materialTotal: number | null = null
     let processTotal: number | null = null
     if (meaningfulParts.length > 0) {
-      materialTotal = meaningfulParts.reduce((sum: number, part: any) => sum + Number(part?.total_price || 0), 0)
+      const materialIds = Array.from(new Set(
+        meaningfulParts
+          .map((part: any) => String(part?.material_id || '').trim())
+          .filter(Boolean)
+      ))
+      const materialUnitPriceMap = new Map<string, number>()
+      for (const materialChunk of chunkArray(materialIds, 120)) {
+        if (materialChunk.length === 0) continue
+        const { data: materials } = await supabase
+          .from('materials')
+          .select('id,unit_price')
+          .in('id', materialChunk)
+        ;(materials || []).forEach((material: any) => {
+          const materialId = String(material?.id || '').trim()
+          if (!materialId) return
+          const unitPrice = Number(material?.unit_price || 0)
+          materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
+        })
+      }
+      materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+        const qty = Number(part?.part_quantity || 0)
+        const unitWeight = Number(part?.weight || 0)
+        const materialId = String(part?.material_id || '').trim()
+        const unitPrice = materialId
+          ? Number(materialUnitPriceMap.get(materialId) || 0)
+          : Number(part?.unit_price || 0)
+        const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
+          ? qty * unitWeight * unitPrice
+          : Number(part?.total_price || 0)
+        return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
+      }, 0)
 
       const normalizeDeviceNo = (v: any) => {
         const raw = String(v || '').trim()
@@ -2223,6 +2253,7 @@ router.post('/:id/refresh-totals', async (req, res) => {
         return chunks
       }
       const workHourRows: any[] = []
+      const workHourRowMap = new Map<string, any>()
       for (const invChunk of chunkArray(invList, 120)) {
         const [{ data: dataByInvNo }, { data: dataByPartInvNo }] = await Promise.all([
           supabase
@@ -2234,8 +2265,12 @@ router.post('/:id/refresh-totals', async (req, res) => {
             .select('inventory_no,part_inventory_number,process_name,aux_hours,proc_hours,device_no')
             .in('part_inventory_number', invChunk)
         ])
-        workHourRows.push(...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[]))
+        ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((row: any, idx: number) => {
+          const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
+          if (!workHourRowMap.has(key)) workHourRowMap.set(key, row)
+        })
       }
+      workHourRows.push(...Array.from(workHourRowMap.values()))
 
       const deviceNoSet = new Set<string>()
       const normalizedRows = workHourRows.map((row: any) => {
@@ -2279,12 +2314,22 @@ router.post('/:id/refresh-totals', async (req, res) => {
       process_total: processTotal,
       totals_updated_at: new Date().toISOString()
     }
-    const { error: updateError } = await supabase
-      .from('tooling_info')
-      .update(payload)
-      .eq('id', toolingId)
-    if (updateError) {
-      return res.status(500).json({ success: false, error: updateError.message })
+    if (process.env.SUPABASE_DB_URL || '') {
+      const r = await query(
+        'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
+        [payload.material_total, payload.process_total, payload.totals_updated_at, toolingId]
+      )
+      if (Number(r.rowCount || 0) === 0) {
+        return res.status(404).json({ success: false, error: '工装不存在' })
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from('tooling_info')
+        .update(payload)
+        .eq('id', toolingId)
+      if (updateError) {
+        return res.status(500).json({ success: false, error: updateError.message })
+      }
     }
 
     return res.json({ success: true, data: payload })

@@ -1910,14 +1910,44 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           let materialTotal: number | null = null
           let processTotal: number | null = null
           if (meaningfulParts.length > 0) {
-            materialTotal = meaningfulParts.reduce((sum: number, part: any) => sum + Number(part?.total_price || 0), 0)
+            const materialIds = Array.from(new Set(
+              meaningfulParts
+                .map((part: any) => String(part?.material_id || '').trim())
+                .filter(Boolean)
+            ))
+            const materialUnitPriceMap = new Map<string, number>()
+            for (const materialChunk of chunkArray(materialIds, 120)) {
+              if (materialChunk.length === 0) continue
+              const { data: materials } = await supabase
+                .from('materials')
+                .select('id,unit_price')
+                .in('id', materialChunk)
+              ;(materials || []).forEach((material: any) => {
+                const materialId = String(material?.id || '').trim()
+                if (!materialId) return
+                const unitPrice = Number(material?.unit_price || 0)
+                materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
+              })
+            }
+            materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+              const qty = Number(part?.part_quantity || 0)
+              const unitWeight = Number(part?.weight || 0)
+              const materialId = String(part?.material_id || '').trim()
+              const unitPrice = materialId
+                ? Number(materialUnitPriceMap.get(materialId) || 0)
+                : Number(part?.unit_price || 0)
+              const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
+                ? qty * unitWeight * unitPrice
+                : Number(part?.total_price || 0)
+              return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
+            }, 0)
 
             const invList = Array.from(new Set(
               meaningfulParts
                 .map((part: any) => String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase())
                 .filter(Boolean)
             ))
-            const workHourRows: any[] = []
+            const workHourRowMap = new Map<string, any>()
             for (const invChunk of chunkArray(invList, 120)) {
               const [{ data: rowsByInv }, { data: rowsByPartInv }] = await Promise.all([
                 supabase
@@ -1929,8 +1959,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                   .select('inventory_no,part_inventory_number,aux_hours,proc_hours,device_no')
                   .in('part_inventory_number', invChunk)
               ])
-              workHourRows.push(...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[]))
+              ;([...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]).forEach((row: any, idx: number) => {
+                const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
+                if (!workHourRowMap.has(key)) workHourRowMap.set(key, row)
+              })
             }
+            const workHourRows = Array.from(workHourRowMap.values())
 
             const deviceNoSet = new Set<string>()
             const normalizedRows = workHourRows.map((row: any) => {
