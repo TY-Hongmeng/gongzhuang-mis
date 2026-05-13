@@ -2050,7 +2050,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
         const deviceNameMap = new Map<string, string>()
         const devicePriceMap = new Map<string, number>()
         ;(deviceRows || []).forEach((d: any) => {
-          const no = String(d.device_no || '').trim()
+          const no = normalizeDeviceNo(d.device_no)
           if (!no) return
           deviceNameMap.set(no, String(d.device_name || '').trim())
           const price = Number(d.process_unit_price || 0)
@@ -2119,7 +2119,11 @@ router.get('/work-hours/aggregates', async (req, res) => {
       }
     } catch {}
 
-    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processAmountData: processAmountMap, processLatestMetaData })
+    const amountData: Record<string, number> = {}
+    Object.keys(processAmountMap).forEach((inv) => {
+      amountData[inv] = Object.values(processAmountMap[inv] || {}).reduce((sum: number, v: any) => sum + Number(v || 0), 0)
+    })
+    res.json({ success: true, data: aggregates, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processAmountData: processAmountMap, amountData, processLatestMetaData })
   } catch (err: any) {
     console.error('获取工时聚合数据失败:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })

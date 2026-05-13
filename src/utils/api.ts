@@ -2331,7 +2331,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, processLatestMetaData: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, amountData: {}, processLatestMetaData: {} })
         try {
           let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
           q = q.in('part_inventory_number', invs)
@@ -2396,7 +2396,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               const deviceNameMap = new Map<string, string>()
               const devicePriceMap = new Map<string, number>()
               ;(devices || []).forEach((d: any) => {
-                const no = String(d.device_no || '').trim()
+                const no = normalizeDeviceNo(d.device_no)
                 if (!no) return
                 deviceNameMap.set(no, String(d.device_name || '').trim())
                 const price = Number(d.process_unit_price || 0)
@@ -2462,7 +2462,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               })
             }
           } catch {}
-          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processAmountData: processAmountMap, processLatestMetaData })
+          const amountData: Record<string, number> = {}
+          Object.keys(processAmountMap).forEach((inv) => {
+            amountData[inv] = Object.values(processAmountMap[inv] || {}).reduce((sum: number, v: any) => sum + Number(v || 0), 0)
+          })
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processAmountData: processAmountMap, amountData, processLatestMetaData })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }

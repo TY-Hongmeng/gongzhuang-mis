@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1060,6 +1060,7 @@ const ToolingInfoPage: React.FC = () => {
   const [workHoursProcessCompletedQtyData, setWorkHoursProcessCompletedQtyData] = useState<Record<string, Record<string, number>>>({})
   const [workHoursProcessHoursData, setWorkHoursProcessHoursData] = useState<Record<string, Record<string, number>>>({})
   const [workHoursProcessAmountData, setWorkHoursProcessAmountData] = useState<Record<string, Record<string, number>>>({})
+  const [workHoursAmountData, setWorkHoursAmountData] = useState<Record<string, number>>({})
   const [workHoursProcessLatestMetaData, setWorkHoursProcessLatestMetaData] = useState<Record<string, Record<string, {
     process_name: string
     operator: string
@@ -1087,6 +1088,7 @@ const ToolingInfoPage: React.FC = () => {
         setWorkHoursProcessCompletedQtyData({})
         setWorkHoursProcessHoursData({})
         setWorkHoursProcessAmountData({})
+        setWorkHoursAmountData({})
         setWorkHoursProcessLatestMetaData({})
         return
       }
@@ -1112,6 +1114,7 @@ const ToolingInfoPage: React.FC = () => {
         setWorkHoursProcessCompletedQtyData({})
         setWorkHoursProcessHoursData({})
         setWorkHoursProcessAmountData({})
+        setWorkHoursAmountData({})
         setWorkHoursProcessLatestMetaData({})
         return
       }
@@ -1121,12 +1124,14 @@ const ToolingInfoPage: React.FC = () => {
       const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
       const processHoursByInventoryNo: Record<string, Record<string, number>> = result?.processHoursData || {}
       const processAmountByInventoryNo: Record<string, Record<string, number>> = result?.processAmountData || {}
+      const amountByInventoryNo: Record<string, number> = result?.amountData || {}
       const processLatestMetaByInventoryNo = result?.processLatestMetaData || {}
       
       setWorkHoursData(hoursByInventoryNo)
       setWorkHoursProcessCompletedQtyData(processCompletedQtyByInventoryNo)
       setWorkHoursProcessHoursData(processHoursByInventoryNo)
       setWorkHoursProcessAmountData(processAmountByInventoryNo)
+      setWorkHoursAmountData(amountByInventoryNo)
       setWorkHoursProcessLatestMetaData(processLatestMetaByInventoryNo)
       debugLog('成功获取工时数据:', hoursByInventoryNo)
     } catch (error) {
@@ -1136,6 +1141,7 @@ const ToolingInfoPage: React.FC = () => {
       setWorkHoursProcessCompletedQtyData({})
       setWorkHoursProcessHoursData({})
       setWorkHoursProcessAmountData({})
+      setWorkHoursAmountData({})
       setWorkHoursProcessLatestMetaData({})
     }
   }, [])
@@ -2620,17 +2626,7 @@ const ToolingInfoPage: React.FC = () => {
         width: 110,
         render: (_text: any, rec: PartItem) => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const processAmountMap = workHoursProcessAmountData[inventoryNo] || {}
-          let currentRoute = String((rec as any).process_route || '')
-          if (!currentRoute && inventoryNo) currentRoute = (inventoryNo && processRoutes[inventoryNo]) || ''
-          const steps = String(currentRoute || '').split(/\\s*→\\s*/).map(s => s.trim()).filter(Boolean)
-          let sum = 0
-          steps.forEach((s) => {
-            const key = normalizeProcessKey(s)
-            const amount = Number((processAmountMap as any)?.[key] || 0)
-            if (!Number.isFinite(amount) || amount <= 0) return
-            sum += amount
-          })
+          const sum = Number(workHoursAmountData[inventoryNo] || 0)
           return <span style={{ color: '#000000' }}>{Number.isFinite(sum) ? sum.toFixed(2) : '0.00'}</span>
         }
       },
@@ -3054,6 +3050,10 @@ const ToolingInfoPage: React.FC = () => {
         return `${k}:{${processMap}}`
       })
       .join('|')
+    const amountTotalKey = Object.entries(workHoursAmountData)
+      .sort(([a], [b]) => String(a).localeCompare(String(b)))
+      .map(([k, amount]) => `${k}:${amount}`)
+      .join('|')
     const latestMetaKey = Object.entries(workHoursProcessLatestMetaData)
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([k, v]) => {
@@ -3068,7 +3068,7 @@ const ToolingInfoPage: React.FC = () => {
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([pid, info]) => `${pid}:${info?.step_key || ''}|${info?.operator || ''}|${info?.updated_at || 0}`)
       .join(',')
-    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${hoursKey}-${amountKey}-${latestMetaKey}-${manualUpdateKey}`
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${hoursKey}-${amountKey}-${amountTotalKey}-${latestMetaKey}-${manualUpdateKey}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
     if (!cols) {
       cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
@@ -3139,6 +3139,7 @@ const ToolingInfoPage: React.FC = () => {
     workHoursProcessCompletedQtyData,
     workHoursProcessHoursData,
     workHoursProcessAmountData,
+    workHoursAmountData,
     workHoursProcessLatestMetaData,
     manualStepUpdateMap,
     filterSearch
