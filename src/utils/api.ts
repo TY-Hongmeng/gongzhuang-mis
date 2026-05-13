@@ -2331,7 +2331,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
-        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processLatestMetaData: {} })
+        if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, processLatestMetaData: {} })
         try {
           let q = supabase.from('work_hours').select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
           q = q.in('part_inventory_number', invs)
@@ -2341,9 +2341,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const completedQtyMap: Record<string, number> = {}
           const processCompletedQtyMap: Record<string, Record<string, number>> = {}
           const processHoursMap: Record<string, Record<string, number>> = {}
+          const processAmountMap: Record<string, Record<string, number>> = {}
           const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
-          ;(data || []).forEach((r: any) => {
+          const normalizedRows = (data || []).map((r: any) => {
             const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
@@ -2353,6 +2354,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const totalHours = (Number.isFinite(auxHours) ? auxHours : 0) + (Number.isFinite(procHours) ? procHours : 0)
             const deviceNo = normalizeDeviceNo(r.device_no)
             if (deviceNo) deviceSet.add(deviceNo)
+            return { r, inv, name, processKey, completedQty, totalHours, deviceNo }
+          })
+          ;normalizedRows.forEach(({ r, inv, name, processKey, completedQty, totalHours, deviceNo }: any) => {
             if (!inv || !name) return
             const norm = name.trim().toLowerCase()
             const arr = map[inv] || []
@@ -2408,6 +2412,13 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                   if (devicePriceMap.has(no)) meta.process_unit_price = Number(devicePriceMap.get(no) || 0)
                 })
               })
+              normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
+                if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
+                const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
+                if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+                if (!processAmountMap[inv]) processAmountMap[inv] = {}
+                processAmountMap[inv][processKey] = Number(processAmountMap[inv][processKey] || 0) + totalHours * unitPrice
+              })
             } catch {}
           }
           try {
@@ -2451,7 +2462,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               })
             }
           } catch {}
-          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processLatestMetaData })
+          return jsonResponse({ success: true, data: map, completedQtyData: completedQtyMap, processCompletedQtyData: processCompletedQtyMap, processHoursData: processHoursMap, processAmountData: processAmountMap, processLatestMetaData })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '聚合失败' }, 500)
         }
