@@ -100,6 +100,233 @@ const ensureToolingTotalsColumns = async () => {
     toolingTotalsColumnsReady = true;
   } catch (e) {}
 };
+let partAmountColumnsReady = false;
+const ensurePartAmountColumns = async () => {
+  if (partAmountColumnsReady) return;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    await query(`ALTER TABLE parts_info ADD COLUMN IF NOT EXISTS process_amount NUMERIC`);
+    await query(`ALTER TABLE parts_info ADD COLUMN IF NOT EXISTS amounts_updated_at TIMESTAMPTZ`);
+    partAmountColumnsReady = true;
+  } catch (e) {}
+};
+
+const chunkItems = <T,>(items: T[], size: number): T[][] => {
+  const safeSize = Math.max(1, size)
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += safeSize) {
+    chunks.push(items.slice(i, i + safeSize))
+  }
+  return chunks
+}
+
+const normalizeAmountDeviceNo = (v: any) => {
+  const raw = String(v || '').trim()
+  if (!raw) return ''
+  const dash = raw.split('-')[0]
+  const leadingDigits = dash.match(/^\d+/)?.[0]
+  if (leadingDigits) return leadingDigits
+  return dash.trim()
+}
+
+const normalizeAmountInventoryNo = (v: any) => String(v || '').trim().toUpperCase()
+
+const computeProcessAmountByInvMap = async (inventoryNos: string[]) => {
+  const invList = Array.from(new Set((inventoryNos || []).map(normalizeAmountInventoryNo).filter(Boolean)))
+  if (invList.length === 0) return {}
+  await ensureDeviceProcessUnitPriceColumn()
+  const workHourRowMap = new Map<string, any>()
+  for (const invChunk of chunkItems(invList, 120)) {
+    const [{ data: dataByInvNo }, { data: dataByPartInvNo }] = await Promise.all([
+      supabase
+        .from('work_hours')
+        .select('id, inventory_no, part_inventory_number, process_name, aux_hours, proc_hours, device_no')
+        .in('inventory_no', invChunk),
+      supabase
+        .from('work_hours')
+        .select('id, inventory_no, part_inventory_number, process_name, aux_hours, proc_hours, device_no')
+        .in('part_inventory_number', invChunk)
+    ])
+    ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((row: any, idx: number) => {
+      const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
+      if (!workHourRowMap.has(key)) workHourRowMap.set(key, row)
+    })
+  }
+  const workHourRows = Array.from(workHourRowMap.values())
+  const deviceNoSet = new Set<string>()
+  const normalizedRows = workHourRows.map((row: any) => {
+    const inv = normalizeAmountInventoryNo(row?.inventory_no || row?.part_inventory_number)
+    const totalHours = Number(row?.aux_hours || 0) + Number(row?.proc_hours || 0)
+    const deviceNo = normalizeAmountDeviceNo(row?.device_no)
+    if (deviceNo) deviceNoSet.add(deviceNo)
+    return { inv, totalHours, deviceNo }
+  })
+  const devicePriceMap = new Map<string, number>()
+  for (const deviceChunk of chunkItems(Array.from(deviceNoSet), 120)) {
+    const { data: devices } = await supabase
+      .from('devices')
+      .select('device_no,process_unit_price')
+      .in('device_no', deviceChunk)
+    ;(devices || []).forEach((device: any) => {
+      const no = normalizeAmountDeviceNo(device?.device_no)
+      if (!no) return
+      const unitPrice = Number(device?.process_unit_price || 0)
+      devicePriceMap.set(no, Number.isFinite(unitPrice) ? unitPrice : 0)
+    })
+  }
+  const amountByInv: Record<string, number> = {}
+  normalizedRows.forEach(({ inv, totalHours, deviceNo }: any) => {
+    if (!inv || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
+    const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+    amountByInv[inv] = Number(amountByInv[inv] || 0) + totalHours * unitPrice
+  })
+  return amountByInv
+}
+
+const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
+  await ensureToolingTotalsColumns()
+  await ensurePartAmountColumns()
+  const toolingId = String(toolingIdInput || '').trim()
+  if (!toolingId) throw new Error('缺少工装ID')
+  const { data: parts, error: partsError } = await supabase
+    .from('parts_info')
+    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price,material_id,process_amount')
+    .eq('tooling_id', toolingId)
+  if (partsError) throw new Error(partsError.message)
+
+  const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+  const meaningfulParts = validParts.filter((part: any) => {
+    const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
+    const name = String(part?.part_name || '').trim()
+    const qty = Number(part?.part_quantity || 0)
+    const weight = Number(part?.weight || 0)
+    const unitPrice = Number(part?.unit_price || 0)
+    const totalPrice = Number(part?.total_price || 0)
+    return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
+  })
+
+  let materialTotal: number | null = null
+  let processTotal: number | null = null
+  const updatedAt = new Date().toISOString()
+  const partProcessAmountMap: Record<string, number> = {}
+  if (meaningfulParts.length > 0) {
+    const materialIds = Array.from(new Set(
+      meaningfulParts
+        .map((part: any) => String(part?.material_id || '').trim())
+        .filter(Boolean)
+    ))
+    const materialUnitPriceMap = new Map<string, number>()
+    for (const materialChunk of chunkItems(materialIds, 120)) {
+      if (materialChunk.length === 0) continue
+      const { data: materials } = await supabase
+        .from('materials')
+        .select('id,unit_price')
+        .in('id', materialChunk)
+      ;(materials || []).forEach((material: any) => {
+        const materialId = String(material?.id || '').trim()
+        if (!materialId) return
+        const unitPrice = Number(material?.unit_price || 0)
+        materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
+      })
+    }
+    materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+      const qty = Number(part?.part_quantity || 0)
+      const unitWeight = Number(part?.weight || 0)
+      const materialId = String(part?.material_id || '').trim()
+      const unitPrice = materialId
+        ? Number(materialUnitPriceMap.get(materialId) || 0)
+        : Number(part?.unit_price || 0)
+      const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
+        ? qty * unitWeight * unitPrice
+        : Number(part?.total_price || 0)
+      return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
+    }, 0)
+
+    const invList = meaningfulParts
+      .map((part: any) => normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number))
+      .filter(Boolean)
+    const amountByInv = await computeProcessAmountByInvMap(invList)
+    meaningfulParts.forEach((part: any) => {
+      const id = String(part?.id || '')
+      const inv = normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number)
+      if (!id) return
+      partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+    })
+    processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+      const id = String(part?.id || '')
+      return sum + Number(partProcessAmountMap[id] || 0)
+    }, 0)
+  }
+
+  if (process.env.SUPABASE_DB_URL || '') {
+    for (const part of validParts) {
+      const partId = String(part?.id || '').trim()
+      if (!partId) continue
+      const partAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
+        ? Number(partProcessAmountMap[partId] || 0)
+        : null
+      await query(
+        'UPDATE parts_info SET process_amount = $1, amounts_updated_at = $2::timestamptz WHERE id = $3',
+        [partAmount, updatedAt, partId]
+      )
+    }
+    await query(
+      'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
+      [materialTotal, processTotal, updatedAt, toolingId]
+    )
+  } else {
+    await Promise.all(validParts.map((part: any) => {
+      const partId = String(part?.id || '').trim()
+      if (!partId) return Promise.resolve(null)
+      const partAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
+        ? Number(partProcessAmountMap[partId] || 0)
+        : null
+      return supabase
+        .from('parts_info')
+        .update({ process_amount: partAmount, amounts_updated_at: updatedAt })
+        .eq('id', partId)
+    }))
+    const { error: updateError } = await supabase
+      .from('tooling_info')
+      .update({ material_total: materialTotal, process_total: processTotal, totals_updated_at: updatedAt })
+      .eq('id', toolingId)
+    if (updateError) throw new Error(updateError.message)
+  }
+
+  return {
+    material_total: materialTotal,
+    process_total: processTotal,
+    totals_updated_at: updatedAt,
+    part_process_amounts: partProcessAmountMap
+  }
+}
+
+const refreshToolingStoredAmountsByInventoryNos = async (inventoryNos: string[]) => {
+  const invList = Array.from(new Set((inventoryNos || []).map(normalizeAmountInventoryNo).filter(Boolean)))
+  if (invList.length === 0) return
+  const toolingIds = new Set<string>()
+  for (const invChunk of chunkItems(invList, 120)) {
+    const [{ data: byPartInv }, { data: byInv }] = await Promise.all([
+      supabase
+        .from('parts_info')
+        .select('tooling_id')
+        .in('part_inventory_number', invChunk),
+      supabase
+        .from('parts_info')
+        .select('tooling_id')
+        .in('inventory_number', invChunk)
+    ])
+    ;([...(byPartInv || []), ...(byInv || [])] as any[]).forEach((row: any) => {
+      const toolingId = String(row?.tooling_id || '').trim()
+      if (toolingId) toolingIds.add(toolingId)
+    })
+  }
+  for (const toolingId of toolingIds) {
+    await refreshToolingStoredAmounts(toolingId)
+  }
+}
 
 const normalizeWorkHoursOperator = (v: any) =>
   String(v || '')
@@ -721,6 +948,7 @@ router.get('/:id/parts', async (req, res) => {
   try {
     await ensurePurchaseStatusColumns();
     await ensureStatusTable();
+    await ensurePartAmountColumns();
     const { id } = req.params;
     // 添加缓存控制头，确保获取最新数据
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -730,7 +958,7 @@ router.get('/:id/parts', async (req, res) => {
       const sel = [
         'id','tooling_id','part_inventory_number','part_drawing_number','part_name','part_quantity',
         'material_id','material_source_id','part_category','specifications','weight','unit_price',
-        'total_price','remarks','process_route','purchase_status','completed_steps'
+        'total_price','process_amount','amounts_updated_at','remarks','process_route','purchase_status','completed_steps'
       ].join(',')
       const { data, error } = await supabase
           .from('parts_info')
@@ -825,6 +1053,7 @@ router.get('/:id/parts', async (req, res) => {
 // 新增零件
 router.post('/:id/parts', async (req, res) => {
   try {
+    await ensurePartAmountColumns();
     const { id } = req.params;
     let payload = { ...(req.body || {}), tooling_id: id };
 
@@ -924,7 +1153,17 @@ router.post('/:id/parts', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message, code: error.code });
     }
 
-    res.json({ success: true, data });
+    try {
+      await refreshToolingStoredAmounts(id)
+    } catch (refreshErr) {
+      console.warn('创建零件后刷新金额失败:', refreshErr)
+    }
+    const { data: latestPart } = await supabase
+      .from('parts_info')
+      .select('*')
+      .eq('id', String(data?.id || ''))
+      .single()
+    res.json({ success: true, data: latestPart || data });
   } catch (err) {
     console.error('Create part route error:', err);
     res.status(500).json({ success: false, error: '服务器错误' });
@@ -934,6 +1173,7 @@ router.post('/:id/parts', async (req, res) => {
   // 更新零件
   router.put('/parts/:id', async (req, res) => {
   try {
+    await ensurePartAmountColumns();
     const { id } = req.params;
     // 暂时禁用 ensurePurchaseStatusColumns，因为我们已经手动创建了 completed_steps 列
     // await ensurePurchaseStatusColumns();
@@ -1153,8 +1393,24 @@ router.post('/:id/parts', async (req, res) => {
       console.warn('[Tooling] 联动更新采购单失败:', linkErr);
     }
 
-    // 使用验证查询的结果返回给前端，确保包含 completed_steps
-    res.json({ success: true, data: finalData });
+    let refreshedData = finalData
+    try {
+      const toolingIdForRefresh = String(finalData?.tooling_id || arr[0]?.tooling_id || '')
+      if (toolingIdForRefresh) {
+        await refreshToolingStoredAmounts(toolingIdForRefresh)
+        const { data: latestPart } = await supabase
+          .from('parts_info')
+          .select('*')
+          .eq('id', id)
+          .single()
+        if (latestPart) refreshedData = latestPart
+      }
+    } catch (refreshErr) {
+      console.warn('更新零件后刷新金额失败:', refreshErr)
+    }
+
+    // 使用验证查询的结果返回给前端，确保包含 completed_steps 与持久化金额
+    res.json({ success: true, data: refreshedData });
   } catch (err) {
     console.error('Update part route error', err);
     res.status(500).json({ success: false, error: '服务器错误' });
@@ -1600,6 +1856,11 @@ router.post('/work-hours', async (req, res) => {
         .select('*')
         .single()
       if (error) throw error
+      try {
+        await refreshToolingStoredAmountsByInventoryNos([String(insertBody.part_inventory_number || '')])
+      } catch (refreshErr) {
+        console.warn('工时提交后刷新存储金额失败:', refreshErr)
+      }
       res.json({ success: true, data })
     } catch (e: any) {
       try {
@@ -1618,7 +1879,14 @@ router.post('/work-hours', async (req, res) => {
         const r = await client.query(sql, values)
         await client.end()
         const row = (r.rows || [])[0]
-        if (row) return res.json({ success: true, data: row })
+        if (row) {
+          try {
+            await refreshToolingStoredAmountsByInventoryNos([String(insertBody.part_inventory_number || '')])
+          } catch (refreshErr) {
+            console.warn('工时提交后刷新存储金额失败(PG):', refreshErr)
+          }
+          return res.json({ success: true, data: row })
+        }
         return res.status(500).json({ success: false, error: '插入失败' })
       } catch (pgErr: any) {
         console.error('PG fallback insert work_hours error:', pgErr)
@@ -1896,9 +2164,22 @@ router.delete('/work-hours/:id', async (req, res) => {
       const canDeleteOwn = normalizeWorkHoursOperator((row as any).operator) === normalizeWorkHoursOperator(actor.actorName)
       if (!canDeleteOwn) return res.status(403).json({ success: false, error: '仅可删除自己提交的数据' })
     }
+    const { data: beforeDelete } = await supabase
+      .from('work_hours')
+      .select('part_inventory_number, inventory_no')
+      .eq('id', id)
+      .single()
     const { error, count } = await supabase.from('work_hours').delete({ count: 'exact' }).eq('id', id)
     if (error) throw error
     if (Number(count || 0) === 0) return res.status(404).json({ success: false, error: '记录不存在或无权限删除' })
+    try {
+      await refreshToolingStoredAmountsByInventoryNos([
+        String((beforeDelete as any)?.part_inventory_number || ''),
+        String((beforeDelete as any)?.inventory_no || '')
+      ])
+    } catch (refreshErr) {
+      console.warn('删除工时后刷新存储金额失败:', refreshErr)
+    }
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
@@ -1914,9 +2195,22 @@ router.post('/work-hours/batch-delete', async (req, res) => {
     }
     const actor = await resolveWorkHoursActor(userId, operator)
     if (!actor.isSuperAdmin) return res.status(403).json({ success: false, error: '仅超级管理员可删除工时数据' })
+    const { data: rowsBeforeDelete } = await supabase
+      .from('work_hours')
+      .select('part_inventory_number, inventory_no')
+      .in('id', ids)
     try {
       const { error } = await supabase.from('work_hours').delete().in('id', ids)
       if (error) throw error
+      try {
+        const invs = Array.from(new Set((rowsBeforeDelete || []).flatMap((row: any) => [
+          String(row?.part_inventory_number || ''),
+          String(row?.inventory_no || '')
+        ]).filter(Boolean)))
+        await refreshToolingStoredAmountsByInventoryNos(invs)
+      } catch (refreshErr) {
+        console.warn('批量删除工时后刷新存储金额失败:', refreshErr)
+      }
       return res.json({ success: true, deleted: ids.length })
     } catch (e: any) {
       // PG fallback
@@ -2193,176 +2487,12 @@ router.get('/work-hours/aggregates', async (req, res) => {
 
 router.post('/:id/refresh-totals', async (req, res) => {
   try {
-    await ensureToolingTotalsColumns()
-    await ensureDeviceProcessUnitPriceColumn()
     const { id } = req.params
     const toolingId = String(id || '').trim()
     if (!toolingId) {
       return res.status(400).json({ success: false, error: '缺少工装ID' })
     }
-
-    const { data: parts, error: partsError } = await supabase
-      .from('parts_info')
-      .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price')
-      .eq('tooling_id', toolingId)
-    if (partsError) {
-      return res.status(500).json({ success: false, error: partsError.message })
-    }
-
-    const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
-    const hasPartMeaningfulContent = (part: any) => {
-      const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
-      const name = String(part?.part_name || '').trim()
-      const qty = Number(part?.part_quantity || 0)
-      const weight = Number(part?.weight || 0)
-      const unitPrice = Number(part?.unit_price || 0)
-      const totalPrice = Number(part?.total_price || 0)
-      return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
-    }
-    const meaningfulParts = validParts.filter((part: any) => hasPartMeaningfulContent(part))
-
-    let materialTotal: number | null = null
-    let processTotal: number | null = null
-    if (meaningfulParts.length > 0) {
-      const materialIds = Array.from(new Set(
-        meaningfulParts
-          .map((part: any) => String(part?.material_id || '').trim())
-          .filter(Boolean)
-      ))
-      const materialUnitPriceMap = new Map<string, number>()
-      for (const materialChunk of chunkArray(materialIds, 120)) {
-        if (materialChunk.length === 0) continue
-        const { data: materials } = await supabase
-          .from('materials')
-          .select('id,unit_price')
-          .in('id', materialChunk)
-        ;(materials || []).forEach((material: any) => {
-          const materialId = String(material?.id || '').trim()
-          if (!materialId) return
-          const unitPrice = Number(material?.unit_price || 0)
-          materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
-        })
-      }
-      materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
-        const qty = Number(part?.part_quantity || 0)
-        const unitWeight = Number(part?.weight || 0)
-        const materialId = String(part?.material_id || '').trim()
-        const unitPrice = materialId
-          ? Number(materialUnitPriceMap.get(materialId) || 0)
-          : Number(part?.unit_price || 0)
-        const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
-          ? qty * unitWeight * unitPrice
-          : Number(part?.total_price || 0)
-        return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
-      }, 0)
-
-      const normalizeDeviceNo = (v: any) => {
-        const raw = String(v || '').trim()
-        if (!raw) return ''
-        const dash = raw.split('-')[0]
-        const leadingDigits = dash.match(/^\d+/)?.[0]
-        if (leadingDigits) return leadingDigits
-        return dash.trim()
-      }
-      const normalizeProcessKey = (v: any) => String(v || '')
-        .replace(/\s+/g, '')
-        .replace(/^[0-9]+[.\-、:：]*/g, '')
-        .trim()
-        .toLowerCase()
-      const invSet = new Set(
-        meaningfulParts
-          .map((part: any) => String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase())
-          .filter(Boolean)
-      )
-      const invList = Array.from(invSet)
-      const chunkArray = <T,>(items: T[], size: number): T[][] => {
-        const safeSize = Math.max(1, size)
-        const chunks: T[][] = []
-        for (let i = 0; i < items.length; i += safeSize) {
-          chunks.push(items.slice(i, i + safeSize))
-        }
-        return chunks
-      }
-      const workHourRows: any[] = []
-      const workHourRowMap = new Map<string, any>()
-      for (const invChunk of chunkArray(invList, 120)) {
-        const [{ data: dataByInvNo }, { data: dataByPartInvNo }] = await Promise.all([
-          supabase
-            .from('work_hours')
-            .select('inventory_no,part_inventory_number,process_name,aux_hours,proc_hours,device_no')
-            .in('inventory_no', invChunk),
-          supabase
-            .from('work_hours')
-            .select('inventory_no,part_inventory_number,process_name,aux_hours,proc_hours,device_no')
-            .in('part_inventory_number', invChunk)
-        ])
-        ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((row: any, idx: number) => {
-          const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
-          if (!workHourRowMap.has(key)) workHourRowMap.set(key, row)
-        })
-      }
-      workHourRows.push(...Array.from(workHourRowMap.values()))
-
-      const deviceNoSet = new Set<string>()
-      const normalizedRows = workHourRows.map((row: any) => {
-        const inv = String(row?.inventory_no || row?.part_inventory_number || '').trim().toUpperCase()
-        const processKey = normalizeProcessKey(row?.process_name)
-        const totalHours = Number(row?.aux_hours || 0) + Number(row?.proc_hours || 0)
-        const deviceNo = normalizeDeviceNo(row?.device_no)
-        if (deviceNo) deviceNoSet.add(deviceNo)
-        return { inv, processKey, totalHours, deviceNo }
-      })
-
-      const devicePriceMap = new Map<string, number>()
-      const deviceNos = Array.from(deviceNoSet)
-      for (const deviceChunk of chunkArray(deviceNos, 120)) {
-        const { data: devices } = await supabase
-          .from('devices')
-          .select('device_no,process_unit_price')
-          .in('device_no', deviceChunk)
-        ;(devices || []).forEach((device: any) => {
-          const no = normalizeDeviceNo(device?.device_no)
-          if (!no) return
-          devicePriceMap.set(no, Number(device?.process_unit_price || 0))
-        })
-      }
-
-      const amountByInv: Record<string, number> = {}
-      normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
-        if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
-        const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
-        if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
-        amountByInv[inv] = Number(amountByInv[inv] || 0) + totalHours * unitPrice
-      })
-      processTotal = meaningfulParts.reduce((sum: number, part: any) => {
-        const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-        return sum + Number(amountByInv[inv] || 0)
-      }, 0)
-    }
-
-    const payload = {
-      material_total: materialTotal,
-      process_total: processTotal,
-      totals_updated_at: new Date().toISOString()
-    }
-    if (process.env.SUPABASE_DB_URL || '') {
-      const r = await query(
-        'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
-        [payload.material_total, payload.process_total, payload.totals_updated_at, toolingId]
-      )
-      if (Number(r.rowCount || 0) === 0) {
-        return res.status(404).json({ success: false, error: '工装不存在' })
-      }
-    } else {
-      const { error: updateError } = await supabase
-        .from('tooling_info')
-        .update(payload)
-        .eq('id', toolingId)
-      if (updateError) {
-        return res.status(500).json({ success: false, error: updateError.message })
-      }
-    }
-
+    const payload = await refreshToolingStoredAmounts(toolingId)
     return res.json({ success: true, data: payload })
   } catch (err: any) {
     console.error('刷新工装总额失败:', err)

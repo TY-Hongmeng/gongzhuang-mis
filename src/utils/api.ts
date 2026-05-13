@@ -1900,7 +1900,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         try {
           const { data: parts, error: partsError } = await supabase
             .from('parts_info')
-            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price')
+            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price,material_id')
             .eq('tooling_id', toolingId)
           if (partsError) return jsonResponse({ success: false, error: partsError.message }, 500)
 
@@ -1909,6 +1909,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
           let materialTotal: number | null = null
           let processTotal: number | null = null
+          const updatedAt = new Date().toISOString()
+          const partProcessAmountMap: Record<string, number> = {}
           if (meaningfulParts.length > 0) {
             const materialIds = Array.from(new Set(
               meaningfulParts
@@ -1995,20 +1997,43 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
               amountByInv[inv] = Number(amountByInv[inv] || 0) + totalHours * unitPrice
             })
-            processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+            meaningfulParts.forEach((part: any) => {
+              const id = String(part?.id || '')
               const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-              return sum + Number(amountByInv[inv] || 0)
+              if (!id) return
+              partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+            })
+            processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+              const id = String(part?.id || '')
+              return sum + Number(partProcessAmountMap[id] || 0)
             }, 0)
           }
 
+          await Promise.all(validParts.map((part: any) => {
+            const partId = String(part?.id || '').trim()
+            if (!partId) return Promise.resolve(null)
+            const processAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
+              ? Number(partProcessAmountMap[partId] || 0)
+              : null
+            return supabase
+              .from('parts_info')
+              .update({ process_amount: processAmount, amounts_updated_at: updatedAt })
+              .eq('id', partId)
+          }))
           const payload = {
             material_total: materialTotal,
             process_total: processTotal,
-            totals_updated_at: new Date().toISOString()
+            totals_updated_at: updatedAt,
+            part_process_amounts: partProcessAmountMap
+          }
+          const dbPayload = {
+            material_total: materialTotal,
+            process_total: processTotal,
+            totals_updated_at: updatedAt
           }
           const { error: updateError } = await supabase
             .from('tooling_info')
-            .update(payload)
+            .update(dbPayload)
             .eq('id', toolingId)
           if (updateError) return jsonResponse({ success: false, error: updateError.message }, 500)
           return jsonResponse({ success: true, data: payload })

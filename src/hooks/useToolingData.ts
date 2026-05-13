@@ -187,6 +187,10 @@ export const useToolingData = () => {
             weight: item.weight ? Number(item.weight) : 0,
             unit_price: item.unit_price ? Number(item.unit_price) : 0,
             total_price: item.total_price ? Number(item.total_price) : 0,
+            process_amount: item.process_amount === null || typeof item.process_amount === 'undefined' || item.process_amount === ''
+              ? null
+              : Number(item.process_amount),
+            amounts_updated_at: String(item.amounts_updated_at || ''),
             remarks: String(item.remarks || ''),
             purchase_status: String(item.purchase_status || ''),
             process_route: String(item.process_route || ''),
