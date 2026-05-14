@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -790,6 +790,11 @@ const ToolingInfoPage: React.FC = () => {
       }
     }))
   }, [setData, toNullableTotal])
+  const toNullableProcessAmount = useCallback((value: any): number | null => {
+    if (value === null || typeof value === 'undefined' || value === '') return null
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }, [])
   const syncLocalToolingTotals = useCallback((toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
@@ -830,8 +835,8 @@ const ToolingInfoPage: React.FC = () => {
       return sum + (Number.isFinite(totalPrice) ? totalPrice : 0)
     }, 0)
     const processTotal = meaningfulParts.reduce((sum: number, part: any) => {
-      const storedAmount = Number(part?.process_amount)
-      if (Number.isFinite(storedAmount)) {
+      const storedAmount = toNullableProcessAmount(part?.process_amount)
+      if (storedAmount !== null) {
         return sum + storedAmount
       }
       const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
@@ -858,14 +863,51 @@ const ToolingInfoPage: React.FC = () => {
         throw new Error(String(result?.error || `刷新工装总额失败(${response.status})`))
       }
       const totals = result?.data || {}
+      const processAmountMap = totals?.part_process_amounts && typeof totals.part_process_amounts === 'object'
+        ? totals.part_process_amounts as Record<string, number>
+        : null
+      if (processAmountMap) {
+        setPartsMap(prev => {
+          const list = prev[normalizedId] || []
+          if (list.length === 0) return prev
+          let changed = false
+          const nextList = list.map((part: any) => {
+            const partId = String(part?.id || '')
+            if (!partId || !Object.prototype.hasOwnProperty.call(processAmountMap, partId)) return part
+            const nextAmount = toNullableProcessAmount(processAmountMap[partId])
+            const currentAmount = toNullableProcessAmount(part?.process_amount)
+            if (currentAmount === nextAmount) return part
+            changed = true
+            return {
+              ...part,
+              process_amount: nextAmount,
+              amounts_updated_at: String(totals?.totals_updated_at || part?.amounts_updated_at || '')
+            }
+          })
+          return changed ? { ...prev, [normalizedId]: nextList } : prev
+        })
+      }
+      const processTotalFromParts = processAmountMap
+        ? Object.values(processAmountMap).reduce((sum: number, value: any) => {
+            const amount = toNullableProcessAmount(value)
+            return sum + Number(amount || 0)
+          }, 0)
+        : null
       applyToolingTotalsToRow(normalizedId, totals)
+      const returnedTotal = toNullableTotal(totals.process_total)
+      if (processTotalFromParts !== null && Math.abs(processTotalFromParts - Number(returnedTotal || 0)) > 0.0001) {
+        applyToolingTotalsToRow(normalizedId, {
+          ...totals,
+          process_total: processTotalFromParts
+        })
+      }
     } catch (error) {
       console.error('刷新工装总额失败:', error)
       syncLocalToolingTotals(normalizedId)
     } finally {
       refreshTotalsInflightRef.current.delete(normalizedId)
     }
-  }, [applyToolingTotalsToRow, syncLocalToolingTotals])
+  }, [applyToolingTotalsToRow, setPartsMap, syncLocalToolingTotals, toNullableProcessAmount, toNullableTotal])
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
@@ -2862,9 +2904,9 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__process_price',
         width: 110,
         render: (_text: any, rec: PartItem) => {
-          const storedAmount = Number(rec.process_amount)
+          const storedAmount = toNullableProcessAmount(rec.process_amount)
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const sum = Number.isFinite(storedAmount) ? storedAmount : Number(workHoursAmountData[inventoryNo] || 0)
+          const sum = storedAmount !== null ? storedAmount : Number(workHoursAmountData[inventoryNo] || 0)
           return <span style={{ color: '#000000' }}>{Number.isFinite(sum) ? sum.toFixed(2) : '0.00'}</span>
         }
       },
