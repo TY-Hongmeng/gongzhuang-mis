@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -35,7 +35,7 @@ const summarizeImportErrors = (errors: string[], maxItems = 8, maxLength = 360) 
 
 const WORK_HOURS_AGG_CHUNK_SIZE = 120
 const WORK_HOURS_CACHE_TTL = 5 * 60 * 1000
-const INVENTORY_CHILD_SEARCH_MIN_DIGITS = 6
+const INVENTORY_CHILD_SEARCH_MIN_DIGITS = 7
 const DRAWING_CHILD_SEARCH_MIN_LEN = 4
 const AUTO_EXPAND_PARENT_LIMIT = 12
 
@@ -1113,7 +1113,6 @@ const ToolingInfoPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('incomplete')
   const [inventoryMatchedToolingIds, setInventoryMatchedToolingIds] = useState<string[] | null>(null)
   const [partDrawingMatchedToolingIds, setPartDrawingMatchedToolingIds] = useState<string[] | null>(null)
-  const [inventoryOptions, setInventoryOptions] = useState<Array<{ value: string; label: string }>>([])
   const [partDrawingOptions, setPartDrawingOptions] = useState<Array<{ value: string; label: string }>>([])
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = [...(visibleData || [])]
@@ -1277,30 +1276,14 @@ const ToolingInfoPage: React.FC = () => {
     if (!keyword) {
       autoExpandInventoryRef.current = ''
       setInventoryMatchedToolingIds(null)
-      setInventoryOptions(Array.from(new Set(
-        (data || [])
-          .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
-          .filter(Boolean)
-      )).slice(0, 80).map(v => ({ value: v, label: v })))
       return
     }
     if (!shouldRunInventoryChildSearch(keyword)) {
       autoExpandInventoryRef.current = ''
       setInventoryMatchedToolingIds(null)
-      const localValues = Array.from(new Set(
-        (data || [])
-          .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
-          .filter((v: string) => v.includes(keyword))
-      )).slice(0, 40)
-      setInventoryOptions(localValues.map(v => ({ value: v, label: v })))
       return
     }
     let cancelled = false
-    const localParent = Array.from(new Set(
-      (data || [])
-        .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
-        .filter((v: string) => v.includes(keyword))
-    )).slice(0, 20)
     const timer = setTimeout(async () => {
       try {
         const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=120&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
@@ -1313,17 +1296,10 @@ const ToolingInfoPage: React.FC = () => {
             .map((it: any) => String(it?.tooling_id || '').trim())
             .filter(Boolean)
         ))
-        const childInvs = Array.from(new Set(
-          items
-            .map((it: any) => sanitizeAlphaNumeric(it?.part_inventory_number))
-            .filter((v: string) => v.includes(keyword))
-        )).slice(0, 20)
         setInventoryMatchedToolingIds(matchedIds)
-        setInventoryOptions(Array.from(new Set([...localParent, ...childInvs])).slice(0, 40).map(v => ({ value: v, label: v })))
       } catch {
         if (!cancelled) {
           setInventoryMatchedToolingIds([])
-          setInventoryOptions(localParent.map(v => ({ value: v, label: v })))
         }
       }
     }, 220)
@@ -5907,14 +5883,12 @@ const ToolingInfoPage: React.FC = () => {
       </div>
       <div className="filter-bar" style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <AutoComplete
+          <Input
             allowClear
-            placeholder="盘存编号（子表满6位数字触发）"
+            placeholder="盘存编号（第7位数字触发子表）"
             style={{ width: isMobile ? '100%' : 200 }}
-            options={inventoryOptions as any}
             value={filterInventory}
-            onSearch={(v) => setFilterInventory(sanitizeAlphaNumeric(v))}
-            onSelect={(v) => setFilterInventory(sanitizeAlphaNumeric(v))}
+            onChange={(e) => setFilterInventory(sanitizeAlphaNumeric(e.target.value))}
           />
           <AutoComplete
             allowClear
