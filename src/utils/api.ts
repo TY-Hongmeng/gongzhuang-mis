@@ -1949,18 +1949,13 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             ))
             const workHourRowMap = new Map<string, any>()
             for (const invChunk of chunkArray(invList, 120)) {
-              const [{ data: rowsByInv }, { data: rowsByPartInv }] = await Promise.all([
-                supabase
-                  .from('work_hours')
-                  .select('inventory_no,part_inventory_number,aux_hours,proc_hours,device_no')
-                  .in('inventory_no', invChunk),
-                supabase
-                  .from('work_hours')
-                  .select('inventory_no,part_inventory_number,aux_hours,proc_hours,device_no')
-                  .in('part_inventory_number', invChunk)
-              ])
-              ;([...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]).forEach((row: any, idx: number) => {
-                const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
+              const { data: rowsByPartInv, error: rowsError } = await supabase
+                .from('work_hours')
+                .select('part_inventory_number,aux_hours,proc_hours,device_no')
+                .in('part_inventory_number', invChunk)
+              if (rowsError) continue
+              ;([...(rowsByPartInv || [])] as any[]).forEach((row: any, idx: number) => {
+                const key = String(row?.id || `${row?.part_inventory_number || ''}|${row?.device_no || ''}|${row?.aux_hours || ''}|${row?.proc_hours || ''}|${idx}`)
                 if (!workHourRowMap.has(key)) workHourRowMap.set(key, row)
               })
             }
@@ -1968,7 +1963,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
             const deviceNoSet = new Set<string>()
             const normalizedRows = workHourRows.map((row: any) => {
-              const inv = String(row?.inventory_no || row?.part_inventory_number || '').trim().toUpperCase()
+              const inv = String(row?.part_inventory_number || '').trim().toUpperCase()
               const totalHours = Number(row?.aux_hours || 0) + Number(row?.proc_hours || 0)
               const deviceNo = normalizeDeviceNo(row?.device_no)
               if (deviceNo) deviceNoSet.add(deviceNo)
@@ -2007,33 +2002,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }, 0)
           }
 
-          await Promise.all(validParts.map((part: any) => {
-            const partId = String(part?.id || '').trim()
-            if (!partId) return Promise.resolve(null)
-            const processAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
-              ? Number(partProcessAmountMap[partId] || 0)
-              : null
-            return supabase
-              .from('parts_info')
-              .update({ process_amount: processAmount, amounts_updated_at: updatedAt })
-              .eq('id', partId)
-          }))
           const payload = {
             material_total: materialTotal,
             process_total: processTotal,
             totals_updated_at: updatedAt,
             part_process_amounts: partProcessAmountMap
           }
-          const dbPayload = {
-            material_total: materialTotal,
-            process_total: processTotal,
-            totals_updated_at: updatedAt
-          }
-          const { error: updateError } = await supabase
-            .from('tooling_info')
-            .update(dbPayload)
-            .eq('id', toolingId)
-          if (updateError) return jsonResponse({ success: false, error: updateError.message }, 500)
           return jsonResponse({ success: true, data: payload })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '刷新工装总额失败' }, 500)
