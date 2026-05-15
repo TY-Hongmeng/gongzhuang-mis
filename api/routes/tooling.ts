@@ -192,7 +192,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
   if (!toolingId) throw new Error('缺少工装ID')
   const { data: parts, error: partsError } = await supabase
     .from('parts_info')
-    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price,material_id,process_amount')
+    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,total_price,material_id,process_amount')
     .eq('tooling_id', toolingId)
   if (partsError) throw new Error(partsError.message)
 
@@ -202,9 +202,8 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
     const name = String(part?.part_name || '').trim()
     const qty = Number(part?.part_quantity || 0)
     const weight = Number(part?.weight || 0)
-    const unitPrice = Number(part?.unit_price || 0)
     const totalPrice = Number(part?.total_price || 0)
-    return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
+    return !!(inv || name || qty > 0 || weight > 0 || totalPrice > 0)
   })
 
   let materialTotal: number | null = null
@@ -237,7 +236,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
       const materialId = String(part?.material_id || '').trim()
       const unitPrice = materialId
         ? Number(materialUnitPriceMap.get(materialId) || 0)
-        : Number(part?.unit_price || 0)
+        : 0
       const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
         ? qty * unitWeight * unitPrice
         : Number(part?.total_price || 0)
@@ -957,7 +956,7 @@ router.get('/:id/parts', async (req, res) => {
     try {
       const sel = [
         'id','tooling_id','part_inventory_number','part_drawing_number','part_name','part_quantity',
-        'material_id','material_source_id','part_category','specifications','weight','unit_price',
+        'material_id','material_source_id','part_category','specifications','weight',
         'total_price','process_amount','amounts_updated_at','remarks','process_route','purchase_status','completed_steps'
       ].join(',')
       const { data, error } = await supabase

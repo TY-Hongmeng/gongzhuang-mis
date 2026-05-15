@@ -1877,9 +1877,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const name = String(part?.part_name || '').trim()
           const qty = Number(part?.part_quantity || 0)
           const weight = Number(part?.weight || 0)
-          const unitPrice = Number(part?.unit_price || 0)
           const totalPrice = Number(part?.total_price || 0)
-          return !!(inv || name || qty > 0 || weight > 0 || unitPrice > 0 || totalPrice > 0)
+          return !!(inv || name || qty > 0 || weight > 0 || totalPrice > 0)
         }
         const normalizeDeviceNo = (v: any) => {
           const raw = String(v || '').trim()
@@ -1900,7 +1899,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         try {
           const { data: parts, error: partsError } = await supabase
             .from('parts_info')
-            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,unit_price,total_price,material_id')
+            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,total_price,material_id')
             .eq('tooling_id', toolingId)
           if (partsError) return jsonResponse({ success: false, error: partsError.message }, 500)
 
@@ -1937,7 +1936,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               const materialId = String(part?.material_id || '').trim()
               const unitPrice = materialId
                 ? Number(materialUnitPriceMap.get(materialId) || 0)
-                : Number(part?.unit_price || 0)
+                : 0
               const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
                 ? qty * unitWeight * unitPrice
                 : Number(part?.total_price || 0)
