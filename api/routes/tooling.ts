@@ -192,7 +192,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
   if (!toolingId) throw new Error('缺少工装ID')
   const { data: parts, error: partsError } = await supabase
     .from('parts_info')
-    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,total_price,material_id,process_amount')
+    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
     .eq('tooling_id', toolingId)
   if (partsError) throw new Error(partsError.message)
 
@@ -202,8 +202,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
     const name = String(part?.part_name || '').trim()
     const qty = Number(part?.part_quantity || 0)
     const weight = Number(part?.weight || 0)
-    const totalPrice = Number(part?.total_price || 0)
-    return !!(inv || name || qty > 0 || weight > 0 || totalPrice > 0)
+    return !!(inv || name || qty > 0 || weight > 0)
   })
 
   let materialTotal: number | null = null
@@ -239,7 +238,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
         : 0
       const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
         ? qty * unitWeight * unitPrice
-        : Number(part?.total_price || 0)
+        : 0
       return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
     }, 0)
 
