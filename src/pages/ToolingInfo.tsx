@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1098,10 +1098,12 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [data, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
   const [filterSearch, setFilterSearch] = useState('')
+  const [filterPartDrawing, setFilterPartDrawing] = useState('')
   const [filterUnit, setFilterUnit] = useState<string | undefined>(undefined)
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('incomplete')
+  const [partDrawingMatchedToolingIds, setPartDrawingMatchedToolingIds] = useState<string[] | null>(null)
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = [...(visibleData || [])]
     
@@ -1174,11 +1176,19 @@ const ToolingInfoPage: React.FC = () => {
       return 0
     })
 
+    const drawingKeyword = String(filterPartDrawing || '').trim()
+    if (drawingKeyword) {
+      if (Array.isArray(partDrawingMatchedToolingIds)) {
+        const matchedSet = new Set(partDrawingMatchedToolingIds.map((id) => String(id || '').trim()).filter(Boolean))
+        result = result.filter((row: any) => matchedSet.has(String(row?.id || '').trim()))
+      }
+    }
+
     return {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [visibleData, filterPriority, filterStatus])
+  }, [visibleData, filterPriority, filterStatus, filterPartDrawing, partDrawingMatchedToolingIds])
 
   useEffect(() => {
     const parentIds = (filteredVisibleData || [])
@@ -1266,6 +1276,67 @@ const ToolingInfoPage: React.FC = () => {
       clearTimeout(timer)
     }
   }, [filterSearch, filteredVisibleData, ensureExpandedDataLoaded, setExpandedRowKeys, setExpandedChildKeys])
+
+  const autoExpandPartDrawingRef = useRef('')
+  useEffect(() => {
+    const keyword = String(filterPartDrawing || '').trim()
+    if (!keyword) {
+      autoExpandPartDrawingRef.current = ''
+      setPartDrawingMatchedToolingIds(null)
+      return
+    }
+    const normalizedKeyword = keyword.replace(/\s+/g, '').toUpperCase()
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=200&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
+        const js = await resp.json().catch(() => ({}))
+        const items = (Array.isArray(js?.items) ? js.items : []).filter((it: any) => {
+          const drawing = String(it?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
+          return !!drawing && drawing.includes(normalizedKeyword)
+        })
+        if (cancelled) return
+        const matchedIds = Array.from(new Set(
+          items
+            .map((it: any) => String(it?.tooling_id || '').trim())
+            .filter(Boolean)
+        ))
+        setPartDrawingMatchedToolingIds(matchedIds)
+      } catch {
+        if (!cancelled) setPartDrawingMatchedToolingIds([])
+      }
+    }, 260)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filterPartDrawing])
+
+  useEffect(() => {
+    const keyword = String(filterPartDrawing || '').trim()
+    if (!keyword) return
+    const targetIds = (filteredVisibleData || [])
+      .map((row: any) => String(row?.id || '').trim())
+      .filter((id: string) => id && !id.startsWith('blank-'))
+    if (targetIds.length === 0) return
+    const signature = `${keyword}|${targetIds.join(',')}`
+    if (autoExpandPartDrawingRef.current === signature) return
+    autoExpandPartDrawingRef.current = signature
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      if (cancelled) return
+      setExpandedRowKeys(prev => Array.from(new Set([...prev, ...targetIds])))
+      setExpandedChildKeys(prev => Array.from(new Set([...prev, ...targetIds])))
+      for (const id of targetIds) {
+        if (cancelled) return
+        await ensureExpandedDataLoaded(id, false)
+      }
+    }, 120)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filterPartDrawing, filteredVisibleData, ensureExpandedDataLoaded, setExpandedChildKeys, setExpandedRowKeys])
 
   const unitOptions = useMemo(() => {
     const set = new Set<string>()
@@ -3284,15 +3355,18 @@ const ToolingInfoPage: React.FC = () => {
     const childList = childItemsMap[toolingId] || []
     const keyword = String(filterSearch || '').trim()
     const normalizedKeyword = keyword.replace(/\s+/g, '').toUpperCase()
+    const drawingKeyword = String(filterPartDrawing || '').trim()
+    const normalizedDrawingKeyword = drawingKeyword.replace(/\s+/g, '').toUpperCase()
     const matchPart = (part: any) => {
+      const drawing = String(part?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
+      if (normalizedDrawingKeyword) return drawing.includes(normalizedDrawingKeyword)
       if (!normalizedKeyword) return true
       const inv = String(part?.part_inventory_number || '').replace(/\s+/g, '').toUpperCase()
-      const drawing = String(part?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
       const name = String(part?.part_name || '').replace(/\s+/g, '').toUpperCase()
       return inv.includes(normalizedKeyword) || drawing.includes(normalizedKeyword) || name.includes(normalizedKeyword)
     }
     const matchedParts = (partsList || []).filter((p: any) => matchPart(p))
-    const displayParts = (normalizedKeyword && matchedParts.length > 0) ? matchedParts : partsList
+    const displayParts = ((normalizedDrawingKeyword || normalizedKeyword) && matchedParts.length > 0) ? matchedParts : partsList
     const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMap, toolingId)
     const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMap, toolingId)
     const partsLoading = !!partsLoadingMap[toolingId]
@@ -3422,7 +3496,8 @@ const ToolingInfoPage: React.FC = () => {
     workHoursAmountData,
     workHoursProcessLatestMetaData,
     manualStepUpdateMap,
-    filterSearch
+    filterSearch,
+    filterPartDrawing
   ])
 
   const confirmPartBatchAdd = useCallback(() => {
@@ -5718,6 +5793,13 @@ const ToolingInfoPage: React.FC = () => {
             style={{ width: isMobile ? '100%' : 200 }}
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
+          />
+          <Input
+            allowClear
+            placeholder="子表图号直筛"
+            style={{ width: isMobile ? '100%' : 180 }}
+            value={filterPartDrawing}
+            onChange={(e) => setFilterPartDrawing(e.target.value)}
           />
           <AutoComplete
             placeholder="投产单位"
