@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -85,6 +85,8 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
   }
   return chunks
 }
+
+const sanitizeAlphaNumeric = (value: any) => String(value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
 
 const getBatchSize = () => {
   try {
@@ -946,8 +948,6 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     setExpandedChildKeysRef.current = setExpandedChildKeys
   }, [setExpandedChildKeys])
-  const autoExpandSearchRef = useRef('')
-
   useEffect(() => {
     const invs = new Set<string>()
     ensureBlankToolings(data).forEach(d => {
@@ -1100,20 +1100,50 @@ const ToolingInfoPage: React.FC = () => {
   const [filterInventory, setFilterInventory] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [filterPartDrawing, setFilterPartDrawing] = useState('')
-  const [filterRecorder, setFilterRecorder] = useState('')
   const [filterUnit, setFilterUnit] = useState<string | undefined>(undefined)
   const [filterCategory, setFilterCategory] = useState<string | undefined>(undefined)
+  const [filterRecorder, setFilterRecorder] = useState<string | undefined>(undefined)
   const [filterPriority, setFilterPriority] = useState<number | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'incomplete'>('incomplete')
-  const [inventoryOptions, setInventoryOptions] = useState<Array<{ value: string; label: string }>>([])
-  const [partDrawingOptions, setPartDrawingOptions] = useState<Array<{ value: string; label: string }>>([])
   const [inventoryMatchedToolingIds, setInventoryMatchedToolingIds] = useState<string[] | null>(null)
   const [partDrawingMatchedToolingIds, setPartDrawingMatchedToolingIds] = useState<string[] | null>(null)
+  const [inventoryOptions, setInventoryOptions] = useState<Array<{ value: string; label: string }>>([])
+  const [partDrawingOptions, setPartDrawingOptions] = useState<Array<{ value: string; label: string }>>([])
   const { filteredVisibleData, counts } = useMemo(() => {
     let result = [...(visibleData || [])]
     
     if (filterPriority) {
       result = result.filter((row: any) => Number(row.priority_level || 0) === filterPriority)
+    }
+
+    const inventoryKeyword = sanitizeAlphaNumeric(filterInventory)
+    if (inventoryKeyword) {
+      const matchedSet = new Set((inventoryMatchedToolingIds || []).map((id) => String(id || '').trim()).filter(Boolean))
+      result = result.filter((row: any) => {
+        const parentInv = sanitizeAlphaNumeric(row?.inventory_number)
+        const id = String(row?.id || '').trim()
+        return parentInv.includes(inventoryKeyword) || matchedSet.has(id)
+      })
+    }
+
+    const projectKeyword = String(filterProject || '').trim().toUpperCase()
+    if (projectKeyword) {
+      result = result.filter((row: any) => String(row?.project_name || '').trim().toUpperCase().includes(projectKeyword))
+    }
+
+    const drawingKeyword = sanitizeAlphaNumeric(filterPartDrawing)
+    if (drawingKeyword) {
+      if (Array.isArray(partDrawingMatchedToolingIds)) {
+        const matchedSet = new Set(partDrawingMatchedToolingIds.map((id) => String(id || '').trim()).filter(Boolean))
+        result = result.filter((row: any) => matchedSet.has(String(row?.id || '').trim()))
+      } else {
+        result = []
+      }
+    }
+
+    const recorderKeyword = String(filterRecorder || '').trim().toUpperCase()
+    if (recorderKeyword) {
+      result = result.filter((row: any) => String(row?.recorder || '').trim().toUpperCase().includes(recorderKeyword))
     }
 
     // 计算各状态数量
@@ -1181,55 +1211,11 @@ const ToolingInfoPage: React.FC = () => {
       return 0
     })
 
-    const inventoryKeyword = String(filterInventory || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
-    if (inventoryKeyword) {
-      const matchedSet = new Set<string>()
-      result.forEach((row: any) => {
-        const parentInv = String(row?.inventory_number || '').replace(/[^0-9a-z]/gi, '').toUpperCase()
-        if (parentInv.includes(inventoryKeyword)) matchedSet.add(String(row?.id || '').trim())
-      })
-      if (Array.isArray(inventoryMatchedToolingIds)) {
-        inventoryMatchedToolingIds.forEach((id) => {
-          const v = String(id || '').trim()
-          if (v) matchedSet.add(v)
-        })
-      }
-      result = result.filter((row: any) => matchedSet.has(String(row?.id || '').trim()))
-    }
-
-    const projectKeyword = String(filterProject || '').trim().toUpperCase()
-    if (projectKeyword) {
-      result = result.filter((row: any) => String(row?.project_name || '').trim().toUpperCase().includes(projectKeyword))
-    }
-
-    const drawingKeyword = String(filterPartDrawing || '').trim()
-    if (drawingKeyword) {
-      if (Array.isArray(partDrawingMatchedToolingIds)) {
-        const matchedSet = new Set(partDrawingMatchedToolingIds.map((id) => String(id || '').trim()).filter(Boolean))
-        result = result.filter((row: any) => matchedSet.has(String(row?.id || '').trim()))
-      }
-    }
-
-    const recorderKeyword = String(filterRecorder || '').trim().toUpperCase()
-    if (recorderKeyword) {
-      result = result.filter((row: any) => String(row?.recorder || '').trim().toUpperCase().includes(recorderKeyword))
-    }
-
     return {
       filteredVisibleData: result,
       counts: { all: allCount, completed: completedCount, incomplete: incompleteCount }
     }
-  }, [
-    visibleData,
-    filterPriority,
-    filterStatus,
-    filterInventory,
-    inventoryMatchedToolingIds,
-    filterProject,
-    filterPartDrawing,
-    partDrawingMatchedToolingIds,
-    filterRecorder
-  ])
+  }, [visibleData, filterPriority, filterStatus, filterInventory, inventoryMatchedToolingIds, filterProject, filterPartDrawing, partDrawingMatchedToolingIds, filterRecorder])
 
   useEffect(() => {
     const parentIds = (filteredVisibleData || [])
@@ -1275,103 +1261,115 @@ const ToolingInfoPage: React.FC = () => {
     return () => clearTimeout(timeoutId)
   }, [filterUnit, filterCategory, filterPriority, applyFilters])
 
-  // 盘存编号筛选：支持父表盘存编号和子表盘存编号，子表命中时自动展开对应父级
+  const autoExpandPartDrawingRef = useRef('')
+  const autoExpandInventoryRef = useRef('')
   useEffect(() => {
-    const keyword = String(filterInventory || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
+    const keyword = sanitizeAlphaNumeric(filterInventory)
     if (!keyword) {
-      autoExpandSearchRef.current = ''
+      autoExpandInventoryRef.current = ''
       setInventoryMatchedToolingIds(null)
-      setInventoryOptions([])
+      setInventoryOptions(Array.from(new Set(
+        (data || [])
+          .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
+          .filter(Boolean)
+      )).slice(0, 80).map(v => ({ value: v, label: v })))
       return
     }
     let cancelled = false
+    const localParent = Array.from(new Set(
+      (data || [])
+        .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
+        .filter((v: string) => v.includes(keyword))
+    )).slice(0, 20)
     const timer = setTimeout(async () => {
       try {
         const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=120&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
         const js = await resp.json().catch(() => ({}))
         const items = Array.isArray(js?.items) ? js.items : []
         if (cancelled) return
-        const parentOptionMap = new Map<string, { value: string; label: string }>()
-        ;(visibleData || []).forEach((row: any) => {
-          const inv = String(row?.inventory_number || '').trim().toUpperCase()
-          const normalized = inv.replace(/[^0-9a-z]/gi, '')
-          if (inv && normalized.includes(keyword)) parentOptionMap.set(inv, { value: inv, label: inv })
-        })
-        const childItems = items.filter((it: any) => {
-          const inv = String(it?.part_inventory_number || '').trim().toUpperCase().replace(/[^0-9a-z]/gi, '')
-          return !!inv && inv.includes(keyword)
-        })
-        const hitIdSet = new Set(childItems.map((it: any) => String(it?.tooling_id || '').trim()).filter(Boolean))
-        setInventoryMatchedToolingIds(Array.from(new Set([
-          ...Array.from(parentOptionMap.values()).map((opt) => {
-            const row = (visibleData || []).find((item: any) => String(item?.inventory_number || '').trim().toUpperCase() === opt.value)
-            return String(row?.id || '').trim()
-          }).filter(Boolean),
-          ...Array.from(hitIdSet)
-        ])))
-        const optionMap = new Map<string, { value: string; label: string }>()
-        parentOptionMap.forEach((opt, key) => optionMap.set(key, opt))
-        childItems.forEach((it: any) => {
-          const inv = String(it?.part_inventory_number || '').trim().toUpperCase()
-          if (inv) optionMap.set(inv, { value: inv, label: inv })
-        })
-        setInventoryOptions(Array.from(optionMap.values()).slice(0, 80))
-        if (hitIdSet.size === 0) return
-        const visibleParentIds = (filteredVisibleData || [])
-          .map((row: any) => String(row?.id || '').trim())
-          .filter((id: string) => id && !id.startsWith('blank-'))
-        if (visibleParentIds.length === 0) return
-        const targetIds = visibleParentIds.filter((id) => hitIdSet.has(id))
-        if (targetIds.length === 0) return
-        const signature = `${keyword}|${targetIds.join(',')}`
-        if (autoExpandSearchRef.current === signature) return
-        autoExpandSearchRef.current = signature
-        if (cancelled) return
-        setExpandedRowKeys(prev => Array.from(new Set([...prev, ...targetIds])))
-        setExpandedChildKeys(prev => Array.from(new Set([...prev, ...targetIds])))
-        for (const id of targetIds) {
-          if (cancelled) return
-          await ensureExpandedDataLoaded(id, false)
+        const matchedIds = Array.from(new Set(
+          items
+            .filter((it: any) => sanitizeAlphaNumeric(it?.part_inventory_number).includes(keyword))
+            .map((it: any) => String(it?.tooling_id || '').trim())
+            .filter(Boolean)
+        ))
+        const childInvs = Array.from(new Set(
+          items
+            .map((it: any) => sanitizeAlphaNumeric(it?.part_inventory_number))
+            .filter((v: string) => v.includes(keyword))
+        )).slice(0, 20)
+        setInventoryMatchedToolingIds(matchedIds)
+        setInventoryOptions(Array.from(new Set([...localParent, ...childInvs])).slice(0, 40).map(v => ({ value: v, label: v })))
+      } catch {
+        if (!cancelled) {
+          setInventoryMatchedToolingIds([])
+          setInventoryOptions(localParent.map(v => ({ value: v, label: v })))
         }
-      } catch {}
-    }, 320)
+      }
+    }, 220)
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [filterInventory, filteredVisibleData, ensureExpandedDataLoaded, setExpandedRowKeys, setExpandedChildKeys, visibleData])
+  }, [filterInventory, data])
 
-  const autoExpandPartDrawingRef = useRef('')
   useEffect(() => {
-    const keyword = String(filterPartDrawing || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
+    const keyword = sanitizeAlphaNumeric(filterInventory)
+    if (!keyword) return
+    const targetIds = (filteredVisibleData || [])
+      .map((row: any) => String(row?.id || '').trim())
+      .filter((id: string) => id && !id.startsWith('blank-'))
+    if (targetIds.length === 0) return
+    const signature = `${keyword}|${targetIds.join(',')}`
+    if (autoExpandInventoryRef.current === signature) return
+    autoExpandInventoryRef.current = signature
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      if (cancelled) return
+      setExpandedRowKeys(prev => Array.from(new Set([...prev, ...targetIds])))
+      setExpandedChildKeys(prev => Array.from(new Set([...prev, ...targetIds])))
+      for (const id of targetIds) {
+        if (cancelled) return
+        await ensureExpandedDataLoaded(id, false)
+      }
+    }, 120)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filterInventory, filteredVisibleData, ensureExpandedDataLoaded, setExpandedChildKeys, setExpandedRowKeys])
+
+  useEffect(() => {
+    const keyword = String(filterPartDrawing || '').trim()
     if (!keyword) {
       autoExpandPartDrawingRef.current = ''
       setPartDrawingMatchedToolingIds(null)
       setPartDrawingOptions([])
       return
     }
+    const normalizedKeyword = sanitizeAlphaNumeric(keyword)
     let cancelled = false
     const timer = setTimeout(async () => {
       try {
         const resp = await fetchWithFallback(`/api/tooling/parts/inventory-list?page=1&pageSize=200&search=${encodeURIComponent(keyword)}`, { cache: 'no-store' })
         const js = await resp.json().catch(() => ({}))
         const items = (Array.isArray(js?.items) ? js.items : []).filter((it: any) => {
-          const drawing = String(it?.part_drawing_number || '').replace(/[^0-9a-z]/gi, '').toUpperCase()
-          return !!drawing && drawing.includes(keyword)
+          const drawing = String(it?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
+          return !!drawing && drawing.includes(normalizedKeyword)
         })
         if (cancelled) return
-        const optionMap = new Map<string, { value: string; label: string }>()
-        items.forEach((it: any) => {
-          const drawing = String(it?.part_drawing_number || '').trim().toUpperCase()
-          if (drawing) optionMap.set(drawing, { value: drawing, label: drawing })
-        })
-        setPartDrawingOptions(Array.from(optionMap.values()).slice(0, 80))
         const matchedIds = Array.from(new Set(
           items
             .map((it: any) => String(it?.tooling_id || '').trim())
             .filter(Boolean)
         ))
+        const drawings = Array.from(new Set(
+          items
+            .map((it: any) => sanitizeAlphaNumeric(it?.part_drawing_number))
+            .filter((v: string) => v.includes(normalizedKeyword))
+        )).slice(0, 40)
         setPartDrawingMatchedToolingIds(matchedIds)
+        setPartDrawingOptions(drawings.map(v => ({ value: v, label: v })))
       } catch {
         if (!cancelled) {
           setPartDrawingMatchedToolingIds([])
@@ -1386,7 +1384,7 @@ const ToolingInfoPage: React.FC = () => {
   }, [filterPartDrawing])
 
   useEffect(() => {
-    const keyword = String(filterPartDrawing || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
+    const keyword = String(filterPartDrawing || '').trim()
     if (!keyword) return
     const targetIds = (filteredVisibleData || [])
       .map((row: any) => String(row?.id || '').trim())
@@ -1423,23 +1421,23 @@ const ToolingInfoPage: React.FC = () => {
   }, [data])
   const projectOptions = useMemo(() => {
     const keyword = String(filterProject || '').trim().toUpperCase()
-    const uniq = new Set<string>()
+    const set = new Set<string>()
     data.forEach(d => {
       const v = String(d.project_name || '').trim()
       if (!v) return
-      if (!keyword || v.toUpperCase().includes(keyword)) uniq.add(v)
+      if (!keyword || v.toUpperCase().includes(keyword)) set.add(v)
     })
-    return Array.from(uniq).slice(0, 80).map(v => ({ value: v, label: v }))
+    return Array.from(set).slice(0, 80).map(v => ({ value: v, label: v }))
   }, [data, filterProject])
   const recorderOptions = useMemo(() => {
     const keyword = String(filterRecorder || '').trim().toUpperCase()
-    const uniq = new Set<string>()
+    const set = new Set<string>()
     data.forEach(d => {
       const v = String(d.recorder || '').trim()
       if (!v) return
-      if (!keyword || v.toUpperCase().includes(keyword)) uniq.add(v)
+      if (!keyword || v.toUpperCase().includes(keyword)) set.add(v)
     })
-    return Array.from(uniq).slice(0, 80).map(v => ({ value: v, label: v }))
+    return Array.from(set).slice(0, 80).map(v => ({ value: v, label: v }))
   }, [data, filterRecorder])
   
   // 工时数据状态，存储所有已录入的工时记录
@@ -3446,17 +3444,17 @@ const ToolingInfoPage: React.FC = () => {
     // 获取当前数据，不再自动添加空白行
     const partsList = partsMap[toolingId] || []
     const childList = childItemsMap[toolingId] || []
-    const inventoryKeyword = String(filterInventory || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
-    const drawingKeyword = String(filterPartDrawing || '').trim().replace(/[^0-9a-z]/gi, '').toUpperCase()
+    const inventoryKeyword = sanitizeAlphaNumeric(filterInventory)
+    const drawingKeyword = sanitizeAlphaNumeric(filterPartDrawing)
     const matchPart = (part: any) => {
-      const inv = String(part?.part_inventory_number || '').replace(/[^0-9a-z]/gi, '').toUpperCase()
-      const drawing = String(part?.part_drawing_number || '').replace(/[^0-9a-z]/gi, '').toUpperCase()
-      const inventoryOk = !inventoryKeyword || inv.includes(inventoryKeyword)
-      const drawingOk = !drawingKeyword || drawing.includes(drawingKeyword)
-      return inventoryOk && drawingOk
+      const drawing = String(part?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
+      if (drawingKeyword) return drawing.includes(drawingKeyword)
+      if (!inventoryKeyword) return true
+      const inv = String(part?.part_inventory_number || '').replace(/\s+/g, '').toUpperCase()
+      return inv.includes(inventoryKeyword)
     }
     const matchedParts = (partsList || []).filter((p: any) => matchPart(p))
-    const displayParts = ((drawingKeyword || (inventoryKeyword && matchedParts.length > 0)) ? matchedParts : partsList)
+    const displayParts = ((drawingKeyword || inventoryKeyword) && matchedParts.length > 0) ? matchedParts : partsList
     const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMap, toolingId)
     const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMap, toolingId)
     const partsLoading = !!partsLoadingMap[toolingId]
@@ -5879,33 +5877,30 @@ const ToolingInfoPage: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <AutoComplete
             allowClear
-            placeholder="盘存编号"
-            style={{ width: isMobile ? '100%' : 180 }}
+            placeholder="盘存编号（父表/子表）"
+            style={{ width: isMobile ? '100%' : 200 }}
             options={inventoryOptions as any}
             value={filterInventory}
-            onSearch={(v) => setFilterInventory(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
-            onSelect={(v) => setFilterInventory(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
-            onChange={(v) => setFilterInventory(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
+            onSearch={(v) => setFilterInventory(sanitizeAlphaNumeric(v))}
+            onSelect={(v) => setFilterInventory(sanitizeAlphaNumeric(v))}
           />
           <AutoComplete
             allowClear
             placeholder="项目名称"
-            style={{ width: isMobile ? '100%' : 180 }}
+            style={{ width: isMobile ? '100%' : 220 }}
             options={projectOptions as any}
             value={filterProject}
             onSearch={(v) => setFilterProject(String(v || ''))}
-            onSelect={(v) => setFilterProject(String(v || ''))}
-            onChange={(v) => setFilterProject(String(v || ''))}
+            onSelect={(v) => setFilterProject(String(v))}
           />
           <AutoComplete
             allowClear
-            placeholder="图号"
+            placeholder="图号（子表）"
             style={{ width: isMobile ? '100%' : 180 }}
             options={partDrawingOptions as any}
             value={filterPartDrawing}
-            onSearch={(v) => setFilterPartDrawing(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
-            onSelect={(v) => setFilterPartDrawing(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
-            onChange={(v) => setFilterPartDrawing(String(v || '').replace(/[^0-9a-z]/gi, '').toUpperCase())}
+            onSearch={(v) => setFilterPartDrawing(sanitizeAlphaNumeric(v))}
+            onSelect={(v) => setFilterPartDrawing(sanitizeAlphaNumeric(v))}
           />
           <AutoComplete
             placeholder="投产单位"
@@ -5926,14 +5921,13 @@ const ToolingInfoPage: React.FC = () => {
             allowClear
           />
           <AutoComplete
-            allowClear
             placeholder="责任人"
             style={{ width: isMobile ? '100%' : 160 }}
             options={recorderOptions as any}
             value={filterRecorder}
             onSearch={(v) => setFilterRecorder(String(v || ''))}
-            onSelect={(v) => setFilterRecorder(String(v || ''))}
-            onChange={(v) => setFilterRecorder(String(v || ''))}
+            onSelect={(v) => setFilterRecorder(String(v))}
+            allowClear
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span>优先级</span>
