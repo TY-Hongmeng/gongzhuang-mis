@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -35,6 +35,9 @@ const summarizeImportErrors = (errors: string[], maxItems = 8, maxLength = 360) 
 
 const WORK_HOURS_AGG_CHUNK_SIZE = 120
 const WORK_HOURS_CACHE_TTL = 5 * 60 * 1000
+const INVENTORY_CHILD_SEARCH_MIN_DIGITS = 6
+const DRAWING_CHILD_SEARCH_MIN_LEN = 4
+const AUTO_EXPAND_PARENT_LIMIT = 12
 
 type WorkHoursLatestMetaMap = Record<string, {
   process_name: string
@@ -87,6 +90,9 @@ const chunkArray = <T,>(items: T[], size: number): T[][] => {
 }
 
 const sanitizeAlphaNumeric = (value: any) => String(value || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+const getDigitCount = (value: any) => (String(value || '').match(/\d/g) || []).length
+const shouldRunInventoryChildSearch = (value: any) => getDigitCount(value) >= INVENTORY_CHILD_SEARCH_MIN_DIGITS
+const shouldRunDrawingChildSearch = (value: any) => sanitizeAlphaNumeric(value).length >= DRAWING_CHILD_SEARCH_MIN_LEN
 
 const getBatchSize = () => {
   try {
@@ -1132,7 +1138,7 @@ const ToolingInfoPage: React.FC = () => {
     }
 
     const drawingKeyword = sanitizeAlphaNumeric(filterPartDrawing)
-    if (drawingKeyword) {
+    if (drawingKeyword && shouldRunDrawingChildSearch(drawingKeyword)) {
       if (Array.isArray(partDrawingMatchedToolingIds)) {
         const matchedSet = new Set(partDrawingMatchedToolingIds.map((id) => String(id || '').trim()).filter(Boolean))
         result = result.filter((row: any) => matchedSet.has(String(row?.id || '').trim()))
@@ -1218,6 +1224,9 @@ const ToolingInfoPage: React.FC = () => {
   }, [visibleData, filterPriority, filterStatus, filterInventory, inventoryMatchedToolingIds, filterProject, filterPartDrawing, partDrawingMatchedToolingIds, filterRecorder])
 
   useEffect(() => {
+    if (shouldRunInventoryChildSearch(filterInventory) || shouldRunDrawingChildSearch(filterPartDrawing)) {
+      return
+    }
     const parentIds = (filteredVisibleData || [])
       .map((row: any) => String(row?.id || '').trim())
       .filter((id: string) => id && !id.startsWith('blank-'))
@@ -1275,6 +1284,17 @@ const ToolingInfoPage: React.FC = () => {
       )).slice(0, 80).map(v => ({ value: v, label: v })))
       return
     }
+    if (!shouldRunInventoryChildSearch(keyword)) {
+      autoExpandInventoryRef.current = ''
+      setInventoryMatchedToolingIds(null)
+      const localValues = Array.from(new Set(
+        (data || [])
+          .map((row: any) => sanitizeAlphaNumeric(row?.inventory_number))
+          .filter((v: string) => v.includes(keyword))
+      )).slice(0, 40)
+      setInventoryOptions(localValues.map(v => ({ value: v, label: v })))
+      return
+    }
     let cancelled = false
     const localParent = Array.from(new Set(
       (data || [])
@@ -1315,10 +1335,11 @@ const ToolingInfoPage: React.FC = () => {
 
   useEffect(() => {
     const keyword = sanitizeAlphaNumeric(filterInventory)
-    if (!keyword) return
+    if (!keyword || !shouldRunInventoryChildSearch(keyword)) return
     const targetIds = (filteredVisibleData || [])
       .map((row: any) => String(row?.id || '').trim())
       .filter((id: string) => id && !id.startsWith('blank-'))
+      .slice(0, AUTO_EXPAND_PARENT_LIMIT)
     if (targetIds.length === 0) return
     const signature = `${keyword}|${targetIds.join(',')}`
     if (autoExpandInventoryRef.current === signature) return
@@ -1348,6 +1369,12 @@ const ToolingInfoPage: React.FC = () => {
       return
     }
     const normalizedKeyword = sanitizeAlphaNumeric(keyword)
+    if (!shouldRunDrawingChildSearch(normalizedKeyword)) {
+      autoExpandPartDrawingRef.current = ''
+      setPartDrawingMatchedToolingIds(null)
+      setPartDrawingOptions([])
+      return
+    }
     let cancelled = false
     const timer = setTimeout(async () => {
       try {
@@ -1385,10 +1412,11 @@ const ToolingInfoPage: React.FC = () => {
 
   useEffect(() => {
     const keyword = String(filterPartDrawing || '').trim()
-    if (!keyword) return
+    if (!keyword || !shouldRunDrawingChildSearch(keyword)) return
     const targetIds = (filteredVisibleData || [])
       .map((row: any) => String(row?.id || '').trim())
       .filter((id: string) => id && !id.startsWith('blank-'))
+      .slice(0, AUTO_EXPAND_PARENT_LIMIT)
     if (targetIds.length === 0) return
     const signature = `${keyword}|${targetIds.join(',')}`
     if (autoExpandPartDrawingRef.current === signature) return
@@ -3446,15 +3474,19 @@ const ToolingInfoPage: React.FC = () => {
     const childList = childItemsMap[toolingId] || []
     const inventoryKeyword = sanitizeAlphaNumeric(filterInventory)
     const drawingKeyword = sanitizeAlphaNumeric(filterPartDrawing)
+    const allowInventoryPartFilter = shouldRunInventoryChildSearch(inventoryKeyword)
+    const allowDrawingPartFilter = shouldRunDrawingChildSearch(drawingKeyword)
     const matchPart = (part: any) => {
       const drawing = String(part?.part_drawing_number || '').replace(/\s+/g, '').toUpperCase()
-      if (drawingKeyword) return drawing.includes(drawingKeyword)
-      if (!inventoryKeyword) return true
+      if (allowDrawingPartFilter && drawingKeyword) return drawing.includes(drawingKeyword)
+      if (!allowInventoryPartFilter || !inventoryKeyword) return true
       const inv = String(part?.part_inventory_number || '').replace(/\s+/g, '').toUpperCase()
       return inv.includes(inventoryKeyword)
     }
     const matchedParts = (partsList || []).filter((p: any) => matchPart(p))
-    const displayParts = ((drawingKeyword || inventoryKeyword) && matchedParts.length > 0) ? matchedParts : partsList
+    const displayParts = ((allowDrawingPartFilter && drawingKeyword) || (allowInventoryPartFilter && inventoryKeyword)) && matchedParts.length > 0
+      ? matchedParts
+      : partsList
     const hasPartsLoaded = Object.prototype.hasOwnProperty.call(partsMap, toolingId)
     const hasChildLoaded = Object.prototype.hasOwnProperty.call(childItemsMap, toolingId)
     const partsLoading = !!partsLoadingMap[toolingId]
@@ -5877,7 +5909,7 @@ const ToolingInfoPage: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <AutoComplete
             allowClear
-            placeholder="盘存编号（父表/子表）"
+            placeholder="盘存编号（子表满6位数字触发）"
             style={{ width: isMobile ? '100%' : 200 }}
             options={inventoryOptions as any}
             value={filterInventory}
@@ -5895,7 +5927,7 @@ const ToolingInfoPage: React.FC = () => {
           />
           <AutoComplete
             allowClear
-            placeholder="图号（子表）"
+            placeholder="图号（子表满4位触发）"
             style={{ width: isMobile ? '100%' : 180 }}
             options={partDrawingOptions as any}
             value={filterPartDrawing}
