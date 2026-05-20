@@ -722,6 +722,7 @@ const WorkHoursManagement: React.FC = () => {
       return <span style={value === 0 ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
     }, align: 'center', width: parentColumnWidths[4] },
     { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
+    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
     { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
       const value = Number(v || 0)
       const workDays = Number(r?.work_day_equiv || 0)
@@ -733,7 +734,6 @@ const WorkHoursManagement: React.FC = () => {
     { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
     { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
     { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
-    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
     { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
       const a = Number(r.aux_coeff || 1).toFixed(2)
       const p = Number(r.proc_coeff || 1).toFixed(2)
