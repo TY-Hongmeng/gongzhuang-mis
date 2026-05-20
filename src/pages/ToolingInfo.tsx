@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -277,7 +277,7 @@ const getNextPartInventoryNumbers = (
     if (Number.isFinite(seq) && seq > maxSeq) maxSeq = seq
   })
   const start = maxSeq + 1
-  const width = Math.max(2, String(start + Math.max(0, count - 1)).length)
+  const width = Math.max(3, String(start + Math.max(0, count - 1)).length)
   return Array.from({ length: count }).map((_, idx) => `${parentInv}${String(start + idx).padStart(width, '0')}`)
 }
 
@@ -1076,33 +1076,60 @@ const ToolingInfoPage: React.FC = () => {
   const [teamsLoaded, setTeamsLoaded] = useState(false)
   const isTechnician = String(user?.roles?.name || '').includes('技术员')
   const myTeamName = useMemo(() => {
-    const rn = String(user?.real_name || '')
-    return userTeamsMap[rn] || ''
+    const rn = String(user?.real_name || '').trim()
+    if (!rn) return ''
+    return String(userTeamsMap[rn] || '').trim()
   }, [user, userTeamsMap])
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetchWithFallback('/api/tooling/users/basic')
-        const js = await resp.json()
+        const companyId = String((user as any)?.company_id || '').trim()
+        const [usersResp, teamsResp] = await Promise.all([
+          fetchWithFallback('/api/users'),
+          fetchWithFallback(companyId ? `/api/tooling/org/teams?company_id=${encodeURIComponent(companyId)}&ts=${Date.now()}` : `/api/tooling/org/teams?ts=${Date.now()}`)
+        ])
+        const usersJson = usersResp.ok ? await usersResp.json() : { users: [] }
+        const teamsJson = teamsResp.ok ? await teamsResp.json() : { items: [] }
         const map: Record<string, string> = {}
-        ;(js.items || []).forEach((u: any) => {
-          map[String(u.real_name || '')] = String(u.team || '')
+        const teams = Array.isArray(teamsJson?.items) ? teamsJson.items : (Array.isArray(teamsJson?.data) ? teamsJson.data : [])
+        const teamNameById = new Map<string, string>()
+        ;(teams || []).forEach((team: any) => {
+          const id = String(team?.id || '').trim()
+          if (!id) return
+          teamNameById.set(id, String(team?.name || '').trim())
+        })
+        const users = Array.isArray(usersJson?.users) ? usersJson.users : (Array.isArray(usersJson?.items) ? usersJson.items : [])
+        ;(users || []).forEach((u: any) => {
+          const companyMatched = !companyId || String(u?.company_id || '').trim() === companyId
+          if (!companyMatched) return
+          const name = String(u?.real_name || '').trim()
+          if (!name) return
+          const teamId = String(u?.team_id || u?.team?.id || '').trim()
+          const teamName = String(u?.team?.name || teamNameById.get(teamId) || '').trim()
+          map[name] = teamName
         })
         setUserTeamsMap(map)
         setTeamsLoaded(true)
-      } catch {}
+      } catch {
+        setUserTeamsMap({})
+        setTeamsLoaded(true)
+      }
     })()
-  }, [])
+  }, [user])
 
   const visibleData = useMemo(() => {
     if (isTechnician && !teamsLoaded) return []
-    if (!isTechnician || !myTeamName) return data
+    if (!isTechnician) return data
+    const currentUserName = String(user?.real_name || '').trim()
+    if (!myTeamName && !currentUserName) return data
     return (data || []).filter((row: any) => {
-      const rec = String(row.recorder || '')
-      const team = userTeamsMap[rec] || ''
-      return team && team === myTeamName
+      const rec = String(row?.recorder || '').trim()
+      const team = String(userTeamsMap[rec] || '').trim()
+      const sameTeam = !!myTeamName && team === myTeamName
+      const ownCreated = !!currentUserName && rec === currentUserName
+      return sameTeam || ownCreated
     })
-  }, [data, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
+  }, [data, isTechnician, myTeamName, userTeamsMap, teamsLoaded, user])
   const [filterInventory, setFilterInventory] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [filterPartDrawing, setFilterPartDrawing] = useState('')
