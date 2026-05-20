@@ -64,6 +64,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const [completedTime, setCompletedTime] = React.useState<string>('')
   const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
   const [currentWorkshopName, setCurrentWorkshopName] = React.useState('')
+  const [workshopResolved, setWorkshopResolved] = React.useState(() => !String((user as any)?.workshop_id || '').trim())
   const normalizePartKey = React.useCallback((v: any) => {
     return String(v || '')
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -122,6 +123,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const wAuxDurationMinutes = Form.useWatch('aux_duration_minutes', form)
   const isNonProduction = selectedInvType === 'non_production'
   const isThirdWorkshop = String(currentWorkshopName || '').trim() === '三车间'
+  const hasWorkshopBinding = !!String((user as any)?.workshop_id || '').trim()
+  const canRenderWorkshopDependentFields = !hasWorkshopBinding || workshopResolved
   const wAuxEnd = React.useMemo(() => {
     if (!wAuxStart || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null) return null
     const dur = Math.max(0, Number(wAuxDurationMinutes || 0))
@@ -168,6 +171,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     || !selectedInv
     || !wProcessName
     || !wShiftDate
+    || !canRenderWorkshopDependentFields
     || (!isThirdWorkshop && (
       !wAuxStart
       || !wAuxEnd
@@ -199,8 +203,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       try {
         const companyId = String((user as any)?.company_id || '').trim()
         const workshopId = String((user as any)?.workshop_id || '').trim()
+        if (!cancelled) setWorkshopResolved(!workshopId)
         if (!companyId || !workshopId) {
-          if (!cancelled) setCurrentWorkshopName('')
+          if (!cancelled) {
+            setCurrentWorkshopName('')
+            setWorkshopResolved(true)
+          }
           return
         }
         const resp = await fetchWithFallback(`/api/tooling/org/workshops?company_id=${encodeURIComponent(companyId)}`)
@@ -209,9 +217,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
         const current = list.find((item: any) => String(item?.id || '').trim() === workshopId)
         if (!cancelled) {
           setCurrentWorkshopName(String(current?.name || '').trim())
+          setWorkshopResolved(true)
         }
       } catch {
-        if (!cancelled) setCurrentWorkshopName('')
+        if (!cancelled) {
+          setCurrentWorkshopName('')
+          setWorkshopResolved(true)
+        }
       }
     }
     fetchWorkshopName()
@@ -664,6 +676,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     setDeviceName('')
     setSelectedDeviceMaxAuxMinutes(null)
     form.resetFields()
+    if (isThirdWorkshop) applyThirdWorkshopDefaults()
     const fixed = await fetchFixedOptions()
     await Promise.all([fetchInventory('', fixed), fetchDevices()])
     await fetchRecent()
@@ -1134,8 +1147,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             }
             const hide = message.loading('提交中...', 0)
             setSubmitting(true)
-            const auxStart = isThirdWorkshop ? '' : (wAuxStart ? wAuxStart.format('HH:mm') : '')
-            const auxEnd = isThirdWorkshop ? '' : (wAuxEnd ? wAuxEnd.format('HH:mm') : '')
+            const auxStart = isThirdWorkshop ? null : (wAuxStart ? wAuxStart.format('HH:mm') : null)
+            const auxEnd = isThirdWorkshop ? null : (wAuxEnd ? wAuxEnd.format('HH:mm') : null)
             const auxHours = auxMinutes / 60
             const procHours = procMinutesInput / 60
             const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
@@ -1164,8 +1177,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               hours: Number(auxHours + procHours),
               aux_hours: Number(auxHours),
               proc_hours: Number(procHours),
-              aux_start_time: String(auxStart || ''),
-              aux_end_time: String(auxEnd || ''),
+              aux_start_time: auxStart,
+              aux_end_time: auxEnd,
               work_date: String(submitWorkDate.format('YYYY-MM-DD')),
               shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
               process_name: String(vals.process_name || ''),
@@ -1361,7 +1374,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && !isThirdWorkshop && (
+          {!isNonProduction && canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">上次结束：</div>
               <div className="line-value">
@@ -1376,7 +1389,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isThirdWorkshop && (
+          {canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">辅助开始：</div>
               <div className="line-value">
@@ -1387,7 +1400,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isThirdWorkshop && (
+          {canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">辅助时长：</div>
               <div className="line-value">
@@ -1416,7 +1429,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isThirdWorkshop && (
+          {canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">辅助结束：</div>
               <div className="line-value">
@@ -1431,7 +1444,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && !isThirdWorkshop && (
+          {!isNonProduction && canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">辅助次数：</div>
               <div className="line-value">
@@ -1491,7 +1504,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && !isThirdWorkshop && (
+          {!isNonProduction && canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">本次完成：</div>
               <div className="line-value">
@@ -1506,7 +1519,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && !isThirdWorkshop && (
+          {!isNonProduction && canRenderWorkshopDependentFields && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">加工数量：</div>
               <div className="line-value">
