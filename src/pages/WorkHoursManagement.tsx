@@ -660,7 +660,6 @@ const WorkHoursManagement: React.FC = () => {
   // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
   const parentColumns = React.useMemo(() => [
     { title: '序号', key: '__seq', width: parentColumnWidths[0], align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
     {
       title: '车间',
       dataIndex: 'workshop',
@@ -681,7 +680,11 @@ const WorkHoursManagement: React.FC = () => {
         props: { rowSpan: Number(record?.groupRowSpan || 0) }
       })
     },
-    { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
+    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
+    { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => {
+      const value = Number(v || 0)
+      return <span style={value === 0 ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
+    }, align: 'center', width: parentColumnWidths[4] },
     { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
     { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
       const value = Number(v || 0)
