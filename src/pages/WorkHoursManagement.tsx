@@ -15,6 +15,42 @@ dayjs.locale('zh-cn')
 
 // 月份中文名称映射
 const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
+const workshopOrderMap: Record<string, number> = {
+  '一车间': 1,
+  '二车间': 2,
+  '三车间': 3
+}
+
+const extractWorkshopOrder = (value: any) => {
+  const text = String(value || '').trim()
+  if (!text) return Number.MAX_SAFE_INTEGER
+  if (typeof workshopOrderMap[text] === 'number') return workshopOrderMap[text]
+  const normalized = text
+    .replace(/^第/, '')
+    .replace(/车间$/, '')
+    .trim()
+  const digitMatch = normalized.match(/\d+/)
+  if (digitMatch) return Number(digitMatch[0])
+  const chineseNumberMap: Record<string, number> = {
+    '一': 1,
+    '二': 2,
+    '三': 3,
+    '四': 4,
+    '五': 5,
+    '六': 6,
+    '七': 7,
+    '八': 8,
+    '九': 9,
+    '十': 10
+  }
+  return chineseNumberMap[normalized] ?? Number.MAX_SAFE_INTEGER
+}
+
+const compareWorkshopNames = (a: any, b: any) => {
+  const orderDiff = extractWorkshopOrder(a) - extractWorkshopOrder(b)
+  if (orderDiff !== 0) return orderDiff
+  return String(a || '-').localeCompare(String(b || '-'), 'zh-Hans-CN')
+}
 
 // 自定义月份选择器配置 - 注意：antd 5.x 中 DatePicker 不再支持 pickerOptions 属性
 // 这个配置目前没有使用，暂时注释掉
@@ -667,7 +703,7 @@ const WorkHoursManagement: React.FC = () => {
       width: parentColumnWidths[2],
       render: (value: any, record: any) => ({
         children: value,
-        props: { rowSpan: Number(record?.groupRowSpan || 0) }
+        props: { rowSpan: Number(record?.workshopRowSpan || 0) }
       })
     },
     {
@@ -677,7 +713,7 @@ const WorkHoursManagement: React.FC = () => {
       width: parentColumnWidths[3],
       render: (value: any, record: any) => ({
         children: value,
-        props: { rowSpan: Number(record?.groupRowSpan || 0) }
+        props: { rowSpan: Number(record?.teamRowSpan || 0) }
       })
     },
     { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
@@ -878,7 +914,7 @@ const WorkHoursManagement: React.FC = () => {
       }
     })
     return normalized.sort((a: any, b: any) => {
-      const workshopCmp = String(a.workshop || '-').localeCompare(String(b.workshop || '-'), 'zh-Hans-CN')
+      const workshopCmp = compareWorkshopNames(a.workshop, b.workshop)
       if (workshopCmp !== 0) return workshopCmp
       const teamCmp = String(a.team || '-').localeCompare(String(b.team || '-'), 'zh-Hans-CN')
       if (teamCmp !== 0) return teamCmp
@@ -905,22 +941,39 @@ const WorkHoursManagement: React.FC = () => {
     if (team) {
       result = result.filter(item => item.team === team)
     }
-    let currentGroupKey = ''
-    let currentStart = -1
-    const withRowSpan = [...result].map((item: any) => ({ ...item, groupRowSpan: 0 }))
+    let currentWorkshopKey = ''
+    let currentWorkshopStart = -1
+    let currentTeamKey = ''
+    let currentTeamStart = -1
+    const withRowSpan = [...result].map((item: any) => ({
+      ...item,
+      workshopRowSpan: 0,
+      teamRowSpan: 0
+    }))
     for (let i = 0; i < withRowSpan.length; i += 1) {
       const row = withRowSpan[i]
-      const groupKey = `${row.workshop || '-'}|${row.team || '-'}`
-      if (groupKey !== currentGroupKey) {
-        if (currentStart >= 0) {
-          withRowSpan[currentStart].groupRowSpan = i - currentStart
+      const workshopKey = String(row.workshop || '-')
+      const teamKey = `${row.workshop || '-'}|${row.team || '-'}`
+      if (workshopKey !== currentWorkshopKey) {
+        if (currentWorkshopStart >= 0) {
+          withRowSpan[currentWorkshopStart].workshopRowSpan = i - currentWorkshopStart
         }
-        currentGroupKey = groupKey
-        currentStart = i
+        currentWorkshopKey = workshopKey
+        currentWorkshopStart = i
+      }
+      if (teamKey !== currentTeamKey) {
+        if (currentTeamStart >= 0) {
+          withRowSpan[currentTeamStart].teamRowSpan = i - currentTeamStart
+        }
+        currentTeamKey = teamKey
+        currentTeamStart = i
       }
     }
-    if (currentStart >= 0) {
-      withRowSpan[currentStart].groupRowSpan = withRowSpan.length - currentStart
+    if (currentWorkshopStart >= 0) {
+      withRowSpan[currentWorkshopStart].workshopRowSpan = withRowSpan.length - currentWorkshopStart
+    }
+    if (currentTeamStart >= 0) {
+      withRowSpan[currentTeamStart].teamRowSpan = withRowSpan.length - currentTeamStart
     }
     return withRowSpan
   }, [groupedData, operator, workshop, team])
@@ -928,7 +981,7 @@ const WorkHoursManagement: React.FC = () => {
   // 从groupedData中获取唯一的车间列表
   const uniqueWorkshops = React.useMemo(() => {
     const workshops = Array.from(new Set(groupedData.map(item => item.workshop || '-')))
-    return workshops.filter(w => w !== '-')
+    return workshops.filter(w => w !== '-').sort(compareWorkshopNames)
   }, [groupedData])
 
   // 获取唯一的班组列表
