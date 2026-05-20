@@ -2534,31 +2534,26 @@ router.get('/devices', async (_req, res) => {
 router.get('/users/basic', async (req, res) => {
   try {
     const companyId = String((req.query as any)?.company_id || '').trim()
-    let usersQuery = supabase
+    let userQuery = supabase
       .from('users')
-      .select('id, real_name, workshop_id, team_id, capability_coeff, status, role_id, company_id')
-      .eq('status', 'active')
-    if (companyId) usersQuery = usersQuery.eq('company_id', companyId)
-    const { data, error } = await usersQuery
+      .select('id, real_name, workshop_id, team_id, capability_coeff, company_id, role_id, status')
+    if (companyId) userQuery = userQuery.eq('company_id', companyId)
+    const { data, error } = await userQuery
     if (error) throw error
-    const roleIds = [...new Set((data || []).map((u: any) => String(u.role_id || '')).filter(Boolean))]
-    let employeeRoleIds = new Set<string>()
+    const roleIds = [...new Set((data || []).map((u: any) => u.role_id).filter(Boolean))]
+    let roles: any[] = []
     if (roleIds.length) {
-      const { data: roleRows, error: roleError } = await supabase
-        .from('roles')
-        .select('id, name')
-        .in('id', roleIds)
-      if (roleError) throw roleError
-      employeeRoleIds = new Set(
-        (roleRows || [])
-          .filter((r: any) => String(r?.name || '').trim().includes('员工'))
-          .map((r: any) => String(r.id || ''))
-          .filter(Boolean)
-      )
+      const rs = await supabase.from('roles').select('id, name').in('id', roleIds)
+      roles = rs.data || []
     }
-    const employeeUsers = (data || []).filter((u: any) => employeeRoleIds.has(String(u?.role_id || '')))
-    const workshopIds = [...new Set(employeeUsers.map((u: any) => u.workshop_id).filter(Boolean))]
-    const teamIds = [...new Set(employeeUsers.map((u: any) => u.team_id).filter(Boolean))]
+    const roleNameMap = Object.fromEntries(roles.map((r: any) => [r.id, String(r.name || '')]))
+    const filteredUsers = (data || []).filter((u: any) => {
+      const status = String(u?.status || '').trim()
+      const roleName = String(roleNameMap[u?.role_id] || '').trim()
+      return status === 'active' && roleName === '员工'
+    })
+    const workshopIds = [...new Set(filteredUsers.map((u: any) => u.workshop_id).filter(Boolean))]
+    const teamIds = [...new Set(filteredUsers.map((u: any) => u.team_id).filter(Boolean))]
     let workshops: any[] = []
     let teams: any[] = []
     if (workshopIds.length) {
@@ -2571,7 +2566,7 @@ router.get('/users/basic', async (req, res) => {
     }
     const wmap = Object.fromEntries(workshops.map((w: any) => [w.id, w.name]))
     const tmap = Object.fromEntries(teams.map((t: any) => [t.id, { name: t.name, aux_coeff: t.aux_coeff, proc_coeff: t.proc_coeff }]))
-    const items = employeeUsers.map((u: any) => ({
+    const items = filteredUsers.map((u: any) => ({
       real_name: u.real_name,
       workshop: wmap[u.workshop_id] || '',
       team: (tmap[u.team_id] || {}).name || '',

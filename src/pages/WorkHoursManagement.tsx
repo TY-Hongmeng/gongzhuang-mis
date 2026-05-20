@@ -141,12 +141,9 @@ const WorkHoursManagement: React.FC = () => {
 
   // 获取唯一的操作者列表
   const uniqueOperators = React.useMemo(() => {
-    const operators = Array.from(new Set([
-      ...allItems.map(item => item.operator || '-'),
-      ...employeeUsers.map(item => item.real_name || '-')
-    ]))
+    const operators = Array.from(new Set(employeeUsers.map(item => item.real_name || '-')))
     return operators.filter(o => o !== '-')
-  }, [allItems, employeeUsers])
+  }, [employeeUsers])
 
   // 获取唯一的班次列表
   const uniqueShifts = React.useMemo(() => {
@@ -267,7 +264,7 @@ const WorkHoursManagement: React.FC = () => {
   // 组件初始化时获取用户信息
   React.useEffect(() => {
     fetchUsers()
-  }, [user?.company_id])
+  }, [user])
 
   // 仅在日期条件变化时重新拉取，其他筛选使用本地过滤，提升页面响应速度
   React.useEffect(() => {
@@ -353,24 +350,14 @@ const WorkHoursManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
+      const companyId = String((user as any)?.company_id || (user as any)?.company?.id || '').trim()
       // 统一使用后端聚合接口，确保班组辅/加系数 + 用户能力系数实时生效
-      const params = new URLSearchParams()
-      params.set('ts', String(Date.now()))
-      if (user?.company_id) params.set('company_id', String(user.company_id))
-      const resp = await fetchWithFallback(`/api/tooling/users/basic?${params.toString()}`, { cache: 'no-store' })
+      const qs = new URLSearchParams({ ts: String(Date.now()) })
+      if (companyId) qs.set('company_id', companyId)
+      const resp = await fetchWithFallback(`/api/tooling/users/basic?${qs.toString()}`, { cache: 'no-store' })
       const json = resp.ok ? await resp.json() : { items: [] }
       const list = Array.isArray(json?.items) ? json.items : []
       const map: Record<string, { workshop?: string; team?: string; aux_coeff?: number; proc_coeff?: number; capability_coeff?: number }> = {}
-      const normalizedUsers = list
-        .map((u: any) => ({
-          real_name: String(u?.real_name || '').trim(),
-          workshop: String(u?.workshop || ''),
-          team: String(u?.team || ''),
-          aux_coeff: Number(u?.aux_coeff ?? 1),
-          proc_coeff: Number(u?.proc_coeff ?? 1),
-          capability_coeff: Number(u?.capability_coeff ?? 1)
-        }))
-        .filter((u: any) => !!u.real_name)
       list.forEach((u: any) => {
         const name = String(u?.real_name || '').trim()
         if (!name) return
@@ -382,7 +369,14 @@ const WorkHoursManagement: React.FC = () => {
           capability_coeff: Number(u?.capability_coeff ?? 1)
         }
       })
-      setEmployeeUsers(normalizedUsers)
+      setEmployeeUsers(list.map((u: any) => ({
+        real_name: String(u?.real_name || '').trim(),
+        workshop: String(u?.workshop || ''),
+        team: String(u?.team || ''),
+        aux_coeff: Number(u?.aux_coeff ?? 1),
+        proc_coeff: Number(u?.proc_coeff ?? 1),
+        capability_coeff: Number(u?.capability_coeff ?? 1)
+      })).filter((u: any) => !!u.real_name))
       setUserMap(map)
     } catch (e) {
       console.error('获取用户信息失败', e)
@@ -663,29 +657,77 @@ const WorkHoursManagement: React.FC = () => {
   const parentColumnWidths = [60, 90, 70, 70, 90, 90, 140, 140, 140, 140, 140, 140, 120, 160]
   const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0) + expandColumnWidth
 
+  // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
+  const parentColumns = React.useMemo(() => [
+    { title: '序号', key: '__seq', width: parentColumnWidths[0], align: 'center', render: (_: any, __: any, index: number) => index + 1 },
+    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
+    {
+      title: '车间',
+      dataIndex: 'workshop',
+      align: 'center',
+      width: parentColumnWidths[2],
+      render: (value: any, record: any) => ({
+        children: value,
+        props: { rowSpan: Number(record?.groupRowSpan || 0) }
+      })
+    },
+    {
+      title: '班组',
+      dataIndex: 'team',
+      align: 'center',
+      width: parentColumnWidths[3],
+      render: (value: any, record: any) => ({
+        children: value,
+        props: { rowSpan: Number(record?.groupRowSpan || 0) }
+      })
+    },
+    { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
+    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
+    { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
+      const value = Number(v || 0)
+      const workDays = Number(r?.work_day_equiv || 0)
+      const danger = value > workDays
+      return <span style={danger ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
+    }, align: 'center', width: parentColumnWidths[6] },
+    { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
+    { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
+    { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
+    { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
+    { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
+      const a = Number(r.aux_coeff || 1).toFixed(2)
+      const p = Number(r.proc_coeff || 1).toFixed(2)
+      const c = Number(r.capability_coeff || 1).toFixed(2)
+      return `${a}/${p}/${c}`
+    }, width: parentColumnWidths[13], align: 'center' }
+  ], [])
+
   const groupedData = React.useMemo(() => {
     const toDayValue = (hours: number) => Number((Number(hours || 0) / 8).toFixed(2))
     const map: Record<string, any> = {}
-    for (const userItem of employeeUsers) {
-      const key = String(userItem?.real_name || '').trim()
-      if (!key || map[key]) continue
+    employeeUsers.forEach((u: any) => {
+      const key = String(u?.real_name || '').trim() || '未填'
+      if (!key || map[key]) return
       map[key] = {
         operator: key,
-        workshop: String(userItem?.workshop || ''),
-        team: String(userItem?.team || ''),
+        workshop: String(u?.workshop || '') || '-',
+        team: String(u?.team || '') || '-',
         aux_total: 0,
         proc_total: 0,
         proc_total_adj: 0,
-        hours_total: 0,
+        days_total: 0,
+        work_days: 0,
+        running_total: 0,
         rows: [],
-        aux_coeff: Number(userItem?.aux_coeff ?? 1),
-        proc_coeff: Number(userItem?.proc_coeff ?? 1),
-        capability_coeff: Number(userItem?.capability_coeff ?? 1),
         _dayset: {},
+        aux_coeff: Number(u?.aux_coeff ?? 1),
+        proc_coeff: Number(u?.proc_coeff ?? 1),
+        capability_coeff: Number(u?.capability_coeff ?? 1),
         _device_shifts: {},
         _work_ranges: {}
       }
-    }
+    })
     for (const r of items) {
       const key = r.operator || '未填'
       if (!map[key]) {
@@ -760,7 +802,7 @@ const WorkHoursManagement: React.FC = () => {
       // 使用对象模拟Set
       map[key]._dayset[`${r.work_date}-${r.shift || ''}`] = true
     }
-    return Object.values(map).map((g: any) => {
+    const normalized = Object.values(map).map((g: any) => {
       // 将总分钟数转换为小时，保留2位小数
       g.proc_total = Number((g.proc_total / 60).toFixed(2))
       g.proc_total_adj = Number((g.proc_total_adj / 60).toFixed(2))
@@ -832,11 +874,24 @@ const WorkHoursManagement: React.FC = () => {
         capability_coeff: g.capability_coeff
       }
     })
+    return normalized.sort((a: any, b: any) => {
+      const workshopCmp = String(a.workshop || '-').localeCompare(String(b.workshop || '-'), 'zh-Hans-CN')
+      if (workshopCmp !== 0) return workshopCmp
+      const teamCmp = String(a.team || '-').localeCompare(String(b.team || '-'), 'zh-Hans-CN')
+      if (teamCmp !== 0) return teamCmp
+      const workDayCmp = Number(b.work_day_equiv || 0) - Number(a.work_day_equiv || 0)
+      if (workDayCmp !== 0) return workDayCmp
+      return String(a.operator || '').localeCompare(String(b.operator || ''), 'zh-Hans-CN')
+    })
   }, [items, userMap, deviceMap, employeeUsers])
 
   // 对分组后的数据进行车间和班组筛选
   const filteredGroupedData = React.useMemo(() => {
     let result = groupedData
+
+    if (operator) {
+      result = result.filter(item => item.operator === operator)
+    }
     
     // 车间筛选
     if (workshop) {
@@ -847,89 +902,25 @@ const WorkHoursManagement: React.FC = () => {
     if (team) {
       result = result.filter(item => item.team === team)
     }
-    
-    const safeText = (v: any) => String(v || '-')
-    return [...result].sort((a, b) => {
-      const workshopCmp = safeText(a.workshop).localeCompare(safeText(b.workshop), 'zh-Hans-CN')
-      if (workshopCmp !== 0) return workshopCmp
-      const teamCmp = safeText(a.team).localeCompare(safeText(b.team), 'zh-Hans-CN')
-      if (teamCmp !== 0) return teamCmp
-      const workDayDiff = Number(b.work_day_equiv || 0) - Number(a.work_day_equiv || 0)
-      if (workDayDiff !== 0) return workDayDiff
-      return safeText(a.operator).localeCompare(safeText(b.operator), 'zh-Hans-CN')
-    })
-  }, [groupedData, workshop, team])
-
-  const parentGroupRowSpanMap = React.useMemo(() => {
-    const map: Record<string, { workshop: number; team: number }> = {}
-    let idx = 0
-    while (idx < filteredGroupedData.length) {
-      const current = filteredGroupedData[idx]
-      const workshopValue = String(current?.workshop || '-')
-      let workshopEnd = idx
-      while (workshopEnd < filteredGroupedData.length && String(filteredGroupedData[workshopEnd]?.workshop || '-') === workshopValue) {
-        workshopEnd += 1
-      }
-      map[String(current?.operator || `idx-${idx}`)] = { workshop: workshopEnd - idx, team: 1 }
-      for (let i = idx + 1; i < workshopEnd; i += 1) {
-        map[String(filteredGroupedData[i]?.operator || `idx-${i}`)] = { workshop: 0, team: 0 }
-      }
-      let teamStart = idx
-      while (teamStart < workshopEnd) {
-        const teamValue = String(filteredGroupedData[teamStart]?.team || '-')
-        let teamEnd = teamStart
-        while (teamEnd < workshopEnd && String(filteredGroupedData[teamEnd]?.team || '-') === teamValue) {
-          teamEnd += 1
+    let currentGroupKey = ''
+    let currentStart = -1
+    const withRowSpan = [...result].map((item: any) => ({ ...item, groupRowSpan: 0 }))
+    for (let i = 0; i < withRowSpan.length; i += 1) {
+      const row = withRowSpan[i]
+      const groupKey = `${row.workshop || '-'}|${row.team || '-'}`
+      if (groupKey !== currentGroupKey) {
+        if (currentStart >= 0) {
+          withRowSpan[currentStart].groupRowSpan = i - currentStart
         }
-        map[String(filteredGroupedData[teamStart]?.operator || `idx-${teamStart}`)] = {
-          workshop: map[String(filteredGroupedData[teamStart]?.operator || `idx-${teamStart}`)]?.workshop ?? 0,
-          team: teamEnd - teamStart
-        }
-        for (let i = teamStart + 1; i < teamEnd; i += 1) {
-          map[String(filteredGroupedData[i]?.operator || `idx-${i}`)] = {
-            workshop: map[String(filteredGroupedData[i]?.operator || `idx-${i}`)]?.workshop ?? 0,
-            team: 0
-          }
-        }
-        teamStart = teamEnd
+        currentGroupKey = groupKey
+        currentStart = i
       }
-      idx = workshopEnd
     }
-    return map
-  }, [filteredGroupedData])
-
-  const parentColumns = React.useMemo(() => [
-    { title: '序号', key: '__seq', width: parentColumnWidths[0], align: 'center', render: (_: any, __: any, index: number) => index + 1 },
-    { title: '操作者', dataIndex: 'operator', align: 'center', width: parentColumnWidths[1] },
-    { title: '车间', dataIndex: 'workshop', align: 'center', width: parentColumnWidths[2], render: (v: any, r: any) => {
-      const rowSpan = parentGroupRowSpanMap[String(r?.operator || '')]?.workshop ?? 1
-      return { children: v || '-', props: { rowSpan } }
-    } },
-    { title: '班组', dataIndex: 'team', align: 'center', width: parentColumnWidths[3], render: (v: any, r: any) => {
-      const rowSpan = parentGroupRowSpanMap[String(r?.operator || '')]?.team ?? 1
-      return { children: v || '-', props: { rowSpan } }
-    } },
-    { title: '工作天数', dataIndex: 'work_day_equiv', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[4] },
-    { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
-    { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
-      const value = Number(v || 0)
-      const workDays = Number(r?.work_day_equiv || 0)
-      const danger = value > workDays
-      return <span style={danger ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
-    }, align: 'center', width: parentColumnWidths[6] },
-    { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
-    { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
-    { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
-    { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
-    { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
-    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
-    { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
-      const a = Number(r.aux_coeff || 1).toFixed(2)
-      const p = Number(r.proc_coeff || 1).toFixed(2)
-      const c = Number(r.capability_coeff || 1).toFixed(2)
-      return `${a}/${p}/${c}`
-    }, width: parentColumnWidths[13], align: 'center' }
-  ], [parentGroupRowSpanMap, parentColumnWidths])
+    if (currentStart >= 0) {
+      withRowSpan[currentStart].groupRowSpan = withRowSpan.length - currentStart
+    }
+    return withRowSpan
+  }, [groupedData, operator, workshop, team])
 
   // 从groupedData中获取唯一的车间列表
   const uniqueWorkshops = React.useMemo(() => {
@@ -1462,7 +1453,7 @@ const WorkHoursManagement: React.FC = () => {
         
         {/* 操作按钮 */}
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Button onClick={() => setExpandedRowKeys(groupedData.map((g: any) => g.operator))}>▾ 展开全部</Button>
+          <Button onClick={() => setExpandedRowKeys(groupedData.filter((g: any) => Array.isArray(g.rows) && g.rows.length > 0).map((g: any) => g.operator))}>▾ 展开全部</Button>
           <Button onClick={() => setExpandedRowKeys([])}>▸ 折叠全部</Button>
           {isSuperAdmin && (
             <Button danger disabled={!selectedKeys.length} onClick={async () => {
@@ -1508,6 +1499,7 @@ const WorkHoursManagement: React.FC = () => {
             childrenColumnName: '_nochildren',
             columnWidth: expandColumnWidth,
             expandedRowKeys,
+            rowExpandable: (record: any) => Array.isArray(record?.rows) && record.rows.length > 0,
             onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
             expandedRowRender: (record: any) => {
               // 为当前子表格数据计算rowSpan配置

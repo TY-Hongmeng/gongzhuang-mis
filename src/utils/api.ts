@@ -514,12 +514,19 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       // Tooling users basic
       if (method === 'GET' && path.startsWith('/api/tooling/users/basic')) {
         try {
+          const companyId = String(getQuery(url).get('company_id') || '').trim()
           // 返回与后端一致的数据结构：操作者 -> 车间/班组/辅系数/加系数/能力系数
+          let usersQuery = supabase.from('users').select('real_name, workshop_id, team_id, capability_coeff, company_id, role_id, status')
+          if (companyId) usersQuery = usersQuery.eq('company_id', companyId)
           const [usersRes, teamsRes, workshopsRes] = await Promise.all([
-            supabase.from('users').select('real_name, workshop_id, team_id, capability_coeff'),
+            usersQuery,
             supabase.from('teams').select('id, name, aux_coeff, proc_coeff'),
             supabase.from('workshops').select('id, name')
           ])
+          const roleIds = Array.from(new Set(((usersRes.data || []) as any[]).map((u: any) => String(u.role_id || '')).filter(Boolean)))
+          const rolesRes = roleIds.length > 0
+            ? await supabase.from('roles').select('id, name').in('id', roleIds)
+            : { data: [], error: null as any }
           
           const teamsMap = new Map<string, { name: string; aux_coeff: number; proc_coeff: number }>()
           if (teamsRes.data) {
@@ -533,8 +540,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (workshopsRes.data) {
             workshopsRes.data.forEach((w: any) => workshopsMap.set(String(w.id), String(w.name || '')))
           }
+          const roleNameMap = new Map<string, string>()
+          ;((rolesRes.data || []) as any[]).forEach((r: any) => roleNameMap.set(String(r.id), String(r.name || '')))
 
-          const items = (usersRes.data || []).map((u: any) => ({
+          const items = ((usersRes.data || []) as any[])
+            .filter((u: any) => String(u?.status || '').trim() === 'active' && String(roleNameMap.get(String(u?.role_id || '')) || '').trim() === '员工')
+            .map((u: any) => ({
             real_name: u.real_name,
             workshop: u.workshop_id ? (workshopsMap.get(String(u.workshop_id)) || '') : '',
             team: u.team_id ? (teamsMap.get(String(u.team_id))?.name || '') : '',
@@ -3782,27 +3793,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         try {
           const companyId = String(getQuery(url).get('company_id') || '').trim()
           // 返回与后端一致的数据结构：操作者 -> 车间/班组/辅系数/加系数/能力系数
-          let usersQuery = supabase
-            .from('users')
-            .select('real_name, workshop_id, team_id, capability_coeff, status, role_id, company_id')
-            .eq('status', 'active')
+          let usersQuery = supabase.from('users').select('real_name, workshop_id, team_id, capability_coeff, company_id, role_id, status')
           if (companyId) usersQuery = usersQuery.eq('company_id', companyId)
           const [usersRes, teamsRes, workshopsRes] = await Promise.all([
             usersQuery,
             supabase.from('teams').select('id, name, aux_coeff, proc_coeff'),
-            supabase.from('workshops').select('id, name'),
+            supabase.from('workshops').select('id, name')
           ])
-          const roleIds = [...new Set(((usersRes.data || []) as any[]).map((u: any) => String(u.role_id || '')).filter(Boolean))]
+          const roleIds = Array.from(new Set(((usersRes.data || []) as any[]).map((u: any) => String(u.role_id || '')).filter(Boolean)))
           const rolesRes = roleIds.length > 0
             ? await supabase.from('roles').select('id, name').in('id', roleIds)
             : { data: [], error: null as any }
-          if (rolesRes.error) throw rolesRes.error
-          const employeeRoleIds = new Set(
-            ((rolesRes.data || []) as any[])
-              .filter((r: any) => String(r?.name || '').trim().includes('员工'))
-              .map((r: any) => String(r.id || ''))
-              .filter(Boolean)
-          ])
           
           const teamsMap = new Map<string, { name: string; aux_coeff: number; proc_coeff: number }>()
           if (teamsRes.data) {
@@ -3816,9 +3817,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (workshopsRes.data) {
             workshopsRes.data.forEach((w: any) => workshopsMap.set(String(w.id), String(w.name || '')))
           }
+          const roleNameMap = new Map<string, string>()
+          ;((rolesRes.data || []) as any[]).forEach((r: any) => roleNameMap.set(String(r.id), String(r.name || '')))
 
           const items = ((usersRes.data || []) as any[])
-            .filter((u: any) => employeeRoleIds.has(String(u?.role_id || '')))
+            .filter((u: any) => String(u?.status || '').trim() === 'active' && String(roleNameMap.get(String(u?.role_id || '')) || '').trim() === '员工')
             .map((u: any) => ({
             real_name: u.real_name,
             workshop: u.workshop_id ? (workshopsMap.get(String(u.workshop_id)) || '') : '',
