@@ -63,6 +63,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   // 添加 completedTime 状态来替代 form 中的 completed_time 字段
   const [completedTime, setCompletedTime] = React.useState<string>('')
   const [partMetaMap, setPartMetaMap] = React.useState<Record<string, { name: string; drawing: string }>>({})
+  const [currentWorkshopName, setCurrentWorkshopName] = React.useState('')
   const normalizePartKey = React.useCallback((v: any) => {
     return String(v || '')
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -120,6 +121,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
   const wAuxStart = Form.useWatch('aux_start', form)
   const wAuxDurationMinutes = Form.useWatch('aux_duration_minutes', form)
   const isNonProduction = selectedInvType === 'non_production'
+  const isThirdWorkshop = String(currentWorkshopName || '').trim() === '三车间'
   const wAuxEnd = React.useMemo(() => {
     if (!wAuxStart || wAuxDurationMinutes === undefined || wAuxDurationMinutes === null) return null
     const dur = Math.max(0, Number(wAuxDurationMinutes || 0))
@@ -152,23 +154,33 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     const end = endRaw.isBefore(start) ? endRaw.add(1, 'day') : endRaw
     return end.format('MM-DD HH:mm')
   }, [wWorkDate, wAuxStart, wAuxEnd])
+  const applyThirdWorkshopDefaults = React.useCallback(() => {
+    form.setFieldsValue({
+      shift_date: dayjs(),
+      shift: '白班',
+      aux_start: null,
+      aux_duration_minutes: null,
+      aux_count: 1,
+      process_quantity: 1
+    })
+  }, [form])
   const isSubmitDisabled = !wShift
     || !selectedInv
     || !wProcessName
-    || !wAuxStart
-    || !wAuxEnd
-    || wAuxDurationMinutes === undefined
-    || wAuxDurationMinutes === null
     || !wShiftDate
+    || (!isThirdWorkshop && (
+      !wAuxStart
+      || !wAuxEnd
+      || wAuxDurationMinutes === undefined
+      || wAuxDurationMinutes === null
+    ))
     || (!isNonProduction && (
       !wDeviceNo
       || !wProcMinutes
       || wCompletedQuantity === undefined
       || wCompletedQuantity === null
-      || wAuxCount === undefined
-      || wAuxCount === null
-      || wProcessQuantity === undefined
-      || wProcessQuantity === null
+      || (!isThirdWorkshop && (wAuxCount === undefined || wAuxCount === null))
+      || (!isThirdWorkshop && (wProcessQuantity === undefined || wProcessQuantity === null))
     ))
 
   React.useEffect(() => {
@@ -180,6 +192,39 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
     const maxAux = Number(found?.meta?.max_aux_minutes)
     setSelectedDeviceMaxAuxMinutes(Number.isFinite(maxAux) ? maxAux : null)
   }, [wDeviceNo, deviceOptions])
+
+  React.useEffect(() => {
+    let cancelled = false
+    const fetchWorkshopName = async () => {
+      try {
+        const companyId = String((user as any)?.company_id || '').trim()
+        const workshopId = String((user as any)?.workshop_id || '').trim()
+        if (!companyId || !workshopId) {
+          if (!cancelled) setCurrentWorkshopName('')
+          return
+        }
+        const resp = await fetchWithFallback(`/api/tooling/org/workshops?company_id=${encodeURIComponent(companyId)}`)
+        const json = resp.ok ? await resp.json() : { items: [] }
+        const list = Array.isArray(json?.items) ? json.items : (Array.isArray(json?.data) ? json.data : [])
+        const current = list.find((item: any) => String(item?.id || '').trim() === workshopId)
+        if (!cancelled) {
+          setCurrentWorkshopName(String(current?.name || '').trim())
+        }
+      } catch {
+        if (!cancelled) setCurrentWorkshopName('')
+      }
+    }
+    fetchWorkshopName()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  React.useEffect(() => {
+    if (showEntry && isThirdWorkshop) {
+      applyThirdWorkshopDefaults()
+    }
+  }, [showEntry, isThirdWorkshop, applyThirdWorkshopDefaults])
 
 
 
@@ -1029,7 +1074,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
               return
             }
             if (!isNonProd && procMinutesInput > 660) {
-              message.error('程序时长不能超过660分钟')
+              message.error('加工时长不能超过660分钟')
               return
             }
             const singleAuxMinutes = auxCount > 0 ? (auxMinutes / auxCount) : 0
@@ -1089,8 +1134,8 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             }
             const hide = message.loading('提交中...', 0)
             setSubmitting(true)
-            const auxStart = wAuxStart ? wAuxStart.format('HH:mm') : ''
-            const auxEnd = wAuxEnd ? wAuxEnd.format('HH:mm') : ''
+            const auxStart = isThirdWorkshop ? '' : (wAuxStart ? wAuxStart.format('HH:mm') : '')
+            const auxEnd = isThirdWorkshop ? '' : (wAuxEnd ? wAuxEnd.format('HH:mm') : '')
             const auxHours = auxMinutes / 60
             const procHours = procMinutesInput / 60
             const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
@@ -1179,12 +1224,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                   
                   // 强制清空所有表单字段，不依赖setFieldsValue
                   form.resetFields()
+                  if (isThirdWorkshop) applyThirdWorkshopDefaults()
                   
                   // 额外清除，确保字段被清空 - 使用适当的空值而非undefined，避免JSON.stringify循环引用警告
                   form.setFieldValue('aux_start', null)
                   form.setFieldValue('aux_duration_minutes', null)
-                  form.setFieldValue('aux_count', null)
-                  form.setFieldValue('process_quantity', null)
+                  form.setFieldValue('aux_count', isThirdWorkshop ? 1 : null)
+                  form.setFieldValue('process_quantity', isThirdWorkshop ? 1 : null)
                   form.setFieldValue('process_name', '')
                   form.setFieldValue('device_no', '')
                   form.setFieldValue('proc_minutes', null)
@@ -1212,7 +1258,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-label">班次日期：</div>
             <div className="line-value">
               <Form.Item name="shift_date" rules={[{ required: true, message: '请选择班次日期' }]} preserve={false}>
-                <DatePicker placeholder="请先选择起始日期" style={{ width: '100%' }} />
+                <DatePicker placeholder={isThirdWorkshop ? '默认当天' : '请先选择起始日期'} style={{ width: '100%' }} />
               </Form.Item>
             </div>
           </div>
@@ -1222,7 +1268,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             <div className="line-value">
               <Form.Item name="shift" rules={[{ required: true, message: '请选择班次' }]}>
                 <Select
-                  placeholder="联动加工日期"
+                  placeholder={isThirdWorkshop ? '默认白班' : '联动加工日期'}
                   options={[
                     { label: '白班', value: '白班' },
                     { label: '夜班', value: '夜班' }
@@ -1315,7 +1361,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && (
+          {!isNonProduction && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">上次结束：</div>
               <div className="line-value">
@@ -1330,56 +1376,62 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          <div className="line-row">
-            <div className="line-label">辅助开始：</div>
-            <div className="line-value">
-              <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
-                <QuickTimeInput placeholder="24小时制4位数字" displayDate={wWorkDate} />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">辅助时长：</div>
-            <div className="line-value">
-              <Form.Item
-                name="aux_duration_minutes"
-                rules={[
-                  { required: true, message: '请输入辅助时长' },
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || value === '') return Promise.resolve()
-                      return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班辅助时长上限'))
-                    }
-                  }
-                ]}
-              >
-                <InputNumber
-                  min={0}
-                  step={5}
-                  controls={false}
-                  inputMode="numeric"
-                  placeholder="当班内多次辅助填写总时长"
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div className="line-row">
-            <div className="line-label">辅助结束：</div>
-            <div className="line-value">
-              <div className="line-static">
-                {auxEndDisplay && auxEndDisplay !== '-' ? (
-                  <span className="line-static-value">{auxEndDisplay}</span>
-                ) : (
-                  <span className="line-static-value line-static-hint">程序开始运行的时间</span>
-                )}
+          {!isThirdWorkshop && (
+            <div className="line-row">
+              <div className="line-label">辅助开始：</div>
+              <div className="line-value">
+                <Form.Item name="aux_start" rules={[{ required: true, message: '请选择辅助开始时间' }]} preserve={false}>
+                  <QuickTimeInput placeholder="24小时制4位数字" displayDate={wWorkDate} />
+                </Form.Item>
               </div>
             </div>
-          </div>
+          )}
 
-          {!isNonProduction && (
+          {!isThirdWorkshop && (
+            <div className="line-row">
+              <div className="line-label">辅助时长：</div>
+              <div className="line-value">
+                <Form.Item
+                  name="aux_duration_minutes"
+                  rules={[
+                    { required: true, message: '请输入辅助时长' },
+                    {
+                      validator: (_, value) => {
+                        if (value === undefined || value === null || value === '') return Promise.resolve()
+                        return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班辅助时长上限'))
+                      }
+                    }
+                  ]}
+                >
+                  <InputNumber
+                    min={0}
+                    step={5}
+                    controls={false}
+                    inputMode="numeric"
+                    placeholder="当班内多次辅助填写总时长"
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </div>
+            </div>
+          )}
+
+          {!isThirdWorkshop && (
+            <div className="line-row">
+              <div className="line-label">辅助结束：</div>
+              <div className="line-value">
+                <div className="line-static">
+                  {auxEndDisplay && auxEndDisplay !== '-' ? (
+                    <span className="line-static-value">{auxEndDisplay}</span>
+                  ) : (
+                    <span className="line-static-value line-static-hint">程序开始运行的时间</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isNonProduction && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">辅助次数：</div>
               <div className="line-value">
@@ -1411,17 +1463,17 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
 
           {!isNonProduction && (
             <div className="line-row">
-              <div className="line-label">程序时长：</div>
+              <div className="line-label">加工时长：</div>
               <div className="line-value">
                 <Form.Item
                   name="proc_minutes"
                   preserve={false}
                   rules={[
-                    { required: true, message: '请输入程序时长' },
+                    { required: true, message: '请输入加工时长' },
                     {
                       validator: (_, value) => {
                         if (value === undefined || value === null || value === '') return Promise.resolve()
-                        return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班程序时长上限'))
+                        return Number(value) <= 660 ? Promise.resolve() : Promise.reject(new Error('超出当班加工时长上限'))
                       }
                     }
                   ]}
@@ -1431,7 +1483,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                     step={5}
                     controls={false}
                     inputMode="numeric"
-                    placeholder="请填写机床面板程序运行的时间，而不是机床的开动时间"
+                    placeholder="请填写实际加工的总时长"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
@@ -1439,7 +1491,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && (
+          {!isNonProduction && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">本次完成：</div>
               <div className="line-value">
@@ -1454,7 +1506,7 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             </div>
           )}
 
-          {!isNonProduction && (
+          {!isNonProduction && !isThirdWorkshop && (
             <div className="line-row">
               <div className="line-label">加工数量：</div>
               <div className="line-value">
