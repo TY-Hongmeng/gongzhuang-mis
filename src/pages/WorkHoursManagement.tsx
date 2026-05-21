@@ -845,8 +845,10 @@ const WorkHoursManagement: React.FC = () => {
       }
 
       // 统计日工作：同一日期班次取最早辅助开始与最后程序完成
+      // 支持三车间等无辅助时间的场景
+      const dateShiftKey = `${r.work_date}-${r.shift || ''}`
       if (r.aux_start_time && r.aux_end_time) {
-        const dateShiftKey = `${r.work_date}-${r.shift || ''}`
+        // 普通模式：使用辅助时间计算工作区间
         const s = toMin(r.aux_start_time)
         let e = toMin(r.aux_end_time)
         if (e < s) e += 1440
@@ -856,6 +858,18 @@ const WorkHoursManagement: React.FC = () => {
         } else {
           if (s < map[key]._work_ranges[dateShiftKey].start) map[key]._work_ranges[dateShiftKey].start = s
           if (completed > map[key]._work_ranges[dateShiftKey].end) map[key]._work_ranges[dateShiftKey].end = completed
+        }
+      } else {
+        // 三车间模式：无辅助时间，使用程序时间或统计时间作为工作时长
+        const workMin = Math.max(procMinutes, Math.round(Number(r.stat_hours || 0) * 60))
+        if (workMin > 0) {
+          if (!map[key]._work_ranges[dateShiftKey]) {
+            // 初始化默认起始时间（08:00），累计工作时长
+            map[key]._work_ranges[dateShiftKey] = { start: 8 * 60, end: 8 * 60 + workMin }
+          } else {
+            // 累加工作时长
+            map[key]._work_ranges[dateShiftKey].end += workMin
+          }
         }
       }
       
