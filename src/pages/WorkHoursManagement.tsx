@@ -480,6 +480,7 @@ const WorkHoursManagement: React.FC = () => {
   }, [items, deviceMap, userMap]);
 
   // 计算每个操作者、每个班次、每个日期的日工作区间（最早辅助开始 -- 最后程序完成）
+  // 支持三车间等无辅助时间的场景（使用程序时间或统计时间）
   const dailyWorkRangeMap = React.useMemo(() => {
     const rangeMap: Record<string, { start: number; end: number }> = {}
     const toMin = (t: string) => {
@@ -488,19 +489,39 @@ const WorkHoursManagement: React.FC = () => {
     }
 
     items.forEach((r: any) => {
-      if (!r?.work_date || !r?.shift || !r?.operator || !r?.aux_start_time || !r?.aux_end_time) return
-      const key = `${r.operator}-${r.shift}-${r.work_date}`
-      const startMin = toMin(r.aux_start_time)
-      let auxEndMin = toMin(r.aux_end_time)
-      if (auxEndMin < startMin) auxEndMin += 1440
-      const procMin = Math.round(Number(r.proc_hours || 0) * 60)
-      const completedMin = auxEndMin + Math.max(procMin, 0)
+      if (!r?.work_date || !r?.shift || !r?.operator) return
 
-      if (!rangeMap[key]) {
-        rangeMap[key] = { start: startMin, end: completedMin }
-      } else {
-        if (startMin < rangeMap[key].start) rangeMap[key].start = startMin
-        if (completedMin > rangeMap[key].end) rangeMap[key].end = completedMin
+      // 判断是否为三车间模式（无辅助时间）
+      const hasAuxTime = !!(r.aux_start_time && r.aux_end_time)
+      const procMin = Math.round(Number(r.proc_hours || 0) * 60)
+      const statMin = Math.round(Number(r.stat_hours || 0) * 60)
+
+      if (hasAuxTime) {
+        // 普通模式：使用辅助时间计算
+        const key = `${r.operator}-${r.shift}-${r.work_date}`
+        const startMin = toMin(r.aux_start_time)
+        let auxEndMin = toMin(r.aux_end_time)
+        if (auxEndMin < startMin) auxEndMin += 1440
+        const completedMin = auxEndMin + Math.max(procMin, 0)
+
+        if (!rangeMap[key]) {
+          rangeMap[key] = { start: startMin, end: completedMin }
+        } else {
+          if (startMin < rangeMap[key].start) rangeMap[key].start = startMin
+          if (completedMin > rangeMap[key].end) rangeMap[key].end = completedMin
+        }
+      } else if (procMin > 0 || statMin > 0) {
+        // 三车间模式：无辅助时间，使用程序时间/统计时间作为工作时长
+        const key = `${r.operator}-${r.shift}-${r.work_date}`
+        const workMin = Math.max(procMin, statMin)
+
+        if (!rangeMap[key]) {
+          // 初始化一个默认的起始时间（08:00），累计工作时长
+          rangeMap[key] = { start: 8 * 60, end: 8 * 60 + workMin }
+        } else {
+          // 累加工作时长
+          rangeMap[key].end += workMin
+        }
       }
     })
 
