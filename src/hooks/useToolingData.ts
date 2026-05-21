@@ -199,13 +199,13 @@ export const useToolingData = () => {
           };
         });
         
-        // 按盘存编号自然排序（处理如 LJ260101-01, LJ260101-02, LJ260101-10 的情况）
+        // 按盘存编号自然排序（支持 LJ260101-01 和 T00101 两种格式）
         items.sort((a: any, b: any) => {
           const numA = String(a.part_inventory_number || '')
           const numB = String(b.part_inventory_number || '')
-          // 提取前缀和数字后缀
-          const matchA = numA.match(/^(.+?)-(\d+)$/)
-          const matchB = numB.match(/^(.+?)-(\d+)$/)
+          // 提取前缀和数字后缀（支持带或不带分隔符的格式）
+          const matchA = numA.match(/^(.*?)(\d+)$/)
+          const matchB = numB.match(/^(.*?)(\d+)$/)
           if (matchA && matchB) {
             const prefixA = matchA[1]
             const prefixB = matchB[1]
@@ -213,7 +213,7 @@ export const useToolingData = () => {
             if (prefixA !== prefixB) {
               return prefixA.localeCompare(prefixB)
             }
-            // 前缀相同，比较数字后缀
+            // 前缀相同，按数字后缀排序
             const suffixA = parseInt(matchA[2], 10)
             const suffixB = parseInt(matchB[2], 10)
             return suffixA - suffixB
