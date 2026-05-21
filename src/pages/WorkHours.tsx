@@ -1099,48 +1099,55 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
             // Validate device time order against last record for the same device
             const deviceNo = isNonProd ? '' : form.getFieldValue('device_no')
             if (deviceNo) {
-              let lastSame: any = null
-              try {
-                const params = new URLSearchParams()
-                params.set('page', '1')
-                params.set('pageSize', '200')
-                params.set('order', 'created_at')
-                params.set('order_dir', 'desc')
-                params.set('device_no', String(deviceNo || ''))
-                const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
-                if (resp.ok) {
-                  const json = await resp.json()
-                  const rows = Array.isArray(json?.items)
-                    ? json.items
-                    : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
-                  lastSame = Array.isArray(rows) ? rows[0] : null
-                }
-              } catch {}
-              if (lastSame) {
-                const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
-                const pad = (n: number) => String(n).padStart(2,'0')
-                if (!lastSame.aux_end_time) {
-                  message.error('该设备上一个作业尚未结束，请先补充结束时间或删除后再提交')
-                  return
-                }
-                if (vals.aux_start) {
-                  const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
-                  if (!submitWorkDate) {
-                    message.error('班次日期无效，请重新选择')
+              // 查找设备名称，判断是否为"0号装配"等特殊设备
+              const foundDevice = deviceOptions.find((d: any) => String(d?.value || '') === String(deviceNo || ''))
+              const deviceLabel = String(foundDevice?.label || foundDevice?.name || deviceNo || '')
+              // 0号装配等特殊设备跳过时间顺序验证
+              const isAssemblyDevice = /0号装配|装配台|装配/.test(deviceLabel)
+              if (!isAssemblyDevice) {
+                let lastSame: any = null
+                try {
+                  const params = new URLSearchParams()
+                  params.set('page', '1')
+                  params.set('pageSize', '200')
+                  params.set('order', 'created_at')
+                  params.set('order_dir', 'desc')
+                  params.set('device_no', String(deviceNo || ''))
+                  const resp = await fetchWithFallback(`/api/tooling/work-hours?${params.toString()}`)
+                  if (resp.ok) {
+                    const json = await resp.json()
+                    const rows = Array.isArray(json?.items)
+                      ? json.items
+                      : (Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : []))
+                    lastSame = Array.isArray(rows) ? rows[0] : null
+                  }
+                } catch {}
+                if (lastSame) {
+                  const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
+                  const pad = (n: number) => String(n).padStart(2,'0')
+                  if (!lastSame.aux_end_time) {
+                    message.error('该设备上一个作业尚未结束，请先补充结束时间或删除后再提交')
                     return
                   }
-                  const endMin = toMin(lastSame.aux_end_time)
-                  const pm = Math.round(Number(lastSame.proc_hours || 0) * 60)
-                  const compTotal = endMin + pm
-                  const daysAdd = Math.floor(compTotal / 1440)
-                  const comp = compTotal % 1440
-                  const hh = Math.floor(comp / 60)
-                  const mi = comp % 60
-                  const prevEndTs = dayjs(lastSame.work_date).add(daysAdd, 'day').hour(hh).minute(mi).valueOf()
-                  const currStartTs = dayjs(submitWorkDate).hour(vals.aux_start.hour()).minute(vals.aux_start.minute()).valueOf()
-                  if (currStartTs < prevEndTs) {
-                    message.error('本次辅助起始时间早于该设备上一次结束时间，请调整后再提交')
-                    return
+                  if (vals.aux_start) {
+                    const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
+                    if (!submitWorkDate) {
+                      message.error('班次日期无效，请重新选择')
+                      return
+                    }
+                    const endMin = toMin(lastSame.aux_end_time)
+                    const pm = Math.round(Number(lastSame.proc_hours || 0) * 60)
+                    const compTotal = endMin + pm
+                    const daysAdd = Math.floor(compTotal / 1440)
+                    const comp = compTotal % 1440
+                    const hh = Math.floor(comp / 60)
+                    const mi = comp % 60
+                    const prevEndTs = dayjs(lastSame.work_date).add(daysAdd, 'day').hour(hh).minute(mi).valueOf()
+                    const currStartTs = dayjs(submitWorkDate).hour(vals.aux_start.hour()).minute(vals.aux_start.minute()).valueOf()
+                    if (currStartTs < prevEndTs) {
+                      message.error('本次辅助起始时间早于该设备上一次结束时间，请调整后再提交')
+                      return
+                    }
                   }
                 }
               }
