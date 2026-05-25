@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -613,11 +613,15 @@ const ToolingInfoPage: React.FC = () => {
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   const processPriceCacheRef = useRef<Map<string, number>>(new Map())
+  const toolingTotalsCacheRef = useRef<Map<string, { material_total: number | null; process_total: number | null; ts: number }>>(new Map())
+  const processRouteDisplayCacheRef = useRef<Map<string, React.ReactNode>>(new Map())
   const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     weightCacheRef.current.clear()
     priceCacheRef.current.clear()
     processPriceCacheRef.current.clear()
+    toolingTotalsCacheRef.current.clear()
+    processRouteDisplayCacheRef.current.clear()
   }, [materials, partTypes])
   
   // 导入相关状态
@@ -809,6 +813,18 @@ const ToolingInfoPage: React.FC = () => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
     const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+    
+    // 生成数据指纹用于缓存校验（基于零件ID、金额、数量等关键字段）
+    const dataFingerprint = parts.map((p: any) => 
+      `${p.id}|${p.weight}|${p.total_price}|${p.process_amount}|${p.part_quantity}|${p.material_id}`
+    ).join(';')
+    
+    // 检查缓存是否有效（数据未变化则直接返回）
+    const cached = toolingTotalsCacheRef.current.get(normalizedId)
+    if (cached && cached.ts === Date.now() && cached._fp === dataFingerprint) {
+      return
+    }
+    
     const meaningfulParts = parts.filter((part: any) => {
       return [
         part?.part_inventory_number,
@@ -820,6 +836,8 @@ const ToolingInfoPage: React.FC = () => {
       ].some((v) => String(v ?? '').trim() !== '' && String(v ?? '').trim() !== '0')
     })
     if (meaningfulParts.length === 0) {
+      const emptyResult = { material_total: null, process_total: null, ts: Date.now(), _fp: '' }
+      toolingTotalsCacheRef.current.set(normalizedId, emptyResult as any)
       applyToolingTotalsToRow(normalizedId, {
         material_total: null,
         process_total: null,
@@ -852,6 +870,11 @@ const ToolingInfoPage: React.FC = () => {
       const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
+    
+    // 缓存结果
+    const result = { material_total: materialTotal, process_total: processTotal, ts: Date.now(), _fp: dataFingerprint }
+    toolingTotalsCacheRef.current.set(normalizedId, result as any)
+    
     applyToolingTotalsToRow(normalizedId, {
       material_total: materialTotal,
       process_total: processTotal,
@@ -1746,7 +1769,32 @@ const ToolingInfoPage: React.FC = () => {
   const workHoursDataRef = useRef(workHoursData)
   useEffect(() => {
     workHoursDataRef.current = workHoursData
+    // 工时数据变化时，清理相关缓存以确保数据准确性
+    processPriceCacheRef.current.clear()
+    processRouteDisplayCacheRef.current.clear()
   }, [workHoursData])
+  
+  const workHoursProcessCompletedQtyDataRef = useRef(workHoursProcessCompletedQtyData)
+  useEffect(() => {
+    workHoursProcessCompletedQtyDataRef.current = workHoursProcessCompletedQtyData
+    // 工序完成数量变化时，清理工艺路线显示缓存
+    processRouteDisplayCacheRef.current.clear()
+  }, [workHoursProcessCompletedQtyData])
+  
+  const workHoursProcessHoursDataRef = useRef(workHoursProcessHoursData)
+  useEffect(() => {
+    workHoursProcessHoursDataRef.current = workHoursProcessHoursData
+    // 工序工时变化时，清理工艺路线显示和加工时长缓存
+    processRouteDisplayCacheRef.current.clear()
+  }, [workHoursProcessHoursData])
+  
+  const workHoursAmountDataRef = useRef(workHoursAmountData)
+  useEffect(() => {
+    workHoursAmountDataRef.current = workHoursAmountData
+    // 加工金额数据变化时，清理加工金额和父表总额缓存
+    processPriceCacheRef.current.clear()
+    toolingTotalsCacheRef.current.clear()
+  }, [workHoursAmountData])
   
   const {
     generateCuttingOrders,
@@ -2774,6 +2822,38 @@ const ToolingInfoPage: React.FC = () => {
       }
       return sum
     }
+    
+    // 工艺路线显示缓存（基于数据指纹，确保数据变化时重新渲染）
+    const ROUTE_DISPLAY_CACHE_LIMIT = 500
+    const getCachedProcessRouteDisplay = (
+      rec: PartItem,
+      displayFn: (val: string | undefined) => React.ReactNode
+    ): React.ReactNode => {
+      const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+      const currentRoute = String((rec as any).process_route || (processRoutes[inventoryNo] || ''))
+      const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
+      const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
+      const completedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+      const workHoursForThisInv = workHoursData[inventoryNo] || []
+      
+      // 生成数据指纹（包含所有影响显示的数据）
+      const fp = `${currentRoute}|${JSON.stringify(processCompletedQtyMap)}|${JSON.stringify(processHoursMap)}|${completedSteps.join(',')}|${workHoursForThisInv.join(',')}`
+      const cacheKey = `${rec.id}|${fp}`
+      
+      const cached = processRouteDisplayCacheRef.current.get(cacheKey)
+      if (cached !== undefined) return cached
+      
+      const result = displayFn(currentRoute || undefined)
+      processRouteDisplayCacheRef.current.set(cacheKey, result)
+      
+      // 清理过期缓存
+      if (processRouteDisplayCacheRef.current.size > ROUTE_DISPLAY_CACHE_LIMIT) {
+        const k = processRouteDisplayCacheRef.current.keys().next().value
+        processRouteDisplayCacheRef.current.delete(k)
+      }
+      
+      return result
+    }
     const normalizeProcessKey = (v: string) => String(v || '')
       .replace(/\s+/g, '')
       .replace(/^[0-9]+[.\-、:：]*/g, '')
@@ -3305,7 +3385,7 @@ const ToolingInfoPage: React.FC = () => {
               value={currentRoute}
               record={rec}
               dataIndex="process_route"
-              renderDisplay={display}
+              renderDisplay={() => getCachedProcessRouteDisplay(rec, display)}
               onSave={async (id: string, _key: keyof PartItem, value: string) => {
                 try {
                   setPartsMap(prev => {
