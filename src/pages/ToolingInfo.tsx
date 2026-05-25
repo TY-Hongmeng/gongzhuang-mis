@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1657,10 +1657,10 @@ const ToolingInfoPage: React.FC = () => {
   }, [data, partsMap, fetchWorkHoursData])
 
   useEffect(() => {
-    // 智能总额计算策略：
-    // 1. 数据库已有值的行 → 直接显示（不重复计算）
-    // 2. 数据库值为 null 且有零件数据的行 → 异步补全
-    // 3. 工时数据变化 → 只刷新受影响的行
+    // 智能总额计算策略 - 分阶段执行：
+    // 阶段1: data 加载完成 → 计算材料总额（不依赖工时数据）
+    // 阶段2: partsMap 加载完成 → 补充计算之前跳过的行
+    // 阶段3: workHoursAmountData 到达 → 重新计算加工总额
 
     const allToolingIds = data
       .filter(item => !String(item.id || '').startsWith('blank-'))
@@ -1668,39 +1668,32 @@ const ToolingInfoPage: React.FC = () => {
 
     if (allToolingIds.length === 0) return
 
-    if (workHoursAmountData && Object.keys(workHoursAmountData).length > 0) {
-      // 场景3: 工时数据变化 - 局部刷新
-      const invsWithHours = Object.keys(workHoursAmountData)
-      data.forEach((item: any) => {
-        const id = String(item.id || '')
-        if (id.startsWith('blank-')) return
-        const parts = partsMapRef.current[id] || []
-        const hasMatchingPart = parts.some((p: any) => {
-          const inv = String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase()
-          return invsWithHours.includes(inv)
-        })
-        if (hasMatchingPart) {
-          syncLocalToolingTotals(id)
-        }
-      })
-    } else {
-      // 场景1+2: 初始加载 - 只补全缺失值（使用防抖避免卡顿）
-      const idsToCalculate = allToolingIds.filter(id => {
-        const row = data.find((item: any) => String(item.id) === id)
-        if (!row) return false
-        if (!partsMapRef.current[id]) return false
-        // 只对数据库中值为 null 的行进行计算
-        const hasMaterialTotal = row.material_total !== null && row.material_total !== undefined
-        const hasProcessTotal = row.process_total !== null && row.process_total !== undefined
-        return !hasMaterialTotal || !hasProcessTotal
-      })
+    // 统一处理：对所有需要计算的行进行计算
+    const idsToCalculate = allToolingIds.filter(id => {
+      const row = data.find((item: any) => String(item.id) === id)
+      if (!row) return false
+      // 如果数据库已有完整值且工时数据已加载，则不重复计算
+      const hasMaterialTotal = row.material_total !== null && row.material_total !== undefined && row.material_total !== 0
+      const hasProcessTotal = row.process_total !== null && row.process_total !== undefined && row.process_total !== 0
+      const hasWorkHoursData = workHoursAmountData && Object.keys(workHoursAmountData).length > 0
+      
+      // 如果两个都有值且工时数据已到，跳过
+      if (hasMaterialTotal && hasProcessTotal && hasWorkHoursData) return false
+      
+      // 如果有零件数据就可以计算材料总额
+      if (partsMapRef.current[id] && partsMapRef.current[id].length > 0) return true
+      
+      // 没有零件数据的行暂时跳过（等零件加载）
+      return false
+    })
 
-      if (idsToCalculate.length > 0) {
-        // 使用 requestAnimationFrame 避免阻塞渲染
-        requestAnimationFrame(() => {
-          idsToCalculate.forEach(id => syncLocalToolingTotals(id))
-        })
-      }
+    if (idsToCalculate.length > 0) {
+      console.log(`[Totals] 计算总额，行数: ${idsToCalculate.length}, 工时数据: ${workHoursAmountData ? Object.keys(workHoursAmountData).length : 0}`)
+      
+      // 使用 requestAnimationFrame 避免阻塞渲染
+      requestAnimationFrame(() => {
+        idsToCalculate.forEach(id => syncLocalToolingTotals(id))
+      })
     }
   }, [data, partsMap, workHoursAmountData, syncLocalToolingTotals])
   
