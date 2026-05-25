@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -533,23 +533,6 @@ const ExpandedSubTables: React.FC<{
   )
 })
 
-const normalizeProcessKey = (v: string) => String(v || '')
-  .replace(/\s+/g, '')
-  .replace(/^[0-9]+[.\-、:：]*/g, '')
-  .trim()
-  .toLowerCase()
-
-const buildManualStepToken = (step: string, index: number) => `__STEP__${index}__${normalizeProcessKey(step)}`
-
-const fmtHours = (v: any) => {
-  const n = Number(v || 0)
-  if (!Number.isFinite(n)) return '0'
-  const s = n.toFixed(2)
-  return s.replace(/\.?0+$/, '')
-}
-
-const emptySet = new Set<string>()
-
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
   const {
@@ -629,26 +612,10 @@ const ToolingInfoPage: React.FC = () => {
   const workHoursAggregateCacheRef = useRef<Record<string, WorkHoursAggregateCacheEntry>>({})
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
-  const processPriceCacheRef = useRef<Map<string, number>>(new Map())
-  const toolingTotalsCacheRef = useRef<Map<string, { material_total: number | null; process_total: number | null; ts: number }>>(new Map())
-  const processRouteCacheRef = useRef<Map<string, {
-    route: string
-    steps: string[]
-    completedQtyMap: Record<string, number>
-    hoursMap: Record<string, number>
-    workHoursCompleted: Set<string>
-    manualCompletedTokens: Set<string>
-    requiredQty: number
-    dbCompletedSteps: any[]
-    ts: number
-  }>>(new Map())
   const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     weightCacheRef.current.clear()
     priceCacheRef.current.clear()
-    processPriceCacheRef.current.clear()
-    toolingTotalsCacheRef.current.clear()
-    processRouteCacheRef.current.clear()
   }, [materials, partTypes])
   
   // 导入相关状态
@@ -858,22 +825,6 @@ const ToolingInfoPage: React.FC = () => {
       })
       return
     }
-    // 生成缓存key：基于零件数据的hash
-    const partsHash = meaningfulParts.map(p => `${p.id}|${p.part_inventory_number}|${p.process_amount}|${p.weight}|${p.material_id}|${p.part_quantity}|${workHoursAmountDataRef.current[String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase()] || 0}`).join(';')
-    const cacheKey = `${normalizedId}:${partsHash}`
-    
-    // 检查缓存（缓存有效期5秒）
-    const cached = toolingTotalsCacheRef.current.get(cacheKey)
-    const now = Date.now()
-    if (cached && (now - cached.ts < 5000)) {
-      applyToolingTotalsToRow(normalizedId, {
-        material_total: cached.material_total,
-        process_total: cached.process_total,
-        totals_updated_at: new Date().toISOString()
-      })
-      return
-    }
-    
     const materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
       const storedUnitWeight = Number(part?.weight || 0)
       const unitWeight = storedUnitWeight > 0
@@ -899,37 +850,12 @@ const ToolingInfoPage: React.FC = () => {
       const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
-
-    // 写入缓存
-    toolingTotalsCacheRef.current.set(cacheKey, { material_total: materialTotal, process_total: processTotal, ts: now })
-
     applyToolingTotalsToRow(normalizedId, {
       material_total: materialTotal,
       process_total: processTotal,
       totals_updated_at: new Date().toISOString()
     })
   }, [applyToolingTotalsToRow])
-
-  // 预加载工时数据：当子表展开时立即触发，不等防抖
-  useEffect(() => {
-    const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
-    if (expandedIds.length === 0) return
-
-    // 收集所有展开行的零件盘存号，用于预加载工时数据
-    const invsToPrefetch = new Set<string>()
-    expandedIds.forEach(id => {
-      const parts = partsMapRef.current[id] || []
-      parts.forEach((part: any) => {
-        const inv = String(part.part_inventory_number || part.inventory_number || '').trim().toUpperCase()
-        if (inv) invsToPrefetch.add(inv)
-      })
-    })
-
-    if (invsToPrefetch.size > 0) {
-      // 立即预取工时数据（不等待防抖）
-      fetchWorkHoursData(Array.from(invsToPrefetch))
-    }
-  }, [expandedRowKeys, expandedChildKeys, fetchWorkHoursData])
   const refreshToolingTotals = useCallback(async (toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId || normalizedId.startsWith('blank-')) return
@@ -1404,7 +1330,7 @@ const ToolingInfoPage: React.FC = () => {
             .filter((it: any) => sanitizeAlphaNumeric(it?.part_inventory_number).includes(keyword))
             .map((it: any) => String(it?.tooling_id || '').trim())
             .filter(Boolean)
-        )) as string[]
+        ))
         setInventoryMatchedToolingIds(matchedIds)
       } catch {
         if (!cancelled) {
@@ -1474,12 +1400,12 @@ const ToolingInfoPage: React.FC = () => {
           items
             .map((it: any) => String(it?.tooling_id || '').trim())
             .filter(Boolean)
-        )) as string[]
+        ))
         const drawings = Array.from(new Set(
           items
             .map((it: any) => sanitizeAlphaNumeric(it?.part_drawing_number))
             .filter((v: string) => v.includes(normalizedKeyword))
-        )).slice(0, 40) as string[]
+        )).slice(0, 40)
         setPartDrawingMatchedToolingIds(matchedIds)
         setPartDrawingOptions(drawings.map(v => ({ value: v, label: v })))
       } catch {
@@ -1715,45 +1641,13 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [data, partsMap, fetchWorkHoursData])
 
-  // 当展开/子表加载时，按需计算工装总额（带防抖，避免频繁重算）
-  const syncToolingTotalsDebouncedRef = useRef<{ timer: NodeJS.Timeout | null; pendingIds: Set<string> }>({ timer: null, pendingIds: new Set() })
-  
   useEffect(() => {
     const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
     if (expandedIds.length === 0) return
-
-    // 收集需要计算的ID
-    const idsToSync = expandedIds.filter(id => Object.prototype.hasOwnProperty.call(partsMap, id))
-    if (idsToSync.length === 0) return
-
-    // 添加到待处理队列
-    idsToSync.forEach(id => syncToolingTotalsDebouncedRef.current.pendingIds.add(id))
-
-    // 首次展开立即执行（0ms），后续变化使用50ms防抖
-    const hasNewIds = idsToSync.some(id => !syncToolingTotalsDebouncedRef.current.syncedIds?.has(id))
-    const debounceMs = hasNewIds ? 0 : 50
-
-    if (syncToolingTotalsDebouncedRef.current.timer) {
-      clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
-    }
-
-    syncToolingTotalsDebouncedRef.current.timer = setTimeout(() => {
-      const ids = Array.from(syncToolingTotalsDebouncedRef.current.pendingIds)
-      syncToolingTotalsDebouncedRef.current.pendingIds.clear()
-      // 记录已同步的ID
-      if (!syncToolingTotalsDebouncedRef.current.syncedIds) {
-        syncToolingTotalsDebouncedRef.current.syncedIds = new Set()
-      }
-      ids.forEach(id => syncToolingTotalsDebouncedRef.current.syncedIds.add(id))
-      ids.forEach(id => syncLocalToolingTotals(id))
-    }, debounceMs)
-
-    return () => {
-      if (syncToolingTotalsDebouncedRef.current.timer) {
-        clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
-        syncToolingTotalsDebouncedRef.current.timer = null
-      }
-    }
+    expandedIds.forEach((id) => {
+      if (!Object.prototype.hasOwnProperty.call(partsMap, id)) return
+      syncLocalToolingTotals(id)
+    })
   }, [workHoursAmountData, expandedRowKeys, expandedChildKeys, partsMap, syncLocalToolingTotals])
   
   // 监听工时提交广播，刷新工时数据
@@ -2827,47 +2721,6 @@ const ToolingInfoPage: React.FC = () => {
   const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     const WEIGHT_CACHE_LIMIT = 500
     const PRICE_CACHE_LIMIT = 500
-    const PROCESS_ROUTE_CACHE_LIMIT = 500
-
-    const getProcessRouteData = (rec: PartItem) => {
-      const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-      const currentRoute = String((rec as any).process_route || (processRoutes[keyCandidate] || ''))
-      const cacheKey = `${rec.id}|${currentRoute}|${rec.part_quantity}|${JSON.stringify((rec as any).completed_steps || [])}|${workHoursData[keyCandidate]?.join(',') || ''}`
-      
-      const cached = processRouteCacheRef.current.get(cacheKey)
-      if (cached && (Date.now() - cached.ts < 3000)) return cached
-      
-      const inventoryNo = keyCandidate
-      const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
-      const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
-      const requiredQty = Number(rec.part_quantity || 0)
-      const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
-      const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
-      const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
-      const workHoursForThisInv = workHoursData[inventoryNo] || []
-      const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
-      
-      const data = {
-        route: currentRoute,
-        steps,
-        completedQtyMap: processCompletedQtyMap,
-        hoursMap: processHoursMap,
-        workHoursCompleted,
-        manualCompletedTokens,
-        requiredQty,
-        dbCompletedSteps,
-        ts: Date.now()
-      }
-      
-      processRouteCacheRef.current.set(cacheKey, data)
-      if (processRouteCacheRef.current.size > PROCESS_ROUTE_CACHE_LIMIT) {
-        const k = processRouteCacheRef.current.keys().next().value
-        processRouteCacheRef.current.delete(k)
-      }
-      
-      return data
-    }
-    
     const getWeightCached = (rec: PartItem) => {
       const qty = Number(rec.part_quantity) || 0
       const storedUnitWeight = Number(rec.weight || 0)
@@ -2904,21 +2757,12 @@ const ToolingInfoPage: React.FC = () => {
       }
       return val
     }
-    const PROCESS_PRICE_CACHE_LIMIT = 1000
-    const getProcessPriceCached = (rec: PartItem) => {
-      const storedAmount = toNullableProcessAmount(rec.process_amount)
-      const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-      const key = `${rec.id}|${storedAmount}|${inventoryNo}`
-      const cached = processPriceCacheRef.current.get(key)
-      if (cached !== undefined) return cached
-      const sum = storedAmount !== null ? storedAmount : Number(workHoursAmountData[inventoryNo] || 0)
-      processPriceCacheRef.current.set(key, sum)
-      if (processPriceCacheRef.current.size > PROCESS_PRICE_CACHE_LIMIT) {
-        const k = processPriceCacheRef.current.keys().next().value
-        processPriceCacheRef.current.delete(k)
-      }
-      return sum
-    }
+    const normalizeProcessKey = (v: string) => String(v || '')
+      .replace(/\s+/g, '')
+      .replace(/^[0-9]+[.\-、:：]*/g, '')
+      .trim()
+      .toLowerCase()
+    const buildManualStepToken = (step: string, index: number) => `__STEP__${index}__${normalizeProcessKey(step)}`
     const resolveManualCompletedTokens = (steps: string[], completedStepsRaw: any[]) => {
       const savedValues = Array.isArray(completedStepsRaw)
         ? completedStepsRaw.map((x: any) => String(x || '').trim()).filter(Boolean)
@@ -2948,6 +2792,12 @@ const ToolingInfoPage: React.FC = () => {
       const n = Number(v || 0)
       if (!Number.isFinite(n)) return '0'
       const s = n.toFixed(3)
+      return s.replace(/\.?0+$/, '')
+    }
+    const fmtHours = (v: any) => {
+      const n = Number(v || 0)
+      if (!Number.isFinite(n)) return '0'
+      const s = n.toFixed(2)
       return s.replace(/\.?0+$/, '')
     }
     const getRouteProgressStatus = (rec: PartItem, routeText: string) => {
@@ -3255,7 +3105,9 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__process_price',
         width: 110,
         render: (_text: any, rec: PartItem) => {
-          const sum = getProcessPriceCached(rec)
+          const storedAmount = toNullableProcessAmount(rec.process_amount)
+          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          const sum = storedAmount !== null ? storedAmount : Number(workHoursAmountData[inventoryNo] || 0)
           return <span style={{ color: '#000000' }}>{Number.isFinite(sum) ? sum.toFixed(2) : '0.00'}</span>
         }
       },
@@ -3309,16 +3161,10 @@ const ToolingInfoPage: React.FC = () => {
           if (!currentRoute || Object.keys(processHoursMap).length === 0) {
             return <span style={{ color: '#999' }}>-</span>
           }
-          // 标准化工序名称：去除前缀序号、空格、转小写（与normalizeProcessKey保持一致）
-          const normalizeStep = (v: string) => String(v || '')
-            .replace(/\s+/g, '')
-            .replace(/^[0-9]+[.\-、:：]*/g, '')
-            .trim()
-            .toLowerCase()
           const steps = currentRoute.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
           let totalHours = 0
           steps.forEach(step => {
-            const key = normalizeStep(step)
+            const key = String(step || '').trim()
             const hours = Number(processHoursMap[key] || 0)
             if (Number.isFinite(hours)) totalHours += hours
           })
@@ -3332,23 +3178,52 @@ const ToolingInfoPage: React.FC = () => {
         width: 600,
         onCell: () => ({ className: 'process-route-cell', onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (_t: any, rec: PartItem) => {
-          const routeData = getProcessRouteData(rec)
+          const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          let currentRoute = String((rec as any).process_route || '')
+          if (!currentRoute && keyCandidate) {
+            currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
+          }
+          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+          const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
+          const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
+          const requiredQty = Number(rec.part_quantity || 0)
+          const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
+          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+          const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
+          const getStepCompletedQty = (step: string) => {
+            const key = normalizeProcessKey(step)
+            const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
+            if (!Number.isFinite(qty)) return 0
+            return qty
+          }
+          const getStepHours = (step: string) => {
+            const key = normalizeProcessKey(step)
+            const h = Number((processHoursMap as Record<string, number>)[key] || 0)
+            if (!Number.isFinite(h)) return 0
+            return h
+          }
+          // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
+          const workHoursForThisInv = workHoursData[inventoryNo] || []
+          const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
+
           const handleStepToggle = async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
             const stepToken = buildManualStepToken(step, index)
-            const newCompleted = new Set<string>(routeData.manualCompletedTokens)
+            const newCompleted = new Set<string>(manualCompletedTokens)
             if (checked) {
               newCompleted.add(stepToken)
             } else {
               newCompleted.delete(stepToken)
             }
+            // 保存到后端数据库
             const completedStepsArray = Array.from(newCompleted)
             const success = await savePartData(rec.id, { completed_steps: completedStepsArray })
             if (success) {
+              // 更新本地状态
               setPartsMap(prev => {
                 const newPartsMap = { ...prev }
                 Object.keys(newPartsMap).forEach(tid => {
-                  newPartsMap[tid] = newPartsMap[tid].map(part =>
+                  newPartsMap[tid] = newPartsMap[tid].map(part => 
                     part.id === rec.id ? { ...part, completed_steps: completedStepsArray } : part
                   )
                 })
@@ -3358,7 +3233,7 @@ const ToolingInfoPage: React.FC = () => {
                 const next = { ...prev }
                 const manualKeys = completedStepsArray
                   .map((x) => String(x || '').trim())
-                  .filter((k) => k && !routeData.workHoursCompleted.has(k.replace(/^__STEP__\d+__/, '')))
+                  .filter((k) => k && !workHoursCompleted.has(k.replace(/^__STEP__\d+__/, '')))
                 if (!manualKeys.includes(stepToken)) {
                   delete next[String(rec.id || '')]
                   return next
@@ -3373,45 +3248,43 @@ const ToolingInfoPage: React.FC = () => {
               })
             }
           }
-
-          const manualTokenSet = routeData.manualCompletedTokens.size > 0 ? routeData.manualCompletedTokens : emptySet
-
+          
+          const display = (val: string | undefined) => {
+            const route = String(val || '')
+            if (!route) return <span style={{ color: '#999' }}>-</span>
+            return (
+              <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                {steps.map((s, i) => {
+                  const stepDone = workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i))
+                  const stepCompletedQty = getStepCompletedQty(s)
+                  const stepHours = getStepHours(s)
+                  const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
+                  const stepInProgress = stepDone || stepCompletedQty > 0
+                  const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
+                  const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
+                  return (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={stepDone}
+                        onChange={(e) => handleStepToggle(s, i, e.target.checked)}
+                        style={{ cursor: 'pointer', margin: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
+                      {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+                    </span>
+                  )
+                })}
+              </span>
+            )
+          }
           return (
             <EditableCell
-              value={routeData.route}
+              value={currentRoute}
               record={rec}
               dataIndex="process_route"
-              renderDisplay={() => {
-                if (!routeData.route) return <span style={{ color: '#999' }}>-</span>
-                return (
-                  <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                    {routeData.steps.map((s, i) => {
-                      const stepKey = normalizeProcessKey(s)
-                      const stepToken = buildManualStepToken(s, i)
-                      const stepDone = Array.from(routeData.workHoursCompleted).includes(stepKey) || manualTokenSet.has(stepToken)
-                      const stepCompletedQty = Number(routeData.completedQtyMap[stepKey] || 0)
-                      const stepHours = Number(routeData.hoursMap[stepKey] || 0)
-                      const stepDoneByQty = Number.isFinite(routeData.requiredQty) && routeData.requiredQty > 0 && stepCompletedQty >= routeData.requiredQty
-                      const stepInProgress = stepDone || stepCompletedQty > 0
-                      const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
-                      const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
-                      return (
-                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <input
-                            type="checkbox"
-                            checked={stepDone}
-                            onChange={(e) => handleStepToggle(s, i, e.target.checked)}
-                            style={{ cursor: 'pointer', margin: 0 }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                          {i < routeData.steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
-                        </span>
-                      )
-                    })}
-                  </span>
-                )
-              }}
+              renderDisplay={display}
               onSave={async (id: string, _key: keyof PartItem, value: string) => {
                 try {
                   setPartsMap(prev => {
