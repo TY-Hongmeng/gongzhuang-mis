@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3310,20 +3310,22 @@ const ToolingInfoPage: React.FC = () => {
             requiredQty,
           } = routeData
 
-          // 使用useMemo缓存步骤计算结果，避免每次render重复计算
-          const stepsMemo = useMemo(() => {
-            return steps.map((s, i) => ({
+          // 预计算步骤数据（使用普通变量，避免在render中使用Hooks）
+          const stepsData = steps.map((s, i) => {
+            const stepKey = normalizeProcessKey(s)
+            const stepToken = buildManualStepToken(s, i)
+            return {
               s, i,
-              stepKey: normalizeProcessKey(s),
-              stepToken: buildManualStepToken(s, i),
-              stepDone: workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i)),
-              stepCompletedQty: Number((processCompletedQtyMap as Record<string, number>)[normalizeProcessKey(s)] || 0),
-              stepHours: Number((processHoursMap as Record<string, number>)[normalizeProcessKey(s)] || 0),
-            }))
-          }, [steps, workHoursCompleted, manualCompletedTokens, processCompletedQtyMap, processHoursMap])
+              stepKey,
+              stepToken,
+              stepDone: workHoursCompleted.has(stepKey) || manualCompletedTokens.has(stepToken),
+              stepCompletedQty: Number((processCompletedQtyMap as Record<string, number>)[stepKey] || 0),
+              stepHours: Number((processHoursMap as Record<string, number>)[stepKey] || 0),
+            }
+          })
 
-          // 使用useCallback稳定化toggle函数引用，避免子组件不必要的重渲染
-          const handleStepToggle = useCallback(async (step: string, index: number, checked: boolean) => {
+          // 定义toggle函数（普通函数，避免在render中使用Hooks）
+          const handleStepToggle = async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
             const stepToken = buildManualStepToken(step, index)
             const newCompleted = new Set<string>(manualCompletedTokens)
@@ -3364,14 +3366,14 @@ const ToolingInfoPage: React.FC = () => {
                 return next
               })
             }
-          }, [rec.id, manualCompletedTokens, workHoursCompleted])
+          }
 
           const display = (val: string | undefined) => {
             const route = String(val || '')
             if (!route) return <span style={{ color: '#999' }}>-</span>
             return (
               <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                {stepsMemo.map(({ s, i, stepDone, stepCompletedQty, stepHours }) => {
+                {stepsData.map(({ s, i, stepDone, stepCompletedQty, stepHours }) => {
                   const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
                   const stepInProgress = stepDone || stepCompletedQty > 0
                   const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
@@ -3386,7 +3388,7 @@ const ToolingInfoPage: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                       />
                       <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                      {i < stepsMemo.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+                      {i < stepsData.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
                     </span>
                   )
                 })}
