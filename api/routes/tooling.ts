@@ -1125,7 +1125,8 @@ router.post('/:id/parts', async (req, res) => {
           });
           let s = 1;
           while (used.has(s)) s++;
-          const newInventoryNumber = `${prefix}${String(s).padStart(3, '0')}`;
+          const width = Math.max(2, String(s).length);
+          const newInventoryNumber = `${prefix}${String(s).padStart(width, '0')}`;
           payload.part_inventory_number = newInventoryNumber;
           console.log(`自动生成盘存编号: ${newInventoryNumber} (序号: ${s})`);
         }
