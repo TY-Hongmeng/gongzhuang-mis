@@ -533,6 +533,94 @@ const ExpandedSubTables: React.FC<{
   )
 })
 
+interface ProcessRouteCellProps {
+  record: PartItem
+  routeData: {
+    route: string
+    steps: string[]
+    completedQtyMap: Record<string, number>
+    hoursMap: Record<string, number>
+    workHoursCompleted: Set<string>
+    manualCompletedTokens: Set<string>
+    requiredQty: number
+  }
+  onSave: (id: string, key: keyof PartItem, value: string) => Promise<void>
+  onStepToggle: (step: string, index: number, checked: boolean) => Promise<void>
+}
+
+const ProcessRouteCell = React.memo(({ record, routeData, onSave, onStepToggle }: ProcessRouteCellProps) => {
+  const {
+    route: currentRoute,
+    steps,
+    completedQtyMap: processCompletedQtyMap,
+    hoursMap: processHoursMap,
+    workHoursCompleted,
+    manualCompletedTokens,
+    requiredQty,
+  } = routeData
+
+  const stepsData = useMemo(() => {
+    return steps.map((s, i) => {
+      const stepKey = normalizeProcessKey(s)
+      const stepToken = buildManualStepToken(s, i)
+      return {
+        s, i,
+        stepKey,
+        stepToken,
+        stepDone: workHoursCompleted.has(stepKey) || manualCompletedTokens.has(stepToken),
+        stepCompletedQty: Number(processCompletedQtyMap[stepKey] || 0),
+        stepHours: Number(processHoursMap[stepKey] || 0),
+      }
+    })
+  }, [steps, workHoursCompleted, manualCompletedTokens, processCompletedQtyMap, processHoursMap])
+
+  const display = () => {
+    if (!currentRoute) return <span style={{ color: '#999' }}>-</span>
+    return (
+      <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+        {stepsData.map(({ s, i, stepDone, stepCompletedQty, stepHours }) => {
+          const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
+          const stepInProgress = stepDone || stepCompletedQty > 0
+          const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
+          const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
+          return (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <input
+                type="checkbox"
+                checked={stepDone}
+                onChange={(e) => onStepToggle(s, i, e.target.checked)}
+                style={{ cursor: 'pointer', margin: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
+              {i < stepsData.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+            </span>
+          )
+        })}
+      </span>
+    )
+  }
+
+  return (
+    <EditableCell
+      value={currentRoute}
+      record={record}
+      dataIndex="process_route"
+      renderDisplay={display}
+      onSave={async (id: string, _key: keyof PartItem, value: string) => {
+        await onSave(id, _key, value)
+      }}
+    />
+  )
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.record.id === nextProps.record.id &&
+    prevProps.record.process_route === nextProps.record.process_route &&
+    prevProps.record.part_quantity === nextProps.record.part_quantity &&
+    prevProps.routeData === nextProps.routeData
+  )
+})
+
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
   const {
@@ -3298,47 +3386,19 @@ const ToolingInfoPage: React.FC = () => {
         width: 600,
         onCell: () => ({ className: 'process-route-cell', onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (_t: any, rec: PartItem) => {
-          // 使用缓存获取工艺路线数据（3秒缓存）
           const routeData = getProcessRouteData(rec)
-          const {
-            route: currentRoute,
-            steps,
-            completedQtyMap: processCompletedQtyMap,
-            hoursMap: processHoursMap,
-            workHoursCompleted,
-            manualCompletedTokens,
-            requiredQty,
-          } = routeData
-
-          // 预计算步骤数据（使用普通变量，避免在render中使用Hooks）
-          const stepsData = steps.map((s, i) => {
-            const stepKey = normalizeProcessKey(s)
-            const stepToken = buildManualStepToken(s, i)
-            return {
-              s, i,
-              stepKey,
-              stepToken,
-              stepDone: workHoursCompleted.has(stepKey) || manualCompletedTokens.has(stepToken),
-              stepCompletedQty: Number((processCompletedQtyMap as Record<string, number>)[stepKey] || 0),
-              stepHours: Number((processHoursMap as Record<string, number>)[stepKey] || 0),
-            }
-          })
-
-          // 定义toggle函数（普通函数，避免在render中使用Hooks）
           const handleStepToggle = async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
             const stepToken = buildManualStepToken(step, index)
-            const newCompleted = new Set<string>(manualCompletedTokens)
+            const newCompleted = new Set<string>(routeData.manualCompletedTokens)
             if (checked) {
               newCompleted.add(stepToken)
             } else {
               newCompleted.delete(stepToken)
             }
-            // 保存到后端数据库
             const completedStepsArray = Array.from(newCompleted)
             const success = await savePartData(rec.id, { completed_steps: completedStepsArray })
             if (success) {
-              // 更新本地状态
               setPartsMap(prev => {
                 const newPartsMap = { ...prev }
                 Object.keys(newPartsMap).forEach(tid => {
@@ -3352,7 +3412,7 @@ const ToolingInfoPage: React.FC = () => {
                 const next = { ...prev }
                 const manualKeys = completedStepsArray
                   .map((x) => String(x || '').trim())
-                  .filter((k) => k && !workHoursCompleted.has(k.replace(/^__STEP__\d+__/, '')))
+                  .filter((k) => k && !routeData.workHoursCompleted.has(k.replace(/^__STEP__\d+__/, '')))
                 if (!manualKeys.includes(stepToken)) {
                   delete next[String(rec.id || '')]
                   return next
@@ -3368,39 +3428,11 @@ const ToolingInfoPage: React.FC = () => {
             }
           }
 
-          const display = (val: string | undefined) => {
-            const route = String(val || '')
-            if (!route) return <span style={{ color: '#999' }}>-</span>
-            return (
-              <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                {stepsData.map(({ s, i, stepDone, stepCompletedQty, stepHours }) => {
-                  const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
-                  const stepInProgress = stepDone || stepCompletedQty > 0
-                  const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
-                  const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
-                  return (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <input
-                        type="checkbox"
-                        checked={stepDone}
-                        onChange={(e) => handleStepToggle(s, i, e.target.checked)}
-                        style={{ cursor: 'pointer', margin: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                      {i < stepsData.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
-                    </span>
-                  )
-                })}
-              </span>
-            )
-          }
           return (
-            <EditableCell
-              value={currentRoute}
+            <ProcessRouteCell
               record={rec}
-              dataIndex="process_route"
-              renderDisplay={display}
+              routeData={routeData}
+              onStepToggle={handleStepToggle}
               onSave={async (id: string, _key: keyof PartItem, value: string) => {
                 try {
                   setPartsMap(prev => {
