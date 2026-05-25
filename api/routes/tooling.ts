@@ -194,94 +194,145 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { ma
   console.log(`[refreshToolingStoredAmounts] 开始处理工具: ${toolingId}`)
   console.log(`[refreshToolingStoredAmounts] 收到的overrides:`, JSON.stringify(overrides))
 
-  // 如果前端传入了完整的覆盖值，直接使用（不重新计算）
+  // 如果前端传入了完整的覆盖值，直接使用（不重新计算，不查询Supabase）
   const hasMaterialOverride = overrides && typeof overrides.material_total === 'number' && Number.isFinite(overrides.material_total)
   const hasProcessOverride = overrides && typeof overrides.process_total === 'number' && Number.isFinite(overrides.process_total)
 
   console.log(`[refreshToolingStoredAmounts] hasMaterialOverride: ${hasMaterialOverride}, hasProcessOverride: ${hasProcessOverride}`)
-  console.log(`[refreshToolingStoredAmounts] 将使用的值 - materialTotal: ${hasMaterialOverride ? overrides!.material_total : '需要计算'}, processTotal: ${hasProcessOverride ? overrides!.process_total : '需要计算'}`)
 
+  // ✅ 关键优化：如果前端传了两个值，直接保存，不查询任何表（避免 ERR_INSUFFICIENT_RESOURCES）
+  if (hasMaterialOverride && hasProcessOverride) {
+    const materialTotal = overrides!.material_total!
+    const processTotal = overrides!.process_total!
+    const updatedAt = new Date().toISOString()
+
+    console.log(`[refreshToolingStoredAmounts] ✅ 使用前端传值，跳过Supabase查询 - material: ${materialTotal}, process: ${processTotal}`)
+
+    if (process.env.SUPABASE_DB_URL || '') {
+      await query(
+        'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
+        [materialTotal, processTotal, updatedAt, toolingId]
+      )
+      console.log(`[refreshToolingStoredAmounts] ✅ 已通过PG直接保存`)
+    } else {
+      const { error: updateError } = await supabase
+        .from('tooling_info')
+        .update({ material_total: materialTotal, process_total: processTotal, totals_updated_at: updatedAt })
+        .eq('id', toolingId)
+      if (updateError) throw new Error(updateError.message)
+      console.log(`[refreshToolingStoredAmounts] ✅ 已通过Supabase直接保存`)
+    }
+
+    return {
+      material_total: materialTotal,
+      process_total: processTotal,
+      totals_updated_at: updatedAt,
+      part_process_amounts: {}
+    }
+  }
+
+  // 只有缺少值时才进行计算和查询
   let materialTotal: number | null = hasMaterialOverride ? overrides!.material_total! : null
   let processTotal: number | null = hasProcessOverride ? overrides!.process_total! : null
   const updatedAt = new Date().toISOString()
   const partProcessAmountMap: Record<string, number> = {}
 
-  // 只有当缺少对应值时才进行计算
-  if (!hasMaterialOverride || !hasProcessOverride) {
-    console.log(`[refreshToolingStoredAmounts] 需要进行计算（material: ${!hasMaterialOverride}, process: ${!hasProcessOverride}）`)
-    const { data: parts, error: partsError } = await supabase
-      .from('parts_info')
-      .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
-      .eq('tooling_id', toolingId)
-    if (partsError) throw new Error(partsError.message)
+  console.log(`[refreshToolingStoredAmounts] 需要计算部分值 - material: ${!hasMaterialOverride}, process: ${!hasProcessOverride}`)
 
-    const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
-    const meaningfulParts = validParts.filter((part: any) => {
-      const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
-      const name = String(part?.part_name || '').trim()
-      const qty = Number(part?.part_quantity || 0)
-      const weight = Number(part?.weight || 0)
-      return !!(inv || name || qty > 0 || weight > 0)
-    })
+  const { data: parts, error: partsError } = await supabase
+    .from('parts_info')
+    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
+    .eq('tooling_id', toolingId)
+  if (partsError) throw new Error(partsError.message)
 
-    if (meaningfulParts.length > 0) {
-      // 只在需要时计算 materialTotal
-      if (!hasMaterialOverride) {
-        const materialIds = Array.from(new Set(
-          meaningfulParts
-            .map((part: any) => String(part?.material_id || '').trim())
-            .filter(Boolean)
-        ))
-        const materialUnitPriceMap = new Map<string, number>()
-        for (const materialChunk of chunkItems(materialIds, 120)) {
-          if (materialChunk.length === 0) continue
-          const { data: materials } = await supabase
-            .from('materials')
-            .select('id,unit_price')
-            .in('id', materialChunk)
-          ;(materials || []).forEach((material: any) => {
-            const materialId = String(material?.id || '').trim()
-            if (!materialId) return
-            const unitPrice = Number(material?.unit_price || 0)
-            materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
-          })
-        }
-        materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
-          const qty = Number(part?.part_quantity || 0)
-          const unitWeight = Number(part?.weight || 0)
-          const materialId = String(part?.material_id || '').trim()
-          const unitPrice = materialId
-            ? Number(materialUnitPriceMap.get(materialId) || 0)
-            : 0
-          const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
-            ? qty * unitWeight * unitPrice
-            : 0
-          return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
-        }, 0)
-      }
+  const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+  const meaningfulParts = validParts.filter((part: any) => {
+    const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
+    const name = String(part?.part_name || '').trim()
+    const qty = Number(part?.part_quantity || 0)
+    const weight = Number(part?.weight || 0)
+    return !!(inv || name || qty > 0 || weight > 0)
+  })
 
-      // 只在需要时计算 processTotal
-      if (!hasProcessOverride) {
-        const invList = meaningfulParts
-          .map((part: any) => normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number))
+  if (meaningfulParts.length > 0) {
+    // 只在需要时计算 materialTotal
+    if (!hasMaterialOverride) {
+      const materialIds = Array.from(new Set(
+        meaningfulParts
+          .map((part: any) => String(part?.material_id || '').trim())
           .filter(Boolean)
-        const amountByInv = await computeProcessAmountByInvMap(invList)
-        meaningfulParts.forEach((part: any) => {
-          const id = String(part?.id || '')
-          const inv = normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number)
-          if (!id) return
-          partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+      ))
+      const materialUnitPriceMap = new Map<string, number>()
+      for (const materialChunk of chunkItems(materialIds, 120)) {
+        if (materialChunk.length === 0) continue
+        const { data: materials } = await supabase
+          .from('materials')
+          .select('id,unit_price')
+          .in('id', materialChunk)
+        ;(materials || []).forEach((material: any) => {
+          const materialId = String(material?.id || '').trim()
+          if (!materialId) return
+          const unitPrice = Number(material?.unit_price || 0)
+          materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
         })
-        processTotal = meaningfulParts.reduce((sum: number, part: any) => {
-          const id = String(part?.id || '')
-          return sum + Number(partProcessAmountMap[id] || 0)
-        }, 0)
       }
-      
-      // 更新零件的 process_amount（只在需要时）
-      if (!hasProcessOverride && process.env.SUPABASE_DB_URL || '') {
-        // ... 保持原有逻辑 ...
+      materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+        const qty = Number(part?.part_quantity || 0)
+        const unitWeight = Number(part?.weight || 0)
+        const materialId = String(part?.material_id || '').trim()
+        const unitPrice = materialId
+          ? Number(materialUnitPriceMap.get(materialId) || 0)
+          : 0
+        const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
+          ? qty * unitWeight * unitPrice
+          : 0
+        return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
+      }, 0)
+    }
+
+    // 只在需要时计算 processTotal
+    if (!hasProcessOverride) {
+      const invList = meaningfulParts
+        .map((part: any) => normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number))
+        .filter(Boolean)
+      const amountByInv = await computeProcessAmountByInvMap(invList)
+      meaningfulParts.forEach((part: any) => {
+        const id = String(part?.id || '')
+        const inv = normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number)
+        if (!id) return
+        partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+      })
+      processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+        const id = String(part?.id || '')
+        return sum + Number(partProcessAmountMap[id] || 0)
+      }, 0)
+    }
+
+    // 更新零件的 process_amount（只在需要时）
+    if (!hasProcessOverride && (process.env.SUPABASE_DB_URL || '')) {
+      for (const part of validParts) {
+        const partId = String(part?.id || '').trim()
+        if (!partId) continue
+        const partAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
+          ? Number(partProcessAmountMap[partId] || 0)
+          : null
+        await query(
+          'UPDATE parts_info SET process_amount = $1, amounts_updated_at = $2::timestamptz WHERE id = $3',
+          [partAmount, updatedAt, partId]
+        )
       }
+    } else if (!hasProcessOverride) {
+      await Promise.all(validParts.map((part: any) => {
+        const partId = String(part?.id || '').trim()
+        if (!partId) return Promise.resolve(null)
+        const partAmount = Object.prototype.hasOwnProperty.call(partProcessAmountMap, partId)
+          ? Number(partProcessAmountMap[partId] || 0)
+          : null
+        return supabase
+          .from('parts_info')
+          .update({ process_amount: partAmount, amounts_updated_at: updatedAt })
+          .eq('id', partId)
+      }))
     }
   }
 
