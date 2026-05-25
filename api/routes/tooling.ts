@@ -190,18 +190,25 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { ma
   await ensurePartAmountColumns()
   const toolingId = String(toolingIdInput || '').trim()
   if (!toolingId) throw new Error('缺少工装ID')
-  
+
+  console.log(`[refreshToolingStoredAmounts] 开始处理工具: ${toolingId}`)
+  console.log(`[refreshToolingStoredAmounts] 收到的overrides:`, JSON.stringify(overrides))
+
   // 如果前端传入了完整的覆盖值，直接使用（不重新计算）
   const hasMaterialOverride = overrides && typeof overrides.material_total === 'number' && Number.isFinite(overrides.material_total)
   const hasProcessOverride = overrides && typeof overrides.process_total === 'number' && Number.isFinite(overrides.process_total)
-  
+
+  console.log(`[refreshToolingStoredAmounts] hasMaterialOverride: ${hasMaterialOverride}, hasProcessOverride: ${hasProcessOverride}`)
+  console.log(`[refreshToolingStoredAmounts] 将使用的值 - materialTotal: ${hasMaterialOverride ? overrides!.material_total : '需要计算'}, processTotal: ${hasProcessOverride ? overrides!.process_total : '需要计算'}`)
+
   let materialTotal: number | null = hasMaterialOverride ? overrides!.material_total! : null
   let processTotal: number | null = hasProcessOverride ? overrides!.process_total! : null
   const updatedAt = new Date().toISOString()
   const partProcessAmountMap: Record<string, number> = {}
-  
+
   // 只有当缺少对应值时才进行计算
   if (!hasMaterialOverride || !hasProcessOverride) {
+    console.log(`[refreshToolingStoredAmounts] 需要进行计算（material: ${!hasMaterialOverride}, process: ${!hasProcessOverride}）`)
     const { data: parts, error: partsError } = await supabase
       .from('parts_info')
       .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
@@ -294,6 +301,7 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { ma
       'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
       [materialTotal, processTotal, updatedAt, toolingId]
     )
+    console.log(`[refreshToolingStoredAmounts] ✅ 已保存到PG数据库 - material_total: ${materialTotal}, process_total: ${processTotal}`)
   } else {
     await Promise.all(validParts.map((part: any) => {
       const partId = String(part?.id || '').trim()
@@ -311,7 +319,10 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { ma
       .update({ material_total: materialTotal, process_total: processTotal, totals_updated_at: updatedAt })
       .eq('id', toolingId)
     if (updateError) throw new Error(updateError.message)
+    console.log(`[refreshToolingStoredAmounts] ✅ 已保存到Supabase - material_total: ${materialTotal}, process_total: ${processTotal}`)
   }
+
+  console.log(`[refreshToolingStoredAmounts] 返回值: material_total=${materialTotal}, process_total=${processTotal}`)
 
   return {
     material_total: materialTotal,

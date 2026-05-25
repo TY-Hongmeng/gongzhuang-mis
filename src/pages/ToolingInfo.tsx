@@ -1677,11 +1677,11 @@ const ToolingInfoPage: React.FC = () => {
       if (!row) return false
 
       // 核心原则：数据库有值就直接用，不重复计算！
-      // 注意：JavaScript 中 typeof null === 'object'，需要特殊处理
-      const materialVal = row.material_total
-      const processVal = row.process_total
-      const materialFromDB = materialVal !== null && materialVal !== undefined && materialVal !== '' && !Number.isNaN(Number(materialVal))
-      const processFromDB = processVal !== null && processVal !== undefined && processVal !== '' && !Number.isNaN(Number(processVal))
+      // 使用 JSON.stringify 来准确判断 null（避免 typeof null === 'object' 的陷阱）
+      const materialStr = JSON.stringify(row.material_total)
+      const processStr = JSON.stringify(row.process_total)
+      const materialFromDB = materialStr !== 'null' && materialStr !== 'undefined' && materialStr !== '""'
+      const processFromDB = processStr !== 'null' && processStr !== 'undefined' && processStr !== '""'
 
       // 如果两个都有有效值（即使是0），直接使用数据库值，不重复计算
       if (materialFromDB && processFromDB) {
