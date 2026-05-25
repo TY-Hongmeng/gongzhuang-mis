@@ -549,70 +549,6 @@ const fmtHours = (v: any) => {
 }
 
 const emptySet = new Set<string>()
-const emptySetRef = { current: emptySet }
-
-interface ProcessRouteCellProps {
-  record: PartItem
-  route: string
-  steps: string[]
-  processCompletedQtyMap: Record<string, number>
-  processHoursMap: Record<string, number>
-  workHoursCompletedKeys: string[]
-  manualCompletedTokens: string[]
-  requiredQty: number
-  onSave: (id: string, key: keyof PartItem, value: string) => Promise<void>
-  onStepToggle: (step: string, index: number, checked: boolean) => Promise<void>
-}
-
-const ProcessRouteCell = React.memo(({ record, route, steps, processCompletedQtyMap, processHoursMap, workHoursCompletedKeys, manualCompletedTokens, requiredQty, onSave, onStepToggle }: ProcessRouteCellProps) => {
-  const manualTokenSet = manualCompletedTokens.length > 0 ? new Set(manualCompletedTokens) : emptySetRef.current
-
-  return (
-    <EditableCell
-      value={route}
-      record={record}
-      dataIndex="process_route"
-      renderDisplay={() => {
-        if (!route) return <span style={{ color: '#999' }}>-</span>
-        return (
-          <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-            {steps.map((s, i) => {
-              const stepKey = normalizeProcessKey(s)
-              const stepToken = buildManualStepToken(s, i)
-              const stepDone = workHoursCompletedKeys.includes(stepKey) || manualTokenSet.has(stepToken)
-              const stepCompletedQty = Number(processCompletedQtyMap[stepKey] || 0)
-              const stepHours = Number(processHoursMap[stepKey] || 0)
-              const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
-              const stepInProgress = stepDone || stepCompletedQty > 0
-              const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
-              const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
-              return (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={stepDone}
-                    onChange={(e) => onStepToggle(s, i, e.target.checked)}
-                    style={{ cursor: 'pointer', margin: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                  {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
-                </span>
-              )
-            })}
-          </span>
-        )
-      }}
-      onSave={onSave}
-    />
-  )
-}, (prevProps, nextProps) => {
-  return prevProps.record.id === nextProps.record.id &&
-    prevProps.route === nextProps.route &&
-    prevProps.requiredQty === nextProps.requiredQty &&
-    prevProps.workHoursCompletedKeys === nextProps.workHoursCompletedKeys &&
-    prevProps.manualCompletedTokens === nextProps.manualCompletedTokens
-})
 
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
@@ -3438,17 +3374,44 @@ const ToolingInfoPage: React.FC = () => {
             }
           }
 
+          const manualTokenSet = routeData.manualCompletedTokens.size > 0 ? routeData.manualCompletedTokens : emptySet
+
           return (
-            <ProcessRouteCell
+            <EditableCell
+              value={routeData.route}
               record={rec}
-              route={routeData.route}
-              steps={routeData.steps}
-              processCompletedQtyMap={routeData.completedQtyMap}
-              processHoursMap={routeData.hoursMap}
-              workHoursCompletedKeys={Array.from(routeData.workHoursCompleted)}
-              manualCompletedTokens={Array.from(routeData.manualCompletedTokens)}
-              requiredQty={routeData.requiredQty}
-              onStepToggle={handleStepToggle}
+              dataIndex="process_route"
+              renderDisplay={() => {
+                if (!routeData.route) return <span style={{ color: '#999' }}>-</span>
+                return (
+                  <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                    {routeData.steps.map((s, i) => {
+                      const stepKey = normalizeProcessKey(s)
+                      const stepToken = buildManualStepToken(s, i)
+                      const stepDone = Array.from(routeData.workHoursCompleted).includes(stepKey) || manualTokenSet.has(stepToken)
+                      const stepCompletedQty = Number(routeData.completedQtyMap[stepKey] || 0)
+                      const stepHours = Number(routeData.hoursMap[stepKey] || 0)
+                      const stepDoneByQty = Number.isFinite(routeData.requiredQty) && routeData.requiredQty > 0 && stepCompletedQty >= routeData.requiredQty
+                      const stepInProgress = stepDone || stepCompletedQty > 0
+                      const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
+                      const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
+                      return (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <input
+                            type="checkbox"
+                            checked={stepDone}
+                            onChange={(e) => handleStepToggle(s, i, e.target.checked)}
+                            style={{ cursor: 'pointer', margin: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
+                          {i < routeData.steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+                        </span>
+                      )
+                    })}
+                  </span>
+                )
+              }}
               onSave={async (id: string, _key: keyof PartItem, value: string) => {
                 try {
                   setPartsMap(prev => {
