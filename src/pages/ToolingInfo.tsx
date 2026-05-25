@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1642,19 +1642,23 @@ const ToolingInfoPage: React.FC = () => {
   }, [data, partsMap, fetchWorkHoursData])
 
   useEffect(() => {
-    // 优化：不再每次页面加载都重新计算总额
-    // 数据库已经存储了 material_total 和 process_total，直接使用即可
-    // 只在以下情况才需要重新计算：
-    // 1. 工时数据变化（workHoursAmountData 更新）
-    // 2. 零件数据变化（partsMap 更新且该行之前没有总额）
+    // 智能总额计算策略：
+    // 1. 数据库已有值的行 → 直接显示（不重复计算）
+    // 2. 数据库值为 null 且有零件数据的行 → 异步补全
+    // 3. 工时数据变化 → 只刷新受影响的行
+
+    const allToolingIds = data
+      .filter(item => !String(item.id || '').startsWith('blank-'))
+      .map(item => String(item.id || ''))
+
+    if (allToolingIds.length === 0) return
 
     if (workHoursAmountData && Object.keys(workHoursAmountData).length > 0) {
-      // 工时数据到达时，只对有工时数据的行刷新加工总额
+      // 场景3: 工时数据变化 - 局部刷新
       const invsWithHours = Object.keys(workHoursAmountData)
       data.forEach((item: any) => {
         const id = String(item.id || '')
         if (id.startsWith('blank-')) return
-        // 检查该行是否有零件使用了这些盘存号
         const parts = partsMapRef.current[id] || []
         const hasMatchingPart = parts.some((p: any) => {
           const inv = String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase()
@@ -1664,6 +1668,24 @@ const ToolingInfoPage: React.FC = () => {
           syncLocalToolingTotals(id)
         }
       })
+    } else {
+      // 场景1+2: 初始加载 - 只补全缺失值（使用防抖避免卡顿）
+      const idsToCalculate = allToolingIds.filter(id => {
+        const row = data.find((item: any) => String(item.id) === id)
+        if (!row) return false
+        if (!partsMapRef.current[id]) return false
+        // 只对数据库中值为 null 的行进行计算
+        const hasMaterialTotal = row.material_total !== null && row.material_total !== undefined
+        const hasProcessTotal = row.process_total !== null && row.process_total !== undefined
+        return !hasMaterialTotal || !hasProcessTotal
+      })
+
+      if (idsToCalculate.length > 0) {
+        // 使用 requestAnimationFrame 避免阻塞渲染
+        requestAnimationFrame(() => {
+          idsToCalculate.forEach(id => syncLocalToolingTotals(id))
+        })
+      }
     }
   }, [data, partsMap, workHoursAmountData, syncLocalToolingTotals])
   
