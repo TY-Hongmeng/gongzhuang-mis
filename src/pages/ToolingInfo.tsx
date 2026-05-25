@@ -614,14 +614,12 @@ const ToolingInfoPage: React.FC = () => {
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   const processPriceCacheRef = useRef<Map<string, number>>(new Map())
   const toolingTotalsCacheRef = useRef<Map<string, { material_total: number | null; process_total: number | null; ts: number }>>(new Map())
-  const processRouteDisplayCacheRef = useRef<Map<string, React.ReactNode>>(new Map())
   const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     weightCacheRef.current.clear()
     priceCacheRef.current.clear()
     processPriceCacheRef.current.clear()
     toolingTotalsCacheRef.current.clear()
-    processRouteDisplayCacheRef.current.clear()
   }, [materials, partTypes])
   
   // 导入相关状态
@@ -813,18 +811,6 @@ const ToolingInfoPage: React.FC = () => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
     const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
-    
-    // 生成数据指纹用于缓存校验（基于零件ID、金额、数量等关键字段）
-    const dataFingerprint = parts.map((p: any) => 
-      `${p.id}|${p.weight}|${p.total_price}|${p.process_amount}|${p.part_quantity}|${p.material_id}`
-    ).join(';')
-    
-    // 检查缓存是否有效（数据未变化则直接返回）
-    const cached = toolingTotalsCacheRef.current.get(normalizedId)
-    if (cached && cached.ts === Date.now() && cached._fp === dataFingerprint) {
-      return
-    }
-    
     const meaningfulParts = parts.filter((part: any) => {
       return [
         part?.part_inventory_number,
@@ -836,8 +822,6 @@ const ToolingInfoPage: React.FC = () => {
       ].some((v) => String(v ?? '').trim() !== '' && String(v ?? '').trim() !== '0')
     })
     if (meaningfulParts.length === 0) {
-      const emptyResult = { material_total: null, process_total: null, ts: Date.now(), _fp: '' }
-      toolingTotalsCacheRef.current.set(normalizedId, emptyResult as any)
       applyToolingTotalsToRow(normalizedId, {
         material_total: null,
         process_total: null,
@@ -845,6 +829,22 @@ const ToolingInfoPage: React.FC = () => {
       })
       return
     }
+    // 生成缓存key：基于零件数据的hash
+    const partsHash = meaningfulParts.map(p => `${p.id}|${p.part_inventory_number}|${p.process_amount}|${p.weight}|${p.material_id}|${p.part_quantity}|${workHoursAmountDataRef.current[String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase()] || 0}`).join(';')
+    const cacheKey = `${normalizedId}:${partsHash}`
+    
+    // 检查缓存（缓存有效期5秒）
+    const cached = toolingTotalsCacheRef.current.get(cacheKey)
+    const now = Date.now()
+    if (cached && (now - cached.ts < 5000)) {
+      applyToolingTotalsToRow(normalizedId, {
+        material_total: cached.material_total,
+        process_total: cached.process_total,
+        totals_updated_at: new Date().toISOString()
+      })
+      return
+    }
+    
     const materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
       const storedUnitWeight = Number(part?.weight || 0)
       const unitWeight = storedUnitWeight > 0
@@ -871,9 +871,8 @@ const ToolingInfoPage: React.FC = () => {
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
     
-    // 缓存结果
-    const result = { material_total: materialTotal, process_total: processTotal, ts: Date.now(), _fp: dataFingerprint }
-    toolingTotalsCacheRef.current.set(normalizedId, result as any)
+    // 写入缓存
+    toolingTotalsCacheRef.current.set(cacheKey, { material_total: materialTotal, process_total: processTotal, ts: now })
     
     applyToolingTotalsToRow(normalizedId, {
       material_total: materialTotal,
@@ -1770,21 +1769,6 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     workHoursDataRef.current = workHoursData
   }, [workHoursData])
-  
-  const workHoursProcessCompletedQtyDataRef = useRef(workHoursProcessCompletedQtyData)
-  useEffect(() => {
-    workHoursProcessCompletedQtyDataRef.current = workHoursProcessCompletedQtyData
-  }, [workHoursProcessCompletedQtyData])
-  
-  const workHoursProcessHoursDataRef = useRef(workHoursProcessHoursData)
-  useEffect(() => {
-    workHoursProcessHoursDataRef.current = workHoursProcessHoursData
-  }, [workHoursProcessHoursData])
-  
-  const workHoursAmountDataRef = useRef(workHoursAmountData)
-  useEffect(() => {
-    workHoursAmountDataRef.current = workHoursAmountData
-  }, [workHoursAmountData])
   
   const {
     generateCuttingOrders,
@@ -2761,6 +2745,58 @@ const ToolingInfoPage: React.FC = () => {
   const createPartColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     const WEIGHT_CACHE_LIMIT = 500
     const PRICE_CACHE_LIMIT = 500
+    const PROCESS_ROUTE_CACHE_LIMIT = 500
+    const processRouteCacheRef = useRef<Map<string, {
+      route: string
+      steps: string[]
+      completedQtyMap: Record<string, number>
+      hoursMap: Record<string, number>
+      workHoursCompleted: Set<string>
+      manualCompletedTokens: Set<string>
+      requiredQty: number
+      dbCompletedSteps: any[]
+      ts: number
+    }>>(new Map())
+    
+    const getProcessRouteData = (rec: PartItem) => {
+      const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
+      const currentRoute = String((rec as any).process_route || (processRoutes[keyCandidate] || ''))
+      const cacheKey = `${rec.id}|${currentRoute}|${rec.part_quantity}|${JSON.stringify((rec as any).completed_steps || [])}|${workHoursData[keyCandidate]?.join(',') || ''}`
+      
+      const cached = processRouteCacheRef.current.get(cacheKey)
+      if (cached && (Date.now() - cached.ts < 3000)) return cached
+      
+      const inventoryNo = keyCandidate
+      const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
+      const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
+      const requiredQty = Number(rec.part_quantity || 0)
+      const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
+      const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+      const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
+      const workHoursForThisInv = workHoursData[inventoryNo] || []
+      const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
+      
+      const data = {
+        route: currentRoute,
+        steps,
+        completedQtyMap: processCompletedQtyMap,
+        hoursMap: processHoursMap,
+        workHoursCompleted,
+        manualCompletedTokens,
+        requiredQty,
+        dbCompletedSteps,
+        ts: Date.now()
+      }
+      
+      processRouteCacheRef.current.set(cacheKey, data)
+      if (processRouteCacheRef.current.size > PROCESS_ROUTE_CACHE_LIMIT) {
+        const k = processRouteCacheRef.current.keys().next().value
+        processRouteCacheRef.current.delete(k)
+      }
+      
+      return data
+    }
+    
     const getWeightCached = (rec: PartItem) => {
       const qty = Number(rec.part_quantity) || 0
       const storedUnitWeight = Number(rec.weight || 0)
@@ -2811,38 +2847,6 @@ const ToolingInfoPage: React.FC = () => {
         processPriceCacheRef.current.delete(k)
       }
       return sum
-    }
-    
-    // 工艺路线显示缓存（基于数据指纹，确保数据变化时重新渲染）
-    const ROUTE_DISPLAY_CACHE_LIMIT = 500
-    const getCachedProcessRouteDisplay = (
-      rec: PartItem,
-      displayFn: (val: string | undefined) => React.ReactNode
-    ): React.ReactNode => {
-      const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-      const currentRoute = String((rec as any).process_route || (processRoutes[inventoryNo] || ''))
-      const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
-      const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
-      const completedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
-      const workHoursForThisInv = workHoursData[inventoryNo] || []
-      
-      // 生成数据指纹（包含所有影响显示的数据）
-      const fp = `${currentRoute}|${JSON.stringify(processCompletedQtyMap)}|${JSON.stringify(processHoursMap)}|${completedSteps.join(',')}|${workHoursForThisInv.join(',')}`
-      const cacheKey = `${rec.id}|${fp}`
-      
-      const cached = processRouteDisplayCacheRef.current.get(cacheKey)
-      if (cached !== undefined) return cached
-      
-      const result = displayFn(currentRoute || undefined)
-      processRouteDisplayCacheRef.current.set(cacheKey, result)
-      
-      // 清理过期缓存
-      if (processRouteDisplayCacheRef.current.size > ROUTE_DISPLAY_CACHE_LIMIT) {
-        const k = processRouteDisplayCacheRef.current.keys().next().value
-        processRouteDisplayCacheRef.current.delete(k)
-      }
-      
-      return result
     }
     const normalizeProcessKey = (v: string) => String(v || '')
       .replace(/\s+/g, '')
@@ -3269,18 +3273,19 @@ const ToolingInfoPage: React.FC = () => {
         width: 600,
         onCell: () => ({ className: 'process-route-cell', onMouseDown: (e: any) => e.stopPropagation(), onClick: (e: any) => e.stopPropagation() }),
         render: (_t: any, rec: PartItem) => {
-          const keyCandidate = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          let currentRoute = String((rec as any).process_route || '')
-          if (!currentRoute && keyCandidate) {
-            currentRoute = (keyCandidate && processRoutes[keyCandidate]) || ''
-          }
-          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
-          const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
-          const requiredQty = Number(rec.part_quantity || 0)
-          const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
-          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
-          const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
+          // 使用缓存获取工艺路线数据（3秒缓存）
+          const routeData = getProcessRouteData(rec)
+          const {
+            route: currentRoute,
+            steps,
+            completedQtyMap: processCompletedQtyMap,
+            hoursMap: processHoursMap,
+            workHoursCompleted,
+            manualCompletedTokens,
+            requiredQty,
+            dbCompletedSteps
+          } = routeData
+          
           const getStepCompletedQty = (step: string) => {
             const key = normalizeProcessKey(step)
             const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
@@ -3293,9 +3298,6 @@ const ToolingInfoPage: React.FC = () => {
             if (!Number.isFinite(h)) return 0
             return h
           }
-          // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
-          const workHoursForThisInv = workHoursData[inventoryNo] || []
-          const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
 
           const handleStepToggle = async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
@@ -3375,7 +3377,7 @@ const ToolingInfoPage: React.FC = () => {
               value={currentRoute}
               record={rec}
               dataIndex="process_route"
-              renderDisplay={() => getCachedProcessRouteDisplay(rec, display)}
+              renderDisplay={display}
               onSave={async (id: string, _key: keyof PartItem, value: string) => {
                 try {
                   setPartsMap(prev => {
