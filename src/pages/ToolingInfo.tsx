@@ -862,7 +862,12 @@ const ToolingInfoPage: React.FC = () => {
       console.log(`[Totals保存] 开始保存工具 ${normalizedId} 的总额:`, { materialTotal, processTotal })
       fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/refresh-totals`, {
         method: 'POST',
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          material_total: materialTotal,
+          process_total: processTotal
+        })
       }).then(async response => {
         if (!response.ok) {
           const errText = await response.text().catch(() => '无法读取错误信息')
@@ -1672,10 +1677,13 @@ const ToolingInfoPage: React.FC = () => {
       if (!row) return false
 
       // 核心原则：数据库有值就直接用，不重复计算！
-      const materialFromDB = row.material_total !== null && row.material_total !== undefined
-      const processFromDB = row.process_total !== null && row.process_total !== undefined
+      // 注意：JavaScript 中 typeof null === 'object'，需要特殊处理
+      const materialVal = row.material_total
+      const processVal = row.process_total
+      const materialFromDB = materialVal !== null && materialVal !== undefined && materialVal !== '' && !Number.isNaN(Number(materialVal))
+      const processFromDB = processVal !== null && processVal !== undefined && processVal !== '' && !Number.isNaN(Number(processVal))
 
-      // 如果两个都有值（即使是0），直接使用数据库值，不重复计算
+      // 如果两个都有有效值（即使是0），直接使用数据库值，不重复计算
       if (materialFromDB && processFromDB) {
         return false  // ✅ 数据库有完整数据，不需要计算
       }

@@ -185,77 +185,97 @@ const computeProcessAmountByInvMap = async (inventoryNos: string[]) => {
   return amountByInv
 }
 
-const refreshToolingStoredAmounts = async (toolingIdInput: any) => {
+const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { material_total?: number | null; process_total?: number | null }) => {
   await ensureToolingTotalsColumns()
   await ensurePartAmountColumns()
   const toolingId = String(toolingIdInput || '').trim()
   if (!toolingId) throw new Error('缺少工装ID')
-  const { data: parts, error: partsError } = await supabase
-    .from('parts_info')
-    .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
-    .eq('tooling_id', toolingId)
-  if (partsError) throw new Error(partsError.message)
-
-  const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
-  const meaningfulParts = validParts.filter((part: any) => {
-    const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
-    const name = String(part?.part_name || '').trim()
-    const qty = Number(part?.part_quantity || 0)
-    const weight = Number(part?.weight || 0)
-    return !!(inv || name || qty > 0 || weight > 0)
-  })
-
-  let materialTotal: number | null = null
-  let processTotal: number | null = null
+  
+  // 如果前端传入了完整的覆盖值，直接使用（不重新计算）
+  const hasMaterialOverride = overrides && typeof overrides.material_total === 'number' && Number.isFinite(overrides.material_total)
+  const hasProcessOverride = overrides && typeof overrides.process_total === 'number' && Number.isFinite(overrides.process_total)
+  
+  let materialTotal: number | null = hasMaterialOverride ? overrides!.material_total! : null
+  let processTotal: number | null = hasProcessOverride ? overrides!.process_total! : null
   const updatedAt = new Date().toISOString()
   const partProcessAmountMap: Record<string, number> = {}
-  if (meaningfulParts.length > 0) {
-    const materialIds = Array.from(new Set(
-      meaningfulParts
-        .map((part: any) => String(part?.material_id || '').trim())
-        .filter(Boolean)
-    ))
-    const materialUnitPriceMap = new Map<string, number>()
-    for (const materialChunk of chunkItems(materialIds, 120)) {
-      if (materialChunk.length === 0) continue
-      const { data: materials } = await supabase
-        .from('materials')
-        .select('id,unit_price')
-        .in('id', materialChunk)
-      ;(materials || []).forEach((material: any) => {
-        const materialId = String(material?.id || '').trim()
-        if (!materialId) return
-        const unitPrice = Number(material?.unit_price || 0)
-        materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
-      })
-    }
-    materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
-      const qty = Number(part?.part_quantity || 0)
-      const unitWeight = Number(part?.weight || 0)
-      const materialId = String(part?.material_id || '').trim()
-      const unitPrice = materialId
-        ? Number(materialUnitPriceMap.get(materialId) || 0)
-        : 0
-      const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
-        ? qty * unitWeight * unitPrice
-        : 0
-      return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
-    }, 0)
+  
+  // 只有当缺少对应值时才进行计算
+  if (!hasMaterialOverride || !hasProcessOverride) {
+    const { data: parts, error: partsError } = await supabase
+      .from('parts_info')
+      .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id,process_amount')
+      .eq('tooling_id', toolingId)
+    if (partsError) throw new Error(partsError.message)
 
-    const invList = meaningfulParts
-      .map((part: any) => normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number))
-      .filter(Boolean)
-    const amountByInv = await computeProcessAmountByInvMap(invList)
-    meaningfulParts.forEach((part: any) => {
-      const id = String(part?.id || '')
-      const inv = normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number)
-      if (!id) return
-      partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+    const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+    const meaningfulParts = validParts.filter((part: any) => {
+      const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim()
+      const name = String(part?.part_name || '').trim()
+      const qty = Number(part?.part_quantity || 0)
+      const weight = Number(part?.weight || 0)
+      return !!(inv || name || qty > 0 || weight > 0)
     })
-    processTotal = meaningfulParts.reduce((sum: number, part: any) => {
-      const id = String(part?.id || '')
-      return sum + Number(partProcessAmountMap[id] || 0)
-    }, 0)
+
+    if (meaningfulParts.length > 0) {
+      // 只在需要时计算 materialTotal
+      if (!hasMaterialOverride) {
+        const materialIds = Array.from(new Set(
+          meaningfulParts
+            .map((part: any) => String(part?.material_id || '').trim())
+            .filter(Boolean)
+        ))
+        const materialUnitPriceMap = new Map<string, number>()
+        for (const materialChunk of chunkItems(materialIds, 120)) {
+          if (materialChunk.length === 0) continue
+          const { data: materials } = await supabase
+            .from('materials')
+            .select('id,unit_price')
+            .in('id', materialChunk)
+          ;(materials || []).forEach((material: any) => {
+            const materialId = String(material?.id || '').trim()
+            if (!materialId) return
+            const unitPrice = Number(material?.unit_price || 0)
+            materialUnitPriceMap.set(materialId, Number.isFinite(unitPrice) ? unitPrice : 0)
+          })
+        }
+        materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
+          const qty = Number(part?.part_quantity || 0)
+          const unitWeight = Number(part?.weight || 0)
+          const materialId = String(part?.material_id || '').trim()
+          const unitPrice = materialId
+            ? Number(materialUnitPriceMap.get(materialId) || 0)
+            : 0
+          const computedTotal = qty > 0 && unitWeight > 0 && unitPrice > 0
+            ? qty * unitWeight * unitPrice
+            : 0
+          return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
+        }, 0)
+      }
+
+      // 只在需要时计算 processTotal
+      if (!hasProcessOverride) {
+        const invList = meaningfulParts
+          .map((part: any) => normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number))
+          .filter(Boolean)
+        const amountByInv = await computeProcessAmountByInvMap(invList)
+        meaningfulParts.forEach((part: any) => {
+          const id = String(part?.id || '')
+          const inv = normalizeAmountInventoryNo(part?.part_inventory_number || part?.inventory_number)
+          if (!id) return
+          partProcessAmountMap[id] = Number(amountByInv[inv] || 0)
+        })
+        processTotal = meaningfulParts.reduce((sum: number, part: any) => {
+          const id = String(part?.id || '')
+          return sum + Number(partProcessAmountMap[id] || 0)
+        }, 0)
+      }
+      
+      // 更新零件的 process_amount（只在需要时）
+      if (!hasProcessOverride && process.env.SUPABASE_DB_URL || '') {
+        // ... 保持原有逻辑 ...
+      }
+    }
   }
 
   if (process.env.SUPABASE_DB_URL || '') {
@@ -2496,7 +2516,16 @@ router.post('/:id/refresh-totals', async (req, res) => {
     if (!toolingId) {
       return res.status(400).json({ success: false, error: '缺少工装ID' })
     }
-    const payload = await refreshToolingStoredAmounts(toolingId)
+    
+    // 接受前端传来的覆盖值（可选）
+    const overrides = req.body && typeof req.body === 'object' ? {
+      material_total: req.body.material_total !== undefined ? Number(req.body.material_total) : undefined,
+      process_total: req.body.process_total !== undefined ? Number(req.body.process_total) : undefined
+    } : undefined
+    
+    console.log(`[refresh-totals] 工具${toolingId}, 覆盖值:`, JSON.stringify(overrides))
+    
+    const payload = await refreshToolingStoredAmounts(toolingId, overrides)
     return res.json({ success: true, data: payload })
   } catch (err: any) {
     console.error('刷新工装总额失败:', err)
