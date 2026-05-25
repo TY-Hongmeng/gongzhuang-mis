@@ -961,16 +961,37 @@ const ToolingInfoPage: React.FC = () => {
       const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
-    
+
     // 写入缓存
     toolingTotalsCacheRef.current.set(cacheKey, { material_total: materialTotal, process_total: processTotal, ts: now })
-    
+
     applyToolingTotalsToRow(normalizedId, {
       material_total: materialTotal,
       process_total: processTotal,
       totals_updated_at: new Date().toISOString()
     })
   }, [applyToolingTotalsToRow])
+
+  // 预加载工时数据：当子表展开时立即触发，不等防抖
+  useEffect(() => {
+    const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
+    if (expandedIds.length === 0) return
+
+    // 收集所有展开行的零件盘存号，用于预加载工时数据
+    const invsToPrefetch = new Set<string>()
+    expandedIds.forEach(id => {
+      const parts = partsMapRef.current[id] || []
+      parts.forEach((part: any) => {
+        const inv = String(part.part_inventory_number || part.inventory_number || '').trim().toUpperCase()
+        if (inv) invsToPrefetch.add(inv)
+      })
+    })
+
+    if (invsToPrefetch.size > 0) {
+      // 立即预取工时数据（不等待防抖）
+      fetchWorkHoursData(Array.from(invsToPrefetch))
+    }
+  }, [expandedRowKeys, expandedChildKeys, fetchWorkHoursData])
   const refreshToolingTotals = useCallback(async (toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId || normalizedId.startsWith('blank-')) return
@@ -1762,25 +1783,33 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
     if (expandedIds.length === 0) return
-    
+
     // 收集需要计算的ID
     const idsToSync = expandedIds.filter(id => Object.prototype.hasOwnProperty.call(partsMap, id))
     if (idsToSync.length === 0) return
-    
+
     // 添加到待处理队列
     idsToSync.forEach(id => syncToolingTotalsDebouncedRef.current.pendingIds.add(id))
-    
-    // 防抖执行（200ms），合并多次快速变化
+
+    // 首次展开立即执行（0ms），后续变化使用50ms防抖
+    const hasNewIds = idsToSync.some(id => !syncToolingTotalsDebouncedRef.current.syncedIds?.has(id))
+    const debounceMs = hasNewIds ? 0 : 50
+
     if (syncToolingTotalsDebouncedRef.current.timer) {
       clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
     }
-    
+
     syncToolingTotalsDebouncedRef.current.timer = setTimeout(() => {
       const ids = Array.from(syncToolingTotalsDebouncedRef.current.pendingIds)
       syncToolingTotalsDebouncedRef.current.pendingIds.clear()
+      // 记录已同步的ID
+      if (!syncToolingTotalsDebouncedRef.current.syncedIds) {
+        syncToolingTotalsDebouncedRef.current.syncedIds = new Set()
+      }
+      ids.forEach(id => syncToolingTotalsDebouncedRef.current.syncedIds.add(id))
       ids.forEach(id => syncLocalToolingTotals(id))
-    }, 200)
-    
+    }, debounceMs)
+
     return () => {
       if (syncToolingTotalsDebouncedRef.current.timer) {
         clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
