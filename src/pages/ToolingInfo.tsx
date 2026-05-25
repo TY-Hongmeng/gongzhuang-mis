@@ -548,6 +548,9 @@ const fmtHours = (v: any) => {
   return s.replace(/\.?0+$/, '')
 }
 
+const emptySet = new Set<string>()
+const emptySetRef = { current: emptySet }
+
 interface ProcessRouteCellProps {
   record: PartItem
   route: string
@@ -562,8 +565,8 @@ interface ProcessRouteCellProps {
 }
 
 const ProcessRouteCell = React.memo(({ record, route, steps, processCompletedQtyMap, processHoursMap, workHoursCompletedKeys, manualCompletedTokens, requiredQty, onSave, onStepToggle }: ProcessRouteCellProps) => {
-  const manualTokenSet = useMemo(() => new Set(manualCompletedTokens), [manualCompletedTokens])
-  
+  const manualTokenSet = manualCompletedTokens.length > 0 ? new Set(manualCompletedTokens) : emptySetRef.current
+
   return (
     <EditableCell
       value={route}
@@ -604,7 +607,6 @@ const ProcessRouteCell = React.memo(({ record, route, steps, processCompletedQty
     />
   )
 }, (prevProps, nextProps) => {
-  // 只比较数据属性，不比较回调函数（回调每次渲染都是新引用，但逻辑相同）
   return prevProps.record.id === nextProps.record.id &&
     prevProps.route === nextProps.route &&
     prevProps.requiredQty === nextProps.requiredQty &&
