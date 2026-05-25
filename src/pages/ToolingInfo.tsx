@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1677,13 +1677,37 @@ const ToolingInfoPage: React.FC = () => {
     }
   }, [data, partsMap, fetchWorkHoursData])
 
+  // 当展开/子表加载时，按需计算工装总额（带防抖，避免频繁重算）
+  const syncToolingTotalsDebouncedRef = useRef<{ timer: NodeJS.Timeout | null; pendingIds: Set<string> }>({ timer: null, pendingIds: new Set() })
+  
   useEffect(() => {
     const expandedIds = Array.from(new Set([...expandedRowKeys, ...expandedChildKeys]))
     if (expandedIds.length === 0) return
-    expandedIds.forEach((id) => {
-      if (!Object.prototype.hasOwnProperty.call(partsMap, id)) return
-      syncLocalToolingTotals(id)
-    })
+    
+    // 收集需要计算的ID
+    const idsToSync = expandedIds.filter(id => Object.prototype.hasOwnProperty.call(partsMap, id))
+    if (idsToSync.length === 0) return
+    
+    // 添加到待处理队列
+    idsToSync.forEach(id => syncToolingTotalsDebouncedRef.current.pendingIds.add(id))
+    
+    // 防抖执行（200ms），合并多次快速变化
+    if (syncToolingTotalsDebouncedRef.current.timer) {
+      clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
+    }
+    
+    syncToolingTotalsDebouncedRef.current.timer = setTimeout(() => {
+      const ids = Array.from(syncToolingTotalsDebouncedRef.current.pendingIds)
+      syncToolingTotalsDebouncedRef.current.pendingIds.clear()
+      ids.forEach(id => syncLocalToolingTotals(id))
+    }, 200)
+    
+    return () => {
+      if (syncToolingTotalsDebouncedRef.current.timer) {
+        clearTimeout(syncToolingTotalsDebouncedRef.current.timer)
+        syncToolingTotalsDebouncedRef.current.timer = null
+      }
+    }
   }, [workHoursAmountData, expandedRowKeys, expandedChildKeys, partsMap, syncLocalToolingTotals])
   
   // 监听工时提交广播，刷新工时数据
@@ -3284,23 +3308,22 @@ const ToolingInfoPage: React.FC = () => {
             workHoursCompleted,
             manualCompletedTokens,
             requiredQty,
-            dbCompletedSteps
           } = routeData
-          
-          const getStepCompletedQty = (step: string) => {
-            const key = normalizeProcessKey(step)
-            const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
-            if (!Number.isFinite(qty)) return 0
-            return qty
-          }
-          const getStepHours = (step: string) => {
-            const key = normalizeProcessKey(step)
-            const h = Number((processHoursMap as Record<string, number>)[key] || 0)
-            if (!Number.isFinite(h)) return 0
-            return h
-          }
 
-          const handleStepToggle = async (step: string, index: number, checked: boolean) => {
+          // 使用useMemo缓存步骤计算结果，避免每次render重复计算
+          const stepsMemo = useMemo(() => {
+            return steps.map((s, i) => ({
+              s, i,
+              stepKey: normalizeProcessKey(s),
+              stepToken: buildManualStepToken(s, i),
+              stepDone: workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i)),
+              stepCompletedQty: Number((processCompletedQtyMap as Record<string, number>)[normalizeProcessKey(s)] || 0),
+              stepHours: Number((processHoursMap as Record<string, number>)[normalizeProcessKey(s)] || 0),
+            }))
+          }, [steps, workHoursCompleted, manualCompletedTokens, processCompletedQtyMap, processHoursMap])
+
+          // 使用useCallback稳定化toggle函数引用，避免子组件不必要的重渲染
+          const handleStepToggle = useCallback(async (step: string, index: number, checked: boolean) => {
             const stepKey = normalizeProcessKey(step)
             const stepToken = buildManualStepToken(step, index)
             const newCompleted = new Set<string>(manualCompletedTokens)
@@ -3317,7 +3340,7 @@ const ToolingInfoPage: React.FC = () => {
               setPartsMap(prev => {
                 const newPartsMap = { ...prev }
                 Object.keys(newPartsMap).forEach(tid => {
-                  newPartsMap[tid] = newPartsMap[tid].map(part => 
+                  newPartsMap[tid] = newPartsMap[tid].map(part =>
                     part.id === rec.id ? { ...part, completed_steps: completedStepsArray } : part
                   )
                 })
@@ -3341,17 +3364,14 @@ const ToolingInfoPage: React.FC = () => {
                 return next
               })
             }
-          }
-          
+          }, [rec.id, manualCompletedTokens, workHoursCompleted])
+
           const display = (val: string | undefined) => {
             const route = String(val || '')
             if (!route) return <span style={{ color: '#999' }}>-</span>
             return (
               <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                {steps.map((s, i) => {
-                  const stepDone = workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i))
-                  const stepCompletedQty = getStepCompletedQty(s)
-                  const stepHours = getStepHours(s)
+                {stepsMemo.map(({ s, i, stepDone, stepCompletedQty, stepHours }) => {
                   const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
                   const stepInProgress = stepDone || stepCompletedQty > 0
                   const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
@@ -3366,7 +3386,7 @@ const ToolingInfoPage: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                       />
                       <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                      {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+                      {i < stepsMemo.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
                     </span>
                   )
                 })}
