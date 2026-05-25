@@ -488,6 +488,7 @@ router.get('/', async (req, res) => {
     if (process.env.SUPABASE_DB_URL || '') {
       try {
         const ids = (data || []).map((item: any) => String(item?.id || '')).filter(Boolean)
+        console.log(`[ToolingAPI] 准备查询${ids.length}个工具的总额数据, SUPABASE_DB_URL: ${process.env.SUPABASE_DB_URL ? '已配置' : '❌ 未配置'}`)
         if (ids.length > 0) {
           const pgTotals = await query(
             'SELECT id::text AS id, material_total, process_total, totals_updated_at FROM tooling_info WHERE id = ANY($1::text[])',
@@ -499,9 +500,12 @@ router.get('/', async (req, res) => {
             if (!id) return
             totalsMap.set(id, row)
           })
+          console.log(`[ToolingAPI] 查询到${totalsMap.size}个有总额数据的工具`)
+          let mergedCount = 0
           data = (data || []).map((item: any) => {
             const extra = totalsMap.get(String(item?.id || ''))
             if (!extra) return item
+            mergedCount++
             return {
               ...item,
               material_total: extra.material_total,
@@ -509,6 +513,7 @@ router.get('/', async (req, res) => {
               totals_updated_at: extra.totals_updated_at
             }
           })
+          console.log(`[ToolingAPI] 成功合并${mergedCount}个工具的总额数据`)
         }
       } catch (mergeErr) {
         console.warn('Merge tooling totals from PG failed:', mergeErr)
