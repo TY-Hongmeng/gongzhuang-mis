@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -777,6 +777,7 @@ const ToolingInfoPage: React.FC = () => {
   
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
   const refreshTotalsInflightRef = useRef<Set<string>>(new Set())
+  const saveTotalsInflightRef = useRef<Set<string>>(new Set())  // 防止重复保存
   const toNullableTotal = useCallback((value: any): number | null => {
     if (value === null || typeof value === 'undefined' || value === '') return null
     const num = Number(value)
@@ -807,6 +808,12 @@ const ToolingInfoPage: React.FC = () => {
   const syncLocalToolingTotals = useCallback((toolingId: string, _retryCount: number = 0) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
+    
+    // 🔧 防止重复保存：同一工具在短时间内只保存一次
+    if (saveTotalsInflightRef.current.has(normalizedId)) {
+      console.log(`[Totals] ⏭️ 跳过重复保存 ${normalizedId}（正在保存中）`)
+      return
+    }
     
     // 🔧 关键修复：检查零件数据是否已加载完成
     const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
@@ -895,6 +902,9 @@ const ToolingInfoPage: React.FC = () => {
 
     // 关键修复：使用全新的专用接口直接保存（零依赖，绕过所有复杂逻辑）
     if (!normalizedId.startsWith('blank-')) {
+      // 🔒 设置保存锁，防止重复保存
+      saveTotalsInflightRef.current.add(normalizedId)
+      
       console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal: roundedMaterialTotal, processTotal: roundedProcessTotal })
       fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
         method: 'POST',
@@ -914,6 +924,11 @@ const ToolingInfoPage: React.FC = () => {
         }
       }).catch(err => {
         console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 异常:`, err.message || err)
+      }).finally(() => {
+        // 🔓 2秒后释放锁（给足够时间让第一次请求完成）
+        setTimeout(() => {
+          saveTotalsInflightRef.current.delete(normalizedId)
+        }, 2000)
       })
     }
   }, [applyToolingTotalsToRow])
@@ -4356,7 +4371,7 @@ const ToolingInfoPage: React.FC = () => {
         const total = toNullableTotal(record.material_total)
         return total === null
           ? <span style={{ color: '#999' }}>-</span>
-          : <span style={{ color: '#000000' }}>{Math.round(total).toLocaleString()}</span>
+          : <span style={{ color: '#000000' }}>{Math.round(total)}</span>
       }
     },
     {
@@ -4367,7 +4382,7 @@ const ToolingInfoPage: React.FC = () => {
         const total = toNullableTotal(record.process_total)
         return total === null
           ? <span style={{ color: '#999' }}>-</span>
-          : <span style={{ color: '#000000' }}>{Math.round(total).toLocaleString()}</span>
+          : <span style={{ color: '#000000' }}>{Math.round(total)}</span>
       }
     },
     {
