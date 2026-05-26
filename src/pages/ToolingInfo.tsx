@@ -804,10 +804,33 @@ const ToolingInfoPage: React.FC = () => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
   }, [])
-  const syncLocalToolingTotals = useCallback((toolingId: string) => {
+  const syncLocalToolingTotals = useCallback((toolingId: string, _retryCount: number = 0) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
+    
+    // 🔧 关键修复：检查零件数据是否已加载完成
     const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+    const isLoading = partsLoadingMapRef.current[normalizedId] === true
+    const hasMaterialPrices = Object.keys(materialUnitPriceMapRef.current).length > 0
+    
+    // 情况1: 零件数据还在加载中 → 重试
+    if (parts.length === 0 && isLoading && _retryCount < 5) {
+      console.log(`[Totals] ⏳ 零件数据尚未加载完成，${300 * (_retryCount + 1)}ms 后重试 (${_retryCount + 1}/5)...`)
+      setTimeout(() => {
+        syncLocalToolingTotals(normalizedId, _retryCount + 1)
+      }, 300 * (_retryCount + 1))
+      return
+    }
+    
+    // 情况2: 有零件数据但材料单价还没加载 → 短暂等待（只等2次）
+    if (parts.length > 0 && !hasMaterialPrices && _retryCount < 2) {
+      console.log(`[Totals] ⏳ 材料单价数据尚未加载完成，400ms 后重试 (${_retryCount + 1}/2)...`)
+      setTimeout(() => {
+        syncLocalToolingTotals(normalizedId, _retryCount + 1)
+      }, 400)
+      return
+    }
+    
     const meaningfulParts = parts.filter((part: any) => {
       return [
         part?.part_inventory_number,
@@ -852,22 +875,26 @@ const ToolingInfoPage: React.FC = () => {
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
 
+    // 🔧 修复浮点数精度问题：四舍五入到2位小数
+    const roundedMaterialTotal = Math.round(materialTotal * 100) / 100
+    const roundedProcessTotal = Math.round(processTotal * 100) / 100
+
     applyToolingTotalsToRow(normalizedId, {
-      material_total: materialTotal,
-      process_total: processTotal,
+      material_total: roundedMaterialTotal,
+      process_total: roundedProcessTotal,
       totals_updated_at: new Date().toISOString()
     })
 
     // 关键修复：使用全新的专用接口直接保存（零依赖，绕过所有复杂逻辑）
     if (!normalizedId.startsWith('blank-')) {
-      console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal, processTotal })
+      console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal: roundedMaterialTotal, processTotal: roundedProcessTotal })
       fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
         method: 'POST',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          material_total: materialTotal,
-          process_total: processTotal
+          material_total: roundedMaterialTotal,
+          process_total: roundedProcessTotal
         })
       }).then(async response => {
         if (!response.ok) {
