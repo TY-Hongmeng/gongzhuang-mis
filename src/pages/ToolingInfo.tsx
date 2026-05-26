@@ -845,13 +845,24 @@ const ToolingInfoPage: React.FC = () => {
       return
     }
     
-    // 情况3: 有零件数据但工时金额数据还没加载 → 等待（最多8次，约6秒）
+    // 情况3: 有零件数据但工时金额数据还没加载 → 检查是否可以跳过等待
     if (parts.length > 0 && hasMaterialPrices && !hasWorkHoursData && _retryCount < 8) {
-      console.log(`[Totals] ⏳ 工时金额数据尚未加载完成，500ms 后重试 (${_retryCount + 1}/8)...`)
-      setTimeout(() => {
-        syncLocalToolingTotals(normalizedId, _retryCount + 1)
-      }, 500)
-      return
+      // 🔥 关键优化：如果所有零件都有 process_amount 值，不需要等 workHoursAmountData
+      const partsWithProcessAmount = parts.filter(p => {
+        const val = toNullableProcessAmount(p?.process_amount)
+        return val !== null && val > 0
+      })
+      
+      // 如果超过50%的零件已有加工金额，就直接计算（不等待）
+      if (partsWithProcessAmount.length >= parts.length * 0.5 && partsWithProcessAmount.length > 0) {
+        console.log(`[Totals] ✅ ${partsWithProcessAmount.length}/${parts.length} 个零件已有加工金额，直接计算`)
+      } else {
+        console.log(`[Totals] ⏳ 工时金额数据尚未加载完成 (${partsWithProcessAmount.length}/${parts.length} 已有)，500ms 后重试 (${_retryCount + 1}/8)...`)
+        setTimeout(() => {
+          syncLocalToolingTotals(normalizedId, _retryCount + 1)
+        }, 500)
+        return
+      }
     }
     
     const meaningfulParts = parts.filter((part: any) => {
