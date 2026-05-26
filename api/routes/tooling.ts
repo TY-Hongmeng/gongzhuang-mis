@@ -206,14 +206,14 @@ const refreshToolingStoredAmounts = async (toolingIdInput: any, overrides?: { ma
     const processTotal = overrides!.process_total!
     const updatedAt = new Date().toISOString()
 
-    console.log(`[refreshToolingStoredAmounts] ✅ 使用前端传值，跳过Supabase查询 - material: ${materialTotal}, process: ${processTotal}`)
+    console.log(`[refreshToolingStoredAmounts] 🎯🎯🎯 使用前端传值，跳过Supabase查询 - material: ${materialTotal}, process: ${processTotal}`)
 
     if (process.env.SUPABASE_DB_URL || '') {
       await query(
         'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4',
         [materialTotal, processTotal, updatedAt, toolingId]
       )
-      console.log(`[refreshToolingStoredAmounts] ✅ 已通过PG直接保存`)
+      console.log(`[refreshToolingStoredAmounts] ✅✅✅ 已通过PG直接保存 - material=${materialTotal}, process=${processTotal}`)
     } else {
       const { error: updateError } = await supabase
         .from('tooling_info')
@@ -2578,15 +2578,19 @@ router.post('/:id/refresh-totals', async (req, res) => {
     if (!toolingId) {
       return res.status(400).json({ success: false, error: '缺少工装ID' })
     }
-    
+
     // 接受前端传来的覆盖值（可选）
-    const overrides = req.body && typeof req.body === 'object' ? {
-      material_total: req.body.material_total !== undefined ? Number(req.body.material_total) : undefined,
-      process_total: req.body.process_total !== undefined ? Number(req.body.process_total) : undefined
+    const rawBody = req.body
+    console.log(`[refresh-totals] 🚀 v3.3.137 收到的原始body:`, JSON.stringify(rawBody))
+
+    const overrides = rawBody && typeof rawBody === 'object' ? {
+      material_total: rawBody.material_total !== undefined ? Number(rawBody.material_total) : undefined,
+      process_total: rawBody.process_total !== undefined ? Number(rawBody.process_total) : undefined
     } : undefined
-    
-    console.log(`[refresh-totals] 工具${toolingId}, 覆盖值:`, JSON.stringify(overrides))
-    
+
+    console.log(`[refresh-totals] ✅ 解析后的overrides:`, JSON.stringify(overrides))
+    console.log(`[refresh-totals] 🔍 工具${toolingId}, material=${overrides?.material_total}, process=${overrides?.process_total}`)
+
     const payload = await refreshToolingStoredAmounts(toolingId, overrides)
     return res.json({ success: true, data: payload })
   } catch (err: any) {
