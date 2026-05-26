@@ -2571,6 +2571,110 @@ router.get('/work-hours/aggregates', async (req, res) => {
   }
 })
 
+// 🔥🔥🔥 全新专用接口：直接保存总额，零依赖
+router.post('/:id/save-totals-direct', async (req, res) => {
+  try {
+    const { id } = req.params
+    const toolingId = String(id || '').trim()
+    if (!toolingId) {
+      return res.status(400).json({ success: false, error: '缺少工装ID' })
+    }
+
+    const { material_total, process_total } = req.body || {}
+    
+    console.log(`[save-totals-direct] 💚💚💚 收到请求 - 工具: ${toolingId}`)
+    console.log(`[save-totals-direct] material_total=${material_total}, type=${typeof material_total}`)
+    console.log(`[save-totals-direct] process_total=${process_total}, type=${typeof process_total}`)
+
+    // 验证值
+    const matVal = Number(material_total ?? 0)
+    const procVal = Number(process_total ?? 0)
+    
+    if (!Number.isFinite(matVal) && material_total !== null && material_total !== undefined) {
+      return res.status(400).json({ success: false, error: 'material_total 不是有效数字' })
+    }
+
+    const updatedAt = new Date().toISOString()
+    let updateResult: any = null
+
+    // 方式1：PG 直连
+    if (process.env.SUPABASE_DB_URL || '') {
+      try {
+        const mod = await import('pg') as any
+        const PgClient = (mod.Client || mod.default?.Client)
+        const client = new PgClient({ 
+          connectionString: process.env.SUPABASE_DB_URL, 
+          ssl: { rejectUnauthorized: false } 
+        })
+        await client.connect()
+        
+        const sql = `
+          UPDATE tooling_info 
+          SET material_total = $1::numeric, 
+              process_total = $2::numeric, 
+              totals_updated_at = $3::timestamptz 
+          WHERE id = $4 
+          RETURNING id, material_total, process_total, totals_updated_at
+        `
+        const r = await client.query(sql, [
+          material_total ?? null, 
+          process_total ?? null, 
+          updatedAt, 
+          toolingId
+        ])
+        
+        updateResult = (r.rows || [])[0]
+        console.log(`[save-totals-direct] ✅ PG UPDATE 结果:`, JSON.stringify(updateResult))
+        
+        await client.end()
+      } catch (pgErr: any) {
+        console.error(`[save-totals-direct] ❌ PG 错误:`, pgErr.message)
+        return res.status(500).json({ success: false, error: 'PG错误: ' + pgErr.message })
+      }
+    } else {
+      // 方式2：Supabase 客户端
+      const { data, error } = await supabase
+        .from('tooling_info')
+        .update({
+          material_total: material_total ?? null,
+          process_total: process_total ?? null,
+          totals_updated_at: updatedAt
+        })
+        .eq('id', toolingId)
+        .select('id, material_total, process_total, totals_updated_at')
+        .single()
+
+      if (error) {
+        console.error(`[save-totals-direct] ❌ Supabase 错误:`, error.message)
+        return res.status(500).json({ success: false, error: error.message })
+      }
+      
+      updateResult = data
+      console.log(`[save-totals-direct] ✅ Supabase UPDATE 结果:`, JSON.stringify(updateResult))
+    }
+
+    // 最终验证
+    const { data: verifyData } = await supabase
+      .from('tooling_info')
+      .select('material_total, process_total, totals_updated_at')
+      .eq('id', toolingId)
+      .single()
+
+    console.log(`[save-totals-direct] 🎯🎯🎯 数据库验证:`, JSON.stringify(verifyData))
+
+    return res.json({
+      success: true,
+      data: verifyData,
+      received: { material_total, process_total },
+      message: '直接保存完成'
+    })
+
+  } catch (err: any) {
+    console.error('[save-totals-direct] 致命错误:', err)
+    return res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 router.post('/:id/refresh-totals', async (req, res) => {
   try {
     const { id } = req.params

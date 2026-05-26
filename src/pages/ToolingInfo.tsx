@@ -858,10 +858,10 @@ const ToolingInfoPage: React.FC = () => {
       totals_updated_at: new Date().toISOString()
     })
 
-    // 关键修复：异步保存到数据库（不阻塞UI）
+    // 关键修复：使用全新的专用接口直接保存（零依赖，绕过所有复杂逻辑）
     if (!normalizedId.startsWith('blank-')) {
-      console.log(`[Totals保存] 开始保存工具 ${normalizedId} 的总额:`, { materialTotal, processTotal })
-      fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/refresh-totals`, {
+      console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal, processTotal })
+      fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
         method: 'POST',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
@@ -875,7 +875,7 @@ const ToolingInfoPage: React.FC = () => {
           console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 失败 (${response.status}):`, errText)
         } else {
           const result = await response.json().catch(() => ({}))
-          console.log(`[Totals保存] ✅ 保存成功 ${normalizedId}:`, result?.data)
+          console.log(`[Totals保存] ✅✅✅ 保存成功 ${normalizedId}:`, result?.data, '| 收到的:', result?.received)
         }
       }).catch(err => {
         console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 异常:`, err.message || err)
