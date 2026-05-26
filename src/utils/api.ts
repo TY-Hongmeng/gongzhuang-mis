@@ -3788,6 +3788,49 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // 💚💚💚 save-totals-direct: 直接保存材料总额和加工总额到数据库
+      if (method === 'POST' && path.match(/^\/api\/tooling\/[^/]+\/save-totals-direct$/)) {
+        try {
+          const body = await readBody()
+          const { material_total, process_total } = body || {}
+          
+          console.log(`[API] 💚💚💚 save-totals-direct 收到:`, { material_total, process_total })
+          
+          const toolingId = path.split('/').filter(Boolean).pop()
+          if (!toolingId) return jsonResponse({ success: false, error: '缺少工具ID' }, 400)
+          
+          const updatedAt = new Date().toISOString()
+          
+          const { data: updateResult, error: updateError } = await supabase
+            .from('tooling_info')
+            .update({
+              material_total: material_total ?? null,
+              process_total: process_total ?? null,
+              totals_updated_at: updatedAt
+            })
+            .eq('id', toolingId)
+            .select('id, material_total, process_total, totals_updated_at')
+            .single()
+          
+          if (updateError) {
+            console.error(`[API] ❌ save-totals-direct 更新失败:`, updateError.message)
+            return jsonResponse({ success: false, error: updateError.message }, 500)
+          }
+          
+          console.log(`[API] ✅✅✅ save-totals-direct 成功:`, updateResult)
+          
+          return jsonResponse({ 
+            success: true, 
+            data: updateResult,
+            received: { material_total, process_total },
+            message: '直接保存完成'
+          })
+        } catch (e: any) {
+          console.error('[API] save-totals-direct 异常:', e)
+          return jsonResponse({ success: false, error: e?.message || '保存失败' }, 500)
+        }
+      }
+
       // Tooling users basic (Fallback if not caught by earlier check)
       if (method === 'GET' && path === '/api/tooling/users/basic') {
         try {
