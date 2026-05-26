@@ -777,7 +777,7 @@ const ToolingInfoPage: React.FC = () => {
   
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
   const refreshTotalsInflightRef = useRef<Set<string>>(new Set())
-  const saveTotalsInflightRef = useRef<Set<string>>(new Set())  // 防止重复保存
+  const savedTotalsSuccessRef = useRef<Set<string>>(new Set())  // 已成功保存的ID（本次会话）
   const toNullableTotal = useCallback((value: any): number | null => {
     if (value === null || typeof value === 'undefined' || value === '') return null
     const num = Number(value)
@@ -809,9 +809,15 @@ const ToolingInfoPage: React.FC = () => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId) return
     
-    // 🔧 防止重复保存：同一工具在短时间内只保存一次
-    if (saveTotalsInflightRef.current.has(normalizedId)) {
-      console.log(`[Totals] ⏭️ 跳过重复保存 ${normalizedId}（正在保存中）`)
+    // 🔧 防止重复保存：同一工具在本次会话中只保存一次（除非数据变化）
+    if (savedTotalsSuccessRef.current.has(normalizedId)) {
+      console.log(`[Totals] ⏭️ 跳过已保存的工具 ${normalizedId}`)
+      // 仍然更新本地显示，但不保存到数据库
+      applyToolingTotalsToRow(normalizedId, {
+        material_total: Math.round(materialTotal),
+        process_total: Math.round(processTotal),
+        totals_updated_at: new Date().toISOString()
+      })
       return
     }
     
@@ -819,6 +825,7 @@ const ToolingInfoPage: React.FC = () => {
     const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
     const isLoading = partsLoadingMapRef.current[normalizedId] === true
     const hasMaterialPrices = Object.keys(materialUnitPriceMapRef.current).length > 0
+    const hasWorkHoursData = Object.keys(workHoursAmountDataRef.current).length > 0
     
     // 情况1: 零件数据还在加载中 → 重试
     if (parts.length === 0 && isLoading && _retryCount < 5) {
@@ -835,6 +842,15 @@ const ToolingInfoPage: React.FC = () => {
       setTimeout(() => {
         syncLocalToolingTotals(normalizedId, _retryCount + 1)
       }, 400)
+      return
+    }
+    
+    // 情况3: 有零件数据但工时金额数据还没加载 → 等待（最多8次，约6秒）
+    if (parts.length > 0 && hasMaterialPrices && !hasWorkHoursData && _retryCount < 8) {
+      console.log(`[Totals] ⏳ 工时金额数据尚未加载完成，500ms 后重试 (${_retryCount + 1}/8)...`)
+      setTimeout(() => {
+        syncLocalToolingTotals(normalizedId, _retryCount + 1)
+      }, 500)
       return
     }
     
@@ -902,9 +918,6 @@ const ToolingInfoPage: React.FC = () => {
 
     // 关键修复：使用全新的专用接口直接保存（零依赖，绕过所有复杂逻辑）
     if (!normalizedId.startsWith('blank-')) {
-      // 🔒 设置保存锁，防止重复保存
-      saveTotalsInflightRef.current.add(normalizedId)
-      
       console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal: roundedMaterialTotal, processTotal: roundedProcessTotal })
       fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
         method: 'POST',
@@ -921,14 +934,11 @@ const ToolingInfoPage: React.FC = () => {
         } else {
           const result = await response.json().catch(() => ({}))
           console.log(`[Totals保存] ✅✅✅ 保存成功 ${normalizedId}:`, result?.data, '| 收到的:', result?.received)
+          // ✅ 保存成功后标记，防止重复保存
+          savedTotalsSuccessRef.current.add(normalizedId)
         }
       }).catch(err => {
         console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 异常:`, err.message || err)
-      }).finally(() => {
-        // 🔓 2秒后释放锁（给足够时间让第一次请求完成）
-        setTimeout(() => {
-          saveTotalsInflightRef.current.delete(normalizedId)
-        }, 2000)
       })
     }
   }, [applyToolingTotalsToRow])
