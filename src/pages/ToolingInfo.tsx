@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -613,6 +613,7 @@ const ToolingInfoPage: React.FC = () => {
   const weightCacheRef = useRef<Map<string, any>>(new Map())
   const priceCacheRef = useRef<Map<string, any>>(new Map())
   const toolingRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const calibratedToolingIdsRef = useRef<Set<string>>(new Set())  // 记录已校准的行ID
   useEffect(() => {
     weightCacheRef.current.clear()
     priceCacheRef.current.clear()
@@ -1671,23 +1672,16 @@ const ToolingInfoPage: React.FC = () => {
 
     if (allToolingIds.length === 0) return
 
-    // ✅ 彻底简化：不再自动计算总额
-    // 原因：
-    // 1. 数据库已有值时，不应该重复计算和保存（会导致无限循环）
-    // 2. 自动计算的逻辑复杂且容易出错（null判断、时序问题等）
-    // 3. 应该由后端 API 或手动操作来维护这些字段
+    // ✅ 正确策略：页面加载用DB值，展开子表时校准更新
     //
-    // 当前策略：100% 使用后端返回的 material_total 和 process_total
-    // 如果这些值为 null，显示为空/0，等待后端或其他机制填充
+    // 1. 页面加载 → 直接显示后端返回的 material_total/process_total（不计算）
+    // 2. 用户展开某行的子表 → 触发一次校准计算 + 保存到数据库
+    // 3. 使用 calibratedToolingIds 记录已校准的行，避免重复
 
     // 仅在开发环境输出诊断信息
     if (process.env.NODE_ENV === 'development' && allToolingIds.length > 0) {
       const sampleRow = data.find((item: any) => String(item.id) === allToolingIds[0])
-      const nullCount = allToolingIds.filter(id => {
-        const row = data.find((item: any) => String(item.id) === id)
-        return !row?.material_total && !row?.process_total
-      }).length
-      console.log(`[Totals] 总行数: ${allToolingIds.length}, 缺少总额值的行: ${nullCount}`)
+      console.log(`[Totals] 总行数: ${allToolingIds.length}, 已校准: ${calibratedToolingIdsRef.current.size}`)
       console.log(`[Totals] 示例值: material_total=${sampleRow?.material_total}, process_total=${sampleRow?.process_total}`)
     }
   }, [data, partsMap, workHoursAmountData])
@@ -6171,6 +6165,17 @@ const ToolingInfoPage: React.FC = () => {
               })
               if (expanded) {
                 ensureExpandedDataLoaded(id, false)
+
+                // ✅ 展开子表时校准总额（只校准一次）
+                if (!calibratedToolingIdsRef.current.has(id)) {
+                  calibratedToolingIdsRef.current.add(id)
+                  console.log(`[Totals] 首次展开子表，开始校准工具 ${id} 的总额`)
+
+                  // 延迟执行，等零件数据加载完成
+                  setTimeout(() => {
+                    syncLocalToolingTotals(id)
+                  }, 500)
+                }
               }
             },
             expandRowByClick: false,
