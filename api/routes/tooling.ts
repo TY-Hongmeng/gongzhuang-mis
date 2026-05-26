@@ -2581,16 +2581,70 @@ router.post('/:id/refresh-totals', async (req, res) => {
 
     // 接受前端传来的覆盖值（可选）
     const rawBody = req.body
-    console.log(`[refresh-totals] 🚀 v3.3.137 收到的原始body:`, JSON.stringify(rawBody))
+    console.log(`[refresh-totals] 🚀🚀🚀 v3.3.138 原始请求 body:`, JSON.stringify(rawBody))
 
     const overrides = rawBody && typeof rawBody === 'object' ? {
       material_total: rawBody.material_total !== undefined ? Number(rawBody.material_total) : undefined,
       process_total: rawBody.process_total !== undefined ? Number(rawBody.process_total) : undefined
     } : undefined
 
-    console.log(`[refresh-totals] ✅ 解析后的overrides:`, JSON.stringify(overrides))
-    console.log(`[refresh-totals] 🔍 工具${toolingId}, material=${overrides?.material_total}, process=${overrides?.process_total}`)
+    console.log(`[refresh-totals] ✅ 解析结果: material=${overrides?.material_total}, process=${overrides?.process_total}`)
+    console.log(`[refresh-totals] 🔍 类型检查: material_type=${typeof overrides?.material_total}, isFinite=${Number.isFinite(overrides?.material_total ?? NaN)}`)
 
+    // 🔥 直接保存测试：不管其他逻辑，先尝试直接UPDATE
+    if (overrides && (overrides.material_total !== undefined || overrides.process_total !== undefined)) {
+      const updatedAt = new Date().toISOString()
+      
+      try {
+        if (process.env.SUPABASE_DB_URL || '') {
+          await query(
+            'UPDATE tooling_info SET material_total = $1, process_total = $2, totals_updated_at = $3::timestamptz WHERE id = $4 RETURNING material_total, process_total',
+            [overrides.material_total ?? null, overrides.process_total ?? null, updatedAt, toolingId]
+          ).then((result: any) => {
+            console.log(`[refresh-totals] 💥💥💅 PG UPDATE 返回:`, JSON.stringify(result.rows?.[0]))
+            return result
+          })
+        } else {
+          const { data: updateResult, error: updateError } = await supabase
+            .from('tooling_info')
+            .update({
+              ...(overrides.material_total !== undefined && { material_total: overrides.material_total }),
+              ...(overrides.process_total !== undefined && { process_total: overrides.process_total }),
+              totals_updated_at: updatedAt
+            })
+            .eq('id', toolingId)
+            .select('material_total, process_total')
+          
+          if (updateError) throw new Error(updateError.message)
+          console.log(`[refresh-totals] 💥💥💅 Supabase UPDATE 返回:`, JSON.stringify(updateResult))
+        }
+
+        // 验证：查询刚更新的值
+        const { data: verifyData } = await supabase
+          .from('tooling_info')
+          .select('material_total, process_total')
+          .eq('id', toolingId)
+          .single()
+        
+        console.log(`[refresh-totals] ✅✅✅ 数据库验证结果:`, JSON.stringify(verifyData))
+
+        return res.json({ 
+          success: true, 
+          data: verifyData || {
+            material_total: overrides.material_total,
+            process_total: overrides.process_total,
+            totals_updated_at: updatedAt,
+            part_process_amounts: {}
+          }
+        })
+      } catch (dbErr: any) {
+        console.error('[refresh-totals] ❌ 直接保存失败:', dbErr.message)
+        // 如果直接保存失败，回退到原有逻辑
+      }
+    }
+    
+    // 回退到原有的复杂计算逻辑
+    console.log(`[refresh-totals] ⚠️ 回退到原有计算逻辑`)
     const payload = await refreshToolingStoredAmounts(toolingId, overrides)
     return res.json({ success: true, data: payload })
   } catch (err: any) {
