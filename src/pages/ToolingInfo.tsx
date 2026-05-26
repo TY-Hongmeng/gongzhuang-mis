@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -532,6 +532,175 @@ const ExpandedSubTables: React.FC<{
     </div>
   )
 })
+
+// 🔥 性能优化: 缓存的工艺路线单元格组件
+const ProcessRouteCell = memo(({
+  rec,
+  processRoute,
+  inventoryNo,
+  steps,
+  workHoursCompleted,
+  manualCompletedTokens,
+  processCompletedQtyMap,
+  processHoursMap,
+  requiredQty,
+  onStepToggle,
+  onSave
+}: {
+  rec: any
+  processRoute: string
+  inventoryNo: string
+  steps: string[]
+  workHoursCompleted: Set<string>
+  manualCompletedTokens: Set<string>
+  processCompletedQtyMap: Record<string, number>
+  processHoursMap: Record<string, number>
+  requiredQty: number
+  onStepToggle: (step: string, index: number, checked: boolean) => void
+  onSave: (id: string, key: string, value: any) => Promise<void>
+}) => {
+  const normalizeProcessKey = useCallback((v: string) => String(v || '').replace(/\s+/g, '').replace(/^[0-9]+[.\-、:：]*/g, '').trim().toLowerCase(), [])
+  
+  const getStepCompletedQty = useCallback((step: string) => {
+    const key = normalizeProcessKey(step)
+    const qty = Number(processCompletedQtyMap[key] || 0)
+    return Number.isFinite(qty) ? qty : 0
+  }, [processCompletedQtyMap, normalizeProcessKey])
+  
+  const getStepHours = useCallback((step: string) => {
+    const key = normalizeProcessKey(step)
+    const h = Number(processHoursMap[key] || 0)
+    return Number.isFinite(h) ? h : 0
+  }, [processHoursMap, normalizeProcessKey])
+  
+  const fmtHours = useCallback((v: any) => {
+    const n = Number(v || 0)
+    if (!Number.isFinite(n)) return '0'
+    const s = n.toFixed(2)
+    return s.replace(/\.?0+$/, '')
+  }, [])
+  
+  // 缓存步骤渲染结果
+  const stepElements = useMemo(() => {
+    return steps.map((s, i) => {
+      const stepDone = workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(`__STEP__${i}__${normalizeProcessKey(s)}`)
+      const stepCompletedQty = getStepCompletedQty(s)
+      const stepHours = getStepHours(s)
+      const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
+      const stepInProgress = stepDone || stepCompletedQty > 0
+      const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
+      const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
+      return (
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <input
+            type="checkbox"
+            checked={stepDone}
+            onChange={(e) => onStepToggle(s, i, e.target.checked)}
+            style={{ cursor: 'pointer', margin: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
+          {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
+        </span>
+      )
+    })
+  }, [steps, workHoursCompleted, manualCompletedTokens, requiredQty, normalizeProcessKey, getStepCompletedQty, getStepHours, fmtHours, onStepToggle])
+  
+  const displayContent = useMemo(() => {
+    if (!processRoute) return <span style={{ color: '#999' }}>-</span>
+    return (
+      <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+        {stepElements}
+      </span>
+    )
+  }, [processRoute, stepElements])
+  
+  return (
+    <EditableCell
+      value={processRoute}
+      record={rec}
+      dataIndex="process_route"
+      renderDisplay={() => displayContent}
+      onSave={(id: string, _key: string, value: string) => onSave(id, _key, value)}
+    />
+  )
+})
+ProcessRouteCell.displayName = 'ProcessRouteCell'
+
+// 🔥 性能优化: 缓存的加工时长单元格
+const ProcessHoursCell = memo(({
+  currentRoute,
+  processHoursMap
+}: {
+  currentRoute: string
+  processHoursMap: Record<string, number>
+}) => {
+  const totalHours = useMemo(() => {
+    if (!currentRoute || Object.keys(processHoursMap).length === 0) return 0
+    const steps = currentRoute.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
+    let total = 0
+    steps.forEach(step => {
+      const hours = Number(processHoursMap[step.trim()] || 0)
+      if (Number.isFinite(hours)) total += hours
+    })
+    return total
+  }, [currentRoute, processHoursMap])
+  
+  if (totalHours === 0) return <span style={{ color: '#999' }}>-</span>
+  return <span style={{ color: '#000000', fontWeight: 500 }}>{totalHours.toFixed(1)}</span>
+})
+ProcessHoursCell.displayName = 'ProcessHoursCell'
+
+// 🔥 性能优化: 缓存的状态单元格
+const StatusCell = memo(({
+  rec,
+  purchaseStatus,
+  currentRoute,
+  routeProgressStatus,
+  ready,
+  renderStatusText,
+  toolingId,
+  saveStatusInput
+}: {
+  rec: any
+  purchaseStatus: string
+  currentRoute: string
+  routeProgressStatus: any
+  ready: boolean
+  renderStatusText: (v: string) => React.ReactNode
+  toolingId: string
+  saveStatusInput: (tid: string, type: string, pid: string, v: any) => void
+}) => {
+  const displayValue = useMemo(() => {
+    const raw = String(purchaseStatus || '').trim()
+    if (raw.match(/^\d{4}-\d{2}-\d{2}$/)) return renderStatusText(raw)
+    if (routeProgressStatus?.hasRoute) return { text: routeProgressStatus.text, color: routeProgressStatus.color }
+    if (raw) return renderStatusText(raw)
+    if (routeProgressStatus) return { text: routeProgressStatus.text, color: routeProgressStatus.color }
+    return ready 
+      ? { text: '就绪', color: '#1890ff' }
+      : { text: '-', color: '#999' }
+  }, [purchaseStatus, routeProgressStatus, ready, renderStatusText])
+  
+  const isDateStr = typeof displayValue === 'object'
+  const displayText = isDateStr ? displayValue.text : renderStatusText(String(displayValue || ''))
+  const displayColor = isDateStr ? displayValue.color : undefined
+  
+  return (
+    <EditableCell
+      value={purchaseStatus}
+      record={rec}
+      dataIndex={'__status' as any}
+      onSave={(pid: string, _k: string, v: any) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
+      renderDisplay={() => (
+        <span style={displayColor ? { color: displayColor } : undefined}>
+          {displayText}
+        </span>
+      )}
+    />
+  )
+})
+StatusCell.displayName = 'StatusCell'
 
 const ToolingInfoPage: React.FC = () => {
   const navigate = useNavigate()
@@ -3291,19 +3460,15 @@ const ToolingInfoPage: React.FC = () => {
           const sourceOk = normalized.includes('外购') || normalized.includes('waigou') || normalized.includes('采购')
           const ready = nameOk && qtyOk && demandDateOk && projectOk && prodUnitOk && applicantOk && sourceOk
           return (
-            <EditableCell
-              value={purchaseStatus}
-              record={rec as any}
-              dataIndex={'__status' as any}
-              onSave={(pid, _k, v) => saveStatusInput(toolingId, 'part', String(pid || ''), v)}
-              renderDisplay={(val) => {
-                const raw = String(val || '').trim()
-                if (isDateString(raw)) return renderStatusText(raw)
-                if (routeProgressStatus?.hasRoute) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
-                if (raw) return renderStatusText(raw)
-                if (routeProgressStatus) return <span style={{ color: routeProgressStatus.color }}>{routeProgressStatus.text}</span>
-                return ready ? <span style={{ color: '#1890ff' }}>就绪</span> : <span style={{ color: '#999' }}>-</span>
-              }}
+            <StatusCell
+              rec={rec}
+              purchaseStatus={purchaseStatus}
+              currentRoute={currentRoute}
+              routeProgressStatus={routeProgressStatus}
+              ready={ready}
+              renderStatusText={renderStatusText}
+              toolingId={toolingId}
+              saveStatusInput={saveStatusInput}
             />
           )
         }
@@ -3317,18 +3482,12 @@ const ToolingInfoPage: React.FC = () => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           const currentRoute = String((rec as any).process_route || (processRoutes[inventoryNo] || ''))
           const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
-          if (!currentRoute || Object.keys(processHoursMap).length === 0) {
-            return <span style={{ color: '#999' }}>-</span>
-          }
-          const steps = currentRoute.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
-          let totalHours = 0
-          steps.forEach(step => {
-            const key = String(step || '').trim()
-            const hours = Number(processHoursMap[key] || 0)
-            if (Number.isFinite(hours)) totalHours += hours
-          })
-          if (totalHours === 0) return <span style={{ color: '#999' }}>-</span>
-          return <span style={{ color: '#000000', fontWeight: 500 }}>{totalHours.toFixed(1)}</span>
+          return (
+            <ProcessHoursCell
+              currentRoute={currentRoute}
+              processHoursMap={processHoursMap}
+            />
+          )
         }
       },
       {
@@ -3349,19 +3508,6 @@ const ToolingInfoPage: React.FC = () => {
           const steps = String(currentRoute || '').split(/\s*→\s*/).filter(Boolean)
           const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
           const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
-          const getStepCompletedQty = (step: string) => {
-            const key = normalizeProcessKey(step)
-            const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
-            if (!Number.isFinite(qty)) return 0
-            return qty
-          }
-          const getStepHours = (step: string) => {
-            const key = normalizeProcessKey(step)
-            const h = Number((processHoursMap as Record<string, number>)[key] || 0)
-            if (!Number.isFinite(h)) return 0
-            return h
-          }
-          // 从工时数据获取已完成的工序（直接使用 state 而不是 ref，确保数据同步）
           const workHoursForThisInv = workHoursData[inventoryNo] || []
           const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
 
@@ -3374,11 +3520,9 @@ const ToolingInfoPage: React.FC = () => {
             } else {
               newCompleted.delete(stepToken)
             }
-            // 保存到后端数据库
             const completedStepsArray = Array.from(newCompleted)
             const success = await savePartData(rec.id, { completed_steps: completedStepsArray })
             if (success) {
-              // 更新本地状态
               setPartsMap(prev => {
                 const newPartsMap = { ...prev }
                 Object.keys(newPartsMap).forEach(tid => {
@@ -3407,81 +3551,58 @@ const ToolingInfoPage: React.FC = () => {
               })
             }
           }
-          
-          const display = (val: string | undefined) => {
-            const route = String(val || '')
-            if (!route) return <span style={{ color: '#999' }}>-</span>
-            return (
-              <span style={{ display: 'inline-flex', flexWrap: 'nowrap', gap: '4px 8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                {steps.map((s, i) => {
-                  const stepDone = workHoursCompleted.has(normalizeProcessKey(s)) || manualCompletedTokens.has(buildManualStepToken(s, i))
-                  const stepCompletedQty = getStepCompletedQty(s)
-                  const stepHours = getStepHours(s)
-                  const stepDoneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepCompletedQty >= requiredQty
-                  const stepInProgress = stepDone || stepCompletedQty > 0
-                  const stepColor = stepDoneByQty ? '#28a745' : (stepInProgress ? '#1890ff' : '#333')
-                  const qtyText = stepHours > 0 ? `(${fmtHours(stepHours)}h)` : ''
-                  return (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <input
-                        type="checkbox"
-                        checked={stepDone}
-                        onChange={(e) => handleStepToggle(s, i, e.target.checked)}
-                        style={{ cursor: 'pointer', margin: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span style={{ color: stepColor, fontWeight: 500 }}>{`${s}${qtyText}`}</span>
-                      {i < steps.length - 1 && <span style={{ color: '#999', marginLeft: 4 }}>→</span>}
-                    </span>
+
+          const handleSave = async (id: string, _key: string, value: string) => {
+            try {
+              setPartsMap(prev => {
+                const newPartsMap = { ...prev }
+                Object.keys(newPartsMap).forEach(tid => {
+                  newPartsMap[tid] = newPartsMap[tid].map(part => 
+                    part.id === id ? { ...part, process_route: value } : part
                   )
-                })}
-              </span>
-            )
-          }
-          return (
-            <EditableCell
-              value={currentRoute}
-              record={rec}
-              dataIndex="process_route"
-              renderDisplay={display}
-              onSave={async (id: string, _key: keyof PartItem, value: string) => {
-                try {
-                  setPartsMap(prev => {
-                    const newPartsMap = { ...prev }
-                    Object.keys(newPartsMap).forEach(tid => {
-                      newPartsMap[tid] = newPartsMap[tid].map(part => 
-                        part.id === id ? { ...part, process_route: value } : part
-                      )
-                    })
-                    return newPartsMap
-                  })
-                  const success = await savePartData(id, { process_route: value })
-                  if (success && rec.part_inventory_number) {
-                    const newProcessRoutes = {
-                      ...processRoutes,
-                      [String(rec.part_inventory_number).trim().toUpperCase()]: value
-                    }
-                    try {
-                      const invKey = String(rec.part_inventory_number).trim().toUpperCase()
-                      const bucketKey = bucketKeyForInv(invKey)
-                      let obj: Record<string, string> = {}
-                      try {
-                        const s = safeLocalStorage.getItem(bucketKey)
-                        if (s) obj = JSON.parse(s) || {}
-                      } catch {}
-                      obj[invKey] = value
-                      const json = JSON.stringify(obj)
-                      safeLocalStorage.setItem(bucketKey, json)
-                    } catch {
-                      message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
-                    }
-                    setProcessRoutes(newProcessRoutes)
-                  }
-                } catch (error) {
-                  console.error('保存工艺路线失败:', error)
-                  message.error('保存工艺路线失败，请重试')
+                })
+                return newPartsMap
+              })
+              const success = await savePartData(id, { process_route: value })
+              if (success && rec.part_inventory_number) {
+                const newProcessRoutes = {
+                  ...processRoutes,
+                  [String(rec.part_inventory_number).trim().toUpperCase()]: value
                 }
-              }}
+                try {
+                  const invKey = String(rec.part_inventory_number).trim().toUpperCase()
+                  const bucketKey = bucketKeyForInv(invKey)
+                  let obj: Record<string, string> = {}
+                  try {
+                    const s = safeLocalStorage.getItem(bucketKey)
+                    if (s) obj = JSON.parse(s) || {}
+                  } catch {}
+                  obj[invKey] = value
+                  safeLocalStorage.setItem(bucketKey, JSON.stringify(obj))
+                } catch {
+                  message.warning('本地缓存写入失败，已跳过（可能空间不足/浏览器禁用存储）')
+                }
+                setProcessRoutes(newProcessRoutes)
+              }
+            } catch (error) {
+              console.error('保存工艺路线失败:', error)
+              message.error('保存工艺路线失败，请重试')
+            }
+          }
+
+          return (
+            <ProcessRouteCell
+              rec={rec}
+              processRoute={currentRoute}
+              inventoryNo={inventoryNo}
+              steps={steps}
+              workHoursCompleted={workHoursCompleted}
+              manualCompletedTokens={manualCompletedTokens}
+              processCompletedQtyMap={processCompletedQtyMap}
+              processHoursMap={processHoursMap}
+              requiredQty={requiredQty}
+              onStepToggle={handleStepToggle}
+              onSave={handleSave}
             />
           )
         }
