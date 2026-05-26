@@ -3796,7 +3796,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           
           console.log(`[API] 💚💚💚 save-totals-direct 收到:`, { material_total, process_total })
           
-          const toolingId = path.split('/').filter(Boolean).pop()
+          // URL格式: /api/tooling/{toolingId}/save-totals-direct
+          const pathParts = path.split('/').filter(Boolean)
+          // toolingId 是倒数第二个部分（最后一个是 'save-totals-direct'）
+          const toolingId = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : null
           if (!toolingId) return jsonResponse({ success: false, error: '缺少工具ID' }, 400)
           
           const updatedAt = new Date().toISOString()
