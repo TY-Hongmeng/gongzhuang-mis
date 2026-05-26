@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1005,9 +1005,9 @@ const ToolingInfoPage: React.FC = () => {
       return
     }
     
-    // 情况2: 有零件数据但材料单价还没加载 → 短暂等待（只等2次）
-    if (parts.length > 0 && !hasMaterialPrices && _retryCount < 2) {
-      console.log(`[Totals] ⏳ 材料单价数据尚未加载完成，400ms 后重试 (${_retryCount + 1}/2)...`)
+    // 情况2: 有零件数据但材料单价还没加载 → 等待（最多5次，约2秒）
+    if (parts.length > 0 && !hasMaterialPrices && _retryCount < 5) {
+      console.log(`[Totals] ⏳ 材料单价数据尚未加载完成，400ms 后重试 (${_retryCount + 1}/5)...`)
       setTimeout(() => {
         syncLocalToolingTotals(normalizedId, _retryCount + 1)
       }, 400)
@@ -1060,6 +1060,25 @@ const ToolingInfoPage: React.FC = () => {
       })
       return
     }
+    
+    // 🔍 诊断日志：输出关键数据用于调试
+    if (_retryCount === 0 || process.env.NODE_ENV === 'development') {
+      console.log(`[Totals] 🔍 计算详情 ${normalizedId}:`, {
+        partsCount: parts.length,
+        meaningfulCount: meaningfulParts.length,
+        hasMaterialPrices,
+        hasWorkHoursData,
+        materialUnitPriceKeys: Object.keys(materialUnitPriceMapRef.current).length,
+        samplePart: meaningfulParts[0] ? {
+          material_id: meaningfulParts[0]?.material_id,
+          unitPrice: materialUnitPriceMapRef.current[String(meaningfulParts[0]?.material_id || '')],
+          weight: meaningfulParts[0]?.weight,
+          quantity: meaningfulParts[0]?.part_quantity,
+          total_price: meaningfulParts[0]?.total_price
+        } : null
+      })
+    }
+    
     const materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
       const storedUnitWeight = Number(part?.weight || 0)
       const unitWeight = storedUnitWeight > 0
@@ -1089,6 +1108,24 @@ const ToolingInfoPage: React.FC = () => {
     // 🔧 四舍五入到整数
     const roundedMaterialTotal = Math.round(materialTotal)
     const roundedProcessTotal = Math.round(processTotal)
+
+    // 🔍 关键检查：如果有零件但材料总额为0，可能是数据还没就绪
+    if (meaningfulParts.length > 0 && roundedMaterialTotal === 0 && _retryCount < 3) {
+      // 检查是否有零件有 material_id 但单价为0
+      const partsWithMaterialId = meaningfulParts.filter(p => String(p?.material_id || '').trim() !== '')
+      const partsWithoutPrice = partsWithMaterialId.filter(p => {
+        const price = materialUnitPriceMapRef.current[String(p?.material_id || '')]
+        return !price || price === 0
+      })
+      
+      if (partsWithoutPrice.length > 0) {
+        console.log(`[Totals] ⚠️ ${partsWithoutPrice.length}/${partsWithMaterialId.length} 个零件有material_id但无单价，300ms后重试 (${_retryCount + 1}/3)...`)
+        setTimeout(() => {
+          syncLocalToolingTotals(normalizedId, _retryCount + 1)
+        }, 300)
+        return
+      }
+    }
 
     applyToolingTotalsToRow(normalizedId, {
       material_total: roundedMaterialTotal,
