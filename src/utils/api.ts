@@ -3801,6 +3801,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           
           const updatedAt = new Date().toISOString()
           
+          // 🔧 关键修复: 先尝试确保列存在（通过 RPC 或直接尝试）
+          // 如果列不存在，Supabase 会报错，我们捕获后给出明确提示
           const { data: updateResult, error: updateError } = await supabase
             .from('tooling_info')
             .update({
@@ -3813,8 +3815,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             .single()
           
           if (updateError) {
-            console.error(`[API] ❌ save-totals-direct 更新失败:`, updateError.message)
-            return jsonResponse({ success: false, error: updateError.message }, 500)
+            const errorMsg = String(updateError?.message || '')
+            
+            // 🎯 特殊处理：列不存在的错误
+            if (errorMsg.includes('column') && errorMsg.includes('not find') || errorMsg.includes('schema cache')) {
+              console.error(`[API] ❌ save-totals-direct 列不存在，需要先执行SQL迁移`)
+              return jsonResponse({ 
+                success: false, 
+                error: 'DATABASE_SCHEMA_MISSING',
+                details: 'tooling_info 表缺少 material_total/process_total/tot_updated_at 列。请在 Supabase Dashboard → SQL Editor 中执行: supabase/migrations/20260526_add_tooling_totals_columns.sql',
+                hint: '需要数据库管理员执行 ALTER TABLE 添加缺失的列'
+              }, 503)  // Service Unavailable - 需要管理员操作
+            }
+            
+            console.error(`[API] ❌ save-totals-direct 更新失败:`, errorMsg)
+            return jsonResponse({ success: false, error: errorMsg }, 500)
           }
           
           console.log(`[API] ✅✅✅ save-totals-direct 成功:`, updateResult)
