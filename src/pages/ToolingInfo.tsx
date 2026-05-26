@@ -875,9 +875,9 @@ const ToolingInfoPage: React.FC = () => {
       return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
     }, 0)
 
-    // 🔧 修复浮点数精度问题：四舍五入到2位小数
-    const roundedMaterialTotal = Math.round(materialTotal * 100) / 100
-    const roundedProcessTotal = Math.round(processTotal * 100) / 100
+    // 🔧 四舍五入到整数
+    const roundedMaterialTotal = Math.round(materialTotal)
+    const roundedProcessTotal = Math.round(processTotal)
 
     applyToolingTotalsToRow(normalizedId, {
       material_total: roundedMaterialTotal,
@@ -4348,7 +4348,7 @@ const ToolingInfoPage: React.FC = () => {
         const total = toNullableTotal(record.material_total)
         return total === null
           ? <span style={{ color: '#999' }}>-</span>
-          : <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
+          : <span style={{ color: '#000000' }}>{Math.round(total).toLocaleString()}</span>
       }
     },
     {
@@ -4359,7 +4359,7 @@ const ToolingInfoPage: React.FC = () => {
         const total = toNullableTotal(record.process_total)
         return total === null
           ? <span style={{ color: '#999' }}>-</span>
-          : <span style={{ color: '#000000' }}>{total.toFixed(2)}</span>
+          : <span style={{ color: '#000000' }}>{Math.round(total).toLocaleString()}</span>
       }
     },
     {
