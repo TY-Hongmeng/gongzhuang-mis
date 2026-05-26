@@ -1671,55 +1671,26 @@ const ToolingInfoPage: React.FC = () => {
 
     if (allToolingIds.length === 0) return
 
-    // 统一处理：只对真正缺失数据的行进行计算
-    const idsToCalculate = allToolingIds.filter(id => {
-      const row = data.find((item: any) => String(item.id) === id)
-      if (!row) return false
+    // ✅ 彻底简化：不再自动计算总额
+    // 原因：
+    // 1. 数据库已有值时，不应该重复计算和保存（会导致无限循环）
+    // 2. 自动计算的逻辑复杂且容易出错（null判断、时序问题等）
+    // 3. 应该由后端 API 或手动操作来维护这些字段
+    //
+    // 当前策略：100% 使用后端返回的 material_total 和 process_total
+    // 如果这些值为 null，显示为空/0，等待后端或其他机制填充
 
-      // 核心原则：数据库有值就直接用，不重复计算！
-      // 使用 JSON.stringify 来准确判断 null（避免 typeof null === 'object' 的陷阱）
-      const materialStr = JSON.stringify(row.material_total)
-      const processStr = JSON.stringify(row.process_total)
-      const materialFromDB = materialStr !== 'null' && materialStr !== 'undefined' && materialStr !== '""'
-      const processFromDB = processStr !== 'null' && processStr !== 'undefined' && processStr !== '""'
-
-      // 如果两个都有有效值（即使是0），直接使用数据库值，不重复计算
-      if (materialFromDB && processFromDB) {
-        return false  // ✅ 数据库有完整数据，不需要计算
-      }
-
-      // 只有缺少值的行才需要计算（且要有零件数据）
-      if (partsMapRef.current[id] && partsMapRef.current[id].length > 0) {
-        return true  // 缺少数据 + 有零件 → 可以补全
-      }
-
-      return false
-    })
-
-    if (idsToCalculate.length > 0) {
-      // 详细诊断日志
-      const sampleId = idsToCalculate[0]
-      const sampleRow = data.find((item: any) => String(item.id) === sampleId)
-      console.log(`[Totals诊断] 需要计算的行数: ${idsToCalculate.length}`)
-      console.log(`[Totals诊断] 示例行ID: ${sampleId}`)
-      console.log(`[Totals诊断] 示例行material_total: ${sampleRow?.material_total} (类型: ${typeof sampleRow?.material_total})`)
-      console.log(`[Totals诊断] 示例行process_total: ${sampleRow?.process_total} (类型: ${typeof sampleRow?.process_total})`)
-      console.log(`[Totals诊断] 工时数据条数: ${workHoursAmountData ? Object.keys(workHoursAmountData).length : 0}`)
-      console.log(`[Totals诊断] 总行数: ${allToolingIds.length}, 有零件数据的行: ${allToolingIds.filter(id => partsMapRef.current[id]?.length > 0).length}`)
-
-      // 使用 requestAnimationFrame 避免阻塞渲染
-      requestAnimationFrame(() => {
-        idsToCalculate.forEach(id => syncLocalToolingTotals(id))
-      })
-    } else {
-      // 所有行都有数据库值时的日志
-      if (allToolingIds.length > 0) {
-        const sampleRow = data.find((item: any) => String(item.id) === allToolingIds[0])
-        console.log(`[Totals诊断] ✅ 所有${allToolingIds.length}行都有数据库值，无需计算`)
-        console.log(`[Totals诊断] 示例material_total: ${sampleRow?.material_total}, process_total: ${sampleRow?.process_total}`)
-      }
+    // 仅在开发环境输出诊断信息
+    if (process.env.NODE_ENV === 'development' && allToolingIds.length > 0) {
+      const sampleRow = data.find((item: any) => String(item.id) === allToolingIds[0])
+      const nullCount = allToolingIds.filter(id => {
+        const row = data.find((item: any) => String(item.id) === id)
+        return !row?.material_total && !row?.process_total
+      }).length
+      console.log(`[Totals] 总行数: ${allToolingIds.length}, 缺少总额值的行: ${nullCount}`)
+      console.log(`[Totals] 示例值: material_total=${sampleRow?.material_total}, process_total=${sampleRow?.process_total}`)
     }
-  }, [data, partsMap, workHoursAmountData, syncLocalToolingTotals])
+  }, [data, partsMap, workHoursAmountData])
   
   // 监听工时提交广播，刷新工时数据
   useEffect(() => {
