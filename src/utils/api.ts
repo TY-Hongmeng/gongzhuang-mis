@@ -3849,6 +3849,43 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // 💚💚 update-process-amount: 更新单个零件的加工金额
+      if (method === 'POST' && path.match(/^\/api\/parts\/[^/]+\/update-process-amount$/)) {
+        try {
+          const body = await readBody()
+          const { process_amount, amounts_updated_at } = body || {}
+          
+          const partId = path.split('/').filter(Boolean)[2]  // /api/parts/{id}/update-process-amount
+          if (!partId) return jsonResponse({ success: false, error: '缺少零件ID' }, 400)
+          
+          const updatedAt = amounts_updated_at || new Date().toISOString()
+          
+          const { data: updateResult, error: updateError } = await supabase
+            .from('parts_info')
+            .update({
+              process_amount: process_amount ?? null,
+              amounts_updated_at: updatedAt
+            })
+            .eq('id', partId)
+            .select('id, process_amount')
+            .single()
+          
+          if (updateError) {
+            console.error(`[API] ❌ update-process-amount 失败:`, updateError.message)
+            return jsonResponse({ success: false, error: updateError.message }, 500)
+          }
+          
+          return jsonResponse({ 
+            success: true, 
+            data: updateResult,
+            message: '零件加工金额更新完成'
+          })
+        } catch (e: any) {
+          console.error('[API] update-process-amount 异常:', e)
+          return jsonResponse({ success: false, error: e?.message || '更新失败' }, 500)
+        }
+      }
+
       // Tooling users basic (Fallback if not caught by earlier check)
       if (method === 'GET' && path === '/api/tooling/users/basic') {
         try {

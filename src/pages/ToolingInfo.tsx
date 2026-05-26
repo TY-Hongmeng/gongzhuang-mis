@@ -936,12 +936,64 @@ const ToolingInfoPage: React.FC = () => {
           console.log(`[Totals保存] ✅✅✅ 保存成功 ${normalizedId}:`, result?.data, '| 收到的:', result?.received)
           // ✅ 保存成功后标记，防止重复保存
           savedTotalsSuccessRef.current.add(normalizedId)
+          
+          // 🔥 关键优化：同时保存每个零件的加工金额到数据库（下次直接读取）
+          savePartProcessAmounts(normalizedId, meaningfulParts)
         }
       }).catch(err => {
         console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 异常:`, err.message || err)
       })
     }
   }, [applyToolingTotalsToRow])
+  
+  // 🔥 新增函数：批量保存零件的加工金额到数据库
+  const savePartProcessAmounts = useCallback(async (toolingId: string, parts: any[]) => {
+    try {
+      const updates = parts.map(part => {
+        const partId = part?.id
+        if (!partId || String(partId).startsWith('blank-')) return null
+        
+        const storedAmount = toNullableProcessAmount(part?.process_amount)
+        if (storedAmount !== null) return null  // 已有值的不更新
+        
+        const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+        const calculatedAmount = Number(workHoursAmountDataRef.current[inventoryNo] || 0)
+        
+        if (calculatedAmount === 0) return null  // 为0的不更新
+        
+        return {
+          id: partId,
+          process_amount: Math.round(calculatedAmount),
+          amounts_updated_at: new Date().toISOString()
+        }
+      }).filter(Boolean)
+      
+      if (updates.length === 0) return
+      
+      console.log(`[零件加工金额] 💚 批量保存 ${updates.length} 个零件的加工金额`)
+      
+      // 使用 handleClientSideApi 风格的批量更新
+      for (const update of updates) {
+        try {
+          await fetchWithFallback(`/api/parts/${encodeURIComponent(update.id)}/update-process-amount`, {
+            method: 'POST',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              process_amount: update.process_amount,
+              amounts_updated_at: update.amounts_updated_at
+            })
+          })
+        } catch (e) {
+          // 单个失败不影响其他
+        }
+      }
+      
+      console.log(`[零件加工金额] ✅ 批量保存完成`)
+    } catch (err) {
+      console.warn('[零件加工金额] 批量保存异常:', err.message)
+    }
+  }, [])
   const refreshToolingTotals = useCallback(async (toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId || normalizedId.startsWith('blank-')) return
