@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -3172,7 +3172,6 @@ const ToolingInfoPage: React.FC = () => {
     const getRouteProgressStatus = (rec: PartItem, routeText: string) => {
       const route = String(routeText || '')
       const steps = route.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
-      if (steps.length === 0) return null
       const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
       const processCompletedQtyMap = workHoursProcessCompletedQtyData[inventoryNo] || {}
       const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
@@ -3182,6 +3181,34 @@ const ToolingInfoPage: React.FC = () => {
       const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
       const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
       const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
+
+      // 无工艺路线但有工时数据的情况 - 直接从工时汇总判断状态
+      if (steps.length === 0) {
+        const totalCompletedQty = Object.values(processCompletedQtyMap).reduce((sum: number, v: any) => sum + (Number(v) || 0), 0)
+        const totalHours = Object.values(processHoursMap).reduce((sum: number, v: any) => sum + (Number(v) || 0), 0)
+        const hasWorkHours = workHoursForThisInv.length > 0
+
+        if (!hasWorkHours && totalHours === 0) return null
+
+        if (totalCompletedQty >= requiredQty && requiredQty > 0) {
+          return { text: `加工完成${fmtPieces(totalCompletedQty)}件`, color: '#28a745', hasRoute: false }
+        }
+
+        const latestEntry = Object.values(processLatestMetaMap)[0] as any
+        if (latestEntry) {
+          const teamName = String(latestEntry?.team_name || '').trim()
+          const operator = String(latestEntry?.operator || '').trim()
+          const actorText = [teamName, operator].filter(Boolean).join(' ')
+          if (totalCompletedQty > 0) {
+            return { text: actorText ? `${actorText}加工中${fmtPieces(totalCompletedQty)}件` : `加工中${fmtPieces(totalCompletedQty)}件`, color: '#1890ff', hasRoute: false }
+          }
+          return { text: actorText ? `${actorText}加工中` : '加工中', color: '#1890ff', hasRoute: false }
+        }
+
+        return totalCompletedQty > 0
+          ? { text: `加工中${fmtPieces(totalCompletedQty)}件`, color: '#1890ff', hasRoute: false }
+          : { text: '加工中', color: '#1890ff', hasRoute: false }
+      }
       function statesFromRoute(stepsRaw: string[]) {
         return stepsRaw.map((step, index) => {
           const key = normalizeProcessKey(step)
