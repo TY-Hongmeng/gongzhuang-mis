@@ -1959,7 +1959,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
             }, 0)
 
-            if (existingTotals?.material_total != null && existingTotals.material_total > 0) {
+            if (existingTotals?.material_total != null) {
               materialTotal = existingTotals.material_total
             }
 
@@ -2022,7 +2022,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               return sum + Number(partProcessAmountMap[id] || 0)
             }, 0)
 
-            if (existingTotals?.process_total != null && existingTotals.process_total > 0) {
+            if (existingTotals?.process_total != null) {
               processTotal = existingTotals.process_total
             }
           }
