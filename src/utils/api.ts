@@ -1913,12 +1913,18 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             .eq('tooling_id', toolingId)
           if (partsError) return jsonResponse({ success: false, error: partsError.message }, 500)
 
+          const { data: existingTotals } = await supabase
+            .from('tooling_info')
+            .select('material_total,process_total,totals_updated_at')
+            .eq('id', toolingId)
+            .single()
+
           const validParts = (parts || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
           const meaningfulParts = validParts.filter((part: any) => hasPartMeaningfulContent(part))
 
-          let materialTotal: number | null = null
-          let processTotal: number | null = null
-          const updatedAt = new Date().toISOString()
+          let materialTotal: number | null = existingTotals?.material_total ?? null
+          let processTotal: number | null = existingTotals?.process_total ?? null
+          const updatedAt = existingTotals?.totals_updated_at || new Date().toISOString()
           const partProcessAmountMap: Record<string, number> = {}
           if (meaningfulParts.length > 0) {
             const materialIds = Array.from(new Set(
@@ -1952,6 +1958,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 : 0
               return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
             }, 0)
+
+            if (existingTotals?.material_total != null && existingTotals.material_total > 0) {
+              materialTotal = existingTotals.material_total
+            }
 
             const invList = Array.from(new Set(
               meaningfulParts
@@ -2011,6 +2021,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               const id = String(part?.id || '')
               return sum + Number(partProcessAmountMap[id] || 0)
             }, 0)
+
+            if (existingTotals?.process_total != null && existingTotals.process_total > 0) {
+              processTotal = existingTotals.process_total
+            }
           }
 
           const payload = {
