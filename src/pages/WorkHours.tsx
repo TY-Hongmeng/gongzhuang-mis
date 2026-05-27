@@ -1125,7 +1125,13 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 if (lastSame) {
                   const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
                   const pad = (n: number) => String(n).padStart(2,'0')
-                  if (!lastSame.aux_end_time) {
+                  
+                  // 三车间特殊处理：三车间不填写辅助时间，上一条记录的 aux_end_time 自然为 null
+                  // 如果当前是三车间模式，且上一条记录也没有辅助时间，跳过此检查
+                  const lastIsAlsoThirdWorkshop = !lastSame.aux_start_time && !lastSame.aux_end_time && !lastSame.aux_hours
+                  if (isThirdWorkshop && lastIsAlsoThirdWorkshop) {
+                    // 三车间记录之间不做辅助时间重叠检查
+                  } else if (!lastSame.aux_end_time) {
                     message.error('该设备上一个作业尚未结束，请先补充结束时间或删除后再提交')
                     return
                   }
