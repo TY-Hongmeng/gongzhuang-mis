@@ -933,6 +933,11 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     fetchChildItemsDataRef.current = fetchChildItemsData
   }, [fetchChildItemsData])
+
+  const fetchWorkHoursDataRef = useRef(fetchWorkHoursData)
+  useEffect(() => {
+    fetchWorkHoursDataRef.current = fetchWorkHoursData
+  }, [fetchWorkHoursData])
   
   const expandedRowKeysRef = useRef(expandedRowKeys)
   useEffect(() => {
@@ -1299,8 +1304,30 @@ const ToolingInfoPage: React.FC = () => {
         tasks.push(fetchChildItemsDataRef.current(toolingId))
       }
 
+      // 🔥 优化：并行预加载工时金额数据（无需等待800ms防抖）
+      const existingParts = partsMapRef.current[toolingId] || []
+      if (existingParts.length > 0) {
+        const invs = existingParts
+          .map((p: any) => String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase())
+          .filter(Boolean)
+        if (invs.length > 0) {
+          fetchWorkHoursDataRef.current(invs)
+        }
+      }
+
       if (tasks.length > 0) {
         await Promise.all(tasks)
+
+        // 零件数据加载完成后，再次触发工时数据加载（确保覆盖所有新零件）
+        const freshParts = partsMapRef.current[toolingId] || []
+        if (freshParts.length > 0) {
+          const freshInvs = freshParts
+            .map((p: any) => String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase())
+            .filter(Boolean)
+          if (freshInvs.length > 0) {
+            fetchWorkHoursDataRef.current(freshInvs)
+          }
+        }
       }
       syncLocalToolingTotals(toolingId)
       await refreshToolingTotals(toolingId)
