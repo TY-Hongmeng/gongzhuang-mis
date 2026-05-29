@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -306,6 +306,7 @@ const ExpandedSubTables: React.FC<{
   onAddPart: () => void
   onAddPartBatch: () => void
   onAddChildItem: () => void
+  onToggleChildTable: () => void
 }> = React.memo(({
   toolingId,
   parts,
@@ -321,8 +322,17 @@ const ExpandedSubTables: React.FC<{
   setSelectedRowKeys,
   onAddPart,
   onAddPartBatch,
-  onAddChildItem
+  onAddChildItem,
+  onToggleChildTable
 }) => {
+  const [showChildTable, setShowChildTable] = useState(false)
+
+  const handleToggleChildTable = useCallback(() => {
+    setShowChildTable(prev => !prev)
+    if (!showChildTable) {
+      onToggleChildTable()
+    }
+  }, [showChildTable, onToggleChildTable])
   const isPartCompleted = (rec: PartItem): boolean => {
     const v = String((rec as any).purchase_status || '').trim()
     return isDateString(v)
@@ -423,6 +433,13 @@ const ExpandedSubTables: React.FC<{
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Button type="dashed" size="small" onClick={onAddPart} icon={<ToolOutlined />}>添加零件</Button>
             <Button type="dashed" size="small" onClick={onAddPartBatch}>批量添加</Button>
+            <Button
+              type={showChildTable ? 'primary' : 'dashed'}
+              size="small"
+              onClick={handleToggleChildTable}
+            >
+              标准件{childItems.length > 0 ? ` (${childItems.length})` : ''}
+            </Button>
           </div>
           <Segmented
             options={[
@@ -475,6 +492,7 @@ const ExpandedSubTables: React.FC<{
           />
         </div>
       </div>
+      {showChildTable && (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <Button type="dashed" size="small" onClick={onAddChildItem} icon={<ToolOutlined />}>添加标准件</Button>
@@ -529,6 +547,7 @@ const ExpandedSubTables: React.FC<{
           />
         </div>
       </div>
+      )}
     </div>
   )
 })
@@ -3993,6 +4012,10 @@ const ToolingInfoPage: React.FC = () => {
       }))
     }
 
+    const handleToggleChildTable = () => {
+      fetchChildItemsData(toolingId)
+    }
+
     return (
       <ExpandedSubTables
         toolingId={toolingId}
@@ -4010,6 +4033,7 @@ const ToolingInfoPage: React.FC = () => {
         onAddPart={() => addBlankParts(toolingId, 1)}
         onAddPartBatch={() => setPartBatchModal({ toolingId, open: true })}
         onAddChildItem={handleAddChildItem}
+        onToggleChildTable={handleToggleChildTable}
       />
     )
   }, [
@@ -4030,7 +4054,8 @@ const ToolingInfoPage: React.FC = () => {
     workHoursProcessLatestMetaData,
     manualStepUpdateMap,
     filterInventory,
-    filterPartDrawing
+    filterPartDrawing,
+    fetchChildItemsData
   ])
 
   const confirmPartBatchAdd = useCallback(() => {
