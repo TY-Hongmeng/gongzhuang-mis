@@ -933,11 +933,6 @@ const ToolingInfoPage: React.FC = () => {
   useEffect(() => {
     fetchChildItemsDataRef.current = fetchChildItemsData
   }, [fetchChildItemsData])
-
-  const fetchWorkHoursDataRef = useRef(fetchWorkHoursData)
-  useEffect(() => {
-    fetchWorkHoursDataRef.current = fetchWorkHoursData
-  }, [fetchWorkHoursData])
   
   const expandedRowKeysRef = useRef(expandedRowKeys)
   useEffect(() => {
@@ -1990,6 +1985,11 @@ const ToolingInfoPage: React.FC = () => {
       debugLog('成功获取工时数据:', mergedData)
     }
   }, [])
+  
+  const fetchWorkHoursDataRef = useRef(fetchWorkHoursData)
+  useEffect(() => {
+    fetchWorkHoursDataRef.current = fetchWorkHoursData
+  }, [fetchWorkHoursData])
   
   // 当展开/子表加载或筛选变更时，按当前页面相关盘存编号按需拉取工时数据（500ms 防抖）
   useEffect(() => {
