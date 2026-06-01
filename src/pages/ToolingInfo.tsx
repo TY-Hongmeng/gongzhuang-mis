@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -978,7 +978,6 @@ const ToolingInfoPage: React.FC = () => {
   }, [childLoadingMap])
   
   const expandedLoadInflightRef = useRef<Set<string>>(new Set())
-  const refreshTotalsInflightRef = useRef<Set<string>>(new Set())
   const toNullableTotal = useCallback((value: any): number | null => {
     if (value === null || typeof value === 'undefined' || value === '') return null
     const num = Number(value)
@@ -1087,66 +1086,6 @@ const ToolingInfoPage: React.FC = () => {
       console.warn('[零件加工金额] 批量保存异常:', err.message)
     }
   }, [])
-  const refreshToolingTotals = useCallback(async (toolingId: string) => {
-    const normalizedId = String(toolingId || '').trim()
-    if (!normalizedId || normalizedId.startsWith('blank-')) return
-    if (refreshTotalsInflightRef.current.has(normalizedId)) return
-    refreshTotalsInflightRef.current.add(normalizedId)
-    try {
-      const response = await fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/refresh-totals`, {
-        method: 'POST',
-        cache: 'no-store'
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok || result?.success === false) {
-        throw new Error(String(result?.error || `刷新工装总额失败(${response.status})`))
-      }
-      const totals = result?.data || {}
-      const processAmountMap = totals?.part_process_amounts && typeof totals.part_process_amounts === 'object'
-        ? totals.part_process_amounts as Record<string, number>
-        : null
-      if (processAmountMap) {
-        setPartsMap(prev => {
-          const list = prev[normalizedId] || []
-          if (list.length === 0) return prev
-          let changed = false
-          const nextList = list.map((part: any) => {
-            const partId = String(part?.id || '')
-            if (!partId || !Object.prototype.hasOwnProperty.call(processAmountMap, partId)) return part
-            const nextAmount = toNullableProcessAmount(processAmountMap[partId])
-            const currentAmount = toNullableProcessAmount(part?.process_amount)
-            if (currentAmount === nextAmount) return part
-            changed = true
-            return {
-              ...part,
-              process_amount: nextAmount,
-              amounts_updated_at: String(totals?.totals_updated_at || part?.amounts_updated_at || '')
-            }
-          })
-          return changed ? { ...prev, [normalizedId]: nextList } : prev
-        })
-      }
-      const processTotalFromParts = processAmountMap
-        ? Object.values(processAmountMap).reduce((sum: number, value: any) => {
-            const amount = toNullableProcessAmount(value)
-            return sum + Number(amount || 0)
-          }, 0)
-        : null
-      applyToolingTotalsToRow(normalizedId, totals)
-      const returnedTotal = toNullableTotal(totals.process_total)
-      if (returnedTotal == null && processTotalFromParts !== null && processTotalFromParts > 0) {
-        applyToolingTotalsToRow(normalizedId, {
-          ...totals,
-          process_total: processTotalFromParts
-        })
-      }
-    } catch (error) {
-      console.error('刷新工装总额失败:', error)
-      syncLocalToolingTotals(normalizedId)
-    } finally {
-      refreshTotalsInflightRef.current.delete(normalizedId)
-    }
-  }, [applyToolingTotalsToRow, setPartsMap, syncLocalToolingTotals, toNullableProcessAmount, toNullableTotal])
 
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
@@ -1209,11 +1148,10 @@ const ToolingInfoPage: React.FC = () => {
       }
 
       syncLocalToolingTotals(toolingId)
-      await refreshToolingTotals(toolingId)
     } finally {
       expandedLoadInflightRef.current.delete(toolingId)
     }
-  }, [setPartsLoadingMap, setChildLoadingMap, syncLocalToolingTotals, refreshToolingTotals])
+  }, [setPartsLoadingMap, setChildLoadingMap, syncLocalToolingTotals])
 
   const setExpandedChildKeysRef = useRef(setExpandedChildKeys)
   useEffect(() => {
