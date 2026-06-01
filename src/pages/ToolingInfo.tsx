@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -1006,163 +1006,47 @@ const ToolingInfoPage: React.FC = () => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
   }, [])
-  const syncLocalToolingTotals = useCallback((toolingId: string, _retryCount: number = 0) => {
+  const syncLocalToolingTotals = useCallback((toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
-    if (!normalizedId) return
+    if (!normalizedId || normalizedId.startsWith('blank-')) return
 
-    // 🔧 关键修复：检查零件数据是否已加载完成
-    const parts = (partsMapRef.current[normalizedId] || []).filter((part: any) => !String(part?.id || '').startsWith('blank-'))
-    const isLoading = partsLoadingMapRef.current[normalizedId] === true
-    const hasMaterialPrices = Object.keys(materialUnitPriceMapRef.current).length > 0
-    const hasWorkHoursData = Object.keys(workHoursAmountDataRef.current).length > 0
-    
-    // 情况1: 零件数据还在加载中 → 重试
-    if (parts.length === 0 && isLoading && _retryCount < 5) {
-      console.log(`[Totals] ⏳ 零件数据尚未加载完成，${300 * (_retryCount + 1)}ms 后重试 (${_retryCount + 1}/5)...`)
-      setTimeout(() => {
-        syncLocalToolingTotals(normalizedId, _retryCount + 1)
-      }, 300 * (_retryCount + 1))
-      return
-    }
-    
-    // 情况2: 有零件数据但材料单价还没加载 → 等待（最多5次，约2秒）
-    if (parts.length > 0 && !hasMaterialPrices && _retryCount < 5) {
-      console.log(`[Totals] ⏳ 材料单价数据尚未加载完成，400ms 后重试 (${_retryCount + 1}/5)...`)
-      setTimeout(() => {
-        syncLocalToolingTotals(normalizedId, _retryCount + 1)
-      }, 400)
-      return
-    }
-    
-    // 情况3: 有零件数据但工时金额数据还没加载 → 等待加载完成
-    if (parts.length > 0 && hasMaterialPrices && !hasWorkHoursData && _retryCount < 8) {
-      console.log(`[Totals] ⏳ 工时金额数据尚未加载完成，500ms 后重试 (${_retryCount + 1}/8)...`)
-      setTimeout(() => {
-        syncLocalToolingTotals(normalizedId, _retryCount + 1)
-      }, 500)
-      return
-    }
-    
-    const meaningfulParts = parts.filter((part: any) => {
-      return [
-        part?.part_inventory_number,
-        part?.part_drawing_number,
-        part?.part_name,
-        part?.part_quantity,
-        part?.material_id,
-        part?.process_route
-      ].some((v) => String(v ?? '').trim() !== '' && String(v ?? '').trim() !== '0')
-    })
-    
-    // 🔧 关键修复：避免"跳0"问题
-    // - 如果没有有效零件数据，且不是最终确认（还在重试中），不覆盖现有值
-    // - 只有在确认无零件数据时才设置为 null
-    if (meaningfulParts.length === 0) {
-      if (_retryCount > 0 || isLoading) {
-        console.log(`[Totals] ⏭️ 跳过更新（零件数据尚未就绪或正在加载），保持当前显示`)
-        return
-      }
-      applyToolingTotalsToRow(normalizedId, {
-        material_total: null,
-        process_total: null,
-        totals_updated_at: new Date().toISOString()
-      })
-      return
-    }
-    
-    // 🔍 诊断日志：输出关键数据用于调试
-    if (_retryCount === 0 || process.env.NODE_ENV === 'development') {
-      console.log(`[Totals] 🔍 计算详情 ${normalizedId}:`, {
-        partsCount: parts.length,
-        meaningfulCount: meaningfulParts.length,
-        hasMaterialPrices,
-        hasWorkHoursData,
-        materialUnitPriceKeys: Object.keys(materialUnitPriceMapRef.current).length,
-        samplePart: meaningfulParts[0] ? {
-          material_id: meaningfulParts[0]?.material_id,
-          unitPrice: materialUnitPriceMapRef.current[String(meaningfulParts[0]?.material_id || '')],
-          weight: meaningfulParts[0]?.weight,
-          quantity: meaningfulParts[0]?.part_quantity,
-          total_price: meaningfulParts[0]?.total_price
-        } : null
-      })
-    }
-    
-    const materialTotal = meaningfulParts.reduce((sum: number, part: any) => {
-      const storedUnitWeight = Number(part?.weight || 0)
-      const unitWeight = storedUnitWeight > 0
-        ? storedUnitWeight
-        : Number(calculatePartWeightRef.current(
-            part?.specifications || {},
-            part?.material_id || '',
-            part?.part_category || '',
-            partTypesRef.current,
-            materialsRef.current
-          ) || 0)
+    const parts = (partsMapRef.current[normalizedId] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
+    if (parts.length === 0) return
+
+    let materialTotal = 0
+    let processTotal = 0
+
+    parts.forEach((part: any) => {
+      const storedWeight = Number(part?.weight || 0)
+      const unitWeight = storedWeight > 0 ? storedWeight : Number(calculatePartWeightRef.current(
+        part?.specifications || {}, part?.material_id || '', part?.part_category || '',
+        partTypesRef.current, materialsRef.current
+      ) || 0)
       const qty = Number(part?.part_quantity || 0)
       const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
       const unitPrice = Number(materialUnitPriceMapRef.current[String(part?.material_id || '')] || 0)
-      const totalPrice = totalWeight > 0 && unitPrice > 0 ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice)) : Number(part?.total_price || 0)
-      return sum + (Number.isFinite(totalPrice) ? totalPrice : 0)
-    }, 0)
-    const processTotal = meaningfulParts.reduce((sum: number, part: any) => {
-      const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-      return sum + Number(workHoursAmountDataRef.current[inventoryNo] || 0)
-    }, 0)
+      const matAmount = totalWeight > 0 && unitPrice > 0
+        ? Number(calculateTotalPriceRef.current(totalWeight, unitPrice))
+        : Number(part?.total_price || 0)
+      materialTotal += Number.isFinite(matAmount) ? matAmount : 0
 
-    // 🔧 四舍五入到整数
-    const roundedMaterialTotal = Math.round(materialTotal)
-    const roundedProcessTotal = Math.round(processTotal)
-
-    // 🔍 关键检查：如果有零件但材料总额为0，可能是数据还没就绪
-    if (meaningfulParts.length > 0 && roundedMaterialTotal === 0 && _retryCount < 3) {
-      // 检查是否有零件有 material_id 但单价为0
-      const partsWithMaterialId = meaningfulParts.filter(p => String(p?.material_id || '').trim() !== '')
-      const partsWithoutPrice = partsWithMaterialId.filter(p => {
-        const price = materialUnitPriceMapRef.current[String(p?.material_id || '')]
-        return !price || price === 0
-      })
-      
-      if (partsWithoutPrice.length > 0) {
-        console.log(`[Totals] ⚠️ ${partsWithoutPrice.length}/${partsWithMaterialId.length} 个零件有material_id但无单价，300ms后重试 (${_retryCount + 1}/3)...`)
-        setTimeout(() => {
-          syncLocalToolingTotals(normalizedId, _retryCount + 1)
-        }, 300)
-        return
-      }
-    }
+      const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+      processTotal += Number(workHoursAmountDataRef.current[inv] || 0)
+    })
 
     applyToolingTotalsToRow(normalizedId, {
-      material_total: roundedMaterialTotal,
-      process_total: roundedProcessTotal,
+      material_total: Math.round(materialTotal),
+      process_total: Math.round(processTotal),
       totals_updated_at: new Date().toISOString()
     })
 
-    // 关键修复：使用全新的专用接口直接保存（零依赖，绕过所有复杂逻辑）
     if (!normalizedId.startsWith('blank-')) {
-      console.log(`[Totals保存] 💚 开始保存工具 ${normalizedId} 的总额:`, { materialTotal: roundedMaterialTotal, processTotal: roundedProcessTotal })
       fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
         method: 'POST',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          material_total: roundedMaterialTotal,
-          process_total: roundedProcessTotal
-        })
-      }).then(async response => {
-        if (!response.ok) {
-          const errText = await response.text().catch(() => '无法读取错误信息')
-          console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 失败 (${response.status}):`, errText)
-        } else {
-          const result = await response.json().catch(() => ({}))
-          console.log(`[Totals保存] ✅✅✅ 保存成功 ${normalizedId}:`, result?.data, '| 收到的:', result?.received)
-
-          // 🔥 关键优化：同时保存每个零件的加工金额到数据库（下次直接读取）
-          savePartProcessAmounts(normalizedId, meaningfulParts)
-        }
-      }).catch(err => {
-        console.warn(`[Totals保存] ❌ 保存工具 ${normalizedId} 异常:`, err.message || err)
-      })
+        body: JSON.stringify({ material_total: Math.round(materialTotal), process_total: Math.round(processTotal) })
+      }).catch(() => {})
     }
   }, [applyToolingTotalsToRow])
   
