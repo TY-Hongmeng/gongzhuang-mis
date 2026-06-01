@@ -2579,81 +2579,91 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }
           })
           const deviceNos = Array.from(deviceSet)
-          if (deviceNos.length > 0) {
-            try {
-              const { data: devices } = await supabase
-                .from('devices')
-                .select('device_no,device_name,process_unit_price')
-                .in('device_no', deviceNos)
-              const deviceNameMap = new Map<string, string>()
-              const devicePriceMap = new Map<string, number>()
-              ;(devices || []).forEach((d: any) => {
-                const no = normalizeDeviceNo(d.device_no)
-                if (!no) return
-                deviceNameMap.set(no, String(d.device_name || '').trim())
-                const price = Number(d.process_unit_price || 0)
-                devicePriceMap.set(no, Number.isFinite(price) ? price : 0)
-              })
-              Object.keys(processLatestMetaData).forEach((inv) => {
-                const processMap = processLatestMetaData[inv] || {}
-                Object.keys(processMap).forEach((pk) => {
-                  const meta = processMap[pk]
-                  const no = String(meta?.device_no || '').trim()
-                  if (!no) return
-                  if (deviceNameMap.has(no)) meta.device_name = String(deviceNameMap.get(no) || '')
-                  if (devicePriceMap.has(no)) meta.process_unit_price = Number(devicePriceMap.get(no) || 0)
-                })
-              })
-              normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
-                if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
-                const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
-                if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
-                if (!processAmountMap[inv]) processAmountMap[inv] = {}
-                processAmountMap[inv][processKey] = Number(processAmountMap[inv][processKey] || 0) + totalHours * unitPrice
-              })
-            } catch {}
-          }
-          try {
-            const normalizeName = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
-            const operatorSet = new Set<string>()
+          const normalizeName = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+          const operatorSet = new Set<string>()
+          Object.keys(processLatestMetaData).forEach((inv) => {
+            const processMap = processLatestMetaData[inv] || {}
+            Object.keys(processMap).forEach((pk) => {
+              const op = String(processMap[pk]?.operator || '').trim()
+              if (op) operatorSet.add(op)
+            })
+          })
+          const operatorList = Array.from(operatorSet)
+          if (deviceNos.length > 0 || operatorList.length > 0) {
+            const [devicesResult, usersResult] = await Promise.all([
+              (async () => {
+                const deviceNameMap = new Map<string, string>()
+                const devicePriceMap = new Map<string, number>()
+                if (deviceNos.length > 0) {
+                  const { data: devices } = await supabase
+                    .from('devices')
+                    .select('device_no,device_name,process_unit_price')
+                    .in('device_no', deviceNos)
+                  ;(devices || []).forEach((d: any) => {
+                    const no = normalizeDeviceNo(d.device_no)
+                    if (!no) return
+                    deviceNameMap.set(no, String(d.device_name || '').trim())
+                    const price = Number(d.process_unit_price || 0)
+                    devicePriceMap.set(no, Number.isFinite(price) ? price : 0)
+                  })
+                }
+                return { deviceNameMap, devicePriceMap }
+              })(),
+              (async () => {
+                const normalizeName = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
+                let userTeamByName = new Map<string, string>()
+                if (operatorList.length > 0) {
+                  const { data: users } = await supabase
+                    .from('users')
+                    .select('real_name,team_id')
+                    .in('real_name', operatorList)
+                  const teamIds = Array.from(new Set((users || []).map((u: any) => String(u.team_id || '')).filter(Boolean)))
+                  let teamMap = new Map<string, string>()
+                  if (teamIds.length > 0) {
+                    const { data: teams } = await supabase
+                      .from('teams')
+                      .select('id,name')
+                      .in('id', teamIds)
+                    teamMap = new Map((teams || []).map((t: any) => [String(t.id || ''), String(t.name || '')]))
+                  }
+                  userTeamByName = new Map<string, string>()
+                  ;(users || []).forEach((u: any) => {
+                    const k = normalizeName(u.real_name)
+                    const teamName = teamMap.get(String(u.team_id || '')) || ''
+                    if (k && teamName && !userTeamByName.has(k)) userTeamByName.set(k, teamName)
+                  })
+                }
+                return { userTeamByName }
+              })()
+            ])
+            const { deviceNameMap, devicePriceMap } = devicesResult
             Object.keys(processLatestMetaData).forEach((inv) => {
               const processMap = processLatestMetaData[inv] || {}
               Object.keys(processMap).forEach((pk) => {
-                const op = String(processMap[pk]?.operator || '').trim()
-                if (op) operatorSet.add(op)
+                const meta = processMap[pk]
+                const no = String(meta?.device_no || '').trim()
+                if (!no) return
+                if (deviceNameMap.has(no)) meta.device_name = String(deviceNameMap.get(no) || '')
+                if (devicePriceMap.has(no)) meta.process_unit_price = Number(devicePriceMap.get(no) || 0)
               })
             })
-            const operatorList = Array.from(operatorSet)
-            if (operatorList.length > 0) {
-              const { data: users } = await supabase
-                .from('users')
-                .select('real_name,team_id')
-                .in('real_name', operatorList)
-              const teamIds = Array.from(new Set((users || []).map((u: any) => String(u.team_id || '')).filter(Boolean)))
-              let teamMap = new Map<string, string>()
-              if (teamIds.length > 0) {
-                const { data: teams } = await supabase
-                  .from('teams')
-                  .select('id,name')
-                  .in('id', teamIds)
-                teamMap = new Map((teams || []).map((t: any) => [String(t.id || ''), String(t.name || '')]))
-              }
-              const userTeamByName = new Map<string, string>()
-              ;(users || []).forEach((u: any) => {
-                const k = normalizeName(u.real_name)
-                const teamName = teamMap.get(String(u.team_id || '')) || ''
-                if (k && teamName && !userTeamByName.has(k)) userTeamByName.set(k, teamName)
+            normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
+              if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
+              const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
+              if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+              if (!processAmountMap[inv]) processAmountMap[inv] = {}
+              processAmountMap[inv][processKey] = Number(processAmountMap[inv][processKey] || 0) + totalHours * unitPrice
+            })
+            const { userTeamByName } = usersResult
+            Object.keys(processLatestMetaData).forEach((inv) => {
+              const processMap = processLatestMetaData[inv] || {}
+              Object.keys(processMap).forEach((pk) => {
+                const meta = processMap[pk]
+                const teamName = userTeamByName.get(normalizeName(meta?.operator))
+                if (teamName) meta.team_name = teamName
               })
-              Object.keys(processLatestMetaData).forEach((inv) => {
-                const processMap = processLatestMetaData[inv] || {}
-                Object.keys(processMap).forEach((pk) => {
-                  const meta = processMap[pk]
-                  const teamName = userTeamByName.get(normalizeName(meta?.operator))
-                  if (teamName) meta.team_name = teamName
-                })
-              })
-            }
-          } catch {}
+            })
+          }
           const amountData: Record<string, number> = {}
           Object.keys(processAmountMap).forEach((inv) => {
             amountData[inv] = Object.values(processAmountMap[inv] || {}).reduce((sum: number, v: any) => sum + Number(v || 0), 0)
