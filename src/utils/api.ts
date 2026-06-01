@@ -2648,11 +2648,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               })
             })
             normalizedRows.forEach(({ inv, processKey, totalHours, deviceNo }: any) => {
-              if (!inv || !processKey || !deviceNo || !Number.isFinite(totalHours) || totalHours <= 0) return
-              const unitPrice = Number(devicePriceMap.get(deviceNo) || 0)
-              if (!Number.isFinite(unitPrice) || unitPrice <= 0) return
+              if (!inv || !processKey || !Number.isFinite(totalHours) || totalHours <= 0) return
+              const unitPrice = deviceNo ? Number(devicePriceMap.get(deviceNo) || 0) : 0
               if (!processAmountMap[inv]) processAmountMap[inv] = {}
-              processAmountMap[inv][processKey] = Number(processAmountMap[inv][processKey] || 0) + totalHours * unitPrice
+              processAmountMap[inv][processKey] = Number(processAmountMap[inv][processKey] || 0) + (Number.isFinite(unitPrice) ? totalHours * unitPrice : 0)
             })
             const { userTeamByName } = usersResult
             Object.keys(processLatestMetaData).forEach((inv) => {
