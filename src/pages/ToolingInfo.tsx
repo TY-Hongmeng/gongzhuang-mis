@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import * as XLSX from 'xlsx'
 import { Card, Typography, Button, Space, Table, message, Modal, Input, Select, DatePicker, AutoComplete, Popconfirm, Rate, Segmented } from 'antd'
 import { LeftOutlined, ToolOutlined, ReloadOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
@@ -38,6 +38,7 @@ const WORK_HOURS_CACHE_TTL = 5 * 60 * 1000
 const INVENTORY_CHILD_SEARCH_MIN_DIGITS = 7
 const DRAWING_CHILD_SEARCH_MIN_LEN = 4
 const AUTO_EXPAND_PARENT_LIMIT = 12
+const VISIBLE_PART_PREFETCH_LIMIT = 8
 
 type WorkHoursLatestMetaMap = Record<string, {
   process_name: string
@@ -878,6 +879,13 @@ const ToolingInfoPage: React.FC = () => {
     batchDelete
   } = useToolingData()
   const selectedParentIds = useMemo(() => selectedRowKeys.filter(k => !k.startsWith('blank-') && !k.startsWith('part-') && !k.startsWith('child-')), [selectedRowKeys])
+  const activeExpandedToolingIds = useMemo(() => {
+    return Array.from(new Set(
+      [...expandedRowKeys, ...expandedChildKeys]
+        .map((id) => String(id || '').trim())
+        .filter((id) => id && !id.startsWith('blank-') && !id.startsWith('part-') && !id.startsWith('child-'))
+    ))
+  }, [expandedRowKeys, expandedChildKeys])
   const saveStatusInput = useCallback(async (toolingId: string, type: 'part' | 'child', id: string, value: string) => {
     const normalized = String(normalizeDateInput(value || '') || '').trim()
     const nextValue = normalized ? normalized : null
@@ -1489,11 +1497,13 @@ const ToolingInfoPage: React.FC = () => {
     const parentIds = (filteredVisibleData || [])
       .map((row: any) => String(row?.id || '').trim())
       .filter((id: string) => id && !id.startsWith('blank-'))
-    const needFetch = parentIds.filter((id) => !Object.prototype.hasOwnProperty.call(partsMapRef.current, id) && !partsLoadingMapRef.current[id])
+      .slice(0, VISIBLE_PART_PREFETCH_LIMIT)
+    const targetIds = Array.from(new Set([...activeExpandedToolingIds, ...parentIds]))
+    const needFetch = targetIds.filter((id) => !Object.prototype.hasOwnProperty.call(partsMapRef.current, id) && !partsLoadingMapRef.current[id])
     if (needFetch.length === 0) return
     let cancelled = false
     const timer = setTimeout(async () => {
-      const chunkSize = 8
+      const chunkSize = 4
       for (let i = 0; i < needFetch.length; i += chunkSize) {
         if (cancelled) return
         const group = needFetch.slice(i, i + chunkSize)
@@ -1504,7 +1514,7 @@ const ToolingInfoPage: React.FC = () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [filteredVisibleData, partsMap, partsLoadingMap, debouncedFilterInventory, debouncedFilterPartDrawing])
+  }, [filteredVisibleData, partsMap, partsLoadingMap, debouncedFilterInventory, debouncedFilterPartDrawing, activeExpandedToolingIds])
 
   const tableRows = useMemo(() => ensureBlankToolings(filteredVisibleData), [filteredVisibleData])
 
@@ -1823,16 +1833,25 @@ const ToolingInfoPage: React.FC = () => {
   
   // 当展开/子表加载或筛选变更时，按当前页面相关盘存编号按需拉取工时数据（500ms 防抖）
   useEffect(() => {
+    if (activeExpandedToolingIds.length === 0) {
+      if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
+      workHoursFetchRef.current.timer = null
+      workHoursFetchRef.current.lastKey = ''
+      return
+    }
     const invsSet = new Set<string>()
-    ensureBlankToolings(data).forEach(d => {
-      const inv = String(d.inventory_number || '').trim().toUpperCase()
+    activeExpandedToolingIds.forEach((toolingId) => {
+      const parent = dataRef.current.find((row: any) => String(row?.id || '') === toolingId)
+      const inv = String(parent?.inventory_number || '').trim().toUpperCase()
       if (inv) invsSet.add(inv)
+      const partsList = partsMapRef.current[toolingId] || []
+      partsList.forEach((part: any) => {
+        const partInv = String(part?.part_inventory_number || '').trim().toUpperCase()
+        if (partInv) invsSet.add(partInv)
+      })
     })
-    Object.values(partsMap).forEach(list => (list || []).forEach(p => {
-      const inv = String(p.part_inventory_number || '').trim().toUpperCase()
-      if (inv) invsSet.add(inv)
-    }))
     const invs = Array.from(invsSet)
+    if (invs.length === 0) return
     const now = Date.now()
     const last = workHoursFetchRef.current.lastFetchTime || 0
     const nextKey = invs.slice().sort().join('|')
@@ -1848,7 +1867,7 @@ const ToolingInfoPage: React.FC = () => {
       if (workHoursFetchRef.current.timer) clearTimeout(workHoursFetchRef.current.timer)
       workHoursFetchRef.current.timer = null
     }
-  }, [data, partsMap, fetchWorkHoursData])
+  }, [activeExpandedToolingIds, partsMap, fetchWorkHoursData])
 
   useEffect(() => {
     // 智能总额计算策略 - 分阶段执行：
@@ -1896,17 +1915,19 @@ const ToolingInfoPage: React.FC = () => {
           // 清除列缓存，确保列定义重新创建
           partColumnsCacheRef.current.clear()
           childColumnsCacheRef.current.clear()
-          // 使用广播中的盘存编号，同时收集当前页面所有相关盘存编号
+          // 使用广播中的盘存编号，同时仅收集当前已展开行相关盘存编号
           const invsSet = new Set<string>()
           if (submittedInv) invsSet.add(submittedInv)
-          ensureBlankToolings(data).forEach(d => {
-            const inv = String(d.inventory_number || '').trim().toUpperCase()
+          activeExpandedToolingIds.forEach((toolingId) => {
+            const parent = dataRef.current.find((row: any) => String(row?.id || '') === toolingId)
+            const inv = String(parent?.inventory_number || '').trim().toUpperCase()
             if (inv) invsSet.add(inv)
+            const partsList = partsMapRef.current[toolingId] || []
+            partsList.forEach((part: any) => {
+              const partInv = String(part?.part_inventory_number || '').trim().toUpperCase()
+              if (partInv) invsSet.add(partInv)
+            })
           })
-          Object.values(partsMap).forEach(list => (list || []).forEach(p => {
-            const inv = String(p.part_inventory_number || '').trim().toUpperCase()
-            if (inv) invsSet.add(inv)
-          }))
           const invs = Array.from(invsSet)
           console.log('刷新工时数据，盘存编号列表:', invs)
           if (invs.length > 0) {
@@ -1922,7 +1943,7 @@ const ToolingInfoPage: React.FC = () => {
         try { bc.close() } catch {}
       }
     }
-  }, [data, partsMap])
+  }, [activeExpandedToolingIds, fetchWorkHoursData])
   
   // 导入文件输入框ref
   const importFileInputRef = useRef<HTMLInputElement>(null)
