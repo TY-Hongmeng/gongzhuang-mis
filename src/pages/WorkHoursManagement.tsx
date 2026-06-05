@@ -104,6 +104,7 @@ const WorkHoursManagement: React.FC = () => {
   const [partInventoryNo, setPartInventoryNo] = React.useState<string>('')
   const [partDrawingNo, setPartDrawingNo] = React.useState<string>('')
   const [partName, setPartName] = React.useState<string>('')
+  const [dailyWorkFilter, setDailyWorkFilter] = React.useState<'all' | 'abnormal'>('all')
   
   // 数据状态
   const [loading, setLoading] = React.useState(false)
@@ -591,6 +592,38 @@ const WorkHoursManagement: React.FC = () => {
     })
     return warningMap
   }, [items])
+  const abnormalDailyWorkMap = React.useMemo(() => {
+    const result: Record<string, string[]> = {}
+    Object.keys(dailyWorkRangeMap).forEach((key) => {
+      const range = dailyWorkRangeMap[key]
+      if (!range) return
+      const reasons: string[] = []
+      const workHours = (Number(range.end || 0) - Number(range.start || 0)) / 60
+      const statHours = Number(dailyHoursSum[key]?.statHours || 0) / 60
+      if (!(workHours > 0)) reasons.push('日工作小于等于0小时')
+      if (workHours > 12) reasons.push(`日工作 ${workHours.toFixed(2)} 小时，超过12小时`)
+      if (statHours - workHours > 0.01) reasons.push(`日统计 ${statHours.toFixed(2)} 小时，大于日工作 ${workHours.toFixed(2)} 小时`)
+      if (reasons.length) result[key] = reasons
+    })
+    return result
+  }, [dailyWorkRangeMap, dailyHoursSum])
+  const operatorAbnormalCountMap = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    Object.keys(abnormalDailyWorkMap).forEach((key) => {
+      const operatorName = key.split('-')[0] || '未填'
+      counts[operatorName] = (counts[operatorName] || 0) + 1
+    })
+    return counts
+  }, [abnormalDailyWorkMap])
+  const abnormalShiftCount = React.useMemo(() => Object.keys(abnormalDailyWorkMap).length, [abnormalDailyWorkMap])
+  const abnormalOperatorCount = React.useMemo(
+    () => Object.values(operatorAbnormalCountMap).filter((count) => count > 0).length,
+    [operatorAbnormalCountMap]
+  )
+  const filterAbnormalRows = React.useCallback((rows: any[]) => {
+    if (dailyWorkFilter !== 'abnormal') return rows
+    return rows.filter((row) => !!abnormalDailyWorkMap[getShiftBucketKey(row)])
+  }, [dailyWorkFilter, abnormalDailyWorkMap])
   const renderShiftWarningText = React.useCallback((text: React.ReactNode, row: any) => {
     const warnings = shiftWarningMap[String(row?.id || '')] || []
     if (!warnings.length) return text
@@ -766,7 +799,7 @@ const WorkHoursManagement: React.FC = () => {
   ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap, renderShiftWarningText])
 
   const expandColumnWidth = 48
-  const parentColumnWidths = [60, 90, 70, 70, 90, 90, 140, 140, 140, 140, 140, 140, 120, 160]
+  const parentColumnWidths = [60, 90, 70, 70, 90, 90, 96, 140, 140, 140, 140, 140, 140, 120, 160]
   const parentTableWidth = parentColumnWidths.reduce((sum, w) => sum + w, 0) + expandColumnWidth
 
   // 使用useMemo缓存父表格列配置，避免每次渲染都重新创建
@@ -798,24 +831,30 @@ const WorkHoursManagement: React.FC = () => {
       return <span style={value === 0 ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
     }, align: 'center', width: parentColumnWidths[4] },
     { title: '上班天数', dataIndex: 'work_days', align: 'center', width: parentColumnWidths[5] },
-    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
+    { title: '异常班次', dataIndex: 'abnormal_shift_count', render: (v: number, r: any) => {
+      const count = Number(v || 0)
+      const tips = Array.isArray(r?.abnormal_shift_reasons) ? r.abnormal_shift_reasons : []
+      return <span style={count > 0 ? { color: '#ff4d4f', fontWeight: 600 } : undefined} title={tips.join('；')}>{count}</span>
+    }, align: 'center', width: parentColumnWidths[6] },
+    { title: '平均开动设备', dataIndex: 'average_running', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[13] },
     { title: '统计总时长', dataIndex: 'hours_total_days', render: (v: number, r: any) => {
       const value = Number(v || 0)
       const workDays = Number(r?.work_day_equiv || 0)
       const danger = value > workDays
-      return <span style={danger ? { color: '#ff4d4f', fontWeight: 600 } : undefined}>{value.toFixed(2)}</span>
-    }, align: 'center', width: parentColumnWidths[6] },
-    { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[7] },
-    { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
-    { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
-    { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
-    { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+      const tips = Array.isArray(r?.abnormal_shift_reasons) ? r.abnormal_shift_reasons : []
+      return <span style={danger ? { color: '#ff4d4f', fontWeight: 600 } : undefined} title={tips.join('；')}>{value.toFixed(2)}</span>
+    }, align: 'center', width: parentColumnWidths[7] },
+    { title: '统计均时长', dataIndex: 'avg_stat_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[8] },
+    { title: '辅助总时长', dataIndex: 'aux_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[9] },
+    { title: '辅助均时长', dataIndex: 'avg_aux_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[10] },
+    { title: '程序总时长', dataIndex: 'proc_total_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[11] },
+    { title: '程序均时长', dataIndex: 'avg_proc_days', render: (v: number) => Number(v||0).toFixed(2), align: 'center', width: parentColumnWidths[12] },
     { title: '辅/加/能力系数', key: 'coeffs', render: (_: any, r: any) => {
       const a = Number(r.aux_coeff || 1).toFixed(2)
       const p = Number(r.proc_coeff || 1).toFixed(2)
       const c = Number(r.capability_coeff || 1).toFixed(2)
       return `${a}/${p}/${c}`
-    }, width: parentColumnWidths[13], align: 'center' }
+    }, width: parentColumnWidths[14], align: 'center' }
   ], [])
 
   const groupedData = React.useMemo(() => {
@@ -967,6 +1006,9 @@ const WorkHoursManagement: React.FC = () => {
       g.avg_aux = g.work_days > 0 ? Number((g.aux_total / g.work_days).toFixed(2)) : 0
       g.avg_proc = g.work_days > 0 ? Number((g.proc_total_adj / g.work_days).toFixed(2)) : 0
       g.avg_stat = g.work_days > 0 ? Number((g.hours_total / g.work_days).toFixed(2)) : 0
+      const abnormalShiftReasons = Object.keys(g._work_ranges)
+        .filter((bucketKey) => !!abnormalDailyWorkMap[bucketKey])
+        .map((bucketKey) => abnormalDailyWorkMap[bucketKey].join('；'))
       
       // 移除临时属性，确保返回的对象是纯数据对象
       delete g._dayset
@@ -993,6 +1035,8 @@ const WorkHoursManagement: React.FC = () => {
         days_total: g.days_total,
         work_day_equiv: g.work_day_equiv,
         work_days: g.work_days,
+        abnormal_shift_count: abnormalShiftReasons.length,
+        abnormal_shift_reasons: abnormalShiftReasons,
         running_total: g.running_total,
         average_running: g.average_running,
         rows: g.rows,
@@ -1010,7 +1054,7 @@ const WorkHoursManagement: React.FC = () => {
       if (workDayCmp !== 0) return workDayCmp
       return String(a.operator || '').localeCompare(String(b.operator || ''), 'zh-Hans-CN')
     })
-  }, [items, userMap, deviceMap, employeeUsers, sortExpandedRows])
+  }, [items, userMap, deviceMap, employeeUsers, sortExpandedRows, abnormalDailyWorkMap])
 
   // 对分组后的数据进行车间和班组筛选
   const filteredGroupedData = React.useMemo(() => {
@@ -1028,6 +1072,9 @@ const WorkHoursManagement: React.FC = () => {
     // 班组筛选
     if (team) {
       result = result.filter(item => item.team === team)
+    }
+    if (dailyWorkFilter === 'abnormal') {
+      result = result.filter(item => Number(item.abnormal_shift_count || 0) > 0)
     }
     let currentWorkshopKey = ''
     let currentWorkshopStart = -1
@@ -1064,7 +1111,7 @@ const WorkHoursManagement: React.FC = () => {
       withRowSpan[currentTeamStart].teamRowSpan = withRowSpan.length - currentTeamStart
     }
     return withRowSpan
-  }, [groupedData, operator, workshop, team])
+  }, [groupedData, operator, workshop, team, dailyWorkFilter])
 
   // 从groupedData中获取唯一的车间列表
   const uniqueWorkshops = React.useMemo(() => {
@@ -1594,12 +1641,26 @@ const WorkHoursManagement: React.FC = () => {
                 />
               </div>
             </Col>
+            <Col xs={12} sm={12} md={8} lg={7} xl={4}>
+              <div className="flex items-center gap-2">
+                <span style={{ width: 80, textAlign: 'right', whiteSpace: 'nowrap' }}>日工作筛查：</span>
+                <Select
+                  style={{ flex: 1 }}
+                  value={dailyWorkFilter}
+                  onChange={(value) => setDailyWorkFilter(value)}
+                  options={[
+                    { value: 'all', label: '全部' },
+                    { value: 'abnormal', label: '仅看异常' }
+                  ]}
+                />
+              </div>
+            </Col>
           </Row>
         </div>
         
         {/* 操作按钮 */}
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Button onClick={() => setExpandedRowKeys(groupedData.filter((g: any) => Array.isArray(g.rows) && g.rows.length > 0).map((g: any) => g.operator))}>▾ 展开全部</Button>
+          <Button onClick={() => setExpandedRowKeys(filteredGroupedData.filter((g: any) => Array.isArray(filterAbnormalRows(g.rows || [])) && filterAbnormalRows(g.rows || []).length > 0).map((g: any) => g.operator))}>▾ 展开全部</Button>
           <Button onClick={() => setExpandedRowKeys([])}>▸ 折叠全部</Button>
           {isSuperAdmin && (
             <Button danger disabled={!selectedKeys.length} onClick={async () => {
@@ -1631,6 +1692,9 @@ const WorkHoursManagement: React.FC = () => {
           <Button type="primary" onClick={exportWorkHoursExcel}>导出工时</Button>
           <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
           <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
+          <span style={{ color: abnormalShiftCount > 0 ? '#ff4d4f' : '#595959', fontWeight: abnormalShiftCount > 0 ? 600 : 400 }}>
+            异常日工作班次 {abnormalShiftCount} 个，涉及 {abnormalOperatorCount} 人
+          </span>
         </div>
 
         <Table
@@ -1645,10 +1709,10 @@ const WorkHoursManagement: React.FC = () => {
             childrenColumnName: '_nochildren',
             columnWidth: expandColumnWidth,
             expandedRowKeys,
-            rowExpandable: (record: any) => Array.isArray(record?.rows) && record.rows.length > 0,
+            rowExpandable: (record: any) => Array.isArray(filterAbnormalRows(record?.rows || [])) && filterAbnormalRows(record?.rows || []).length > 0,
             onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
             expandedRowRender: (record: any) => {
-              const sortedRows = sortExpandedRows(record.rows || [])
+              const sortedRows = sortExpandedRows(filterAbnormalRows(record.rows || []))
               // 为当前子表格数据计算rowSpan配置
               const rowSpanConfig = getRowSpanConfig(sortedRows);
               
