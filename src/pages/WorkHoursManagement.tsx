@@ -583,9 +583,24 @@ const WorkHoursManagement: React.FC = () => {
     })
   }, [])
   const shiftWarningMap = React.useMemo(() => {
+    const rowsByOperatorShiftDate: Record<string, any[]> = {}
+    items.forEach((row) => {
+      const operatorName = String(row?.operator || '').trim()
+      const shiftDate = getShiftGroupDate(row)
+      const key = `${operatorName}__${shiftDate}`
+      if (!rowsByOperatorShiftDate[key]) rowsByOperatorShiftDate[key] = []
+      rowsByOperatorShiftDate[key].push(row)
+    })
     const warningMap: Record<string, string[]> = {}
     items.forEach((row) => {
-      const warnings = getShiftWarningMessages(row, { includeSoftTimeHeuristics: false })
+      const operatorName = String(row?.operator || '').trim()
+      const shiftDate = getShiftGroupDate(row)
+      const key = `${operatorName}__${shiftDate}`
+      const sameShiftDateRows = (rowsByOperatorShiftDate[key] || []).filter((item) => String(item?.id || '') !== String(row?.id || ''))
+      const warnings = getShiftWarningMessages(row, {
+        includeSoftTimeHeuristics: false,
+        sameShiftDateRows
+      })
       if (warnings.length > 0) {
         warningMap[String(row.id || '')] = warnings
       }
@@ -599,14 +614,12 @@ const WorkHoursManagement: React.FC = () => {
       if (!range) return
       const reasons: string[] = []
       const workHours = (Number(range.end || 0) - Number(range.start || 0)) / 60
-      const statHours = Number(dailyHoursSum[key]?.statHours || 0) / 60
       if (!(workHours > 0)) reasons.push('日工作小于等于0小时')
       if (workHours > 12) reasons.push(`日工作 ${workHours.toFixed(2)} 小时，超过12小时`)
-      if (statHours - workHours > 0.01) reasons.push(`日统计 ${statHours.toFixed(2)} 小时，大于日工作 ${workHours.toFixed(2)} 小时`)
       if (reasons.length) result[key] = reasons
     })
     return result
-  }, [dailyWorkRangeMap, dailyHoursSum])
+  }, [dailyWorkRangeMap])
   const abnormalScreeningMap = React.useMemo(() => {
     const result: Record<string, string[]> = {}
     const pushReason = (bucketKey: string, reason: string) => {
@@ -685,7 +698,8 @@ const WorkHoursManagement: React.FC = () => {
   }
 
   // 使用useMemo缓存子表格列配置，避免每次渲染都重新创建
-  const childColumns = React.useMemo(() => [
+  const childColumns = React.useMemo(() => {
+    const columns: any[] = [
     { title: '班次日期', dataIndex: 'shift_date', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
     { title: '班次', dataIndex: 'shift', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
     { title: '日工作', key: 'daily_work_hours', render: (_: any, r: any) => {
@@ -824,7 +838,23 @@ const WorkHoursManagement: React.FC = () => {
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
     { title: '完成数量', dataIndex: 'completed_quantity', align: 'center' }
-  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap, renderShiftWarningText])
+    ]
+    if (dailyWorkFilter === 'abnormal') {
+      columns.splice(2, 0, {
+        title: '异常原因',
+        key: 'abnormal_reason',
+        align: 'center',
+        width: 220,
+        render: (_: any, r: any) => {
+          const reasons = abnormalScreeningMap[getShiftBucketKey(r)] || []
+          return reasons.length ? (
+            <span style={{ color: '#ff4d4f', whiteSpace: 'pre-wrap' }}>{reasons.join('；')}</span>
+          ) : '-'
+        }
+      })
+    }
+    return columns
+  }, [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap, renderShiftWarningText, dailyWorkFilter, abnormalScreeningMap])
 
   const expandColumnWidth = 48
   const parentColumnWidths = [60, 90, 70, 70, 90, 90, 96, 140, 140, 140, 140, 140, 140, 120, 160]
