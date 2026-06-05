@@ -528,41 +528,68 @@ const WorkHoursManagement: React.FC = () => {
     return rangeMap
   }, [items])
 
+  const sortExpandedRows = React.useCallback((rows: any[]) => {
+    const shiftOrder = (shiftValue: string) => {
+      const normalized = String(shiftValue || '').trim()
+      if (normalized === '白班') return 0
+      if (normalized === '夜班') return 1
+      return 99
+    }
+    const toTimeValue = (timeValue: string) => {
+      const text = String(timeValue || '').trim()
+      if (!text) return Number.MAX_SAFE_INTEGER
+      const [h, m] = text.split(':').map((x) => Number(x || 0))
+      return h * 60 + m
+    }
+
+    return [...rows].sort((a: any, b: any) => {
+      const workDateCompare = String(b.work_date || '').localeCompare(String(a.work_date || ''))
+      if (workDateCompare !== 0) return workDateCompare
+
+      const shiftCompare = shiftOrder(a.shift) - shiftOrder(b.shift)
+      if (shiftCompare !== 0) return shiftCompare
+
+      const shiftDateCompare = String(b.shift_date || '').localeCompare(String(a.shift_date || ''))
+      if (shiftDateCompare !== 0) return shiftDateCompare
+
+      const auxStartCompare = toTimeValue(a.aux_start_time) - toTimeValue(b.aux_start_time)
+      if (auxStartCompare !== 0) return auxStartCompare
+
+      const createdAtCompare = String(a.created_at || '').localeCompare(String(b.created_at || ''))
+      if (createdAtCompare !== 0) return createdAtCompare
+
+      const inventoryCompare = String(a.part_inventory_number || '').localeCompare(
+        String(b.part_inventory_number || ''),
+        'zh-Hans-CN',
+        { numeric: true, sensitivity: 'base' }
+      )
+      if (inventoryCompare !== 0) return inventoryCompare
+
+      return String(a.id || '').localeCompare(String(b.id || ''))
+    })
+  }, [])
+
   // 计算子表格中需要合并的列的rowSpan
   const getRowSpanConfig = (data: any[]) => {
-    // 按日期和班次分组，计算每个组的rowSpan
-    const rowSpanMap: Record<string, number> = {};
-    const mergedRows: Record<string, boolean> = {};
-    
-    // 首先遍历数据，计算每个日期和班次组合的行数
-    data.forEach((r, index) => {
-      const key = `${r.work_date}-${r.shift}`;
-      if (!rowSpanMap[key]) {
-        rowSpanMap[key] = 0;
-      }
-      rowSpanMap[key]++;
-    });
-    
-    // 然后创建rowSpan配置
+    // 只合并连续出现的同日期同班次记录，避免未排序数据导致整块错位
     return data.map((r, index) => {
-      const key = `${r.work_date}-${r.shift}`;
-      const isMerged = mergedRows[key];
-      
-      if (!isMerged) {
-        // 标记该组已处理
-        mergedRows[key] = true;
-        return {
-          shouldRender: true,
-          rowSpan: rowSpanMap[key]
-        };
-      } else {
-        return {
-          shouldRender: false,
-          rowSpan: 0
-        };
+      const currentKey = `${r.work_date}-${r.shift}`
+      const previousKey = index > 0 ? `${data[index - 1]?.work_date}-${data[index - 1]?.shift}` : ''
+
+      if (currentKey === previousKey) {
+        return { shouldRender: false, rowSpan: 0 }
       }
-    });
-  };
+
+      let rowSpan = 1
+      for (let cursor = index + 1; cursor < data.length; cursor += 1) {
+        const nextKey = `${data[cursor]?.work_date}-${data[cursor]?.shift}`
+        if (nextKey !== currentKey) break
+        rowSpan += 1
+      }
+
+      return { shouldRender: true, rowSpan }
+    })
+  }
 
   // 使用useMemo缓存子表格列配置，避免每次渲染都重新创建
   const childColumns = React.useMemo(() => [
@@ -957,7 +984,7 @@ const WorkHoursManagement: React.FC = () => {
       if (workDayCmp !== 0) return workDayCmp
       return String(a.operator || '').localeCompare(String(b.operator || ''), 'zh-Hans-CN')
     })
-  }, [items, userMap, deviceMap, employeeUsers])
+  }, [items, userMap, deviceMap, employeeUsers, sortExpandedRows])
 
   // 对分组后的数据进行车间和班组筛选
   const filteredGroupedData = React.useMemo(() => {
@@ -1084,7 +1111,9 @@ const WorkHoursManagement: React.FC = () => {
           // 处理当前操作者的子级数据
           const currentChildData: any[] = [];
           
-          group.rows.forEach((row: any) => {
+          const sortedRows = sortExpandedRows(group.rows || [])
+
+          sortedRows.forEach((row: any) => {
             // 获取设备名称
             const deviceInfo = deviceMap[String(row.device_no || '')] || { name: '' };
             const deviceFullName = row.device_no ? `${row.device_no}${deviceInfo.name ? '-' + deviceInfo.name : ''}` : '-';
@@ -1593,8 +1622,9 @@ const WorkHoursManagement: React.FC = () => {
             rowExpandable: (record: any) => Array.isArray(record?.rows) && record.rows.length > 0,
             onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as React.Key[]),
             expandedRowRender: (record: any) => {
+              const sortedRows = sortExpandedRows(record.rows || [])
               // 为当前子表格数据计算rowSpan配置
-              const rowSpanConfig = getRowSpanConfig(record.rows);
+              const rowSpanConfig = getRowSpanConfig(sortedRows);
               
               // 动态生成包含rowSpan的列配置
               const columnsWithRowSpan = childColumns.map(col => {
@@ -1621,7 +1651,7 @@ const WorkHoursManagement: React.FC = () => {
                   <Table
                     rowKey="id"
                     columns={columnsWithRowSpan as any}
-                    dataSource={record.rows}
+                    dataSource={sortedRows}
                     pagination={false}
                     size="small"
                     scroll={{ x: 'max-content' }}
