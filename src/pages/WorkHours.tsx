@@ -7,6 +7,7 @@ import { fetchWithFallback } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import { upsertProcessDone } from '../utils/processDone'
 import QuickTimeInput from '../components/QuickTimeInput'
+import { getShiftWarningMessages } from '../utils/workHoursShiftWarning'
 
 // 立即在全局作用域定义setAuxRange函数，确保在任何地方调用都不会出错
 ;(function() {
@@ -740,6 +741,41 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
       setLoadingRecent(false)
     }
   }
+  const buildSubmitShiftWarnings = React.useCallback((draftRecord: any, operatorName: string) => {
+    const operatorRows = recentItems.filter((item) => String(item.operator || '').trim() === String(operatorName || '').trim())
+    const currentShiftDate = String(draftRecord.shift_date || draftRecord.work_date || '').trim()
+    const sameShiftDateRows = operatorRows.filter((item) => String(item.shift_date || item.work_date || '').trim() === currentShiftDate)
+    const previousRow = operatorRows[0] || null
+    return getShiftWarningMessages(draftRecord, {
+      previousRow,
+      sameShiftDateRows
+    })
+  }, [recentItems])
+  const confirmShiftWarnings = React.useCallback((warnings: string[]) => {
+    if (!warnings.length) return Promise.resolve(true)
+    return new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: '检测到可能的班次填写异常',
+        okText: '确认继续提交',
+        cancelText: '返回检查',
+        width: 560,
+        content: (
+          <div>
+            <div style={{ marginBottom: 8 }}>系统发现以下情况，请确认后再提交：</div>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {warnings.map((warning, index) => (
+                <li key={`${warning}-${index}`} style={{ color: '#ff4d4f', marginBottom: 4 }}>
+                  {warning}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ),
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
+  }, [])
 
   // 计算子表格中需要合并的列的rowSpan
   const getRowSpanConfig = (data: any[]) => {
@@ -1158,15 +1194,12 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 }
               }
             }
-            const hide = message.loading('提交中...', 0)
-            setSubmitting(true)
             const auxStart = isThirdWorkshop ? null : (wAuxStart ? wAuxStart.format('HH:mm') : null)
             const auxEnd = isThirdWorkshop ? null : (wAuxEnd ? wAuxEnd.format('HH:mm') : null)
             const auxHours = auxMinutes / 60
             const procHours = procMinutesInput / 60
             const submitWorkDate = resolveWorkDate(vals.shift_date, vals.shift, vals.aux_start, wAuxEnd)
             if (!submitWorkDate) {
-              hide()
               message.error('班次日期无效，请重新选择')
               return
             }
@@ -1182,6 +1215,22 @@ const WorkHours: React.FC<{ mode?: WorkHoursMode }> = ({ mode }) => {
                 }
               }
             } catch {}
+            const draftShiftRecord = {
+              operator: latestOperator,
+              shift: String(vals.shift || ''),
+              shift_date: String(vals.shift_date?.format('YYYY-MM-DD') || ''),
+              work_date: String(submitWorkDate.format('YYYY-MM-DD')),
+              aux_start_time: auxStart,
+              aux_end_time: auxEnd,
+              proc_hours: Number(procHours)
+            }
+            const shiftWarnings = buildSubmitShiftWarnings(draftShiftRecord, latestOperator)
+            const shouldContinueSubmit = await confirmShiftWarnings(shiftWarnings)
+            if (!shouldContinueSubmit) {
+              return
+            }
+            const hide = message.loading('提交中...', 0)
+            setSubmitting(true)
             // 确保payload中的所有属性都是基本类型，避免循环引用警告
             const payload = {
               part_inventory_number: String(selectedInv),

@@ -8,6 +8,7 @@ import zhCN from 'antd/locale/zh_CN'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuthStore } from '../stores/authStore'
+import { getShiftWarningMessages } from '../utils/workHoursShiftWarning'
 
 const { Title } = Typography
 const { RangePicker } = DatePicker
@@ -568,6 +569,25 @@ const WorkHoursManagement: React.FC = () => {
       return String(a.id || '').localeCompare(String(b.id || ''))
     })
   }, [])
+  const shiftWarningMap = React.useMemo(() => {
+    const warningMap: Record<string, string[]> = {}
+    items.forEach((row) => {
+      const warnings = getShiftWarningMessages(row)
+      if (warnings.length > 0) {
+        warningMap[String(row.id || '')] = warnings
+      }
+    })
+    return warningMap
+  }, [items])
+  const renderShiftWarningText = React.useCallback((text: React.ReactNode, row: any) => {
+    const warnings = shiftWarningMap[String(row?.id || '')] || []
+    if (!warnings.length) return text
+    return (
+      <span style={{ color: '#ff4d4f', fontWeight: 600 }} title={warnings.join('；')}>
+        {text}
+      </span>
+    )
+  }, [shiftWarningMap])
 
   // 计算子表格中需要合并的列的rowSpan
   const getRowSpanConfig = (data: any[]) => {
@@ -593,8 +613,8 @@ const WorkHoursManagement: React.FC = () => {
 
   // 使用useMemo缓存子表格列配置，避免每次渲染都重新创建
   const childColumns = React.useMemo(() => [
-    { title: '班次日期', dataIndex: 'shift_date', align: 'center' },
-    { title: '班次', dataIndex: 'shift', align: 'center' },
+    { title: '班次日期', dataIndex: 'shift_date', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
+    { title: '班次', dataIndex: 'shift', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
     { title: '日工作', key: 'daily_work_hours', render: (_: any, r: any) => {
       const key = `${r.operator}-${r.shift}-${r.work_date}`
       const range = dailyWorkRangeMap[key]
@@ -735,7 +755,7 @@ const WorkHoursManagement: React.FC = () => {
       return completedTime.format('MM-DD HH:mm')
     }, width: 100, align: 'center' },
     { title: '完成数量', dataIndex: 'completed_quantity', align: 'center' }
-  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap])
+  ], [resolvePartName, resolvePartDrawingNumber, deviceMap, userMap, items, dailyHoursSum, dailyWorkRangeMap, renderShiftWarningText])
 
   const expandColumnWidth = 48
   const parentColumnWidths = [60, 90, 70, 70, 90, 90, 140, 140, 140, 140, 140, 140, 120, 160]
