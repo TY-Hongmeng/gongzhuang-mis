@@ -609,12 +609,19 @@ const WorkHoursManagement: React.FC = () => {
   }, [dailyWorkRangeMap, dailyHoursSum])
   const operatorAbnormalCountMap = React.useMemo(() => {
     const counts: Record<string, number> = {}
-    Object.keys(abnormalDailyWorkMap).forEach((key) => {
-      const operatorName = key.split('-')[0] || '未填'
-      counts[operatorName] = (counts[operatorName] || 0) + 1
+    const operatorBucketMap: Record<string, Record<string, true>> = {}
+    items.forEach((row) => {
+      const bucketKey = getShiftBucketKey(row)
+      if (!abnormalDailyWorkMap[bucketKey]) return
+      const operatorName = String(row?.operator || '').trim() || '未填'
+      if (!operatorBucketMap[operatorName]) operatorBucketMap[operatorName] = {}
+      operatorBucketMap[operatorName][bucketKey] = true
+    })
+    Object.keys(operatorBucketMap).forEach((operatorName) => {
+      counts[operatorName] = Object.keys(operatorBucketMap[operatorName]).length
     })
     return counts
-  }, [abnormalDailyWorkMap])
+  }, [abnormalDailyWorkMap, items])
   const abnormalShiftCount = React.useMemo(() => Object.keys(abnormalDailyWorkMap).length, [abnormalDailyWorkMap])
   const abnormalOperatorCount = React.useMemo(
     () => Object.values(operatorAbnormalCountMap).filter((count) => count > 0).length,
@@ -1006,9 +1013,13 @@ const WorkHoursManagement: React.FC = () => {
       g.avg_aux = g.work_days > 0 ? Number((g.aux_total / g.work_days).toFixed(2)) : 0
       g.avg_proc = g.work_days > 0 ? Number((g.proc_total_adj / g.work_days).toFixed(2)) : 0
       g.avg_stat = g.work_days > 0 ? Number((g.hours_total / g.work_days).toFixed(2)) : 0
-      const abnormalShiftReasons = Object.keys(g._work_ranges)
-        .filter((bucketKey) => !!abnormalDailyWorkMap[bucketKey])
-        .map((bucketKey) => abnormalDailyWorkMap[bucketKey].join('；'))
+      const abnormalBucketMap: Record<string, true> = {}
+      ;(Array.isArray(g.rows) ? g.rows : []).forEach((row: any) => {
+        const bucketKey = getShiftBucketKey(row)
+        if (abnormalDailyWorkMap[bucketKey]) abnormalBucketMap[bucketKey] = true
+      })
+      const abnormalShiftReasons = Object.keys(abnormalBucketMap)
+        .map((fullBucketKey) => abnormalDailyWorkMap[fullBucketKey].join('；'))
       
       // 移除临时属性，确保返回的对象是纯数据对象
       delete g._dayset
@@ -1643,7 +1654,7 @@ const WorkHoursManagement: React.FC = () => {
             </Col>
             <Col xs={12} sm={12} md={8} lg={7} xl={4}>
               <div className="flex items-center gap-2">
-                <span style={{ width: 80, textAlign: 'right', whiteSpace: 'nowrap' }}>日工作筛查：</span>
+                <span style={{ width: 80, textAlign: 'right', whiteSpace: 'nowrap' }}>异常筛查：</span>
                 <Select
                   style={{ flex: 1 }}
                   value={dailyWorkFilter}
@@ -1693,7 +1704,7 @@ const WorkHoursManagement: React.FC = () => {
           <Button type={yearMonth ? 'primary' : 'default'} onClick={handleThisMonth}>本月</Button>
           <Button type={!yearMonth && !range ? 'primary' : 'default'} onClick={handleAllMonths}>全部</Button>
           <span style={{ color: abnormalShiftCount > 0 ? '#ff4d4f' : '#595959', fontWeight: abnormalShiftCount > 0 ? 600 : 400 }}>
-            异常日工作班次 {abnormalShiftCount} 个，涉及 {abnormalOperatorCount} 人
+            异常筛查命中班次 {abnormalShiftCount} 个，涉及 {abnormalOperatorCount} 人
           </span>
         </div>
 
