@@ -13,6 +13,7 @@ export type ShiftLikeRecord = {
 type ShiftWarningOptions = {
   previousRow?: ShiftLikeRecord | null
   sameShiftDateRows?: ShiftLikeRecord[]
+  includeSoftTimeHeuristics?: boolean
 }
 
 const DAY_SHIFT = '白班'
@@ -61,14 +62,15 @@ export const getShiftWarningMessages = (
   const auxEndMinutes = parseClockMinutes(record.aux_end_time)
   const auxStartText = formatTimeText(record.aux_start_time)
   const opposite = oppositeShift(shift)
+  const includeSoftTimeHeuristics = options.includeSoftTimeHeuristics !== false
 
-  if (shift === DAY_SHIFT && auxStartMinutes !== null) {
+  if (includeSoftTimeHeuristics && shift === DAY_SHIFT && auxStartMinutes !== null) {
     if (auxStartMinutes < DAY_SHIFT_START_MINUTES || auxStartMinutes >= NIGHT_SHIFT_START_MINUTES) {
       pushUnique(messages, `辅助开始时间 ${auxStartText} 更像夜班时间，请确认班次是否选反`)
     }
   }
 
-  if (shift === NIGHT_SHIFT && auxStartMinutes !== null) {
+  if (includeSoftTimeHeuristics && shift === NIGHT_SHIFT && auxStartMinutes !== null) {
     if (auxStartMinutes >= DAY_SHIFT_START_MINUTES && auxStartMinutes < NIGHT_SHIFT_START_MINUTES) {
       pushUnique(messages, `辅助开始时间 ${auxStartText} 更像白班时间，请确认班次是否选反`)
     }

@@ -585,7 +585,7 @@ const WorkHoursManagement: React.FC = () => {
   const shiftWarningMap = React.useMemo(() => {
     const warningMap: Record<string, string[]> = {}
     items.forEach((row) => {
-      const warnings = getShiftWarningMessages(row)
+      const warnings = getShiftWarningMessages(row, { includeSoftTimeHeuristics: false })
       if (warnings.length > 0) {
         warningMap[String(row.id || '')] = warnings
       }
