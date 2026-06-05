@@ -53,6 +53,29 @@ const compareWorkshopNames = (a: any, b: any) => {
   return String(a || '-').localeCompare(String(b || '-'), 'zh-Hans-CN')
 }
 
+const getShiftGroupDate = (row: any) => String(row?.shift_date || row?.work_date || '').trim()
+
+const buildShiftGroupKey = (operator: any, shift: any, shiftGroupDate: any) => {
+  return `${String(operator || '').trim()}-${String(shift || '').trim()}-${String(shiftGroupDate || '').trim()}`
+}
+
+const getShiftBucketKey = (row: any) => buildShiftGroupKey(row?.operator, row?.shift, getShiftGroupDate(row))
+
+const toClockMinutes = (value: string) => {
+  const [h, m] = String(value || '').split(':').map((x) => Number(x || 0))
+  return h * 60 + m
+}
+
+const getShiftTimelineOffsetMinutes = (row: any) => {
+  const shiftGroupDate = getShiftGroupDate(row)
+  const workDate = String(row?.work_date || '').trim()
+  if (!shiftGroupDate || !workDate) return 0
+  const shiftBase = dayjs(shiftGroupDate)
+  const workBase = dayjs(workDate)
+  if (!shiftBase.isValid() || !workBase.isValid()) return 0
+  return Math.max(0, workBase.startOf('day').diff(shiftBase.startOf('day'), 'day')) * 1440
+}
+
 // 自定义月份选择器配置 - 注意：antd 5.x 中 DatePicker 不再支持 pickerOptions 属性
 // 这个配置目前没有使用，暂时注释掉
 /* const monthPickerOptions = {
@@ -423,18 +446,19 @@ const WorkHoursManagement: React.FC = () => {
   }
 
   // 计算每个日期下指定操作者开动的设备数量（去重设备编号）
-  const getRunningDevicesCount = (date: string, operator: string, allItems: any[]) => {
-    const runningDevices = new Set<string>();
+  const getRunningDevicesCount = (shiftGroupDate: string, shiftValue: string, operator: string, allItems: any[]) => {
+    const runningDevices = new Set<string>()
     allItems.forEach((item: any) => {
-      if (item.work_date === date && item.operator === operator) {
-        const procMinutes = Math.round(Number(item.proc_hours || 0) * 60);
+      const itemGroupDate = getShiftGroupDate(item)
+      if (itemGroupDate === shiftGroupDate && String(item.shift || '') === String(shiftValue || '') && item.operator === operator) {
+        const procMinutes = Math.round(Number(item.proc_hours || 0) * 60)
         if (procMinutes > 0 && item.device_no) {
-          runningDevices.add(item.device_no);
+          runningDevices.add(item.device_no)
         }
       }
-    });
-    return runningDevices.size;
-  };
+    })
+    return runningDevices.size
+  }
 
   // 计算每个操作者、每个班次、每个日期的工时之和
   const dailyHoursSum = React.useMemo(() => {
@@ -442,11 +466,10 @@ const WorkHoursManagement: React.FC = () => {
     
     // 遍历所有数据，计算每个操作者、每个班次、每个日期的工时之和
     items.forEach(r => {
-      const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
       let auxMinutes = 0
       if (r.aux_start_time && r.aux_end_time) {
-        const s = toMin(r.aux_start_time)
-        const e = toMin(r.aux_end_time)
+        const s = toClockMinutes(r.aux_start_time)
+        const e = toClockMinutes(r.aux_end_time)
         auxMinutes = e >= s ? (e - s) : (e + 1440 - s)
       } else {
         auxMinutes = Math.round(Number(r.aux_hours || 0) * 60)
@@ -467,7 +490,7 @@ const WorkHoursManagement: React.FC = () => {
       const statMinutes = (effectiveAuxMinutes * aux_coeff + procMinutes * proc_coeff) * capability_coeff
       
       // 使用操作者、班次、日期作为唯一键
-      const key = `${r.operator}-${r.shift}-${r.work_date}`;
+      const key = getShiftBucketKey(r)
       if (!sumMap[key]) {
         sumMap[key] = { statHours: 0, auxHours: 0, procHours: 0 };
       }
@@ -484,24 +507,21 @@ const WorkHoursManagement: React.FC = () => {
   // 支持三车间等无辅助时间的场景（使用程序时间或统计时间）
   const dailyWorkRangeMap = React.useMemo(() => {
     const rangeMap: Record<string, { start: number; end: number }> = {}
-    const toMin = (t: string) => {
-      const [h, m] = String(t || '').split(':').map((x) => Number(x || 0))
-      return h * 60 + m
-    }
 
     items.forEach((r: any) => {
-      if (!r?.work_date || !r?.shift || !r?.operator) return
+      const shiftGroupDate = getShiftGroupDate(r)
+      if (!shiftGroupDate || !r?.shift || !r?.operator) return
+      const key = getShiftBucketKey(r)
+      const offsetMinutes = getShiftTimelineOffsetMinutes(r)
 
       // 判断是否为三车间模式（无辅助时间）
       const hasAuxTime = !!(r.aux_start_time && r.aux_end_time)
       const procMin = Math.round(Number(r.proc_hours || 0) * 60)
-      const statMin = Math.round(Number(r.stat_hours || 0) * 60)
 
       if (hasAuxTime) {
-        // 普通模式：使用辅助时间计算
-        const key = `${r.operator}-${r.shift}-${r.work_date}`
-        const startMin = toMin(r.aux_start_time)
-        let auxEndMin = toMin(r.aux_end_time)
+        // 使用班次日期对跨夜记录进行时间轴归一，避免夜班被拆成两段
+        const startMin = toClockMinutes(r.aux_start_time) + offsetMinutes
+        let auxEndMin = toClockMinutes(r.aux_end_time) + offsetMinutes
         if (auxEndMin < startMin) auxEndMin += 1440
         const completedMin = auxEndMin + Math.max(procMin, 0)
 
@@ -511,16 +531,14 @@ const WorkHoursManagement: React.FC = () => {
           if (startMin < rangeMap[key].start) rangeMap[key].start = startMin
           if (completedMin > rangeMap[key].end) rangeMap[key].end = completedMin
         }
-      } else if (procMin > 0 || statMin > 0) {
-        // 三车间模式：无辅助时间，使用程序时间/统计时间作为工作时长
-        const key = `${r.operator}-${r.shift}-${r.work_date}`
-        const workMin = Math.max(procMin, statMin)
+      } else if (procMin > 0) {
+        // 无辅助时间时按班次默认开始时间累计，日维度同样按班次日期+班次归并
+        const defaultStart = String(r.shift || '').trim() === '夜班' ? 20 * 60 : 8 * 60
+        const workMin = procMin
 
         if (!rangeMap[key]) {
-          // 初始化一个默认的起始时间（08:00），累计工作时长
-          rangeMap[key] = { start: 8 * 60, end: 8 * 60 + workMin }
+          rangeMap[key] = { start: defaultStart, end: defaultStart + workMin }
         } else {
-          // 累加工作时长
           rangeMap[key].end += workMin
         }
       }
@@ -536,25 +554,19 @@ const WorkHoursManagement: React.FC = () => {
       if (normalized === '夜班') return 1
       return 99
     }
-    const toTimeValue = (timeValue: string) => {
-      const text = String(timeValue || '').trim()
-      if (!text) return Number.MAX_SAFE_INTEGER
-      const [h, m] = text.split(':').map((x) => Number(x || 0))
-      return h * 60 + m
-    }
-
     return [...rows].sort((a: any, b: any) => {
-      const workDateCompare = String(b.work_date || '').localeCompare(String(a.work_date || ''))
-      if (workDateCompare !== 0) return workDateCompare
+      const shiftDateCompare = getShiftGroupDate(b).localeCompare(getShiftGroupDate(a))
+      if (shiftDateCompare !== 0) return shiftDateCompare
 
       const shiftCompare = shiftOrder(a.shift) - shiftOrder(b.shift)
       if (shiftCompare !== 0) return shiftCompare
 
-      const shiftDateCompare = String(b.shift_date || '').localeCompare(String(a.shift_date || ''))
-      if (shiftDateCompare !== 0) return shiftDateCompare
+      const timelineCompare = getShiftTimelineOffsetMinutes(a) + (a.aux_start_time ? toClockMinutes(a.aux_start_time) : Number.MAX_SAFE_INTEGER)
+        - (getShiftTimelineOffsetMinutes(b) + (b.aux_start_time ? toClockMinutes(b.aux_start_time) : Number.MAX_SAFE_INTEGER))
+      if (timelineCompare !== 0) return timelineCompare
 
-      const auxStartCompare = toTimeValue(a.aux_start_time) - toTimeValue(b.aux_start_time)
-      if (auxStartCompare !== 0) return auxStartCompare
+      const workDateCompare = String(a.work_date || '').localeCompare(String(b.work_date || ''))
+      if (workDateCompare !== 0) return workDateCompare
 
       const createdAtCompare = String(a.created_at || '').localeCompare(String(b.created_at || ''))
       if (createdAtCompare !== 0) return createdAtCompare
@@ -593,8 +605,8 @@ const WorkHoursManagement: React.FC = () => {
   const getRowSpanConfig = (data: any[]) => {
     // 只合并连续出现的同日期同班次记录，避免未排序数据导致整块错位
     return data.map((r, index) => {
-      const currentKey = `${r.work_date}-${r.shift}`
-      const previousKey = index > 0 ? `${data[index - 1]?.work_date}-${data[index - 1]?.shift}` : ''
+      const currentKey = `${getShiftGroupDate(r)}-${r.shift}`
+      const previousKey = index > 0 ? `${getShiftGroupDate(data[index - 1])}-${data[index - 1]?.shift}` : ''
 
       if (currentKey === previousKey) {
         return { shouldRender: false, rowSpan: 0 }
@@ -602,7 +614,7 @@ const WorkHoursManagement: React.FC = () => {
 
       let rowSpan = 1
       for (let cursor = index + 1; cursor < data.length; cursor += 1) {
-        const nextKey = `${data[cursor]?.work_date}-${data[cursor]?.shift}`
+        const nextKey = `${getShiftGroupDate(data[cursor])}-${data[cursor]?.shift}`
         if (nextKey !== currentKey) break
         rowSpan += 1
       }
@@ -616,7 +628,7 @@ const WorkHoursManagement: React.FC = () => {
     { title: '班次日期', dataIndex: 'shift_date', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
     { title: '班次', dataIndex: 'shift', align: 'center', render: (value: string, row: any) => renderShiftWarningText(value || '-', row) },
     { title: '日工作', key: 'daily_work_hours', render: (_: any, r: any) => {
-      const key = `${r.operator}-${r.shift}-${r.work_date}`
+      const key = getShiftBucketKey(r)
       const range = dailyWorkRangeMap[key]
       if (!range) return '-'
       const workHours = (range.end - range.start) / 60
@@ -624,8 +636,7 @@ const WorkHoursManagement: React.FC = () => {
       return <span style={{ color: workHours > 12 ? '#ff4d4f' : undefined }}>{text}</span>
     }, width: 60, align: 'center' },
     { title: '日统计', key: 'daily_stat_hours', render: (_: any, r: any) => {
-      // 使用操作者、班次、日期作为唯一键，查找对应的统计工时之和
-      const key = `${r.operator}-${r.shift}-${r.work_date}`;
+      const key = getShiftBucketKey(r);
       const sum = dailyHoursSum[key]?.statHours || 0;
       const statHours = sum / 60
       const range = dailyWorkRangeMap[key]
@@ -634,20 +645,17 @@ const WorkHoursManagement: React.FC = () => {
       return <span style={{ color: danger ? '#ff4d4f' : undefined }}>{statHours.toFixed(2)}</span>;
     }, width: 60, align: 'center' },
     { title: '日辅助', key: 'daily_aux_hours', render: (_: any, r: any) => {
-      // 使用操作者、班次、日期作为唯一键，查找对应的辅助工时之和
-      const key = `${r.operator}-${r.shift}-${r.work_date}`;
+      const key = getShiftBucketKey(r);
       const sum = dailyHoursSum[key]?.auxHours || 0;
       return (sum / 60).toFixed(2);
     }, width: 60, align: 'center' },
     { title: '日程序', key: 'daily_proc_hours', render: (_: any, r: any) => {
-      // 使用操作者、班次、日期作为唯一键，查找对应的程序工时之和
-      const key = `${r.operator}-${r.shift}-${r.work_date}`;
+      const key = getShiftBucketKey(r);
       const sum = dailyHoursSum[key]?.procHours || 0;
       return (sum / 60).toFixed(2);
     }, width: 60, align: 'center' },
     { title: '开动', key: 'running_count', render: (_: any, r: any) => {
-      // 统计同一日期内该用户开动的不同设备数量
-      return getRunningDevicesCount(r.work_date, r.operator, items);
+      return getRunningDevicesCount(getShiftGroupDate(r), r.shift, r.operator, items);
     }, width: 50, align: 'center' },
     { title: '盘存编号', dataIndex: 'part_inventory_number', align: 'center' },
     { title: '图号', key: 'part_drawing_number', render: (_: any, r: any) => resolvePartDrawingNumber(r), align: 'center' },
@@ -861,11 +869,13 @@ const WorkHoursManagement: React.FC = () => {
         }
       }
       map[key].rows.push(r)
-      const toMin = (t: string) => { const [h,m] = String(t||'').split(':').map((x)=>Number(x||0)); return h*60+m }
+      const shiftGroupDate = getShiftGroupDate(r)
+      const dateShiftKey = `${shiftGroupDate}-${r.shift || ''}`
+      const offsetMinutes = getShiftTimelineOffsetMinutes(r)
       let auxMinutes = 0
       if (r.aux_start_time && r.aux_end_time) {
-        const s = toMin(r.aux_start_time)
-        const e = toMin(r.aux_end_time)
+        const s = toClockMinutes(r.aux_start_time)
+        const e = toClockMinutes(r.aux_end_time)
         auxMinutes = e >= s ? (e - s) : (e + 1440 - s)
       } else {
         auxMinutes = Math.round(Number(r.aux_hours || 0) * 60)
@@ -884,7 +894,6 @@ const WorkHoursManagement: React.FC = () => {
       
       // 统计开动设备：使用对象模拟Map和Set
       if (procMinutes > 0) {
-        const dateShiftKey = `${r.work_date}-${r.shift || ''}`
         if (!map[key]._device_shifts[dateShiftKey]) {
           map[key]._device_shifts[dateShiftKey] = {}
         }
@@ -893,11 +902,10 @@ const WorkHoursManagement: React.FC = () => {
 
       // 统计日工作：同一日期班次取最早辅助开始与最后程序完成
       // 支持三车间等无辅助时间的场景
-      const dateShiftKey = `${r.work_date}-${r.shift || ''}`
       if (r.aux_start_time && r.aux_end_time) {
-        // 普通模式：使用辅助时间计算工作区间
-        const s = toMin(r.aux_start_time)
-        let e = toMin(r.aux_end_time)
+        // 普通模式：用班次日期归一时间轴，夜班跨零点仍视为同一班次
+        const s = toClockMinutes(r.aux_start_time) + offsetMinutes
+        let e = toClockMinutes(r.aux_end_time) + offsetMinutes
         if (e < s) e += 1440
         const completed = e + Math.max(procMinutes, 0)
         if (!map[key]._work_ranges[dateShiftKey]) {
@@ -907,21 +915,19 @@ const WorkHoursManagement: React.FC = () => {
           if (completed > map[key]._work_ranges[dateShiftKey].end) map[key]._work_ranges[dateShiftKey].end = completed
         }
       } else {
-        // 三车间模式：无辅助时间，使用程序时间或统计时间作为工作时长
-        const workMin = Math.max(procMinutes, Math.round(Number(r.stat_hours || 0) * 60))
+        const defaultStart = String(r.shift || '').trim() === '夜班' ? 20 * 60 : 8 * 60
+        const workMin = procMinutes
         if (workMin > 0) {
           if (!map[key]._work_ranges[dateShiftKey]) {
-            // 初始化默认起始时间（08:00），累计工作时长
-            map[key]._work_ranges[dateShiftKey] = { start: 8 * 60, end: 8 * 60 + workMin }
+            map[key]._work_ranges[dateShiftKey] = { start: defaultStart, end: defaultStart + workMin }
           } else {
-            // 累加工作时长
             map[key]._work_ranges[dateShiftKey].end += workMin
           }
         }
       }
       
       // 使用对象模拟Set
-      map[key]._dayset[`${r.work_date}-${r.shift || ''}`] = true
+      map[key]._dayset[dateShiftKey] = true
     }
     const normalized = Object.values(map).map((g: any) => {
       // 将总分钟数转换为小时，保留2位小数
@@ -1179,7 +1185,7 @@ const WorkHoursManagement: React.FC = () => {
             const partDrawingDisplay = resolvePartDrawingNumber(row);
             
             // 计算日统计、日辅助、日程序（小时）
-            const dailyKey = `${group.operator}-${row.shift}-${row.work_date}`;
+            const dailyKey = getShiftBucketKey(row);
             const dailySum = dailyHoursSum[dailyKey] || { statHours: 0, auxHours: 0, procHours: 0 };
             const dailyStat = (dailySum.statHours / 60).toFixed(2);
             const dailyAux = (dailySum.auxHours / 60).toFixed(2);
@@ -1219,7 +1225,7 @@ const WorkHoursManagement: React.FC = () => {
             }
             
             // 统计同一日期内该用户开动的不同设备数量
-            const runningCount = getRunningDevicesCount(row.work_date, group.operator, items);
+            const runningCount = getRunningDevicesCount(getShiftGroupDate(row), row.shift, group.operator, items);
             
             currentChildData.push({
               '班次日期': row.shift_date || '-',
