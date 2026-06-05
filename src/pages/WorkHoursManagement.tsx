@@ -607,12 +607,33 @@ const WorkHoursManagement: React.FC = () => {
     })
     return result
   }, [dailyWorkRangeMap, dailyHoursSum])
+  const abnormalScreeningMap = React.useMemo(() => {
+    const result: Record<string, string[]> = {}
+    const pushReason = (bucketKey: string, reason: string) => {
+      if (!bucketKey || !reason) return
+      if (!result[bucketKey]) result[bucketKey] = []
+      if (!result[bucketKey].includes(reason)) result[bucketKey].push(reason)
+    }
+
+    Object.entries(abnormalDailyWorkMap).forEach(([bucketKey, reasons]) => {
+      reasons.forEach((reason) => pushReason(bucketKey, reason))
+    })
+
+    items.forEach((row) => {
+      const warnings = shiftWarningMap[String(row?.id || '')] || []
+      if (!warnings.length) return
+      const bucketKey = getShiftBucketKey(row)
+      warnings.forEach((warning) => pushReason(bucketKey, `班次异常：${warning}`))
+    })
+
+    return result
+  }, [abnormalDailyWorkMap, items, shiftWarningMap])
   const operatorAbnormalCountMap = React.useMemo(() => {
     const counts: Record<string, number> = {}
     const operatorBucketMap: Record<string, Record<string, true>> = {}
     items.forEach((row) => {
       const bucketKey = getShiftBucketKey(row)
-      if (!abnormalDailyWorkMap[bucketKey]) return
+      if (!abnormalScreeningMap[bucketKey]) return
       const operatorName = String(row?.operator || '').trim() || '未填'
       if (!operatorBucketMap[operatorName]) operatorBucketMap[operatorName] = {}
       operatorBucketMap[operatorName][bucketKey] = true
@@ -621,16 +642,16 @@ const WorkHoursManagement: React.FC = () => {
       counts[operatorName] = Object.keys(operatorBucketMap[operatorName]).length
     })
     return counts
-  }, [abnormalDailyWorkMap, items])
-  const abnormalShiftCount = React.useMemo(() => Object.keys(abnormalDailyWorkMap).length, [abnormalDailyWorkMap])
+  }, [abnormalScreeningMap, items])
+  const abnormalShiftCount = React.useMemo(() => Object.keys(abnormalScreeningMap).length, [abnormalScreeningMap])
   const abnormalOperatorCount = React.useMemo(
     () => Object.values(operatorAbnormalCountMap).filter((count) => count > 0).length,
     [operatorAbnormalCountMap]
   )
   const filterAbnormalRows = React.useCallback((rows: any[]) => {
     if (dailyWorkFilter !== 'abnormal') return rows
-    return rows.filter((row) => !!abnormalDailyWorkMap[getShiftBucketKey(row)])
-  }, [dailyWorkFilter, abnormalDailyWorkMap])
+    return rows.filter((row) => !!abnormalScreeningMap[getShiftBucketKey(row)])
+  }, [dailyWorkFilter, abnormalScreeningMap])
   const renderShiftWarningText = React.useCallback((text: React.ReactNode, row: any) => {
     const warnings = shiftWarningMap[String(row?.id || '')] || []
     if (!warnings.length) return text
@@ -1016,10 +1037,10 @@ const WorkHoursManagement: React.FC = () => {
       const abnormalBucketMap: Record<string, true> = {}
       ;(Array.isArray(g.rows) ? g.rows : []).forEach((row: any) => {
         const bucketKey = getShiftBucketKey(row)
-        if (abnormalDailyWorkMap[bucketKey]) abnormalBucketMap[bucketKey] = true
+        if (abnormalScreeningMap[bucketKey]) abnormalBucketMap[bucketKey] = true
       })
       const abnormalShiftReasons = Object.keys(abnormalBucketMap)
-        .map((fullBucketKey) => abnormalDailyWorkMap[fullBucketKey].join('；'))
+        .map((fullBucketKey) => abnormalScreeningMap[fullBucketKey].join('；'))
       
       // 移除临时属性，确保返回的对象是纯数据对象
       delete g._dayset
@@ -1065,7 +1086,7 @@ const WorkHoursManagement: React.FC = () => {
       if (workDayCmp !== 0) return workDayCmp
       return String(a.operator || '').localeCompare(String(b.operator || ''), 'zh-Hans-CN')
     })
-  }, [items, userMap, deviceMap, employeeUsers, sortExpandedRows, abnormalDailyWorkMap])
+  }, [items, userMap, deviceMap, employeeUsers, sortExpandedRows, abnormalScreeningMap])
 
   // 对分组后的数据进行车间和班组筛选
   const filteredGroupedData = React.useMemo(() => {
