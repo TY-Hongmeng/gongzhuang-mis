@@ -36,6 +36,7 @@ const ProgramManagement: React.FC = () => {
   const [searchText, setSearchText] = React.useState('')
   const [searchInput, setSearchInput] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<'all' | 'pending' | 'processing' | 'completed'>('completed')
+  const autoFallbackDoneRef = React.useRef(false)
 
   const formatQuantity = React.useCallback((value: number) => {
     const num = Number(value || 0)
@@ -62,8 +63,22 @@ const ProgramManagement: React.FC = () => {
       if (!resp.ok || !json?.success) {
         throw new Error(String(json?.error || `加载失败: ${resp.status}`))
       }
+      const trimmedSearch = String(nextSearch || '').trim()
+      const totalCount = Number(json?.total || 0)
+      if (
+        nextStatus === 'completed' &&
+        !trimmedSearch &&
+        nextPage === 1 &&
+        !autoFallbackDoneRef.current &&
+        totalCount === 0
+      ) {
+        autoFallbackDoneRef.current = true
+        message.info('完成状态暂无数据，已自动切换到全部')
+        setStatusFilter('all')
+        return
+      }
       setItems(Array.isArray(json?.items) ? json.items : [])
-      setTotal(Number(json?.total || 0))
+      setTotal(totalCount)
     } catch (error: any) {
       message.error(error?.message || '加载程序管理数据失败')
     } finally {

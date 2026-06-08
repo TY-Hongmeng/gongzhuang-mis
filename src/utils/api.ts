@@ -2713,7 +2713,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const page = Math.max(Number(qs.get('page') || 1), 1)
         const pageSize = Math.max(Number(qs.get('pageSize') || 50), 1)
         const keyword = String(qs.get('search') || '').trim()
-        const status = String(qs.get('status') || 'completed').trim() || 'completed'
+        const status = String(qs.get('status') || 'all').trim() || 'all'
         const normalizeInventoryNo = (v: any) => String(v || '')
           .replace(/[\u200B-\u200D\uFEFF]/g, '')
           .trim()
