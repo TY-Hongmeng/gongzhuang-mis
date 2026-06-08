@@ -123,6 +123,12 @@ const normalizeProgramManageProcessKey = (v: any) => String(v || '')
   .replace(/\s+/g, '')
   .trim()
   .toLowerCase()
+const normalizeProgramManageProcessBaseKey = (v: any) => String(v || '')
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/\s+/g, '')
+  .replace(/^[0-9]+[.\-、:：]*/g, '')
+  .trim()
+  .toLowerCase()
 const parseClockMinutes = (v: any) => {
   const raw = String(v || '').trim()
   if (!raw) return null
@@ -1860,6 +1866,7 @@ router.get('/program-management', async (req, res) => {
       const inventoryNo = normalizeProgramManageInventoryNo(row?.part_inventory_number)
       const rawProcessName = String(row?.process_name || '').trim()
       const processKey = normalizeProgramManageProcessKey(rawProcessName)
+      const processBaseKey = normalizeProgramManageProcessBaseKey(rawProcessName)
       if (!inventoryNo || !processKey) return
       const groupKey = `${inventoryNo}__${processKey}`
       if (!groupedMap.has(groupKey)) {
@@ -1869,6 +1876,7 @@ router.get('/program-management', async (req, res) => {
           part_drawing_number: String(row?.part_drawing_number || '').trim(),
           process_name: rawProcessName,
           process_key: processKey,
+          process_base_key: processBaseKey,
           program_segment_set: new Set<string>(),
           program_total_minutes: 0,
           programmer_set: new Set<string>(),
@@ -1892,6 +1900,17 @@ router.get('/program-management', async (req, res) => {
         group.latest_programmed_at_ms = programmedAtMs
         group.latest_programmed_at = programmedAtText
       }
+    })
+
+    const groupedBaseMap = new Map<string, any[]>()
+    Array.from(groupedMap.values()).forEach((group: any) => {
+      const inventoryNo = normalizeProgramManageInventoryNo(group?.part_inventory_number)
+      const baseKey = String(group?.process_base_key || '').trim()
+      if (!inventoryNo || !baseKey) return
+      const mapKey = `${inventoryNo}__${baseKey}`
+      const list = groupedBaseMap.get(mapKey) || []
+      list.push(group)
+      groupedBaseMap.set(mapKey, list)
     })
 
     const inventoryList = Array.from(new Set(Array.from(groupedMap.values()).map((item: any) => normalizeProgramManageInventoryNo(item?.part_inventory_number)).filter(Boolean)))
@@ -1936,8 +1955,11 @@ router.get('/program-management', async (req, res) => {
       const inventoryNo = normalizeProgramManageInventoryNo(row?.inventory_no || row?.part_inventory_number)
       const processName = String(row?.process_name || '').trim()
       const processKey = normalizeProgramManageProcessKey(processName)
+      const processBaseKey = normalizeProgramManageProcessBaseKey(processName)
       if (!inventoryNo || !processKey) return
-      const group = groupedMap.get(`${inventoryNo}__${processKey}`)
+      const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
+      const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
+      const group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
       if (!group) return
       if (!group.operator_hours_map) group.operator_hours_map = {}
       if (!group.device_set) group.device_set = new Set<string>()

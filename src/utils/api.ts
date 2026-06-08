@@ -2514,6 +2514,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .replace(/\s+/g, '')
           .trim()
           .toLowerCase()
+        const normalizeProcessBaseKey = (v: any) => String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/\s+/g, '')
+          .replace(/^[0-9]+[.\-、:：]*/g, '')
+          .trim()
+          .toLowerCase()
         const toTime = (row: any) => {
           const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
           const ts = Date.parse(t)
@@ -2594,6 +2600,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 }
               }
             }
+          })
+
+          const groupedBaseMap = new Map<string, any[]>()
+          Array.from(groupedMap.values()).forEach((group: any) => {
+            const inventoryNo = normalizeInventoryNo(group?.part_inventory_number)
+            const baseKey = String(group?.process_base_key || '').trim()
+            if (!inventoryNo || !baseKey) return
+            const mapKey = `${inventoryNo}__${baseKey}`
+            const list = groupedBaseMap.get(mapKey) || []
+            list.push(group)
+            groupedBaseMap.set(mapKey, list)
           })
           const deviceNos = Array.from(deviceSet)
           const normalizeName = (v: any) => String(v || '').replace(/\s+/g, '').trim().toLowerCase()
@@ -2773,6 +2790,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const inventoryNo = normalizeInventoryNo(row?.part_inventory_number)
             const processName = String(row?.process_name || '').trim()
             const processKey = normalizeProcessKey(processName)
+            const processBaseKey = normalizeProcessBaseKey(processName)
             if (!inventoryNo || !processKey) return
             const groupKey = `${inventoryNo}__${processKey}`
             if (!groupedMap.has(groupKey)) {
@@ -2781,6 +2799,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 part_inventory_number: String(row?.part_inventory_number || '').trim(),
                 part_drawing_number: String(row?.part_drawing_number || '').trim(),
                 process_name: processName,
+                process_base_key: processBaseKey,
                 latest_programmed_at: String(row?.programmed_at || '').trim(),
                 latest_programmed_at_ms: Date.parse(String(row?.programmed_at || '')) || 0,
                 program_segment_set: new Set<string>(),
@@ -2840,8 +2859,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           Array.from(workHourMap.values()).forEach((row: any) => {
             const inventoryNo = normalizeInventoryNo(row?.inventory_no || row?.part_inventory_number)
             const processKey = normalizeProcessKey(row?.process_name)
+            const processBaseKey = normalizeProcessBaseKey(row?.process_name)
             if (!inventoryNo || !processKey) return
-            const group = groupedMap.get(`${inventoryNo}__${processKey}`)
+            const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
+            const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
+            const group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
             if (!group) return
             if (!group.operator_hours_map) group.operator_hours_map = {}
             if (!group.device_set) group.device_set = new Set<string>()
