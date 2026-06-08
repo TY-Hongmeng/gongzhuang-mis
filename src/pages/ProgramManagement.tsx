@@ -62,6 +62,23 @@ const ProgramManagement: React.FC = () => {
     return `${((num / den) * 100).toFixed(0)}%`
   }, [])
 
+  const renderCompareCell = React.useCallback((left: string, right: string, percent: string) => (
+    <div
+      style={{
+        display: 'inline-grid',
+        gridTemplateColumns: 'max-content 12px max-content max-content',
+        alignItems: 'center',
+        columnGap: 4,
+        whiteSpace: 'nowrap'
+      }}
+    >
+      <span style={{ minWidth: 40, textAlign: 'right' }}>{left || '-'}</span>
+      <span style={{ textAlign: 'center' }}>/</span>
+      <span style={{ minWidth: 40, textAlign: 'left' }}>{right || '-'}</span>
+      <span style={{ color: '#8c8c8c', marginLeft: 6 }}>{percent || '-'}</span>
+    </div>
+  ), [])
+
   const loadData = React.useCallback(async (
     nextPage = page,
     nextPageSize = pageSize,
@@ -176,7 +193,7 @@ const ProgramManagement: React.FC = () => {
         const actualText = record.average_runtime_hours_display || '-'
         const theoryText = record.program_total_hours > 0 ? formatHours(record.program_total_hours) : '-'
         const percentText = actualText === '-' || theoryText === '-' ? '-' : formatPercent(record.average_runtime_hours, record.program_total_hours)
-        return `${actualText}/${theoryText} ${percentText}`
+        return renderCompareCell(actualText, theoryText, percentText)
       }
     },
     {
@@ -188,7 +205,7 @@ const ProgramManagement: React.FC = () => {
         const runtimeText = record.program_runtime_hours > 0 ? formatHours(record.program_runtime_hours) : '-'
         const spanText = record.program_start_end_display === '-' ? '-' : formatHours(record.program_span_hours)
         const percentText = runtimeText === '-' || spanText === '-' ? '-' : formatPercent(record.program_runtime_hours, record.program_span_hours)
-        return `${runtimeText}/${spanText} ${percentText}`
+        return renderCompareCell(runtimeText, spanText, percentText)
       }
     },
     {
@@ -202,8 +219,8 @@ const ProgramManagement: React.FC = () => {
       title: '加工起止时间',
       dataIndex: 'program_start_end_display',
       align: 'center' as const,
-      width: 173,
-      render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
+      width: 210,
+      render: (value: string) => <div style={{ whiteSpace: 'nowrap' }}>{value || '-'}</div>
     },
     {
       title: '设备编号',
@@ -212,7 +229,7 @@ const ProgramManagement: React.FC = () => {
       width: 72,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     }
-  ], [formatHours, formatPercent, formatQuantity, page, pageSize])
+  ], [formatHours, formatPercent, formatQuantity, page, pageSize, renderCompareCell])
 
   return (
     <div style={{ padding: 16 }}>
