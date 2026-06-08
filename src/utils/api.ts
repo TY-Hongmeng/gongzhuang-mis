@@ -3033,7 +3033,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const progressDisplay = totalQuantity > 0
               ? `${formatQuantity(displayCompletedQuantity)}/${formatQuantity(totalQuantity)}`
               : formatQuantity(completedQuantity)
-            const runtimeDisplay = runtimeHours > 0 ? `${formatHours(runtimeHours)}小时${operatorSummary ? ` | ${operatorSummary}` : ''}` : '-'
+            const runtimeDisplay = runtimeHours > 0 ? `${formatHours(runtimeHours)}小时` : '-'
             const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
             const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
             return {
@@ -3052,12 +3052,15 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               average_runtime_hours: avgRuntimeHours == null ? null : Number(avgRuntimeHours.toFixed(2)),
               average_runtime_hours_display: avgRuntimeHours == null ? '-' : formatHours(avgRuntimeHours),
               program_runtime_hours: Number(runtimeHours.toFixed(2)),
+              program_span_hours: Number(spanHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt
                 ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)`
                 : '-',
+              operator_display: operatorSummary || '-',
               device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
-              latest_programmed_at: group.latest_programmed_at || ''
+              latest_programmed_at: group.latest_programmed_at || '',
+              programmers: group.programmer_set instanceof Set ? Array.from(group.programmer_set).join('、') : ''
             }
           }).sort((a: any, b: any) => {
             const diff = Date.parse(String(b.latest_programmed_at || '')) - Date.parse(String(a.latest_programmed_at || ''))

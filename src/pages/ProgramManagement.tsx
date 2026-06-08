@@ -13,6 +13,7 @@ interface ProgramManagementItem {
   part_name: string
   part_drawing_number: string
   process_name: string
+  programmers: string
   total_quantity: number
   completed_quantity: number
   quantity_progress_display: string
@@ -20,10 +21,12 @@ interface ProgramManagementItem {
   program_count: number
   program_total_hours: number
   program_runtime_hours: number
+  program_span_hours: number
   average_runtime_hours: number | null
   average_runtime_hours_display: string
   program_runtime_display: string
   program_start_end_display: string
+  operator_display: string
   device_no_display: string
 }
 
@@ -43,6 +46,12 @@ const ProgramManagement: React.FC = () => {
     const num = Number(value || 0)
     if (!Number.isFinite(num) || num <= 0) return '0'
     if (Math.abs(num - Math.round(num)) < 0.000001) return String(Math.round(num))
+    return num.toFixed(2)
+  }, [])
+
+  const formatHours = React.useCallback((value: number | null | undefined) => {
+    const num = Number(value)
+    if (!Number.isFinite(num)) return '-'
     return num.toFixed(2)
   }, [])
 
@@ -103,7 +112,7 @@ const ProgramManagement: React.FC = () => {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
       align: 'center' as const,
-      width: 180
+      width: 120
     },
     {
       title: '项目名称',
@@ -116,20 +125,33 @@ const ProgramManagement: React.FC = () => {
       title: '零件名称',
       dataIndex: 'part_name',
       align: 'center' as const,
-      width: 180,
+      width: 135,
       render: (value: string) => value || '-'
     },
     {
       title: '零件编号',
       dataIndex: 'part_drawing_number',
       align: 'center' as const,
-      width: 180
+      width: 240
     },
     {
       title: '工艺工序',
       dataIndex: 'process_name',
       align: 'center' as const,
-      width: 160
+      width: 110
+    },
+    {
+      title: '编程人',
+      key: 'programmer_summary',
+      align: 'center' as const,
+      width: 150,
+      render: (_: any, record: ProgramManagementItem) => {
+        const programmerText = String(record.programmers || '').trim()
+        const countText = formatQuantity(record.program_count)
+        if (!programmerText && !record.program_count) return '-'
+        if (!programmerText) return `-(${countText})`
+        return `${programmerText}(${countText})`
+      }
     },
     {
       title: '完成/总数',
@@ -139,31 +161,32 @@ const ProgramManagement: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
-      title: '程序数量',
-      dataIndex: 'program_count',
+      title: '单件理论/实际(小时)',
+      key: 'single_compare',
       align: 'center' as const,
-      width: 100
+      width: 170,
+      render: (_: any, record: ProgramManagementItem) => (
+        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
+          <div>{`理论 ${formatHours(record.program_total_hours)}`}</div>
+          <div>{`实际 ${record.average_runtime_hours_display || '-'}`}</div>
+        </div>
+      )
     },
     {
-      title: '程序总时长(小时)',
-      dataIndex: 'program_total_hours',
+      title: '总加工/自然(小时)',
+      key: 'runtime_compare',
       align: 'center' as const,
-      width: 140,
-      render: (value: number) => Number(value || 0).toFixed(2)
-    },
-    {
-      title: '单件运行时长(小时)',
-      dataIndex: 'average_runtime_hours_display',
-      align: 'center' as const,
-      width: 150,
-      render: (value: string) => value || '-'
-    },
-    {
-      title: '程序运行时间',
-      dataIndex: 'program_runtime_display',
-      align: 'center' as const,
-      width: 280,
-      render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
+      width: 170,
+      render: (_: any, record: ProgramManagementItem) => {
+        const runtimeText = record.program_runtime_display === '-' ? '-' : formatHours(record.program_runtime_hours)
+        const spanText = record.program_start_end_display === '-' ? '-' : formatHours(record.program_span_hours)
+        return (
+          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
+            <div>{`加工 ${runtimeText}`}</div>
+            <div>{`自然 ${spanText}`}</div>
+          </div>
+        )
+      }
     },
     {
       title: '程序起止',
@@ -173,13 +196,20 @@ const ProgramManagement: React.FC = () => {
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     },
     {
+      title: '操作者',
+      dataIndex: 'operator_display',
+      align: 'center' as const,
+      width: 180,
+      render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
+    },
+    {
       title: '设备编号',
       dataIndex: 'device_no_display',
       align: 'center' as const,
       width: 180,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     }
-  ], [formatQuantity, page, pageSize])
+  ], [formatHours, formatQuantity, page, pageSize])
 
   return (
     <div style={{ padding: 16 }}>
