@@ -42,6 +42,7 @@ const MODULES = [
   { name: '个人设置', code: 'personal_settings' },
   { name: '工时录入', code: 'work_hours_entry' },
   { name: '程序录入', code: 'program_entry' },
+  { name: '程序管理', code: 'program_management' },
   { name: '工时管理', code: 'work_hours' }
 ]
 

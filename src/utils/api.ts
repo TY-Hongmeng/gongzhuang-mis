@@ -22,6 +22,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
     || /^\/api\/tooling\/program-entries(\/|$)/.test(cleanUrl)
+    || /^\/api\/tooling\/program-management(\/|$)/.test(cleanUrl)
     || /^\/api\/standard-parts(\/|$)/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
@@ -66,7 +67,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       cleanUrl.startsWith('/api/cutting-orders') ||
       cleanUrl.startsWith('/api/tooling/devices') ||
       cleanUrl.startsWith('/api/tooling/fixed-inventory-options') ||
-          cleanUrl.startsWith('/api/tooling/program-entries') ||
+      cleanUrl.startsWith('/api/tooling/program-entries') ||
+      cleanUrl.startsWith('/api/tooling/program-management') ||
       cleanUrl.startsWith('/api/standard-parts')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，

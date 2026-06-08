@@ -226,6 +226,16 @@ const Dashboard: React.FC = () => {
               </Link>
             </Col>
           )}
+          {can('program_management') && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Link to="/program-management" style={{ display: 'block' }}>
+                <Card hoverable className="text-center cursor-pointer">
+                  <ExperimentOutlined className="text-3xl text-cyan-500 mb-2" />
+                  程序管理
+                </Card>
+              </Link>
+            </Col>
+          )}
         </Row>
       </Card>
     </div>

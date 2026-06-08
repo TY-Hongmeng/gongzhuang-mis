@@ -12,6 +12,7 @@ const MODULE_ALIASES: Record<string, string> = {
   '基础数据': 'base_data', base_data: 'base_data',
   '工时录入': 'work_hours_entry', work_hours_entry: 'work_hours_entry',
   '程序录入': 'program_entry', program_entry: 'program_entry',
+  '程序管理': 'program_management', program_management: 'program_management',
   '工时管理': 'work_hours', work_hours: 'work_hours',
   '权限管理': 'permission', permission: 'permission',
   '个人设置': 'personal_settings', personal_settings: 'personal_settings',

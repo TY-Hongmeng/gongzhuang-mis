@@ -46,6 +46,7 @@ const StandardPartsIssue = lazyWithTrace("StandardPartsIssue", () => import("./p
 const WorkHours = lazyWithTrace("WorkHours", () => import("./pages/WorkHours"));
 const WorkHoursManagement = lazyWithTrace("WorkHoursManagement", () => import("./pages/WorkHoursManagement"));
 const ProgramEntry = lazyWithTrace("ProgramEntry", () => import("./pages/ProgramEntry"));
+const ProgramManagement = lazyWithTrace("ProgramManagement", () => import("./pages/ProgramManagement"));
 
 export default function App() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore()
@@ -88,6 +89,7 @@ export default function App() {
                 <Route path="work-hours-recent" element={<ProtectedRoute requiredModule="work_hours_entry"><WorkHours mode="recent" /></ProtectedRoute>} />
                 <Route path="work-hours-management" element={<ProtectedRoute requiredModule="work_hours"><WorkHoursManagement /></ProtectedRoute>} />
                 <Route path="program-entry" element={<ProtectedRoute requiredModule="program_entry"><ProgramEntry /></ProtectedRoute>} />
+                <Route path="program-management" element={<ProtectedRoute requiredModule="program_management"><ProgramManagement /></ProtectedRoute>} />
               </Route>
             )}
             <Route path="*" element={<Navigate to={isAuthenticated && user ? "/dashboard" : "/login"} replace />} />
