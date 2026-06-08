@@ -2677,6 +2677,208 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // Program management list
+      if (method === 'GET' && path === '/api/tooling/program-management') {
+        const qs = getQuery(cleanUrl)
+        const page = Math.max(Number(qs.get('page') || 1), 1)
+        const pageSize = Math.max(Number(qs.get('pageSize') || 50), 1)
+        const keyword = String(qs.get('search') || '').trim()
+        const normalizeInventoryNo = (v: any) => String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .trim()
+          .toUpperCase()
+        const normalizeProcessKey = (v: any) => String(v || '')
+          .replace(/\s+/g, '')
+          .replace(/^[0-9]+[.\-、:：]*/g, '')
+          .trim()
+          .toLowerCase()
+        const parseClockMinutes = (v: any) => {
+          const raw = String(v || '').trim()
+          if (!raw) return null
+          const parts = raw.split(':').map((item) => Number(item || 0))
+          if (parts.length < 2) return null
+          const h = Number(parts[0] || 0)
+          const m = Number(parts[1] || 0)
+          const s = Number(parts[2] || 0)
+          if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(s)) return null
+          return h * 60 + m + s / 60
+        }
+        const addMinutesToDate = (date: Date, minutes: number) => new Date(date.getTime() + minutes * 60 * 1000)
+        const resolveProcessWindow = (row: any) => {
+          const procHours = Number(row?.proc_hours || 0)
+          if (!Number.isFinite(procHours) || procHours <= 0) return null
+          const workDateRaw = String(row?.work_date || '').trim()
+          const baseDate = workDateRaw ? new Date(`${workDateRaw}T00:00:00`) : new Date(String(row?.created_at || ''))
+          if (Number.isNaN(baseDate.getTime())) return null
+          const auxStartMinutes = parseClockMinutes(row?.aux_start_time)
+          const auxEndMinutes = parseClockMinutes(row?.aux_end_time)
+          let startAt: Date | null = null
+          if (auxEndMinutes !== null) {
+            startAt = addMinutesToDate(baseDate, auxEndMinutes)
+            if (auxStartMinutes !== null && auxEndMinutes < auxStartMinutes) {
+              startAt = addMinutesToDate(startAt, 1440)
+            }
+          } else if (auxStartMinutes !== null) {
+            const auxHours = Number(row?.aux_hours || 0)
+            const auxMinutes = Number.isFinite(auxHours) ? auxHours * 60 : 0
+            startAt = addMinutesToDate(baseDate, auxStartMinutes + auxMinutes)
+          } else {
+            const createdAt = new Date(String(row?.created_at || ''))
+            if (!Number.isNaN(createdAt.getTime())) startAt = createdAt
+          }
+          if (!startAt) return null
+          const endAt = addMinutesToDate(startAt, procHours * 60)
+          return { startAt, endAt }
+        }
+        const formatDateTime = (value: Date | null) => {
+          if (!value || Number.isNaN(value.getTime())) return '-'
+          const month = String(value.getMonth() + 1).padStart(2, '0')
+          const day = String(value.getDate()).padStart(2, '0')
+          const hour = String(value.getHours()).padStart(2, '0')
+          const minute = String(value.getMinutes()).padStart(2, '0')
+          return `${month}-${day} ${hour}:${minute}`
+        }
+        const formatHours = (value: number) => {
+          const num = Number(value || 0)
+          if (!Number.isFinite(num) || num <= 0) return '0.00'
+          return num.toFixed(2)
+        }
+        try {
+          let programQuery = supabase
+            .from('program_entries')
+            .select('id, part_inventory_number, part_drawing_number, process_name, program_no, program_duration_minutes, programmed_at, programmer')
+            .order('programmed_at', { ascending: false })
+          if (keyword) {
+            const kw = `%${keyword}%`
+            programQuery = programQuery.or(`part_inventory_number.ilike.${kw},part_drawing_number.ilike.${kw},process_name.ilike.${kw},program_no.ilike.${kw},programmer.ilike.${kw}`)
+          }
+          const { data: programRows, error: programError } = await programQuery
+          if (programError) return jsonResponse({ success: false, error: programError.message }, 500)
+
+          const groupedMap = new Map<string, any>()
+          ;(programRows || []).forEach((row: any, index: number) => {
+            const inventoryNo = normalizeInventoryNo(row?.part_inventory_number)
+            const processName = String(row?.process_name || '').trim()
+            const processKey = normalizeProcessKey(processName)
+            if (!inventoryNo || !processKey) return
+            const groupKey = `${inventoryNo}__${processKey}`
+            if (!groupedMap.has(groupKey)) {
+              groupedMap.set(groupKey, {
+                key: groupKey,
+                part_inventory_number: String(row?.part_inventory_number || '').trim(),
+                part_drawing_number: String(row?.part_drawing_number || '').trim(),
+                process_name: processName,
+                latest_programmed_at: String(row?.programmed_at || '').trim(),
+                latest_programmed_at_ms: Date.parse(String(row?.programmed_at || '')) || 0,
+                program_segment_set: new Set<string>(),
+                program_total_minutes: 0,
+                programmer_set: new Set<string>(),
+                sort_index: index
+              })
+            }
+            const group = groupedMap.get(groupKey)
+            const programNo = String(row?.program_no || '').trim()
+            const programmer = String(row?.programmer || '').trim()
+            const durationMinutes = Number(row?.program_duration_minutes || 0)
+            const programmedAtText = String(row?.programmed_at || '').trim()
+            const programmedAtMs = Date.parse(programmedAtText)
+            if (!group.part_drawing_number) group.part_drawing_number = String(row?.part_drawing_number || '').trim()
+            if (programNo) group.program_segment_set.add(programNo)
+            if (programmer) group.programmer_set.add(programmer)
+            if (Number.isFinite(durationMinutes)) group.program_total_minutes += durationMinutes
+            if (Number.isFinite(programmedAtMs) && programmedAtMs >= Number(group.latest_programmed_at_ms || 0)) {
+              group.latest_programmed_at_ms = programmedAtMs
+              group.latest_programmed_at = programmedAtText
+            }
+          })
+
+          const inventoryNos = Array.from(new Set(Array.from(groupedMap.values()).map((item: any) => normalizeInventoryNo(item?.part_inventory_number)).filter(Boolean)))
+          const workHourMap = new Map<string, any>()
+          const chunkArray = <T,>(items: T[], size: number): T[][] => {
+            const safeSize = Math.max(1, size)
+            const chunks: T[][] = []
+            for (let i = 0; i < items.length; i += safeSize) chunks.push(items.slice(i, i + safeSize))
+            return chunks
+          }
+          for (const chunk of chunkArray(inventoryNos, 120)) {
+            const [{ data: rowsByInv }, { data: rowsByPartInv }] = await Promise.all([
+              supabase.from('work_hours').select('id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at').in('inventory_no', chunk),
+              supabase.from('work_hours').select('id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at').in('part_inventory_number', chunk)
+            ])
+            ;([...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]).forEach((row: any, idx: number) => {
+              const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
+              if (!workHourMap.has(key)) workHourMap.set(key, row)
+            })
+          }
+
+          Array.from(workHourMap.values()).forEach((row: any) => {
+            const inventoryNo = normalizeInventoryNo(row?.inventory_no || row?.part_inventory_number)
+            const processKey = normalizeProcessKey(row?.process_name)
+            if (!inventoryNo || !processKey) return
+            const group = groupedMap.get(`${inventoryNo}__${processKey}`)
+            if (!group) return
+            if (!group.operator_hours_map) group.operator_hours_map = {}
+            if (!group.device_set) group.device_set = new Set<string>()
+            if (!group.work_hours_total) group.work_hours_total = 0
+            const procHours = Number(row?.proc_hours || 0)
+            if (Number.isFinite(procHours) && procHours > 0) {
+              group.work_hours_total += procHours
+              const operator = String(row?.operator || '').trim()
+              if (operator) group.operator_hours_map[operator] = Number(group.operator_hours_map[operator] || 0) + procHours
+              const windowInfo = resolveProcessWindow(row)
+              if (windowInfo?.startAt && (!group.program_start_at || windowInfo.startAt.getTime() < group.program_start_at.getTime())) {
+                group.program_start_at = windowInfo.startAt
+              }
+              if (windowInfo?.endAt && (!group.program_end_at || windowInfo.endAt.getTime() > group.program_end_at.getTime())) {
+                group.program_end_at = windowInfo.endAt
+              }
+            }
+            const deviceNo = String(row?.device_no || '').trim()
+            if (deviceNo) group.device_set.add(deviceNo)
+          })
+
+          const allItems = Array.from(groupedMap.values()).map((group: any) => {
+            const runtimeHours = Number(group.work_hours_total || 0)
+            const operatorEntries = Object.entries(group.operator_hours_map || {}) as Array<[string, any]>
+            const operatorSummary = operatorEntries
+              .sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0))
+              .map(([name, hours]) => {
+                const hourValue = Number(hours || 0)
+                if (operatorEntries.length <= 1 || runtimeHours <= 0) return name
+                return `${name} ${((hourValue / runtimeHours) * 100).toFixed(0)}%`
+              })
+              .join('、')
+            const startAt = group.program_start_at instanceof Date ? group.program_start_at : null
+            const endAt = group.program_end_at instanceof Date ? group.program_end_at : null
+            const spanHours = startAt && endAt ? Math.max(0, (endAt.getTime() - startAt.getTime()) / 3600000) : 0
+            const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
+            return {
+              key: group.key,
+              part_inventory_number: group.part_inventory_number || '',
+              part_drawing_number: group.part_drawing_number || '',
+              process_name: group.process_name || '',
+              program_count: group.program_segment_set instanceof Set ? group.program_segment_set.size : 0,
+              program_total_hours: Number((Number(group.program_total_minutes || 0) / 60).toFixed(2)),
+              program_runtime_hours: Number(runtimeHours.toFixed(2)),
+              program_runtime_display: runtimeHours > 0 ? `${formatHours(runtimeHours)}小时${operatorSummary ? ` | ${operatorSummary}` : ''}` : '-',
+              program_start_end_display: startAt && endAt ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)` : '-',
+              device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
+              latest_programmed_at: group.latest_programmed_at || ''
+            }
+          }).sort((a: any, b: any) => {
+            const diff = Date.parse(String(b.latest_programmed_at || '')) - Date.parse(String(a.latest_programmed_at || ''))
+            if (Number.isFinite(diff) && diff !== 0) return diff
+            return String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+          })
+
+          const from = (page - 1) * pageSize
+          const items = allItems.slice(from, from + pageSize)
+          return jsonResponse({ success: true, items, total: allItems.length, page, pageSize })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '加载程序管理数据失败' }, 500)
+        }
+      }
+
       const normalizeWorkHourDedupText = (v: any) => String(v || '')
         .replace(/[\u200B-\u200D\uFEFF]/g, '')
         .replace(/\s+/g, '')
