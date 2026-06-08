@@ -2922,39 +2922,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const workHourMap = new Map<string, any>()
           try {
             for (const chunk of chunkArray(inventoryNos, 120)) {
-              const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-              const baseSelectLegacy = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-              const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-              const fallbackSelectLegacy = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              const fallbackSelect = 'id, part_inventory_number, process_name, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
               let mergedRows: any[] = []
               try {
-                let [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
+                const [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
                   supabase.from('work_hours').select(baseSelect).in('inventory_no', chunk),
                   supabase.from('work_hours').select(baseSelect).in('part_inventory_number', chunk)
                 ])
-                const combinedErrMsg = `${String(rowsByInvErr?.message || '')} ${String(rowsByPartInvErr?.message || '')}`.toLowerCase()
-                if (combinedErrMsg.includes('process_quantity') || combinedErrMsg.includes('completed_quantity')) {
-                  ;([{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
-                    supabase.from('work_hours').select(baseSelectLegacy).in('inventory_no', chunk),
-                    supabase.from('work_hours').select(baseSelectLegacy).in('part_inventory_number', chunk)
-                  ]))
-                }
                 if (rowsByInvErr && rowsByPartInvErr) throw rowsByInvErr
                 mergedRows = [...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]
               } catch {
-                let { data: fallbackRows, error: fallbackErr } = await supabase
+                const { data: fallbackRows, error: fallbackErr } = await supabase
                   .from('work_hours')
                   .select(fallbackSelect)
                   .in('part_inventory_number', chunk)
-                const fallbackErrMsg = String(fallbackErr?.message || '').toLowerCase()
-                if (fallbackErrMsg.includes('process_quantity') || fallbackErrMsg.includes('completed_quantity')) {
-                  const legacyResp = await supabase
-                    .from('work_hours')
-                    .select(fallbackSelectLegacy)
-                    .in('part_inventory_number', chunk)
-                  fallbackRows = legacyResp.data
-                  fallbackErr = legacyResp.error
-                }
                 if (fallbackErr) throw fallbackErr
                 mergedRows = (fallbackRows || []) as any[]
               }
@@ -2987,14 +2969,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             if (!group.device_set) group.device_set = new Set<string>()
             if (!group.work_hours_total) group.work_hours_total = 0
             if (!group.completed_quantity) group.completed_quantity = 0
-            if (!group.process_quantity) group.process_quantity = 0
             const completedQuantity = Number(row?.completed_quantity || 0)
-            const processQuantity = Number(row?.process_quantity || 0)
             if (Number.isFinite(completedQuantity) && completedQuantity > 0) {
               group.completed_quantity += completedQuantity
-            }
-            if (Number.isFinite(processQuantity) && processQuantity > Number(group.process_quantity || 0)) {
-              group.process_quantity = processQuantity
             }
             const procHours = Number(row?.proc_hours || 0)
             if (Number.isFinite(procHours) && procHours > 0) {
