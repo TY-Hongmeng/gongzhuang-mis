@@ -31,6 +31,7 @@ const Dashboard: React.FC = () => {
     '用户管理': 'user', user: 'user',
     '基础数据': 'base_data', base_data: 'base_data',
     '工时录入': 'work_hours_entry', work_hours_entry: 'work_hours_entry',
+    '程序录入': 'program_entry', program_entry: 'program_entry',
     '工时管理': 'work_hours', work_hours: 'work_hours',
     '权限管理': 'permission', permission: 'permission',
     '个人设置': 'personal_settings', personal_settings: 'personal_settings',
@@ -211,6 +212,16 @@ const Dashboard: React.FC = () => {
                 <Card hoverable className="text-center cursor-pointer">
                   <ExperimentOutlined className="text-3xl text-purple-500 mb-2" />
                   工时管理
+                </Card>
+              </Link>
+            </Col>
+          )}
+          {can('program_entry') && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Link to="/program-entry" style={{ display: 'block' }}>
+                <Card hoverable className="text-center cursor-pointer">
+                  <ExperimentOutlined className="text-3xl text-orange-500 mb-2" />
+                  程序录入
                 </Card>
               </Link>
             </Col>

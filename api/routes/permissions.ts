@@ -56,6 +56,11 @@ const DEFAULT_MODULES: Record<string, string[]> = {
     '访问模块',
     '录入工时','编辑工时','删除工时','提交工时','导入工时','导出工时'
   ],
+  // 程序录入
+  program_entry: [
+    '访问模块',
+    '录入程序','提交程序'
+  ],
   // 工时管理
   work_hours: [
     '访问模块',

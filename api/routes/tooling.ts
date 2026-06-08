@@ -88,6 +88,32 @@ const ensureWorkHoursExtraColumns = async () => {
     workHoursExtraColumnsReady = true;
   } catch (e) {}
 };
+let programEntriesTableReady = false;
+const ensureProgramEntriesTable = async () => {
+  if (programEntriesTableReady) return;
+  const dbUrl = process.env.SUPABASE_DB_URL || '';
+  if (!dbUrl) return;
+  try {
+    await query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
+    await query(`
+      CREATE TABLE IF NOT EXISTS program_entries (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        part_inventory_number TEXT NOT NULL,
+        part_drawing_number TEXT NOT NULL DEFAULT '',
+        process_name TEXT NOT NULL DEFAULT '',
+        program_no TEXT NOT NULL DEFAULT '',
+        program_duration_minutes NUMERIC NOT NULL DEFAULT 0 CHECK (program_duration_minutes >= 0),
+        programmed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        programmer TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await query(`CREATE INDEX IF NOT EXISTS idx_program_entries_programmed_at ON program_entries(programmed_at DESC)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_program_entries_inventory_process ON program_entries(part_inventory_number, process_name)`);
+    programEntriesTableReady = true;
+  } catch (e) {}
+};
 let toolingTotalsColumnsReady = false;
 const ensureToolingTotalsColumns = async () => {
   if (toolingTotalsColumnsReady) return;
@@ -1693,6 +1719,112 @@ router.get('/parts/inventory-list', async (req, res) => {
   } catch (err: any) {
     console.error('Inventory list error:', err)
     res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
+// 批量提交程序录入
+router.post('/program-entries/batch', async (req, res) => {
+  try {
+    await ensureProgramEntriesTable()
+    const body = req.body || {}
+    const rawItems = Array.isArray(body?.items) ? body.items : []
+    if (rawItems.length === 0) {
+      return res.status(400).json({ success: false, error: '缺少程序录入数据' })
+    }
+
+    const requestedOperator = String(body.operator || '').trim()
+    const userId = String(body.user_id || '').trim()
+    const userPhone = String(body.user_phone || '').trim()
+    let canonicalProgrammer = requestedOperator || '系统用户'
+    try {
+      let uq = supabase.from('users').select('id, real_name').limit(1)
+      if (userId) uq = uq.eq('id', userId)
+      else if (userPhone) uq = uq.eq('phone', userPhone)
+      else if (requestedOperator) uq = uq.ilike('real_name', requestedOperator)
+      const { data: usr } = await uq
+      const userRow = Array.isArray(usr) ? usr[0] : null
+      if ((userId || userPhone) && !userRow) {
+        return res.status(400).json({ success: false, error: '用户信息已变更，请重新登录后再提交' })
+      }
+      if (userRow?.real_name) canonicalProgrammer = String(userRow.real_name || '').trim() || canonicalProgrammer
+    } catch {}
+
+    const nowIso = new Date().toISOString()
+    const items = rawItems.map((item: any, index: number) => {
+      const partInventoryNumber = String(item?.part_inventory_number || '').trim()
+      const partDrawingNumber = String(item?.part_drawing_number || '').trim()
+      const processName = String(item?.process_name || '').trim()
+      const programNo = String(item?.program_no || '').trim()
+      const programDurationMinutes = Number(item?.program_duration_minutes)
+
+      if (!partInventoryNumber) {
+        throw new Error(`第 ${index + 1} 行缺少盘存编号`)
+      }
+      if (!partDrawingNumber) {
+        throw new Error(`第 ${index + 1} 行缺少零件编号`)
+      }
+      if (!processName) {
+        throw new Error(`第 ${index + 1} 行缺少工艺工序`)
+      }
+      if (!programNo) {
+        throw new Error(`第 ${index + 1} 行缺少程序编号`)
+      }
+      if (!Number.isFinite(programDurationMinutes) || programDurationMinutes < 0) {
+        throw new Error(`第 ${index + 1} 行程序时长不合法`)
+      }
+
+      return {
+        part_inventory_number: partInventoryNumber,
+        part_drawing_number: partDrawingNumber,
+        process_name: processName,
+        program_no: programNo,
+        program_duration_minutes: programDurationMinutes,
+        programmed_at: nowIso,
+        programmer: canonicalProgrammer
+      }
+    })
+
+    const payloadJson = JSON.stringify(items)
+    const insertSql = `
+      INSERT INTO program_entries (
+        part_inventory_number,
+        part_drawing_number,
+        process_name,
+        program_no,
+        program_duration_minutes,
+        programmed_at,
+        programmer
+      )
+      SELECT
+        x.part_inventory_number,
+        x.part_drawing_number,
+        x.process_name,
+        x.program_no,
+        x.program_duration_minutes,
+        x.programmed_at::timestamptz,
+        x.programmer
+      FROM json_to_recordset($1::json) AS x(
+        part_inventory_number text,
+        part_drawing_number text,
+        process_name text,
+        program_no text,
+        program_duration_minutes numeric,
+        programmed_at text,
+        programmer text
+      )
+      RETURNING *
+    `
+    const result = await query(insertSql, [payloadJson])
+    return res.json({
+      success: true,
+      items: result.rows || [],
+      inserted: Number(result.rowCount || 0)
+    })
+  } catch (err: any) {
+    console.error('Create program entries error:', err)
+    const detail = String(err?.message || '服务器错误')
+    const isBadRequest = /缺少|不合法|用户信息已变更|第\s*\d+\s*行/.test(detail)
+    return res.status(isBadRequest ? 400 : 500).json({ success: false, error: detail })
   }
 })
 

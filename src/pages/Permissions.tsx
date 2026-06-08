@@ -41,6 +41,7 @@ const MODULES = [
   { name: '出库记录', code: 'standard_parts_issue' },
   { name: '个人设置', code: 'personal_settings' },
   { name: '工时录入', code: 'work_hours_entry' },
+  { name: '程序录入', code: 'program_entry' },
   { name: '工时管理', code: 'work_hours' }
 ]
 
