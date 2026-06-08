@@ -29,6 +29,17 @@ interface ProgramEntryRow {
   save_status?: 'idle' | 'saving' | 'saved' | 'error'
 }
 
+interface ProgramEntryApiItem {
+  id?: string
+  part_inventory_number?: string
+  part_drawing_number?: string
+  process_name?: string
+  program_no?: string
+  program_duration_minutes?: number | string | null
+  programmed_at?: string
+  programmer?: string
+}
+
 const createUuid = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -66,12 +77,54 @@ const normalizeProgramGroupValue = (value: string) => String(value || '')
   .trim()
   .toUpperCase()
 
+const buildProcessOptions = (route: string) => String(route || '')
+  .split('→')
+  .map(item => item.replace(/\s+/g, ' ').trim())
+  .filter(Boolean)
+
+const sortLoadedProgramEntries = (items: ProgramEntryApiItem[]) => {
+  return [...items].sort((a, b) => {
+    const timeA = dayjs(String(a?.programmed_at || '')).valueOf()
+    const timeB = dayjs(String(b?.programmed_at || '')).valueOf()
+    if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) {
+      return timeA - timeB
+    }
+    const programNoA = Number(String(a?.program_no || '').trim())
+    const programNoB = Number(String(b?.program_no || '').trim())
+    if (Number.isFinite(programNoA) && Number.isFinite(programNoB) && programNoA !== programNoB) {
+      return programNoA - programNoB
+    }
+    return String(a?.id || '').localeCompare(String(b?.id || ''))
+  })
+}
+
+// #region debug-point shared:report
+const reportProgramEntryDebug = (hypothesisId: string, msg: string, data?: Record<string, any>) => {
+  try {
+    fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'program-entry-missing',
+        runId: 'pre-fix',
+        hypothesisId,
+        location: 'src/pages/ProgramEntry.tsx',
+        msg,
+        data: data || {},
+        ts: Date.now()
+      })
+    }).catch(() => {})
+  } catch {}
+}
+// #endregion
+
 const ProgramEntry: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [rows, setRows] = React.useState<ProgramEntryRow[]>(() => [createEmptyRow()])
   const [inventoryOptions, setInventoryOptions] = React.useState<InventoryOption[]>([])
   const [loadingInventory, setLoadingInventory] = React.useState(false)
+  const [loadingEntries, setLoadingEntries] = React.useState(false)
   const inventoryTimerRef = React.useRef<any>(null)
   const inventoryCacheRef = React.useRef<InventoryOption[]>([])
   const inventoryAbortRef = React.useRef<AbortController | null>(null)
@@ -99,6 +152,64 @@ const ProgramEntry: React.FC = () => {
     } catch {}
     return name || '系统用户'
   }, [latestProgrammer, user])
+
+  const getInventoryOptionByNumber = React.useCallback((inventoryNumber: string) => {
+    const normalizedInventoryNumber = normalizeSearch(inventoryNumber)
+    if (!normalizedInventoryNumber) return null
+    return inventoryCacheRef.current.find(option => normalizeSearch(option.value) === normalizedInventoryNumber) || null
+  }, [])
+
+  const hydrateRowFromApi = React.useCallback((item: ProgramEntryApiItem): ProgramEntryRow => {
+    const partInventoryNumber = String(item?.part_inventory_number || '').trim()
+    const matchedOption = getInventoryOptionByNumber(partInventoryNumber)
+    const processOptions = buildProcessOptions(String(matchedOption?.meta?.process_route || ''))
+    return {
+      id: String(item?.id || createUuid()).trim() || createUuid(),
+      part_inventory_number: partInventoryNumber,
+      part_drawing_number: String(item?.part_drawing_number || matchedOption?.meta?.part_drawing_number || '').trim(),
+      process_name: String(item?.process_name || '').trim(),
+      process_options: processOptions,
+      program_no: String(item?.program_no || '').trim(),
+      program_duration_minutes: item?.program_duration_minutes === null || item?.program_duration_minutes === undefined || item?.program_duration_minutes === ''
+        ? null
+        : Number(item.program_duration_minutes),
+      programmed_at: String(item?.programmed_at || '').trim()
+        ? dayjs(String(item?.programmed_at || '')).format('YYYY-MM-DD HH:mm:ss')
+        : '',
+      programmer: String(item?.programmer || '').trim(),
+      save_status: 'saved'
+    }
+  }, [getInventoryOptionByNumber])
+
+  const loadProgramEntries = React.useCallback(async () => {
+    try {
+      setLoadingEntries(true)
+      const resp = await fetchWithFallback('/api/tooling/program-entries?page=1&pageSize=500')
+      if (!resp.ok) {
+        throw new Error(`读取程序录入失败: ${resp.status}`)
+      }
+      const json = await resp.json()
+      const items = Array.isArray(json?.items) ? json.items : []
+      const loadedRows = sortLoadedProgramEntries(items).map(hydrateRowFromApi)
+      const snapshotMap: Record<string, string> = {}
+      loadedRows.forEach((row) => {
+        snapshotMap[row.id] = buildRowSnapshot(row)
+      })
+      lastSavedSnapshotRef.current = snapshotMap
+      setRows(loadedRows.length > 0 ? [...loadedRows, createEmptyRow()] : [createEmptyRow()])
+      reportProgramEntryDebug('F', '[DEBUG] ProgramEntry loaded existing rows', {
+        itemCount: items.length,
+        rowCount: loadedRows.length
+      })
+    } catch (error: any) {
+      message.error(error?.message || '加载程序录入失败')
+      reportProgramEntryDebug('G', '[DEBUG] ProgramEntry load failed', {
+        message: String(error?.message || error || '')
+      })
+    } finally {
+      setLoadingEntries(false)
+    }
+  }, [buildRowSnapshot, hydrateRowFromApi])
 
   const fetchInventory = React.useCallback(async (keyword: string) => {
     const requestId = ++inventoryRequestRef.current
@@ -192,6 +303,18 @@ const ProgramEntry: React.FC = () => {
     fetchInventory('')
   }, [fetchInventory])
 
+  React.useEffect(() => {
+    loadProgramEntries()
+  }, [loadProgramEntries])
+
+  React.useEffect(() => {
+    // #region debug-point E:page-mount
+    reportProgramEntryDebug('E', '[DEBUG] ProgramEntry mounted', {
+      rowCount: rowsRef.current.length
+    })
+    // #endregion
+  }, [])
+
   const hasRowContent = React.useCallback((row: ProgramEntryRow) => {
     return !!(
       String(row.part_inventory_number || '').trim()
@@ -240,6 +363,30 @@ const ProgramEntry: React.FC = () => {
     })
   }, [hasRowContent, rows])
 
+  React.useEffect(() => {
+    if (inventoryCacheRef.current.length === 0) return
+    setRows(prev => {
+      let changed = false
+      const next = prev.map((row) => {
+        if (!String(row.part_inventory_number || '').trim()) return row
+        const matchedOption = getInventoryOptionByNumber(row.part_inventory_number)
+        if (!matchedOption) return row
+        const nextDrawingNumber = String(row.part_drawing_number || '').trim() || String(matchedOption.meta.part_drawing_number || '').trim()
+        const nextProcessOptions = buildProcessOptions(String(matchedOption.meta.process_route || ''))
+        const sameDrawingNumber = nextDrawingNumber === String(row.part_drawing_number || '').trim()
+        const sameProcessOptions = JSON.stringify(nextProcessOptions) === JSON.stringify(row.process_options || [])
+        if (sameDrawingNumber && sameProcessOptions) return row
+        changed = true
+        return {
+          ...row,
+          part_drawing_number: nextDrawingNumber,
+          process_options: nextProcessOptions
+        }
+      })
+      return changed ? next : prev
+    })
+  }, [getInventoryOptionByNumber, inventoryOptions])
+
   const handleInventoryChange = React.useCallback((rowId: string, value: string, option?: any) => {
     const selected = option as InventoryOption | undefined
     const nextInventoryNumber = String(value || '').trim()
@@ -285,6 +432,12 @@ const ProgramEntry: React.FC = () => {
           programmed_at: programmedAt
         }]
       }
+      // #region debug-point A:save-request
+      reportProgramEntryDebug('A', '[DEBUG] ProgramEntry save requested', {
+        rowId: row.id,
+        payload
+      })
+      // #endregion
       const resp = await fetchWithFallback('/api/tooling/program-entries/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,6 +452,13 @@ const ProgramEntry: React.FC = () => {
         throw new Error(detail || `保存失败: ${resp.status}`)
       }
       const json = await resp.json()
+      // #region debug-point B:save-response
+      reportProgramEntryDebug('B', '[DEBUG] ProgramEntry save response received', {
+        rowId: row.id,
+        status: resp.status,
+        body: json
+      })
+      // #endregion
       if (!json?.success) {
         throw new Error(String(json?.error || '保存失败'))
       }
@@ -308,8 +468,21 @@ const ProgramEntry: React.FC = () => {
         programmer,
         save_status: 'saved'
       })
+      // #region debug-point C:save-success
+      reportProgramEntryDebug('C', '[DEBUG] ProgramEntry save marked saved', {
+        rowId: row.id,
+        programmedAt,
+        programmer
+      })
+      // #endregion
     } catch (error: any) {
       updateRow(row.id, { save_status: 'error' })
+      // #region debug-point D:save-error
+      reportProgramEntryDebug('D', '[DEBUG] ProgramEntry save failed', {
+        rowId: row.id,
+        message: String(error?.message || error || '')
+      })
+      // #endregion
       message.error(error?.message || '自动保存失败')
     } finally {
       delete inFlightRowIdsRef.current[row.id]
@@ -520,6 +693,7 @@ const ProgramEntry: React.FC = () => {
           size="small"
           bordered={false}
           pagination={false}
+          loading={loadingEntries}
           scroll={{ x: 'max-content' }}
           dataSource={rows}
           columns={columns as any}

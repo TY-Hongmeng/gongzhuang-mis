@@ -134,6 +134,26 @@ const parseClockMinutes = (v: any) => {
   if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(s)) return null
   return h * 60 + m + s / 60
 }
+
+// #region debug-point shared:report
+const reportProgramEntriesRouteDebug = (hypothesisId: string, msg: string, data?: Record<string, any>) => {
+  try {
+    fetch('http://127.0.0.1:7777/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: 'program-entry-missing',
+        runId: 'pre-fix',
+        hypothesisId,
+        location: 'api/routes/tooling.ts',
+        msg,
+        data: data || {},
+        ts: Date.now()
+      })
+    }).catch(() => {})
+  } catch {}
+}
+// #endregion
 const addMinutesToDate = (date: Date, minutes: number) => new Date(date.getTime() + minutes * 60 * 1000)
 const resolveProgramProcessWindow = (row: any) => {
   const procHours = Number(row?.proc_hours || 0)
@@ -1983,11 +2003,67 @@ router.get('/program-management', async (req, res) => {
 })
 
 // 批量提交程序录入
+router.get('/program-entries', async (req, res) => {
+  try {
+    await ensureProgramEntriesTable()
+    const {
+      page = '1',
+      pageSize = '200'
+    } = req.query as Record<string, string>
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1)
+    const sizeNum = Math.max(parseInt(pageSize, 10) || 200, 1)
+    const offset = (pageNum - 1) * sizeNum
+
+    try {
+      const { data, error, count } = await supabase
+        .from('program_entries')
+        .select('id, part_inventory_number, part_drawing_number, process_name, program_no, program_duration_minutes, programmed_at, programmer', { count: 'exact' })
+        .order('programmed_at', { ascending: false })
+        .range(offset, offset + sizeNum - 1)
+      if (error) throw error
+      return res.json({
+        success: true,
+        items: Array.isArray(data) ? data : [],
+        total: Number(count || 0),
+        page: pageNum,
+        pageSize: sizeNum
+      })
+    } catch (sbErr: any) {
+      if (!process.env.SUPABASE_DB_URL) throw sbErr
+      const countResult = await query(`SELECT COUNT(*)::int AS total FROM program_entries`)
+      const result = await query(
+        `SELECT id, part_inventory_number, part_drawing_number, process_name, program_no, program_duration_minutes, programmed_at, programmer
+         FROM program_entries
+         ORDER BY programmed_at DESC
+         LIMIT $1 OFFSET $2`,
+        [sizeNum, offset]
+      )
+      return res.json({
+        success: true,
+        items: Array.isArray((result as any)?.rows) ? (result as any).rows : [],
+        total: Number((countResult as any)?.rows?.[0]?.total || 0),
+        page: pageNum,
+        pageSize: sizeNum
+      })
+    }
+  } catch (err: any) {
+    console.error('Get program entries error:', err)
+    return res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 router.post('/program-entries/batch', async (req, res) => {
   try {
     await ensureProgramEntriesTable()
     const body = req.body || {}
     const rawItems = Array.isArray(body?.items) ? body.items : []
+    // #region debug-point A:route-entry
+    reportProgramEntriesRouteDebug('A', '[DEBUG] program-entries route entered', {
+      itemCount: rawItems.length,
+      operator: String(body?.operator || ''),
+      userId: String(body?.user_id || '')
+    })
+    // #endregion
     if (rawItems.length === 0) {
       return res.status(400).json({ success: false, error: '缺少程序录入数据' })
     }
@@ -2048,6 +2124,11 @@ router.post('/program-entries/batch', async (req, res) => {
     })
 
     const payloadJson = JSON.stringify(items)
+    // #region debug-point B:route-payload
+    reportProgramEntriesRouteDebug('B', '[DEBUG] program-entries payload normalized', {
+      items
+    })
+    // #endregion
     const insertSql = `
       INSERT INTO program_entries (
         id,
@@ -2094,6 +2175,12 @@ router.post('/program-entries/batch', async (req, res) => {
       RETURNING *
     `
     const result = await query(insertSql, [payloadJson])
+    // #region debug-point C:route-insert-result
+    reportProgramEntriesRouteDebug('C', '[DEBUG] program-entries insert result', {
+      rowCount: Number(result.rowCount || 0),
+      firstRow: Array.isArray(result.rows) && result.rows.length > 0 ? result.rows[0] : null
+    })
+    // #endregion
     return res.json({
       success: true,
       items: result.rows || [],
@@ -2101,6 +2188,11 @@ router.post('/program-entries/batch', async (req, res) => {
     })
   } catch (err: any) {
     console.error('Create program entries error:', err)
+    // #region debug-point D:route-error
+    reportProgramEntriesRouteDebug('D', '[DEBUG] program-entries route failed', {
+      message: String(err?.message || err || '')
+    })
+    // #endregion
     const detail = String(err?.message || '服务器错误')
     const isBadRequest = /缺少|不合法|用户信息已变更|第\s*\d+\s*行/.test(detail)
     return res.status(isBadRequest ? 400 : 500).json({ success: false, error: detail })
