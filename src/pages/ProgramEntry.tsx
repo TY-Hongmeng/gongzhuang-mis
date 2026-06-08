@@ -181,6 +181,18 @@ const ProgramEntry: React.FC = () => {
     }
   }, [getInventoryOptionByNumber])
 
+  const buildRowSnapshot = React.useCallback((row: ProgramEntryRow) => {
+    return JSON.stringify({
+      part_inventory_number: String(row.part_inventory_number || '').trim(),
+      part_drawing_number: String(row.part_drawing_number || '').trim(),
+      process_name: String(row.process_name || '').trim(),
+      program_no: String(row.program_no || '').trim(),
+      program_duration_minutes: row.program_duration_minutes === null || row.program_duration_minutes === undefined
+        ? null
+        : Number(row.program_duration_minutes)
+    })
+  }, [])
+
   const loadProgramEntries = React.useCallback(async () => {
     try {
       setLoadingEntries(true)
@@ -332,18 +344,6 @@ const ProgramEntry: React.FC = () => {
       && row.program_duration_minutes !== undefined
       && Number(row.program_duration_minutes) >= 0
     )
-  }, [])
-
-  const buildRowSnapshot = React.useCallback((row: ProgramEntryRow) => {
-    return JSON.stringify({
-      part_inventory_number: String(row.part_inventory_number || '').trim(),
-      part_drawing_number: String(row.part_drawing_number || '').trim(),
-      process_name: String(row.process_name || '').trim(),
-      program_no: String(row.program_no || '').trim(),
-      program_duration_minutes: row.program_duration_minutes === null || row.program_duration_minutes === undefined
-        ? null
-        : Number(row.program_duration_minutes)
-    })
   }, [])
 
   React.useEffect(() => {
