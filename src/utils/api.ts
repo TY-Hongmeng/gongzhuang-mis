@@ -3027,8 +3027,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
             const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
             const isProcessing = !isCompleted && displayCompletedQuantity > 0
-            const avgProgramHours = Number(group.program_total_minutes || 0) / 60
-            const avgRuntimeHours = completedQuantity > 0 ? (runtimeHours / completedQuantity) : 0
+            const avgRuntimeHours = runtimeHours > 0 ? (runtimeHours / Math.max(completedQuantity, 1)) : null
             const progressDisplay = totalQuantity > 0
               ? `${formatQuantity(displayCompletedQuantity)}/${formatQuantity(totalQuantity)}`
               : formatQuantity(completedQuantity)
@@ -3050,8 +3049,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 : (completedQuantity > 0 ? `已记录 ${formatQuantity(completedQuantity)}` : '-'),
               program_count: group.program_segment_set instanceof Set ? group.program_segment_set.size : 0,
               program_total_hours: Number((Number(group.program_total_minutes || 0) / 60).toFixed(2)),
-              average_program_hours: Number(avgProgramHours.toFixed(2)),
-              average_runtime_hours: Number(avgRuntimeHours.toFixed(2)),
+              average_runtime_hours: avgRuntimeHours == null ? null : Number(avgRuntimeHours.toFixed(2)),
               program_runtime_hours: Number(runtimeHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt

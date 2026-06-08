@@ -19,9 +19,8 @@ interface ProgramManagementItem {
   completion_status_key: 'all' | 'pending' | 'processing' | 'completed'
   program_count: number
   program_total_hours: number
-  average_program_hours: number
   program_runtime_hours: number
-  average_runtime_hours: number
+  average_runtime_hours: number | null
   program_runtime_display: string
   program_start_end_display: string
   device_no_display: string
@@ -132,25 +131,17 @@ const ProgramManagement: React.FC = () => {
       width: 160
     },
     {
-      title: '总数量',
-      dataIndex: 'total_quantity',
+      title: '数量',
+      key: 'quantity_progress',
       align: 'center' as const,
-      width: 90,
-      render: (value: number) => formatQuantity(value)
-    },
-    {
-      title: '完成数量',
-      dataIndex: 'completed_quantity',
-      align: 'center' as const,
-      width: 90,
-      render: (value: number) => formatQuantity(value)
-    },
-    {
-      title: '状态',
-      dataIndex: 'completion_status',
-      align: 'center' as const,
-      width: 150,
-      render: (value: string) => value || '-'
+      width: 110,
+      render: (_: any, record: ProgramManagementItem) => {
+        const totalQty = Number(record.total_quantity || 0)
+        const completedQty = Number(record.completed_quantity || 0)
+        if (!Number.isFinite(totalQty) || totalQty <= 0) return '-'
+        const displayCompleted = Math.min(Math.max(completedQty, 0), totalQty)
+        return `${formatQuantity(displayCompleted)}/${formatQuantity(totalQty)}`
+      }
     },
     {
       title: '程序数量',
@@ -166,11 +157,11 @@ const ProgramManagement: React.FC = () => {
       render: (value: number) => Number(value || 0).toFixed(2)
     },
     {
-      title: '单件程序时长(小时)',
-      dataIndex: 'average_program_hours',
+      title: '单件运行时长(小时)',
+      dataIndex: 'average_runtime_hours',
       align: 'center' as const,
       width: 150,
-      render: (value: number) => Number(value || 0).toFixed(2)
+      render: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2))
     },
     {
       title: '程序运行时间',
@@ -178,13 +169,6 @@ const ProgramManagement: React.FC = () => {
       align: 'center' as const,
       width: 280,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
-    },
-    {
-      title: '单件运行时长(小时)',
-      dataIndex: 'average_runtime_hours',
-      align: 'center' as const,
-      width: 150,
-      render: (value: number) => Number(value || 0).toFixed(2)
     },
     {
       title: '程序起止',
