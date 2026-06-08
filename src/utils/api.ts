@@ -3026,8 +3026,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
             const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
             const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
-            const isProcessing = !isCompleted && displayCompletedQuantity > 0
-            const avgRuntimeHours = runtimeHours > 0 ? (runtimeHours / Math.max(completedQuantity, 1)) : null
+            const hasRuntime = runtimeHours > 0
+            const isProcessing = !isCompleted && hasRuntime
+            const avgRuntimeBase = Math.max(completedQuantity, 1)
+            const avgRuntimeHours = hasRuntime ? (runtimeHours / avgRuntimeBase) : null
             const progressDisplay = totalQuantity > 0
               ? `${formatQuantity(displayCompletedQuantity)}/${formatQuantity(totalQuantity)}`
               : formatQuantity(completedQuantity)
@@ -3043,13 +3045,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               process_name: group.process_name || '',
               total_quantity: Number(totalQuantity.toFixed(2)),
               completed_quantity: Number(completedQuantity.toFixed(2)),
+              quantity_progress_display: progressDisplay,
               completion_status_key: completionStatusKey,
-              completion_status: totalQuantity > 0
-                ? (isCompleted ? '完成' : (displayCompletedQuantity > 0 ? `加工中 ${progressDisplay}` : `未加工 0/${formatQuantity(totalQuantity)}`))
-                : (completedQuantity > 0 ? `已记录 ${formatQuantity(completedQuantity)}` : '-'),
               program_count: group.program_segment_set instanceof Set ? group.program_segment_set.size : 0,
               program_total_hours: Number((Number(group.program_total_minutes || 0) / 60).toFixed(2)),
               average_runtime_hours: avgRuntimeHours == null ? null : Number(avgRuntimeHours.toFixed(2)),
+              average_runtime_hours_display: avgRuntimeHours == null ? '-' : formatHours(avgRuntimeHours),
               program_runtime_hours: Number(runtimeHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt

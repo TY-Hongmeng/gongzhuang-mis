@@ -2151,18 +2151,16 @@ router.get('/program-management', async (req, res) => {
       const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
       const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
       const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
-      const isProcessing = !isCompleted && displayCompletedQuantity > 0
-      const isPending = !isCompleted && !isProcessing
-      const avgRuntimeHours = runtimeHours > 0 ? (runtimeHours / Math.max(completedQuantity, 1)) : null
+      const hasRuntime = runtimeHours > 0
+      const isProcessing = !isCompleted && hasRuntime
+      const avgRuntimeBase = Math.max(completedQuantity, 1)
+      const avgRuntimeHours = hasRuntime ? (runtimeHours / avgRuntimeBase) : null
       const progressDisplay = totalQuantity > 0
         ? `${formatProgramManageQuantity(displayCompletedQuantity)}/${formatProgramManageQuantity(totalQuantity)}`
         : formatProgramManageQuantity(completedQuantity)
       const runtimeDisplay = runtimeHours > 0 ? `${formatProgramManageHours(runtimeHours)}小时${operatorSummary ? ` | ${operatorSummary}` : ''}` : '-'
       const startEndDisplay = startAt && endAt ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)` : '-'
       const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
-      const completionStatus = totalQuantity > 0
-        ? (isCompleted ? '完成' : (displayCompletedQuantity > 0 ? `加工中 ${progressDisplay}` : `未加工 0/${formatProgramManageQuantity(totalQuantity)}`))
-        : (completedQuantity > 0 ? `已记录 ${formatProgramManageQuantity(completedQuantity)}` : '-')
       const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
       return {
         key: group.key,
@@ -2173,11 +2171,12 @@ router.get('/program-management', async (req, res) => {
         process_name: group.process_name || '',
         total_quantity: Number(totalQuantity.toFixed(2)),
         completed_quantity: Number(completedQuantity.toFixed(2)),
+        quantity_progress_display: progressDisplay,
         completion_status_key: completionStatusKey,
-        completion_status: completionStatus,
         program_count: programCount,
         program_total_hours: Number(programTotalHours.toFixed(2)),
         average_runtime_hours: avgRuntimeHours == null ? null : Number(avgRuntimeHours.toFixed(2)),
+        average_runtime_hours_display: avgRuntimeHours == null ? '-' : formatProgramManageHours(avgRuntimeHours),
         program_runtime_hours: Number(runtimeHours.toFixed(2)),
         program_runtime_display: runtimeDisplay,
         program_start_end_display: startEndDisplay,

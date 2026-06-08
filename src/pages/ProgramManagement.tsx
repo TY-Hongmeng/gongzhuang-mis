@@ -15,12 +15,13 @@ interface ProgramManagementItem {
   process_name: string
   total_quantity: number
   completed_quantity: number
-  completion_status: string
+  quantity_progress_display: string
   completion_status_key: 'all' | 'pending' | 'processing' | 'completed'
   program_count: number
   program_total_hours: number
   program_runtime_hours: number
   average_runtime_hours: number | null
+  average_runtime_hours_display: string
   program_runtime_display: string
   program_start_end_display: string
   device_no_display: string
@@ -131,17 +132,11 @@ const ProgramManagement: React.FC = () => {
       width: 160
     },
     {
-      title: '数量',
-      key: 'quantity_progress',
+      title: '完成/总数',
+      dataIndex: 'quantity_progress_display',
       align: 'center' as const,
       width: 110,
-      render: (_: any, record: ProgramManagementItem) => {
-        const totalQty = Number(record.total_quantity || 0)
-        const completedQty = Number(record.completed_quantity || 0)
-        if (!Number.isFinite(totalQty) || totalQty <= 0) return '-'
-        const displayCompleted = Math.min(Math.max(completedQty, 0), totalQty)
-        return `${formatQuantity(displayCompleted)}/${formatQuantity(totalQty)}`
-      }
+      render: (value: string) => value || '-'
     },
     {
       title: '程序数量',
@@ -158,10 +153,10 @@ const ProgramManagement: React.FC = () => {
     },
     {
       title: '单件运行时长(小时)',
-      dataIndex: 'average_runtime_hours',
+      dataIndex: 'average_runtime_hours_display',
       align: 'center' as const,
       width: 150,
-      render: (value: number | null) => (value == null ? '-' : Number(value).toFixed(2))
+      render: (value: string) => value || '-'
     },
     {
       title: '程序运行时间',
