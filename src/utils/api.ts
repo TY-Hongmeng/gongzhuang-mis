@@ -2722,6 +2722,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .replace(/\s+/g, '')
           .trim()
           .toLowerCase()
+        const normalizeProcessBaseKey = (v: any) => String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/\s+/g, '')
+          .replace(/^[0-9]+[.\-、:：]*/g, '')
+          .trim()
+          .toLowerCase()
         const parseClockMinutes = (v: any) => {
           const raw = String(v || '').trim()
           if (!raw) return null
