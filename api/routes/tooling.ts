@@ -2052,6 +2052,39 @@ router.get('/program-entries', async (req, res) => {
   }
 })
 
+router.delete('/program-entries/:id', async (req, res) => {
+  try {
+    await ensureProgramEntriesTable()
+    const rowId = String(req.params?.id || '').trim()
+    if (!rowId) {
+      return res.status(400).json({ success: false, error: '缺少程序录入ID' })
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('program_entries')
+        .delete()
+        .eq('id', rowId)
+        .select('id')
+      if (error) throw error
+      return res.json({
+        success: true,
+        deleted: Array.isArray(data) ? data.length : 0
+      })
+    } catch (sbErr: any) {
+      if (!process.env.SUPABASE_DB_URL) throw sbErr
+      const result = await query(`DELETE FROM program_entries WHERE id = $1::uuid`, [rowId])
+      return res.json({
+        success: true,
+        deleted: Number((result as any)?.rowCount || 0)
+      })
+    }
+  } catch (err: any) {
+    console.error('Delete program entry error:', err)
+    return res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 router.post('/program-entries/batch', async (req, res) => {
   try {
     await ensureProgramEntriesTable()

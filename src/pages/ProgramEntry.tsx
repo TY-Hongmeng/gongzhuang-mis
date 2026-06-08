@@ -1,5 +1,5 @@
 import React from 'react'
-import { AutoComplete, Button, Card, Input, InputNumber, message, Select, Space, Table, Tag, Typography } from 'antd'
+import { AutoComplete, Button, Card, Input, InputNumber, Modal, message, Select, Space, Table, Tag, Typography } from 'antd'
 import { LeftOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
@@ -137,6 +137,13 @@ const ProgramEntry: React.FC = () => {
 
   const updateRow = React.useCallback((id: string, patch: Partial<ProgramEntryRow>) => {
     setRows(prev => prev.map(row => row.id === id ? { ...row, ...patch } : row))
+  }, [])
+
+  const replaceRowWithEmpty = React.useCallback((rowId: string) => {
+    setRows(prev => prev.map((row) => {
+      if (row.id !== rowId) return row
+      return createEmptyRow()
+    }))
   }, [])
 
   const resolveLatestProgrammer = React.useCallback(async () => {
@@ -407,6 +414,55 @@ const ProgramEntry: React.FC = () => {
     })
   }, [latestProgrammer, updateRow])
 
+  const deleteRowRecord = React.useCallback(async (row: ProgramEntryRow) => {
+    const rowId = String(row.id || '').trim()
+    if (!rowId) {
+      replaceRowWithEmpty(row.id)
+      return
+    }
+    const hasSavedRecord = !!lastSavedSnapshotRef.current[rowId] || row.save_status === 'saved'
+    if (hasSavedRecord) {
+      const resp = await fetchWithFallback(`/api/tooling/program-entries/${encodeURIComponent(rowId)}`, {
+        method: 'DELETE'
+      })
+      if (!resp.ok) {
+        let detail = ''
+        try {
+          const errJson = await resp.json()
+          detail = String(errJson?.error || errJson?.message || '').trim()
+        } catch {}
+        throw new Error(detail || `删除失败: ${resp.status}`)
+      }
+      const json = await resp.json()
+      if (!json?.success) {
+        throw new Error(String(json?.error || '删除失败'))
+      }
+    }
+    delete lastSavedSnapshotRef.current[rowId]
+    delete inFlightRowIdsRef.current[rowId]
+    replaceRowWithEmpty(row.id)
+  }, [replaceRowWithEmpty])
+
+  const confirmClearInventory = React.useCallback((row: ProgramEntryRow) => {
+    const inventoryNumber = String(row.part_inventory_number || '').trim()
+    if (!inventoryNumber) return
+    Modal.confirm({
+      title: '确认删除这条程序录入吗？',
+      content: `盘存编号 ${inventoryNumber} 删除后将清空当前行，已保存的数据也会一并删除。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteRowRecord(row)
+          message.success('已删除当前程序录入')
+        } catch (error: any) {
+          message.error(error?.message || '删除失败')
+        }
+      }
+    })
+  }, [deleteRowRecord])
+
   const saveRow = React.useCallback(async (row: ProgramEntryRow) => {
     if (!isRowComplete(row)) return
     const snapshot = buildRowSnapshot(row)
@@ -528,6 +584,10 @@ const ProgramEntry: React.FC = () => {
             if (open && inventoryOptions.length === 0) fetchInventory('')
           }}
           onChange={(value, option) => {
+            if (!String(value || '').trim()) {
+              confirmClearInventory(row)
+              return
+            }
             handleInventoryChange(row.id, String(value || ''), option)
             window.setTimeout(() => requestSave(row.id), 0)
           }}
@@ -611,7 +671,7 @@ const ProgramEntry: React.FC = () => {
         row.programmer ? <div style={{ textAlign: 'center' }}><Tag color="cyan">{row.programmer}</Tag></div> : <div className="program-entry-cell-static" />
       )
     }
-  ], [fetchInventory, handleInventoryChange, inventoryOptions, loadingInventory, requestSave, updateRow])
+  ], [confirmClearInventory, fetchInventory, handleInventoryChange, inventoryOptions, loadingInventory, requestSave, updateRow])
 
   return (
     <div style={{ padding: 16 }}>

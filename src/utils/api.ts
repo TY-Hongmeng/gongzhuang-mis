@@ -3199,6 +3199,30 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // Program entry delete
+      if (method === 'DELETE' && /^\/api\/tooling\/program-entries\/[^/]+$/.test(path)) {
+        const rowId = decodeURIComponent(path.split('/').pop() || '').trim()
+        if (!rowId) {
+          return jsonResponse({ success: false, error: '缺少程序录入ID' }, 400)
+        }
+        try {
+          const { data, error } = await supabase
+            .from('program_entries')
+            .delete()
+            .eq('id', rowId)
+            .select('id')
+          if (error) {
+            return jsonResponse({ success: false, error: error.message }, 500)
+          }
+          return jsonResponse({
+            success: true,
+            deleted: Array.isArray(data) ? data.length : 0
+          })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '删除程序录入失败' }, 500)
+        }
+      }
+
       // Program entries batch upsert
       if (method === 'POST' && path === '/api/tooling/program-entries/batch') {
         const body = await readBody()
