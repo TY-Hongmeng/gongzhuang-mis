@@ -2510,8 +2510,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return dash.trim()
         }
         const normalizeProcessKey = (v: any) => String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
           .replace(/\s+/g, '')
-          .replace(/^[0-9]+[.\-、:：]*/g, '')
           .trim()
           .toLowerCase()
         const toTime = (row: any) => {
@@ -2700,12 +2700,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .replace(/[\u200B-\u200D\uFEFF]/g, '')
           .trim()
           .toUpperCase()
-        const normalizeProcessKey = (v: any) => {
-          const raw = String(v || '').replace(/\s+/g, '').trim()
-          if (!raw) return ''
-          const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
-          return (stripped || raw).toLowerCase()
-        }
+        const normalizeProcessKey = (v: any) => String(v || '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/\s+/g, '')
+          .trim()
+          .toLowerCase()
         const parseClockMinutes = (v: any) => {
           const raw = String(v || '').trim()
           if (!raw) return null

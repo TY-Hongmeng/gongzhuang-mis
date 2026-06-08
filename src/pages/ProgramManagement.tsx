@@ -56,6 +56,13 @@ const ProgramManagement: React.FC = () => {
 
   const columns = React.useMemo(() => [
     {
+      title: '序号',
+      key: 'row_index',
+      align: 'center' as const,
+      width: 80,
+      render: (_: any, __: ProgramManagementItem, index: number) => ((page - 1) * pageSize) + index + 1
+    },
+    {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
       align: 'center' as const,
@@ -107,7 +114,7 @@ const ProgramManagement: React.FC = () => {
       width: 180,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     }
-  ], [])
+  ], [page, pageSize])
 
   return (
     <div style={{ padding: 16 }}>

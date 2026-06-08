@@ -555,6 +555,13 @@ const ProgramEntry: React.FC = () => {
 
   const columns = React.useMemo(() => [
     {
+      title: '序号',
+      key: 'row_index',
+      width: 70,
+      align: 'center' as const,
+      render: (_: any, __: ProgramEntryRow, index: number) => index + 1
+    },
+    {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
       width: 350,

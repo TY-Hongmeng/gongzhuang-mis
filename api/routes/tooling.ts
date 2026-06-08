@@ -118,12 +118,11 @@ const normalizeProgramManageInventoryNo = (v: any) => String(v || '')
   .replace(/[\u200B-\u200D\uFEFF]/g, '')
   .trim()
   .toUpperCase()
-const normalizeProgramManageProcessKey = (v: any) => {
-  const raw = String(v || '').replace(/\s+/g, '').trim()
-  if (!raw) return ''
-  const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
-  return (stripped || raw).toLowerCase()
-}
+const normalizeProgramManageProcessKey = (v: any) => String(v || '')
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/\s+/g, '')
+  .trim()
+  .toLowerCase()
 const parseClockMinutes = (v: any) => {
   const raw = String(v || '').trim()
   if (!raw) return null
@@ -2908,12 +2907,11 @@ router.get('/work-hours/aggregates', async (req, res) => {
       if (leadingDigits) return leadingDigits
       return dash.trim()
     }
-    const normalizeProcessKey = (v: any) => {
-      const raw = String(v || '').replace(/\s+/g, '').trim()
-      if (!raw) return ''
-      const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
-      return (stripped || raw).toLowerCase()
-    }
+    const normalizeProcessKey = (v: any) => String(v || '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/\s+/g, '')
+      .trim()
+      .toLowerCase()
     const toTime = (row: any) => {
       const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
       const ts = Date.parse(t)
