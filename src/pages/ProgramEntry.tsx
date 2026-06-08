@@ -42,7 +42,7 @@ const createUuid = () => {
 
 const formatNow = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
-const createEmptyRow = (programmer: string): ProgramEntryRow => ({
+const createEmptyRow = (): ProgramEntryRow => ({
   id: createUuid(),
   part_inventory_number: '',
   part_drawing_number: '',
@@ -50,8 +50,8 @@ const createEmptyRow = (programmer: string): ProgramEntryRow => ({
   process_options: [],
   program_no: '',
   program_duration_minutes: null,
-  programmed_at: formatNow(),
-  programmer: programmer || '系统用户',
+  programmed_at: '',
+  programmer: '',
   save_status: 'idle'
 })
 
@@ -64,7 +64,7 @@ const normalizeSearch = (value: string) => String(value || '')
 const ProgramEntry: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [rows, setRows] = React.useState<ProgramEntryRow[]>(() => [createEmptyRow(String(user?.real_name || '系统用户'))])
+  const [rows, setRows] = React.useState<ProgramEntryRow[]>(() => [createEmptyRow()])
   const [inventoryOptions, setInventoryOptions] = React.useState<InventoryOption[]>([])
   const [loadingInventory, setLoadingInventory] = React.useState(false)
   const inventoryTimerRef = React.useRef<any>(null)
@@ -157,14 +157,6 @@ const ProgramEntry: React.FC = () => {
   }, [rows])
 
   React.useEffect(() => {
-    rows.forEach(row => {
-      if (row.programmer !== latestProgrammer && !row.part_inventory_number && !row.process_name && !row.program_no && row.program_duration_minutes === null) {
-        updateRow(row.id, { programmer: latestProgrammer, programmed_at: formatNow(), save_status: 'idle' })
-      }
-    })
-  }, [latestProgrammer, rows, updateRow])
-
-  React.useEffect(() => {
     fetchInventory('')
   }, [fetchInventory])
 
@@ -203,7 +195,7 @@ const ProgramEntry: React.FC = () => {
 
   React.useEffect(() => {
     setRows(prev => {
-      if (!prev.length) return [createEmptyRow(latestProgrammer)]
+      if (!prev.length) return [createEmptyRow()]
       let next = [...prev]
       let changed = false
       while (next.length > 1 && !hasRowContent(next[next.length - 1]) && !hasRowContent(next[next.length - 2])) {
@@ -211,27 +203,28 @@ const ProgramEntry: React.FC = () => {
         changed = true
       }
       if (hasRowContent(next[next.length - 1])) {
-        next = [...next, createEmptyRow(latestProgrammer)]
+        next = [...next, createEmptyRow()]
         changed = true
       }
       return changed ? next : prev
     })
-  }, [hasRowContent, latestProgrammer, rows])
+  }, [hasRowContent, rows])
 
   const handleInventoryChange = React.useCallback((rowId: string, value: string, option?: any) => {
     const selected = option as InventoryOption | undefined
+    const nextInventoryNumber = String(value || '').trim()
     const route = String(selected?.meta?.process_route || '')
     const processOptions = route
       .split('→')
       .map(item => item.replace(/\s+/g, ' ').trim())
       .filter(Boolean)
     updateRow(rowId, {
-      part_inventory_number: String(value || ''),
-      part_drawing_number: String(selected?.meta?.part_drawing_number || ''),
+      part_inventory_number: nextInventoryNumber,
+      part_drawing_number: nextInventoryNumber ? String(selected?.meta?.part_drawing_number || '') : '',
       process_name: '',
       process_options: processOptions,
-      programmed_at: formatNow(),
-      programmer: latestProgrammer,
+      programmed_at: nextInventoryNumber ? formatNow() : '',
+      programmer: nextInventoryNumber ? latestProgrammer : '',
       save_status: 'idle'
     })
   }, [latestProgrammer, updateRow])
@@ -314,7 +307,6 @@ const ProgramEntry: React.FC = () => {
           variant="borderless"
           style={{ width: '100%' }}
           value={row.part_inventory_number || undefined}
-          placeholder="输入或选择盘存编号"
           options={inventoryOptions}
           optionLabelProp="label"
           loading={loadingInventory}
@@ -356,7 +348,6 @@ const ProgramEntry: React.FC = () => {
         <AutoComplete
           className="program-entry-auto-complete"
           value={row.process_name}
-          placeholder="请选择或输入工序"
           options={row.process_options.map(item => ({ value: item, label: item }))}
           filterOption={(inputValue, option) => String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())}
           onChange={(value) => updateRow(row.id, { process_name: String(value || ''), save_status: 'idle' })}
@@ -376,7 +367,6 @@ const ProgramEntry: React.FC = () => {
           variant="borderless"
           className="program-entry-cell-input"
           value={row.program_no}
-          placeholder="请输入程序编号"
           onChange={(e) => updateRow(row.id, { program_no: e.target.value, save_status: 'idle' })}
           onBlur={() => requestSave(row.id)}
           onPressEnter={() => requestSave(row.id)}
@@ -396,7 +386,6 @@ const ProgramEntry: React.FC = () => {
           step={1}
           controls={false}
           style={{ width: '100%' }}
-          placeholder="分钟"
           value={row.program_duration_minutes}
           onChange={(value) => updateRow(row.id, {
             program_duration_minutes: value === null ? null : Number(value),
@@ -422,12 +411,10 @@ const ProgramEntry: React.FC = () => {
       width: 120,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
-        <div style={{ textAlign: 'center' }}>
-          <Tag color="cyan">{row.programmer || latestProgrammer}</Tag>
-        </div>
+        row.programmer ? <div style={{ textAlign: 'center' }}><Tag color="cyan">{row.programmer}</Tag></div> : <div className="program-entry-cell-static" />
       )
     }
-  ], [fetchInventory, handleInventoryChange, inventoryOptions, latestProgrammer, loadingInventory, requestSave, updateRow])
+  ], [fetchInventory, handleInventoryChange, inventoryOptions, loadingInventory, requestSave, updateRow])
 
   return (
     <div style={{ padding: 16 }}>
@@ -498,7 +485,6 @@ const ProgramEntry: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '12px 16px', background: '#f5f5f5', borderRadius: 4 }}>
           <div>
             <Typography.Title level={4} style={{ margin: 0 }}>程序录入</Typography.Title>
-            <Typography.Text type="secondary">表格样式对齐工装信息，输入完整后自动保存并自动补空白行</Typography.Text>
           </div>
           <Space wrap>
             <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
