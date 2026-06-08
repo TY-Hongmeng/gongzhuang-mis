@@ -1,6 +1,6 @@
 import React from 'react'
 import { AutoComplete, Button, Card, Input, InputNumber, message, Select, Space, Table, Tag, Typography } from 'antd'
-import { LeftOutlined, ReloadOutlined } from '@ant-design/icons'
+import { LeftOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithFallback } from '../utils/api'
@@ -79,12 +79,6 @@ const ProgramEntry: React.FC = () => {
 
   const updateRow = React.useCallback((id: string, patch: Partial<ProgramEntryRow>) => {
     setRows(prev => prev.map(row => row.id === id ? { ...row, ...patch } : row))
-  }, [])
-
-  const resetRows = React.useCallback((programmer: string) => {
-    lastSavedSnapshotRef.current = {}
-    inFlightRowIdsRef.current = {}
-    setRows([createEmptyRow(programmer)])
   }, [])
 
   const resolveLatestProgrammer = React.useCallback(async () => {
@@ -222,7 +216,7 @@ const ProgramEntry: React.FC = () => {
       }
       return changed ? next : prev
     })
-  }, [hasRowContent, latestProgrammer])
+  }, [hasRowContent, latestProgrammer, rows])
 
   const handleInventoryChange = React.useCallback((rowId: string, value: string, option?: any) => {
     const selected = option as InventoryOption | undefined
@@ -310,7 +304,7 @@ const ProgramEntry: React.FC = () => {
     {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
-      width: 520,
+      width: 350,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <Select
@@ -347,7 +341,7 @@ const ProgramEntry: React.FC = () => {
     {
       title: '零件编号',
       dataIndex: 'part_drawing_number',
-      width: 180,
+      width: 240,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <div className="program-entry-cell-static">{row.part_drawing_number || ''}</div>
@@ -507,7 +501,6 @@ const ProgramEntry: React.FC = () => {
             <Typography.Text type="secondary">表格样式对齐工装信息，输入完整后自动保存并自动补空白行</Typography.Text>
           </div>
           <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={() => resetRows(latestProgrammer)}>清空</Button>
             <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
           </Space>
         </div>
