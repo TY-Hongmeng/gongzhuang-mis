@@ -310,15 +310,18 @@ const ProgramEntry: React.FC = () => {
     {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
-      width: 360,
+      width: 520,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <Select
+          className="program-entry-inventory-select"
           showSearch
           allowClear
+          style={{ width: '100%' }}
           value={row.part_inventory_number || undefined}
           placeholder="输入或选择盘存编号"
           options={inventoryOptions}
+          optionLabelProp="label"
           loading={loadingInventory}
           filterOption={(input, option) => {
             const q = normalizeSearch(String(input || ''))
@@ -428,6 +431,32 @@ const ProgramEntry: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }}>
+      <style>{`
+        .program-entry-inventory-select.ant-select-single {
+          width: 100%;
+        }
+        .program-entry-inventory-select.ant-select-single .ant-select-selector {
+          width: 100% !important;
+          min-width: 100% !important;
+          height: 36px !important;
+          padding-left: 10px !important;
+          padding-right: 28px !important;
+        }
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-wrap {
+          width: 100%;
+          min-width: 0;
+        }
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-search,
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-item,
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-placeholder {
+          max-width: 100% !important;
+        }
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-item,
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-placeholder,
+        .program-entry-inventory-select.ant-select-single .ant-select-selection-search-input {
+          font-size: 12px;
+        }
+      `}</style>
       <Card bordered={false}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '12px 16px', background: '#f5f5f5', borderRadius: 4 }}>
           <div>

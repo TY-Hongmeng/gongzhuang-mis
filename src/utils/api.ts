@@ -21,6 +21,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
+    || /^\/api\/tooling\/program-entries(\/|$)/.test(cleanUrl)
     || /^\/api\/standard-parts(\/|$)/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
@@ -65,6 +66,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       cleanUrl.startsWith('/api/cutting-orders') ||
       cleanUrl.startsWith('/api/tooling/devices') ||
       cleanUrl.startsWith('/api/tooling/fixed-inventory-options') ||
+          cleanUrl.startsWith('/api/tooling/program-entries') ||
       cleanUrl.startsWith('/api/standard-parts')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
@@ -2950,6 +2952,85 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return jsonResponse({ success: true, data: result.data })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '提交失败' }, 500)
+        }
+      }
+
+      // Program entries batch upsert
+      if (method === 'POST' && path === '/api/tooling/program-entries/batch') {
+        const body = await readBody()
+        const rawItems = Array.isArray(body?.items) ? body.items : []
+        if (rawItems.length === 0) return jsonResponse({ success: false, error: '缺少程序录入数据' }, 400)
+
+        let canonicalProgrammer = String(body?.operator || '').trim() || '系统用户'
+        try {
+          const userId = String(body?.user_id || '').trim()
+          const userPhone = String(body?.user_phone || '').trim()
+          let uq = supabase.from('users').select('id, real_name').limit(1)
+          if (userId) uq = uq.eq('id', userId)
+          else if (userPhone) uq = uq.eq('phone', userPhone)
+          else if (canonicalProgrammer) uq = uq.ilike('real_name', canonicalProgrammer)
+          const { data: userRows } = await uq
+          const userRow = Array.isArray(userRows) ? userRows[0] : null
+          if ((userId || userPhone) && !userRow) {
+            return jsonResponse({ success: false, error: '用户信息已变更，请重新登录后再提交' }, 400)
+          }
+          if (userRow?.real_name) canonicalProgrammer = String(userRow.real_name || '').trim() || canonicalProgrammer
+        } catch {}
+
+        const nowIso = new Date().toISOString()
+        const items = rawItems.map((item: any, index: number) => {
+          const rowId = String(item?.id || '').trim()
+          const partInventoryNumber = String(item?.part_inventory_number || '').trim()
+          const partDrawingNumber = String(item?.part_drawing_number || '').trim()
+          const processName = String(item?.process_name || '').trim()
+          const programNo = String(item?.program_no || '').trim()
+          const programDurationMinutes = Number(item?.program_duration_minutes)
+          const programmedAt = String(item?.programmed_at || nowIso).trim() || nowIso
+
+          if (!partInventoryNumber) throw new Error(`第 ${index + 1} 行缺少盘存编号`)
+          if (!partDrawingNumber) throw new Error(`第 ${index + 1} 行缺少零件编号`)
+          if (!processName) throw new Error(`第 ${index + 1} 行缺少工艺工序`)
+          if (!programNo) throw new Error(`第 ${index + 1} 行缺少程序编号`)
+          if (!Number.isFinite(programDurationMinutes) || programDurationMinutes < 0) {
+            throw new Error(`第 ${index + 1} 行程序时长不合法`)
+          }
+
+          return {
+            id: rowId || undefined,
+            part_inventory_number: partInventoryNumber,
+            part_drawing_number: partDrawingNumber,
+            process_name: processName,
+            program_no: programNo,
+            program_duration_minutes: programDurationMinutes,
+            programmed_at: programmedAt,
+            programmer: canonicalProgrammer
+          }
+        })
+
+        try {
+          let result = await supabase
+            .from('program_entries')
+            .upsert(items as any, { onConflict: 'id' })
+            .select('*')
+          if (result.error) {
+            const noIdItems = items.map((item: any) => {
+              const next = { ...item }
+              delete next.id
+              return next
+            })
+            result = await supabase
+              .from('program_entries')
+              .insert(noIdItems as any)
+              .select('*')
+          }
+          if (result.error) return jsonResponse({ success: false, error: result.error.message }, 500)
+          return jsonResponse({
+            success: true,
+            items: result.data || [],
+            inserted: Array.isArray(result.data) ? result.data.length : 0
+          })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '保存失败' }, 500)
         }
       }
 
