@@ -55,6 +55,13 @@ const ProgramManagement: React.FC = () => {
     return num.toFixed(2)
   }, [])
 
+  const formatPercent = React.useCallback((numerator: number | null | undefined, denominator: number | null | undefined) => {
+    const num = Number(numerator)
+    const den = Number(denominator)
+    if (!Number.isFinite(num) || !Number.isFinite(den) || den <= 0) return '-'
+    return `${((num / den) * 100).toFixed(0)}%`
+  }, [])
+
   const loadData = React.useCallback(async (
     nextPage = page,
     nextPageSize = pageSize,
@@ -144,7 +151,7 @@ const ProgramManagement: React.FC = () => {
       title: '编程人',
       key: 'programmer_summary',
       align: 'center' as const,
-      width: 150,
+      width: 75,
       render: (_: any, record: ProgramManagementItem) => {
         const programmerText = String(record.programmers || '').trim()
         const countText = formatQuantity(record.program_count)
@@ -161,14 +168,14 @@ const ProgramManagement: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
-      title: '单件理论/实际(小时)',
+      title: '单件实际/理论(小时)',
       key: 'single_compare',
       align: 'center' as const,
       width: 170,
       render: (_: any, record: ProgramManagementItem) => (
         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
-          <div>{`理论 ${formatHours(record.program_total_hours)}`}</div>
-          <div>{`实际 ${record.average_runtime_hours_display || '-'}`}</div>
+          <div>{`${record.average_runtime_hours_display || '-'} ${record.average_runtime_hours_display === '-' ? '-' : formatPercent(record.average_runtime_hours, record.program_total_hours)}`}</div>
+          <div>{`${formatHours(record.program_total_hours)} ${record.program_total_hours > 0 ? '100%' : '-'}`}</div>
         </div>
       )
     },
@@ -178,38 +185,38 @@ const ProgramManagement: React.FC = () => {
       align: 'center' as const,
       width: 170,
       render: (_: any, record: ProgramManagementItem) => {
-        const runtimeText = record.program_runtime_display === '-' ? '-' : formatHours(record.program_runtime_hours)
+        const runtimeText = record.program_runtime_hours > 0 ? formatHours(record.program_runtime_hours) : '-'
         const spanText = record.program_start_end_display === '-' ? '-' : formatHours(record.program_span_hours)
         return (
           <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
-            <div>{`加工 ${runtimeText}`}</div>
-            <div>{`自然 ${spanText}`}</div>
+            <div>{`${runtimeText} ${runtimeText === '-' ? '-' : formatPercent(record.program_runtime_hours, record.program_span_hours)}`}</div>
+            <div>{`${spanText} ${spanText === '-' ? '-' : (record.program_span_hours > 0 ? '100%' : '-')}`}</div>
           </div>
         )
       }
     },
     {
-      title: '程序起止',
+      title: '操作者',
+      dataIndex: 'operator_display',
+      align: 'center' as const,
+      width: 360,
+      render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
+    },
+    {
+      title: '加工起止时间',
       dataIndex: 'program_start_end_display',
       align: 'center' as const,
       width: 260,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     },
     {
-      title: '操作者',
-      dataIndex: 'operator_display',
-      align: 'center' as const,
-      width: 180,
-      render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
-    },
-    {
       title: '设备编号',
       dataIndex: 'device_no_display',
       align: 'center' as const,
-      width: 180,
+      width: 72,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     }
-  ], [formatHours, formatQuantity, page, pageSize])
+  ], [formatHours, formatPercent, formatQuantity, page, pageSize])
 
   return (
     <div style={{ padding: 16 }}>

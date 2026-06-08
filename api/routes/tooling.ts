@@ -2159,7 +2159,7 @@ router.get('/program-management', async (req, res) => {
         ? `${formatProgramManageQuantity(displayCompletedQuantity)}/${formatProgramManageQuantity(totalQuantity)}`
         : formatProgramManageQuantity(completedQuantity)
       const runtimeDisplay = runtimeHours > 0 ? `${formatProgramManageHours(runtimeHours)}小时` : '-'
-      const startEndDisplay = startAt && endAt ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)` : '-'
+      const startEndDisplay = startAt && endAt ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)}` : '-'
       const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
       const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
       return {

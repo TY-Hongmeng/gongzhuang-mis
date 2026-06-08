@@ -3055,7 +3055,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               program_span_hours: Number(spanHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt
-                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)`
+                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)}`
                 : '-',
               operator_display: operatorSummary || '-',
               device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
