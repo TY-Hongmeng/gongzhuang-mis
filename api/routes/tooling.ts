@@ -200,6 +200,12 @@ const formatProgramManageHours = (value: number) => {
   if (!Number.isFinite(num) || num <= 0) return '0.00'
   return num.toFixed(2)
 }
+const formatProgramManageQuantity = (value: number) => {
+  const num = Number(value || 0)
+  if (!Number.isFinite(num) || num <= 0) return '0'
+  if (Math.abs(num - Math.round(num)) < 0.000001) return String(Math.round(num))
+  return num.toFixed(2)
+}
 let toolingTotalsColumnsReady = false;
 const ensureToolingTotalsColumns = async () => {
   if (toolingTotalsColumnsReady) return;
@@ -1914,10 +1920,100 @@ router.get('/program-management', async (req, res) => {
     })
 
     const inventoryList = Array.from(new Set(Array.from(groupedMap.values()).map((item: any) => normalizeProgramManageInventoryNo(item?.part_inventory_number)).filter(Boolean)))
+    const partMetaMap = new Map<string, {
+      part_name: string
+      part_drawing_number: string
+      part_quantity: number
+      tooling_id: string
+      project_name: string
+    }>()
+    for (const invChunk of chunkItems(inventoryList, 120)) {
+      let mergedPartRows: any[] = []
+      try {
+        const [{ data: byPartInv, error: byPartInvErr }, { data: byInventory, error: byInventoryErr }] = await Promise.all([
+          supabase
+            .from('parts_info')
+            .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
+            .in('part_inventory_number', invChunk),
+          supabase
+            .from('parts_info')
+            .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
+            .in('inventory_number', invChunk)
+        ])
+        if (byPartInvErr && byInventoryErr) throw byPartInvErr
+        mergedPartRows = [...((byPartInv || []) as any[]), ...((byInventory || []) as any[])]
+      } catch (sbErr: any) {
+        if (!process.env.SUPABASE_DB_URL) throw sbErr
+        const result = await query(
+          `SELECT part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id
+           FROM parts_info
+           WHERE part_inventory_number = ANY($1) OR inventory_number = ANY($1)`,
+          [invChunk]
+        )
+        mergedPartRows = (((result as any)?.rows) || []) as any[]
+      }
+      ;(mergedPartRows || []).forEach((row: any) => {
+        const inventoryNo = normalizeProgramManageInventoryNo(row?.part_inventory_number || row?.inventory_number)
+        if (!inventoryNo) return
+        const prev = partMetaMap.get(inventoryNo)
+        const partQuantity = Number(row?.part_quantity || 0)
+        partMetaMap.set(inventoryNo, {
+          part_name: String(row?.part_name || prev?.part_name || '').trim(),
+          part_drawing_number: String(row?.part_drawing_number || prev?.part_drawing_number || '').trim(),
+          part_quantity: Number.isFinite(partQuantity) && partQuantity > 0 ? partQuantity : Number(prev?.part_quantity || 0),
+          tooling_id: String(row?.tooling_id || prev?.tooling_id || '').trim(),
+          project_name: String(prev?.project_name || '').trim()
+        })
+      })
+    }
+    const toolingIdList = Array.from(new Set(Array.from(partMetaMap.values()).map((item) => String(item.tooling_id || '').trim()).filter(Boolean)))
+    if (toolingIdList.length > 0) {
+      const projectNameMap = new Map<string, string>()
+      try {
+        for (const toolingChunk of chunkItems(toolingIdList, 120)) {
+          const { data, error } = await supabase
+            .from('tooling_info')
+            .select('id, project_name')
+            .in('id', toolingChunk)
+          if (error) throw error
+          ;(data || []).forEach((row: any) => {
+            const id = String(row?.id || '').trim()
+            if (!id) return
+            projectNameMap.set(id, String(row?.project_name || '').trim())
+          })
+        }
+      } catch (sbErr: any) {
+        if (!process.env.SUPABASE_DB_URL) throw sbErr
+        const result = await query(
+          `SELECT id, project_name
+           FROM tooling_info
+           WHERE id = ANY($1)`,
+          [toolingIdList]
+        )
+        ;((((result as any)?.rows) || []) as any[]).forEach((row: any) => {
+          const id = String(row?.id || '').trim()
+          if (!id) return
+          projectNameMap.set(id, String(row?.project_name || '').trim())
+        })
+      }
+      partMetaMap.forEach((meta) => {
+        if (!meta.tooling_id) return
+        meta.project_name = String(projectNameMap.get(meta.tooling_id) || meta.project_name || '').trim()
+      })
+    }
+    Array.from(groupedMap.values()).forEach((group: any) => {
+      const meta = partMetaMap.get(normalizeProgramManageInventoryNo(group?.part_inventory_number))
+      if (!meta) return
+      if (!group.part_drawing_number) group.part_drawing_number = meta.part_drawing_number || ''
+      group.part_name = meta.part_name || ''
+      group.part_quantity = Number(meta.part_quantity || 0)
+      group.tooling_id = meta.tooling_id || ''
+      group.project_name = meta.project_name || ''
+    })
     const workHourMap = new Map<string, any>()
     for (const invChunk of chunkItems(inventoryList, 120)) {
-      const baseSelect = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-      const fallbackSelect = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+      const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+      const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
       let mergedRows: any[] = []
       try {
         const [{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
@@ -1937,7 +2033,7 @@ router.get('/program-management', async (req, res) => {
         } catch (fallbackSbErr: any) {
           if (!process.env.SUPABASE_DB_URL) throw fallbackSbErr
           const result = await query(
-            `SELECT id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
+            `SELECT id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
              FROM work_hours
              WHERE part_inventory_number = ANY($1)`,
             [invChunk]
@@ -1964,6 +2060,16 @@ router.get('/program-management', async (req, res) => {
       if (!group.operator_hours_map) group.operator_hours_map = {}
       if (!group.device_set) group.device_set = new Set<string>()
       if (!group.work_hours_total) group.work_hours_total = 0
+      if (!group.completed_quantity) group.completed_quantity = 0
+      if (!group.process_quantity) group.process_quantity = 0
+      const completedQuantity = Number(row?.completed_quantity || 0)
+      const processQuantity = Number(row?.process_quantity || 0)
+      if (Number.isFinite(completedQuantity) && completedQuantity > 0) {
+        group.completed_quantity += completedQuantity
+      }
+      if (Number.isFinite(processQuantity) && processQuantity > Number(group.process_quantity || 0)) {
+        group.process_quantity = processQuantity
+      }
       const procHours = Number(row?.proc_hours || 0)
       if (Number.isFinite(procHours) && procHours > 0) {
         group.work_hours_total += procHours
@@ -2000,17 +2106,48 @@ router.get('/program-management', async (req, res) => {
       const spanHours = startAt && endAt ? Math.max(0, (endAt.getTime() - startAt.getTime()) / 3600000) : 0
       const programTotalHours = Number(group.program_total_minutes || 0) / 60
       const programCount = (group.program_segment_set instanceof Set ? group.program_segment_set.size : 0) || 0
+      const partQuantity = Math.max(Number(group.part_quantity || 0), 0)
+      const processQuantity = Math.max(Number(group.process_quantity || 0), 0)
+      const totalQuantity = Math.max(partQuantity, processQuantity, 0)
+      const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
+      const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
+      const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
+      const avgProgramHours = totalQuantity > 0 ? (programTotalHours / totalQuantity) : programTotalHours
+      const avgRuntimeHours = completedQuantity > 0 ? (runtimeHours / completedQuantity) : 0
+      const progressDisplay = totalQuantity > 0
+        ? `${formatProgramManageQuantity(displayCompletedQuantity)}/${formatProgramManageQuantity(totalQuantity)}`
+        : formatProgramManageQuantity(completedQuantity)
+      let runtimeDisplay = runtimeHours > 0 ? `${formatProgramManageHours(runtimeHours)}小时` : '-'
+      if (operatorSummary) runtimeDisplay = runtimeDisplay === '-' ? operatorSummary : `${runtimeDisplay} | ${operatorSummary}`
+      if (totalQuantity > 0 && !isCompleted) {
+        runtimeDisplay = runtimeDisplay === '-' ? `进行中 ${progressDisplay}` : `${runtimeDisplay} | 进度${progressDisplay}`
+      } else if (totalQuantity > 0 && isCompleted && runtimeDisplay !== '-') {
+        runtimeDisplay = `${runtimeDisplay} | 已完成`
+      }
+      const startEndDisplay = startAt && endAt
+        ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工，持续更新' : ''}`
+        : (totalQuantity > 0 && !isCompleted ? `未完工，已完成${progressDisplay}` : '-')
+      const completionStatus = totalQuantity > 0
+        ? (isCompleted ? '已完成' : (displayCompletedQuantity > 0 ? `进行中 ${progressDisplay}` : `未开工 0/${formatProgramManageQuantity(totalQuantity)}`))
+        : (completedQuantity > 0 ? `已记录 ${formatProgramManageQuantity(completedQuantity)}` : '-')
       const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
       return {
         key: group.key,
         part_inventory_number: group.part_inventory_number || '',
+        project_name: group.project_name || '',
+        part_name: group.part_name || '',
         part_drawing_number: group.part_drawing_number || '',
         process_name: group.process_name || '',
+        total_quantity: Number(totalQuantity.toFixed(2)),
+        completed_quantity: Number(completedQuantity.toFixed(2)),
+        completion_status: completionStatus,
         program_count: programCount,
         program_total_hours: Number(programTotalHours.toFixed(2)),
+        average_program_hours: Number(avgProgramHours.toFixed(2)),
+        average_runtime_hours: Number(avgRuntimeHours.toFixed(2)),
         program_runtime_hours: Number(runtimeHours.toFixed(2)),
-        program_runtime_display: runtimeHours > 0 ? `${formatProgramManageHours(runtimeHours)}小时${operatorSummary ? ` | ${operatorSummary}` : ''}` : '-',
-        program_start_end_display: startAt && endAt ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)` : '-',
+        program_runtime_display: runtimeDisplay,
+        program_start_end_display: startEndDisplay,
         device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
         latest_programmed_at: group.latest_programmed_at || '',
         programmers: group.programmer_set instanceof Set ? Array.from(group.programmer_set).join('、') : ''

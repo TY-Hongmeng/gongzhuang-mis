@@ -9,11 +9,18 @@ const { Title } = Typography
 interface ProgramManagementItem {
   key: string
   part_inventory_number: string
+  project_name: string
+  part_name: string
   part_drawing_number: string
   process_name: string
+  total_quantity: number
+  completed_quantity: number
+  completion_status: string
   program_count: number
   program_total_hours: number
+  average_program_hours: number
   program_runtime_hours: number
+  average_runtime_hours: number
   program_runtime_display: string
   program_start_end_display: string
   device_no_display: string
@@ -28,6 +35,13 @@ const ProgramManagement: React.FC = () => {
   const [total, setTotal] = React.useState(0)
   const [searchText, setSearchText] = React.useState('')
   const [searchInput, setSearchInput] = React.useState('')
+
+  const formatQuantity = React.useCallback((value: number) => {
+    const num = Number(value || 0)
+    if (!Number.isFinite(num) || num <= 0) return '0'
+    if (Math.abs(num - Math.round(num)) < 0.000001) return String(Math.round(num))
+    return num.toFixed(2)
+  }, [])
 
   const loadData = React.useCallback(async (nextPage = page, nextPageSize = pageSize, nextSearch = searchText) => {
     try {
@@ -69,6 +83,20 @@ const ProgramManagement: React.FC = () => {
       width: 180
     },
     {
+      title: '项目名称',
+      dataIndex: 'project_name',
+      align: 'center' as const,
+      width: 180,
+      render: (value: string) => value || '-'
+    },
+    {
+      title: '零件名称',
+      dataIndex: 'part_name',
+      align: 'center' as const,
+      width: 180,
+      render: (value: string) => value || '-'
+    },
+    {
       title: '零件编号',
       dataIndex: 'part_drawing_number',
       align: 'center' as const,
@@ -79,6 +107,27 @@ const ProgramManagement: React.FC = () => {
       dataIndex: 'process_name',
       align: 'center' as const,
       width: 160
+    },
+    {
+      title: '总数量',
+      dataIndex: 'total_quantity',
+      align: 'center' as const,
+      width: 90,
+      render: (value: number) => formatQuantity(value)
+    },
+    {
+      title: '完成数量',
+      dataIndex: 'completed_quantity',
+      align: 'center' as const,
+      width: 90,
+      render: (value: number) => formatQuantity(value)
+    },
+    {
+      title: '状态',
+      dataIndex: 'completion_status',
+      align: 'center' as const,
+      width: 150,
+      render: (value: string) => value || '-'
     },
     {
       title: '程序数量',
@@ -94,11 +143,25 @@ const ProgramManagement: React.FC = () => {
       render: (value: number) => Number(value || 0).toFixed(2)
     },
     {
+      title: '单件程序时长(小时)',
+      dataIndex: 'average_program_hours',
+      align: 'center' as const,
+      width: 150,
+      render: (value: number) => Number(value || 0).toFixed(2)
+    },
+    {
       title: '程序运行时间',
       dataIndex: 'program_runtime_display',
       align: 'center' as const,
       width: 280,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
+    },
+    {
+      title: '单件运行时长(小时)',
+      dataIndex: 'average_runtime_hours',
+      align: 'center' as const,
+      width: 150,
+      render: (value: number) => Number(value || 0).toFixed(2)
     },
     {
       title: '程序起止',
@@ -114,7 +177,7 @@ const ProgramManagement: React.FC = () => {
       width: 180,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     }
-  ], [page, pageSize])
+  ], [formatQuantity, page, pageSize])
 
   return (
     <div style={{ padding: 16 }}>
@@ -125,7 +188,7 @@ const ProgramManagement: React.FC = () => {
             <Input
               allowClear
               prefix={<SearchOutlined />}
-              placeholder="搜索盘存编号、零件编号、工序"
+              placeholder="搜索盘存编号、项目名称、零件名称、零件编号、工序"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onPressEnter={() => {
