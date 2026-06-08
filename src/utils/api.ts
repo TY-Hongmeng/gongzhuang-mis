@@ -2830,6 +2830,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }
           })
 
+          const groupedBaseMap = new Map<string, any[]>()
+          Array.from(groupedMap.values()).forEach((group: any) => {
+            const inventoryNo = normalizeInventoryNo(group?.part_inventory_number)
+            const baseKey = String(group?.process_base_key || '').trim()
+            if (!inventoryNo || !baseKey) return
+            const mapKey = `${inventoryNo}__${baseKey}`
+            const list = groupedBaseMap.get(mapKey) || []
+            list.push(group)
+            groupedBaseMap.set(mapKey, list)
+          })
+
           const inventoryNos = Array.from(new Set(Array.from(groupedMap.values()).map((item: any) => normalizeInventoryNo(item?.part_inventory_number)).filter(Boolean)))
           const workHourMap = new Map<string, any>()
           const chunkArray = <T,>(items: T[], size: number): T[][] => {
