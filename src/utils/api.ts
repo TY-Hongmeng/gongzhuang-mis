@@ -3021,8 +3021,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const endAt = group.program_end_at instanceof Date ? group.program_end_at : null
             const spanHours = startAt && endAt ? Math.max(0, (endAt.getTime() - startAt.getTime()) / 3600000) : 0
             const partQuantity = Math.max(Number(group.part_quantity || 0), 0)
-            const processQuantity = Math.max(Number(group.process_quantity || 0), 0)
-            const totalQuantity = Math.max(partQuantity, processQuantity, 0)
+            const totalQuantity = partQuantity
             const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
             const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
             const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity

@@ -2146,8 +2146,7 @@ router.get('/program-management', async (req, res) => {
       const programTotalHours = Number(group.program_total_minutes || 0) / 60
       const programCount = (group.program_segment_set instanceof Set ? group.program_segment_set.size : 0) || 0
       const partQuantity = Math.max(Number(group.part_quantity || 0), 0)
-      const processQuantity = Math.max(Number(group.process_quantity || 0), 0)
-      const totalQuantity = Math.max(partQuantity, processQuantity, 0)
+      const totalQuantity = partQuantity
       const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
       const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
       const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
