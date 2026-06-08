@@ -118,11 +118,12 @@ const normalizeProgramManageInventoryNo = (v: any) => String(v || '')
   .replace(/[\u200B-\u200D\uFEFF]/g, '')
   .trim()
   .toUpperCase()
-const normalizeProgramManageProcessKey = (v: any) => String(v || '')
-  .replace(/\s+/g, '')
-  .replace(/^[0-9]+[.\-、:：]*/g, '')
-  .trim()
-  .toLowerCase()
+const normalizeProgramManageProcessKey = (v: any) => {
+  const raw = String(v || '').replace(/\s+/g, '').trim()
+  if (!raw) return ''
+  const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
+  return (stripped || raw).toLowerCase()
+}
 const parseClockMinutes = (v: any) => {
   const raw = String(v || '').trim()
   if (!raw) return null
@@ -1898,24 +1899,35 @@ router.get('/program-management', async (req, res) => {
     const workHourMap = new Map<string, any>()
     for (const invChunk of chunkItems(inventoryList, 120)) {
       const baseSelect = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-      const [{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
-        supabase.from('work_hours').select(baseSelect).in('inventory_no', invChunk),
-        supabase.from('work_hours').select(baseSelect).in('part_inventory_number', invChunk)
-      ])
-      if (invErr && partInvErr && process.env.SUPABASE_DB_URL) {
-        const result = await query(
-          `SELECT id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
-           FROM work_hours
-           WHERE inventory_no = ANY($1) OR part_inventory_number = ANY($1)`,
-          [invChunk]
-        )
-        ;(((result as any)?.rows) || []).forEach((row: any, idx: number) => {
-          const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
-          if (!workHourMap.has(key)) workHourMap.set(key, row)
-        })
-        continue
+      const fallbackSelect = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+      let mergedRows: any[] = []
+      try {
+        const [{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
+          supabase.from('work_hours').select(baseSelect).in('inventory_no', invChunk),
+          supabase.from('work_hours').select(baseSelect).in('part_inventory_number', invChunk)
+        ])
+        if (invErr && partInvErr) throw invErr
+        mergedRows = [...((invData || []) as any[]), ...((partInvData || []) as any[])]
+      } catch (sbErr: any) {
+        try {
+          const { data: fallbackRows, error: fallbackErr } = await supabase
+            .from('work_hours')
+            .select(fallbackSelect)
+            .in('part_inventory_number', invChunk)
+          if (fallbackErr) throw fallbackErr
+          mergedRows = (fallbackRows || []) as any[]
+        } catch (fallbackSbErr: any) {
+          if (!process.env.SUPABASE_DB_URL) throw fallbackSbErr
+          const result = await query(
+            `SELECT id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
+             FROM work_hours
+             WHERE part_inventory_number = ANY($1)`,
+            [invChunk]
+          )
+          mergedRows = (((result as any)?.rows) || []) as any[]
+        }
       }
-      ;([...((invData || []) as any[]), ...((partInvData || []) as any[])]).forEach((row: any, idx: number) => {
+      ;(mergedRows || []).forEach((row: any, idx: number) => {
         const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
         if (!workHourMap.has(key)) workHourMap.set(key, row)
       })
@@ -2896,11 +2908,12 @@ router.get('/work-hours/aggregates', async (req, res) => {
       if (leadingDigits) return leadingDigits
       return dash.trim()
     }
-    const normalizeProcessKey = (v: any) => String(v || '')
-      .replace(/\s+/g, '')
-      .replace(/^[0-9]+[.\-、:：]*/g, '')
-      .trim()
-      .toLowerCase()
+    const normalizeProcessKey = (v: any) => {
+      const raw = String(v || '').replace(/\s+/g, '').trim()
+      if (!raw) return ''
+      const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
+      return (stripped || raw).toLowerCase()
+    }
     const toTime = (row: any) => {
       const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
       const ts = Date.parse(t)

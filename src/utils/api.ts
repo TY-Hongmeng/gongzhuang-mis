@@ -2700,11 +2700,13 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .replace(/[\u200B-\u200D\uFEFF]/g, '')
           .trim()
           .toUpperCase()
-        const normalizeProcessKey = (v: any) => String(v || '')
-          .replace(/\s+/g, '')
-          .replace(/^[0-9]+[.\-、:：]*/g, '')
-          .trim()
-          .toLowerCase()
+        const normalizeProcessKey = (v: any) => {
+          const raw = String(v || '').replace(/\s+/g, '').trim()
+          if (!raw) return ''
+          const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
+          return (stripped || raw).toLowerCase()
+        }
+        }
         const parseClockMinutes = (v: any) => {
           const raw = String(v || '').trim()
           if (!raw) return null
@@ -2814,11 +2816,24 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             return chunks
           }
           for (const chunk of chunkArray(inventoryNos, 120)) {
-            const [{ data: rowsByInv }, { data: rowsByPartInv }] = await Promise.all([
-              supabase.from('work_hours').select('id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at').in('inventory_no', chunk),
-              supabase.from('work_hours').select('id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at').in('part_inventory_number', chunk)
-            ])
-            ;([...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]).forEach((row: any, idx: number) => {
+            const baseSelect = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+            const fallbackSelect = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+            let mergedRows: any[] = []
+            try {
+              const [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
+                supabase.from('work_hours').select(baseSelect).in('inventory_no', chunk),
+                supabase.from('work_hours').select(baseSelect).in('part_inventory_number', chunk)
+              ])
+              if (rowsByInvErr && rowsByPartInvErr) throw rowsByInvErr
+              mergedRows = [...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]
+            } catch {
+              const { data: fallbackRows } = await supabase
+                .from('work_hours')
+                .select(fallbackSelect)
+                .in('part_inventory_number', chunk)
+              mergedRows = (fallbackRows || []) as any[]
+            }
+            ;(mergedRows || []).forEach((row: any, idx: number) => {
               const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
               if (!workHourMap.has(key)) workHourMap.set(key, row)
             })
