@@ -317,6 +317,7 @@ const ProgramEntry: React.FC = () => {
           className="program-entry-inventory-select"
           showSearch
           allowClear
+          variant="borderless"
           style={{ width: '100%' }}
           value={row.part_inventory_number || undefined}
           placeholder="输入或选择盘存编号"
@@ -349,7 +350,7 @@ const ProgramEntry: React.FC = () => {
       width: 180,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
-        <Input value={row.part_drawing_number} placeholder="自动带出" readOnly />
+        <div className="program-entry-cell-static">{row.part_drawing_number || ''}</div>
       )
     },
     {
@@ -359,6 +360,7 @@ const ProgramEntry: React.FC = () => {
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <AutoComplete
+          className="program-entry-auto-complete"
           value={row.process_name}
           placeholder="请选择或输入工序"
           options={row.process_options.map(item => ({ value: item, label: item }))}
@@ -366,7 +368,7 @@ const ProgramEntry: React.FC = () => {
           onChange={(value) => updateRow(row.id, { process_name: String(value || ''), save_status: 'idle' })}
           onSelect={() => window.setTimeout(() => requestSave(row.id), 0)}
         >
-          <Input onBlur={() => requestSave(row.id)} onPressEnter={() => requestSave(row.id)} />
+          <Input variant="borderless" onBlur={() => requestSave(row.id)} onPressEnter={() => requestSave(row.id)} />
         </AutoComplete>
       )
     },
@@ -377,6 +379,8 @@ const ProgramEntry: React.FC = () => {
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <Input
+          variant="borderless"
+          className="program-entry-cell-input"
           value={row.program_no}
           placeholder="请输入程序编号"
           onChange={(e) => updateRow(row.id, { program_no: e.target.value, save_status: 'idle' })}
@@ -392,6 +396,8 @@ const ProgramEntry: React.FC = () => {
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <InputNumber
+          variant="borderless"
+          className="program-entry-cell-number"
           min={0}
           step={1}
           controls={false}
@@ -413,7 +419,7 @@ const ProgramEntry: React.FC = () => {
       width: 190,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
-        <Input value={row.programmed_at} readOnly />
+        <div className="program-entry-cell-static">{row.programmed_at || ''}</div>
       )
     },
     {
@@ -441,6 +447,9 @@ const ProgramEntry: React.FC = () => {
           height: 36px !important;
           padding-left: 10px !important;
           padding-right: 28px !important;
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
         }
         .program-entry-inventory-select.ant-select-single .ant-select-selection-wrap {
           width: 100%;
@@ -455,6 +464,40 @@ const ProgramEntry: React.FC = () => {
         .program-entry-inventory-select.ant-select-single .ant-select-selection-placeholder,
         .program-entry-inventory-select.ant-select-single .ant-select-selection-search-input {
           font-size: 12px;
+        }
+        .program-entry-auto-complete,
+        .program-entry-auto-complete .ant-select,
+        .program-entry-cell-input,
+        .program-entry-cell-number {
+          width: 100%;
+        }
+        .program-entry-auto-complete .ant-select-selector {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+        .program-entry-cell-input.ant-input,
+        .program-entry-auto-complete .ant-input,
+        .program-entry-cell-number.ant-input-number {
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+        }
+        .program-entry-cell-number.ant-input-number .ant-input-number-input {
+          text-align: center;
+        }
+        .program-entry-cell-static {
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 8px;
+          background: transparent;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       `}</style>
       <Card bordered={false}>
