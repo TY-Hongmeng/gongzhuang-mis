@@ -59,6 +59,16 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
   // 如果是本地环境且不是在 GitHub Pages 上，优先走本地后端
   // 注意：这里我们移除了对 isLocal 的严格依赖，如果是在开发模式下（import.meta.env.DEV），也应该优先走本地
   const isDev = (import.meta as any).env?.DEV === true
+  const ghPagesClientHandledPath =
+    isGhPages && (
+      cleanUrl.startsWith('/api/tooling/program-entries') ||
+      cleanUrl.startsWith('/api/tooling/program-management')
+    )
+
+  if (cleanUrl.startsWith('/') && isApiPath && ghPagesClientHandledPath) {
+    const handled = await handleClientSideApi(cleanUrl, init)
+    if (handled) return handled
+  }
   
   if (cleanUrl.startsWith('/') && isApiPath) {
     // 特殊处理采购单和下料单：在本地环境下必须优先走后端以避免 RLS 问题
@@ -3159,6 +3169,33 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return jsonResponse({ success: true, data: result.data })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '提交失败' }, 500)
+        }
+      }
+
+      // Program entries list
+      if (method === 'GET' && path === '/api/tooling/program-entries') {
+        const qs = getQuery(cleanUrl)
+        const page = Math.max(Number(qs.get('page') || 1), 1)
+        const pageSize = Math.max(Number(qs.get('pageSize') || 200), 1)
+        const offset = (page - 1) * pageSize
+        try {
+          const { data, error, count } = await supabase
+            .from('program_entries')
+            .select('id, part_inventory_number, part_drawing_number, process_name, program_no, program_duration_minutes, programmed_at, programmer', { count: 'exact' })
+            .order('programmed_at', { ascending: false })
+            .range(offset, offset + pageSize - 1)
+          if (error) {
+            return jsonResponse({ success: false, error: error.message }, 500)
+          }
+          return jsonResponse({
+            success: true,
+            items: Array.isArray(data) ? data : [],
+            total: Number(count || 0),
+            page,
+            pageSize
+          })
+        } catch (e: any) {
+          return jsonResponse({ success: false, error: e?.message || '读取程序录入失败' }, 500)
         }
       }
 
