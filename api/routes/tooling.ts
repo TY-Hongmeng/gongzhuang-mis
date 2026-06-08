@@ -1751,11 +1751,13 @@ router.post('/program-entries/batch', async (req, res) => {
 
     const nowIso = new Date().toISOString()
     const items = rawItems.map((item: any, index: number) => {
+      const rowId = String(item?.id || '').trim()
       const partInventoryNumber = String(item?.part_inventory_number || '').trim()
       const partDrawingNumber = String(item?.part_drawing_number || '').trim()
       const processName = String(item?.process_name || '').trim()
       const programNo = String(item?.program_no || '').trim()
       const programDurationMinutes = Number(item?.program_duration_minutes)
+      const programmedAt = String(item?.programmed_at || nowIso).trim() || nowIso
 
       if (!partInventoryNumber) {
         throw new Error(`第 ${index + 1} 行缺少盘存编号`)
@@ -1774,12 +1776,13 @@ router.post('/program-entries/batch', async (req, res) => {
       }
 
       return {
+        id: rowId,
         part_inventory_number: partInventoryNumber,
         part_drawing_number: partDrawingNumber,
         process_name: processName,
         program_no: programNo,
         program_duration_minutes: programDurationMinutes,
-        programmed_at: nowIso,
+        programmed_at: programmedAt,
         programmer: canonicalProgrammer
       }
     })
@@ -1787,6 +1790,7 @@ router.post('/program-entries/batch', async (req, res) => {
     const payloadJson = JSON.stringify(items)
     const insertSql = `
       INSERT INTO program_entries (
+        id,
         part_inventory_number,
         part_drawing_number,
         process_name,
@@ -1796,6 +1800,11 @@ router.post('/program-entries/batch', async (req, res) => {
         programmer
       )
       SELECT
+        CASE
+          WHEN coalesce(x.id, '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            THEN x.id::uuid
+          ELSE gen_random_uuid()
+        END,
         x.part_inventory_number,
         x.part_drawing_number,
         x.process_name,
@@ -1804,6 +1813,7 @@ router.post('/program-entries/batch', async (req, res) => {
         x.programmed_at::timestamptz,
         x.programmer
       FROM json_to_recordset($1::json) AS x(
+        id text,
         part_inventory_number text,
         part_drawing_number text,
         process_name text,
@@ -1812,6 +1822,15 @@ router.post('/program-entries/batch', async (req, res) => {
         programmed_at text,
         programmer text
       )
+      ON CONFLICT (id) DO UPDATE SET
+        part_inventory_number = EXCLUDED.part_inventory_number,
+        part_drawing_number = EXCLUDED.part_drawing_number,
+        process_name = EXCLUDED.process_name,
+        program_no = EXCLUDED.program_no,
+        program_duration_minutes = EXCLUDED.program_duration_minutes,
+        programmed_at = EXCLUDED.programmed_at,
+        programmer = EXCLUDED.programmer,
+        updated_at = NOW()
       RETURNING *
     `
     const result = await query(insertSql, [payloadJson])

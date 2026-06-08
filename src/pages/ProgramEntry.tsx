@@ -1,6 +1,6 @@
 import React from 'react'
 import { AutoComplete, Button, Card, Input, InputNumber, message, Select, Space, Table, Tag, Typography } from 'antd'
-import { DeleteOutlined, LeftOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
+import { LeftOutlined, ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithFallback } from '../utils/api'
@@ -26,14 +26,24 @@ interface ProgramEntryRow {
   program_duration_minutes: number | null
   programmed_at: string
   programmer: string
+  save_status?: 'idle' | 'saving' | 'saved' | 'error'
 }
 
-const createRowId = () => `program-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+const createUuid = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const rand = Math.floor(Math.random() * 16)
+    const value = char === 'x' ? rand : ((rand & 0x3) | 0x8)
+    return value.toString(16)
+  })
+}
 
 const formatNow = () => dayjs().format('YYYY-MM-DD HH:mm:ss')
 
 const createEmptyRow = (programmer: string): ProgramEntryRow => ({
-  id: createRowId(),
+  id: createUuid(),
   part_inventory_number: '',
   part_drawing_number: '',
   process_name: '',
@@ -41,7 +51,8 @@ const createEmptyRow = (programmer: string): ProgramEntryRow => ({
   program_no: '',
   program_duration_minutes: null,
   programmed_at: formatNow(),
-  programmer: programmer || '系统用户'
+  programmer: programmer || '系统用户',
+  save_status: 'idle'
 })
 
 const normalizeSearch = (value: string) => String(value || '')
@@ -56,11 +67,13 @@ const ProgramEntry: React.FC = () => {
   const [rows, setRows] = React.useState<ProgramEntryRow[]>(() => [createEmptyRow(String(user?.real_name || '系统用户'))])
   const [inventoryOptions, setInventoryOptions] = React.useState<InventoryOption[]>([])
   const [loadingInventory, setLoadingInventory] = React.useState(false)
-  const [submitting, setSubmitting] = React.useState(false)
   const inventoryTimerRef = React.useRef<any>(null)
   const inventoryCacheRef = React.useRef<InventoryOption[]>([])
   const inventoryAbortRef = React.useRef<AbortController | null>(null)
   const inventoryRequestRef = React.useRef(0)
+  const lastSavedSnapshotRef = React.useRef<Record<string, string>>({})
+  const inFlightRowIdsRef = React.useRef<Record<string, boolean>>({})
+  const rowsRef = React.useRef<ProgramEntryRow[]>(rows)
 
   const latestProgrammer = React.useMemo(() => String(user?.real_name || '').trim() || '系统用户', [user])
 
@@ -69,6 +82,8 @@ const ProgramEntry: React.FC = () => {
   }, [])
 
   const resetRows = React.useCallback((programmer: string) => {
+    lastSavedSnapshotRef.current = {}
+    inFlightRowIdsRef.current = {}
     setRows([createEmptyRow(programmer)])
   }, [])
 
@@ -144,9 +159,13 @@ const ProgramEntry: React.FC = () => {
   }, [])
 
   React.useEffect(() => {
+    rowsRef.current = rows
+  }, [rows])
+
+  React.useEffect(() => {
     rows.forEach(row => {
       if (row.programmer !== latestProgrammer && !row.part_inventory_number && !row.process_name && !row.program_no && row.program_duration_minutes === null) {
-        updateRow(row.id, { programmer: latestProgrammer, programmed_at: formatNow() })
+        updateRow(row.id, { programmer: latestProgrammer, programmed_at: formatNow(), save_status: 'idle' })
       }
     })
   }, [latestProgrammer, rows, updateRow])
@@ -154,6 +173,56 @@ const ProgramEntry: React.FC = () => {
   React.useEffect(() => {
     fetchInventory('')
   }, [fetchInventory])
+
+  const hasRowContent = React.useCallback((row: ProgramEntryRow) => {
+    return !!(
+      String(row.part_inventory_number || '').trim()
+      || String(row.process_name || '').trim()
+      || String(row.program_no || '').trim()
+      || row.program_duration_minutes !== null
+    )
+  }, [])
+
+  const isRowComplete = React.useCallback((row: ProgramEntryRow) => {
+    return !!(
+      String(row.part_inventory_number || '').trim()
+      && String(row.part_drawing_number || '').trim()
+      && String(row.process_name || '').trim()
+      && String(row.program_no || '').trim()
+      && row.program_duration_minutes !== null
+      && row.program_duration_minutes !== undefined
+      && Number(row.program_duration_minutes) >= 0
+    )
+  }, [])
+
+  const buildRowSnapshot = React.useCallback((row: ProgramEntryRow) => {
+    return JSON.stringify({
+      part_inventory_number: String(row.part_inventory_number || '').trim(),
+      part_drawing_number: String(row.part_drawing_number || '').trim(),
+      process_name: String(row.process_name || '').trim(),
+      program_no: String(row.program_no || '').trim(),
+      program_duration_minutes: row.program_duration_minutes === null || row.program_duration_minutes === undefined
+        ? null
+        : Number(row.program_duration_minutes)
+    })
+  }, [])
+
+  React.useEffect(() => {
+    setRows(prev => {
+      if (!prev.length) return [createEmptyRow(latestProgrammer)]
+      let next = [...prev]
+      let changed = false
+      while (next.length > 1 && !hasRowContent(next[next.length - 1]) && !hasRowContent(next[next.length - 2])) {
+        next = next.slice(0, -1)
+        changed = true
+      }
+      if (hasRowContent(next[next.length - 1])) {
+        next = [...next, createEmptyRow(latestProgrammer)]
+        changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [hasRowContent, latestProgrammer])
 
   const handleInventoryChange = React.useCallback((rowId: string, value: string, option?: any) => {
     const selected = option as InventoryOption | undefined
@@ -168,72 +237,36 @@ const ProgramEntry: React.FC = () => {
       process_name: '',
       process_options: processOptions,
       programmed_at: formatNow(),
-      programmer: latestProgrammer
+      programmer: latestProgrammer,
+      save_status: 'idle'
     })
   }, [latestProgrammer, updateRow])
 
-  const hasRowContent = React.useCallback((row: ProgramEntryRow) => {
-    return !!(
-      String(row.part_inventory_number || '').trim()
-      || String(row.process_name || '').trim()
-      || String(row.program_no || '').trim()
-      || row.program_duration_minutes !== null
-    )
-  }, [])
+  const saveRow = React.useCallback(async (row: ProgramEntryRow) => {
+    if (!isRowComplete(row)) return
+    const snapshot = buildRowSnapshot(row)
+    if (lastSavedSnapshotRef.current[row.id] === snapshot) return
+    if (inFlightRowIdsRef.current[row.id]) return
 
-  const handleSubmit = React.useCallback(async () => {
-    if (submitting) return
-    const filledRows = rows.filter(hasRowContent)
-    if (!filledRows.length) {
-      message.warning('请先录入至少一条程序数据')
-      return
-    }
-    for (let index = 0; index < filledRows.length; index += 1) {
-      const row = filledRows[index]
-      const rowNo = index + 1
-      if (!String(row.part_inventory_number || '').trim()) {
-        message.warning(`第 ${rowNo} 行请先选择盘存编号`)
-        return
-      }
-      if (!String(row.part_drawing_number || '').trim()) {
-        message.warning(`第 ${rowNo} 行未带出零件编号，请检查盘存编号`)
-        return
-      }
-      if (!String(row.process_name || '').trim()) {
-        message.warning(`第 ${rowNo} 行请填写工艺工序`)
-        return
-      }
-      if (!String(row.program_no || '').trim()) {
-        message.warning(`第 ${rowNo} 行请填写程序编号`)
-        return
-      }
-      if (row.program_duration_minutes === null || row.program_duration_minutes === undefined) {
-        message.warning(`第 ${rowNo} 行请填写程序时长`)
-        return
-      }
-      if (Number(row.program_duration_minutes) < 0) {
-        message.warning(`第 ${rowNo} 行程序时长不能小于0`)
-        return
-      }
-    }
-
-    const programmer = await resolveLatestProgrammer()
-    const payload = {
-      operator: programmer,
-      user_id: String((user as any)?.id || ''),
-      user_phone: String((user as any)?.phone || ''),
-      items: filledRows.map(row => ({
-        part_inventory_number: String(row.part_inventory_number || '').trim(),
-        part_drawing_number: String(row.part_drawing_number || '').trim(),
-        process_name: String(row.process_name || '').trim(),
-        program_no: String(row.program_no || '').trim(),
-        program_duration_minutes: Number(row.program_duration_minutes || 0)
-      }))
-    }
-
-    const hide = message.loading('提交中...', 0)
-    setSubmitting(true)
+    inFlightRowIdsRef.current[row.id] = true
+    updateRow(row.id, { save_status: 'saving' })
     try {
+      const programmer = await resolveLatestProgrammer()
+      const programmedAt = formatNow()
+      const payload = {
+        operator: programmer,
+        user_id: String((user as any)?.id || ''),
+        user_phone: String((user as any)?.phone || ''),
+        items: [{
+          id: row.id,
+          part_inventory_number: String(row.part_inventory_number || '').trim(),
+          part_drawing_number: String(row.part_drawing_number || '').trim(),
+          process_name: String(row.process_name || '').trim(),
+          program_no: String(row.program_no || '').trim(),
+          program_duration_minutes: Number(row.program_duration_minutes || 0),
+          programmed_at: programmedAt
+        }]
+      }
       const resp = await fetchWithFallback('/api/tooling/program-entries/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,21 +284,33 @@ const ProgramEntry: React.FC = () => {
       if (!json?.success) {
         throw new Error(String(json?.error || '保存失败'))
       }
-      message.success(`成功提交 ${payload.items.length} 条程序录入数据`)
-      resetRows(programmer)
+      lastSavedSnapshotRef.current[row.id] = snapshot
+      updateRow(row.id, {
+        programmed_at: programmedAt,
+        programmer,
+        save_status: 'saved'
+      })
     } catch (error: any) {
-      message.error(error?.message || '提交失败')
+      updateRow(row.id, { save_status: 'error' })
+      message.error(error?.message || '自动保存失败')
     } finally {
-      hide()
-      setSubmitting(false)
+      delete inFlightRowIdsRef.current[row.id]
     }
-  }, [hasRowContent, resetRows, resolveLatestProgrammer, rows, submitting, user])
+  }, [buildRowSnapshot, isRowComplete, resolveLatestProgrammer, updateRow, user])
+
+  const requestSave = React.useCallback((rowId: string) => {
+    const row = rowsRef.current.find(item => item.id === rowId)
+    if (!row) return
+    if (!hasRowContent(row)) return
+    if (!isRowComplete(row)) return
+    saveRow(row)
+  }, [hasRowContent, isRowComplete, saveRow])
 
   const columns = React.useMemo(() => [
     {
       title: '盘存编号',
       dataIndex: 'part_inventory_number',
-      width: 240,
+      width: 360,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
         <Select
@@ -288,7 +333,10 @@ const ProgramEntry: React.FC = () => {
           onOpenChange={(open) => {
             if (open && inventoryOptions.length === 0) fetchInventory('')
           }}
-          onChange={(value, option) => handleInventoryChange(row.id, String(value || ''), option)}
+          onChange={(value, option) => {
+            handleInventoryChange(row.id, String(value || ''), option)
+            window.setTimeout(() => requestSave(row.id), 0)
+          }}
         />
       )
     },
@@ -312,9 +360,10 @@ const ProgramEntry: React.FC = () => {
           placeholder="请选择或输入工序"
           options={row.process_options.map(item => ({ value: item, label: item }))}
           filterOption={(inputValue, option) => String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())}
-          onChange={(value) => updateRow(row.id, { process_name: String(value || '') })}
+          onChange={(value) => updateRow(row.id, { process_name: String(value || ''), save_status: 'idle' })}
+          onSelect={() => window.setTimeout(() => requestSave(row.id), 0)}
         >
-          <Input />
+          <Input onBlur={() => requestSave(row.id)} onPressEnter={() => requestSave(row.id)} />
         </AutoComplete>
       )
     },
@@ -327,12 +376,14 @@ const ProgramEntry: React.FC = () => {
         <Input
           value={row.program_no}
           placeholder="请输入程序编号"
-          onChange={(e) => updateRow(row.id, { program_no: e.target.value })}
+          onChange={(e) => updateRow(row.id, { program_no: e.target.value, save_status: 'idle' })}
+          onBlur={() => requestSave(row.id)}
+          onPressEnter={() => requestSave(row.id)}
         />
       )
     },
     {
-      title: '程序时长',
+      title: '程序时长(分钟)',
       dataIndex: 'program_duration_minutes',
       width: 150,
       align: 'center' as const,
@@ -344,7 +395,12 @@ const ProgramEntry: React.FC = () => {
           style={{ width: '100%' }}
           placeholder="分钟"
           value={row.program_duration_minutes}
-          onChange={(value) => updateRow(row.id, { program_duration_minutes: value === null ? null : Number(value) })}
+          onChange={(value) => updateRow(row.id, {
+            program_duration_minutes: value === null ? null : Number(value),
+            save_status: 'idle'
+          })}
+          onBlur={() => requestSave(row.id)}
+          onPressEnter={() => requestSave(row.id)}
         />
       )
     },
@@ -367,26 +423,8 @@ const ProgramEntry: React.FC = () => {
           <Tag color="cyan">{row.programmer || latestProgrammer}</Tag>
         </div>
       )
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 90,
-      fixed: 'right' as const,
-      align: 'center' as const,
-      render: (_: any, row: ProgramEntryRow) => (
-        <Button
-          type="link"
-          danger
-          icon={<DeleteOutlined />}
-          disabled={rows.length <= 1}
-          onClick={() => setRows(prev => prev.filter(item => item.id !== row.id))}
-        >
-          删除
-        </Button>
-      )
     }
-  ], [fetchInventory, handleInventoryChange, inventoryOptions, latestProgrammer, loadingInventory, rows.length, updateRow])
+  ], [fetchInventory, handleInventoryChange, inventoryOptions, latestProgrammer, loadingInventory, requestSave, updateRow])
 
   return (
     <div style={{ padding: 16 }}>
@@ -394,12 +432,10 @@ const ProgramEntry: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '12px 16px', background: '#f5f5f5', borderRadius: 4 }}>
           <div>
             <Typography.Title level={4} style={{ margin: 0 }}>程序录入</Typography.Title>
-            <Typography.Text type="secondary">表格样式对齐工装信息，仅保留程序录入功能</Typography.Text>
+            <Typography.Text type="secondary">表格样式对齐工装信息，输入完整后自动保存并自动补空白行</Typography.Text>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} onClick={() => resetRows(latestProgrammer)}>清空</Button>
-            <Button icon={<PlusOutlined />} onClick={() => setRows(prev => [...prev, createEmptyRow(latestProgrammer)])}>新增一行</Button>
-            <Button type="primary" loading={submitting} onClick={handleSubmit}>提交</Button>
             <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
           </Space>
         </div>
