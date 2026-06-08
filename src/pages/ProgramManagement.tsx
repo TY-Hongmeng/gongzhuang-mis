@@ -172,12 +172,12 @@ const ProgramManagement: React.FC = () => {
       key: 'single_compare',
       align: 'center' as const,
       width: 170,
-      render: (_: any, record: ProgramManagementItem) => (
-        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
-          <div>{`${record.average_runtime_hours_display || '-'} ${record.average_runtime_hours_display === '-' ? '-' : formatPercent(record.average_runtime_hours, record.program_total_hours)}`}</div>
-          <div>{`${formatHours(record.program_total_hours)} ${record.program_total_hours > 0 ? '100%' : '-'}`}</div>
-        </div>
-      )
+      render: (_: any, record: ProgramManagementItem) => {
+        const actualText = record.average_runtime_hours_display || '-'
+        const theoryText = record.program_total_hours > 0 ? formatHours(record.program_total_hours) : '-'
+        const percentText = actualText === '-' || theoryText === '-' ? '-' : formatPercent(record.average_runtime_hours, record.program_total_hours)
+        return `${actualText}/${theoryText} ${percentText}`
+      }
     },
     {
       title: '总加工/自然(小时)',
@@ -187,26 +187,22 @@ const ProgramManagement: React.FC = () => {
       render: (_: any, record: ProgramManagementItem) => {
         const runtimeText = record.program_runtime_hours > 0 ? formatHours(record.program_runtime_hours) : '-'
         const spanText = record.program_start_end_display === '-' ? '-' : formatHours(record.program_span_hours)
-        return (
-          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
-            <div>{`${runtimeText} ${runtimeText === '-' ? '-' : formatPercent(record.program_runtime_hours, record.program_span_hours)}`}</div>
-            <div>{`${spanText} ${spanText === '-' ? '-' : (record.program_span_hours > 0 ? '100%' : '-')}`}</div>
-          </div>
-        )
+        const percentText = runtimeText === '-' || spanText === '-' ? '-' : formatPercent(record.program_runtime_hours, record.program_span_hours)
+        return `${runtimeText}/${spanText} ${percentText}`
       }
     },
     {
       title: '操作者',
       dataIndex: 'operator_display',
       align: 'center' as const,
-      width: 360,
+      width: 270,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     },
     {
       title: '加工起止时间',
       dataIndex: 'program_start_end_display',
       align: 'center' as const,
-      width: 260,
+      width: 173,
       render: (value: string) => <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value || '-'}</div>
     },
     {
