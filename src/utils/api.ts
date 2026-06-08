@@ -2713,6 +2713,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const page = Math.max(Number(qs.get('page') || 1), 1)
         const pageSize = Math.max(Number(qs.get('pageSize') || 50), 1)
         const keyword = String(qs.get('search') || '').trim()
+        const status = String(qs.get('status') || 'completed').trim() || 'completed'
         const normalizeInventoryNo = (v: any) => String(v || '')
           .replace(/[\u200B-\u200D\uFEFF]/g, '')
           .trim()
@@ -2998,7 +2999,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
             const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
             const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
-            const avgProgramHours = totalQuantity > 0 ? ((Number(group.program_total_minutes || 0) / 60) / totalQuantity) : (Number(group.program_total_minutes || 0) / 60)
+            const isProcessing = !isCompleted && displayCompletedQuantity > 0
             const avgRuntimeHours = completedQuantity > 0 ? (runtimeHours / completedQuantity) : 0
             const progressDisplay = totalQuantity > 0
               ? `${formatQuantity(displayCompletedQuantity)}/${formatQuantity(totalQuantity)}`
@@ -3010,6 +3011,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             } else if (totalQuantity > 0 && isCompleted && runtimeDisplay !== '-') {
               runtimeDisplay = `${runtimeDisplay} | 已完成`
             }
+            const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
             const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
             return {
               key: group.key,
@@ -3020,17 +3022,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               process_name: group.process_name || '',
               total_quantity: Number(totalQuantity.toFixed(2)),
               completed_quantity: Number(completedQuantity.toFixed(2)),
+              completion_status_key: completionStatusKey,
               completion_status: totalQuantity > 0
-                ? (isCompleted ? '已完成' : (displayCompletedQuantity > 0 ? `进行中 ${progressDisplay}` : `未开工 0/${formatQuantity(totalQuantity)}`))
+                ? (isCompleted ? '完成' : (displayCompletedQuantity > 0 ? `加工中 ${progressDisplay}` : `未加工 0/${formatQuantity(totalQuantity)}`))
                 : (completedQuantity > 0 ? `已记录 ${formatQuantity(completedQuantity)}` : '-'),
               program_count: group.program_segment_set instanceof Set ? group.program_segment_set.size : 0,
               program_total_hours: Number((Number(group.program_total_minutes || 0) / 60).toFixed(2)),
-              average_program_hours: Number(avgProgramHours.toFixed(2)),
               average_runtime_hours: Number(avgRuntimeHours.toFixed(2)),
               program_runtime_hours: Number(runtimeHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt
-                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工，持续更新' : ''}`
+                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工' : ''}`
                 : (totalQuantity > 0 && !isCompleted ? `未完工，已完成${progressDisplay}` : '-'),
               device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
               latest_programmed_at: group.latest_programmed_at || ''
@@ -3042,8 +3044,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           })
 
           const from = (page - 1) * pageSize
-          const items = allItems.slice(from, from + pageSize)
-          return jsonResponse({ success: true, items, total: allItems.length, page, pageSize })
+          const filteredItems = allItems.filter((item: any) => {
+            if (status === 'all') return true
+            return String(item?.completion_status_key || '') === status
+          })
+          const items = filteredItems.slice(from, from + pageSize)
+          return jsonResponse({ success: true, items, total: filteredItems.length, page, pageSize })
         } catch (e: any) {
           return jsonResponse({ success: false, error: e?.message || '加载程序管理数据失败' }, 500)
         }

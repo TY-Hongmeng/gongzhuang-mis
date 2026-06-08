@@ -1821,7 +1821,8 @@ router.get('/program-management', async (req, res) => {
     const {
       page = '1',
       pageSize = '50',
-      search = ''
+      search = '',
+      status = 'completed'
     } = req.query as Record<string, string>
     const pageNum = Math.max(parseInt(page, 10) || 1, 1)
     const sizeNum = Math.max(parseInt(pageSize, 10) || 50, 1)
@@ -2112,7 +2113,8 @@ router.get('/program-management', async (req, res) => {
       const completedQuantity = Math.max(Number(group.completed_quantity || 0), 0)
       const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
       const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
-      const avgProgramHours = totalQuantity > 0 ? (programTotalHours / totalQuantity) : programTotalHours
+      const isProcessing = !isCompleted && displayCompletedQuantity > 0
+      const isPending = !isCompleted && !isProcessing
       const avgRuntimeHours = completedQuantity > 0 ? (runtimeHours / completedQuantity) : 0
       const progressDisplay = totalQuantity > 0
         ? `${formatProgramManageQuantity(displayCompletedQuantity)}/${formatProgramManageQuantity(totalQuantity)}`
@@ -2125,10 +2127,11 @@ router.get('/program-management', async (req, res) => {
         runtimeDisplay = `${runtimeDisplay} | 已完成`
       }
       const startEndDisplay = startAt && endAt
-        ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工，持续更新' : ''}`
+        ? `${formatProgramManageDateTime(startAt)} - ${formatProgramManageDateTime(endAt)} (${formatProgramManageHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工' : ''}`
         : (totalQuantity > 0 && !isCompleted ? `未完工，已完成${progressDisplay}` : '-')
+      const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
       const completionStatus = totalQuantity > 0
-        ? (isCompleted ? '已完成' : (displayCompletedQuantity > 0 ? `进行中 ${progressDisplay}` : `未开工 0/${formatProgramManageQuantity(totalQuantity)}`))
+        ? (isCompleted ? '完成' : (displayCompletedQuantity > 0 ? `加工中 ${progressDisplay}` : `未加工 0/${formatProgramManageQuantity(totalQuantity)}`))
         : (completedQuantity > 0 ? `已记录 ${formatProgramManageQuantity(completedQuantity)}` : '-')
       const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
       return {
@@ -2140,10 +2143,10 @@ router.get('/program-management', async (req, res) => {
         process_name: group.process_name || '',
         total_quantity: Number(totalQuantity.toFixed(2)),
         completed_quantity: Number(completedQuantity.toFixed(2)),
+        completion_status_key: completionStatusKey,
         completion_status: completionStatus,
         program_count: programCount,
         program_total_hours: Number(programTotalHours.toFixed(2)),
-        average_program_hours: Number(avgProgramHours.toFixed(2)),
         average_runtime_hours: Number(avgRuntimeHours.toFixed(2)),
         program_runtime_hours: Number(runtimeHours.toFixed(2)),
         program_runtime_display: runtimeDisplay,
@@ -2158,11 +2161,15 @@ router.get('/program-management', async (req, res) => {
       return String(a.part_inventory_number || '').localeCompare(String(b.part_inventory_number || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
     })
 
-    const pagedItems = items.slice(from, from + sizeNum)
+    const filteredItems = items.filter((item: any) => {
+      if (status === 'all') return true
+      return String(item?.completion_status_key || '') === String(status || '')
+    })
+    const pagedItems = filteredItems.slice(from, from + sizeNum)
     return res.json({
       success: true,
       items: pagedItems,
-      total: items.length,
+      total: filteredItems.length,
       page: pageNum,
       pageSize: sizeNum
     })

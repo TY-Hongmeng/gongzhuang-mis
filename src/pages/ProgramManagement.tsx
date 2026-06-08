@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, Card, Input, Space, Table, Typography, message } from 'antd'
+import { Button, Card, Input, Segmented, Space, Table, Typography, message } from 'antd'
 import { LeftOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithFallback } from '../utils/api'
@@ -16,9 +16,9 @@ interface ProgramManagementItem {
   total_quantity: number
   completed_quantity: number
   completion_status: string
+  completion_status_key: 'all' | 'pending' | 'processing' | 'completed'
   program_count: number
   program_total_hours: number
-  average_program_hours: number
   program_runtime_hours: number
   average_runtime_hours: number
   program_runtime_display: string
@@ -35,6 +35,7 @@ const ProgramManagement: React.FC = () => {
   const [total, setTotal] = React.useState(0)
   const [searchText, setSearchText] = React.useState('')
   const [searchInput, setSearchInput] = React.useState('')
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'pending' | 'processing' | 'completed'>('completed')
 
   const formatQuantity = React.useCallback((value: number) => {
     const num = Number(value || 0)
@@ -43,13 +44,19 @@ const ProgramManagement: React.FC = () => {
     return num.toFixed(2)
   }, [])
 
-  const loadData = React.useCallback(async (nextPage = page, nextPageSize = pageSize, nextSearch = searchText) => {
+  const loadData = React.useCallback(async (
+    nextPage = page,
+    nextPageSize = pageSize,
+    nextSearch = searchText,
+    nextStatus = statusFilter
+  ) => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
       params.set('page', String(nextPage))
       params.set('pageSize', String(nextPageSize))
       if (String(nextSearch || '').trim()) params.set('search', String(nextSearch || '').trim())
+      if (nextStatus && nextStatus !== 'all') params.set('status', nextStatus)
       const resp = await fetchWithFallback(`/api/tooling/program-management?${params.toString()}`)
       const json = await resp.json()
       if (!resp.ok || !json?.success) {
@@ -62,11 +69,11 @@ const ProgramManagement: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, searchText])
+  }, [page, pageSize, searchText, statusFilter])
 
   React.useEffect(() => {
-    loadData(page, pageSize, searchText)
-  }, [loadData, page, pageSize, searchText])
+    loadData(page, pageSize, searchText, statusFilter)
+  }, [loadData, page, pageSize, searchText, statusFilter])
 
   const columns = React.useMemo(() => [
     {
@@ -136,17 +143,10 @@ const ProgramManagement: React.FC = () => {
       width: 100
     },
     {
-      title: '程序总时长(小时)',
+      title: '程序时长(小时)',
       dataIndex: 'program_total_hours',
       align: 'center' as const,
       width: 140,
-      render: (value: number) => Number(value || 0).toFixed(2)
-    },
-    {
-      title: '单件程序时长(小时)',
-      dataIndex: 'average_program_hours',
-      align: 'center' as const,
-      width: 150,
       render: (value: number) => Number(value || 0).toFixed(2)
     },
     {
@@ -185,6 +185,19 @@ const ProgramManagement: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '12px 16px', background: '#f5f5f5', borderRadius: 4 }}>
           <Title level={4} style={{ margin: 0 }}>程序管理</Title>
           <Space wrap>
+            <Segmented
+              value={statusFilter}
+              onChange={(value) => {
+                setPage(1)
+                setStatusFilter(value as 'all' | 'pending' | 'processing' | 'completed')
+              }}
+              options={[
+                { label: '全部', value: 'all' },
+                { label: '未加工', value: 'pending' },
+                { label: '加工中', value: 'processing' },
+                { label: '完成', value: 'completed' }
+              ]}
+            />
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -208,7 +221,7 @@ const ProgramManagement: React.FC = () => {
             </Button>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => loadData(page, pageSize, searchText)}
+              onClick={() => loadData(page, pageSize, searchText, statusFilter)}
             >
               刷新
             </Button>
