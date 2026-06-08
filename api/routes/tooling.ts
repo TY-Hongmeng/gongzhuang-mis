@@ -2087,14 +2087,21 @@ router.get('/program-management', async (req, res) => {
     }
 
     Array.from(workHourMap.values()).forEach((row: any) => {
-      const inventoryNo = normalizeProgramManageInventoryNo(row?.inventory_no || row?.part_inventory_number)
+      const inventoryCandidates = Array.from(new Set([
+        normalizeProgramManageInventoryNo(row?.part_inventory_number),
+        normalizeProgramManageInventoryNo(row?.inventory_no)
+      ].filter(Boolean)))
       const processName = String(row?.process_name || '').trim()
       const processKey = normalizeProgramManageProcessKey(processName)
       const processBaseKey = normalizeProgramManageProcessBaseKey(processName)
-      if (!inventoryNo || !processKey) return
-      const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
-      const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
-      const group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
+      if (inventoryCandidates.length === 0 || !processKey) return
+      let group: any = null
+      for (const inventoryNo of inventoryCandidates) {
+        const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
+        const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
+        group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
+        if (group) break
+      }
       if (!group) return
       if (!group.operator_hours_map) group.operator_hours_map = {}
       if (!group.device_set) group.device_set = new Set<string>()

@@ -2968,13 +2968,20 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           }
 
           Array.from(workHourMap.values()).forEach((row: any) => {
-            const inventoryNo = normalizeInventoryNo(row?.inventory_no || row?.part_inventory_number)
+            const inventoryCandidates = Array.from(new Set([
+              normalizeInventoryNo(row?.part_inventory_number),
+              normalizeInventoryNo(row?.inventory_no)
+            ].filter(Boolean)))
             const processKey = normalizeProcessKey(row?.process_name)
             const processBaseKey = normalizeProcessBaseKey(row?.process_name)
-            if (!inventoryNo || !processKey) return
-            const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
-            const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
-            const group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
+            if (inventoryCandidates.length === 0 || !processKey) return
+            let group: any = null
+            for (const inventoryNo of inventoryCandidates) {
+              const exactGroup = groupedMap.get(`${inventoryNo}__${processKey}`)
+              const fallbackGroups = processBaseKey ? (groupedBaseMap.get(`${inventoryNo}__${processBaseKey}`) || []) : []
+              group = exactGroup || (fallbackGroups.length === 1 ? fallbackGroups[0] : null)
+              if (group) break
+            }
             if (!group) return
             if (!group.operator_hours_map) group.operator_hours_map = {}
             if (!group.device_set) group.device_set = new Set<string>()
