@@ -2019,31 +2019,61 @@ router.get('/program-management', async (req, res) => {
     try {
       for (const invChunk of chunkItems(inventoryList, 120)) {
         const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+        const baseSelectLegacy = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
         const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+        const fallbackSelectLegacy = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
         let mergedRows: any[] = []
         try {
-          const [{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
+          let [{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
             supabase.from('work_hours').select(baseSelect).in('inventory_no', invChunk),
             supabase.from('work_hours').select(baseSelect).in('part_inventory_number', invChunk)
           ])
+          const combinedErrMsg = `${String(invErr?.message || '')} ${String(partInvErr?.message || '')}`.toLowerCase()
+          if (combinedErrMsg.includes('process_quantity') || combinedErrMsg.includes('completed_quantity')) {
+            ;([{ data: invData, error: invErr }, { data: partInvData, error: partInvErr }] = await Promise.all([
+              supabase.from('work_hours').select(baseSelectLegacy).in('inventory_no', invChunk),
+              supabase.from('work_hours').select(baseSelectLegacy).in('part_inventory_number', invChunk)
+            ]))
+          }
           if (invErr && partInvErr) throw invErr
           mergedRows = [...((invData || []) as any[]), ...((partInvData || []) as any[])]
         } catch (sbErr: any) {
           try {
-            const { data: fallbackRows, error: fallbackErr } = await supabase
+            let { data: fallbackRows, error: fallbackErr } = await supabase
               .from('work_hours')
               .select(fallbackSelect)
               .in('part_inventory_number', invChunk)
+            const fallbackErrMsg = String(fallbackErr?.message || '').toLowerCase()
+            if (fallbackErrMsg.includes('process_quantity') || fallbackErrMsg.includes('completed_quantity')) {
+              const legacyResp = await supabase
+                .from('work_hours')
+                .select(fallbackSelectLegacy)
+                .in('part_inventory_number', invChunk)
+              fallbackRows = legacyResp.data
+              fallbackErr = legacyResp.error
+            }
             if (fallbackErr) throw fallbackErr
             mergedRows = (fallbackRows || []) as any[]
           } catch (fallbackSbErr: any) {
             if (!process.env.SUPABASE_DB_URL) throw fallbackSbErr
-            const result = await query(
-              `SELECT id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
-               FROM work_hours
-               WHERE part_inventory_number = ANY($1)`,
-              [invChunk]
-            )
+            let result: any
+            try {
+              result = await query(
+                `SELECT id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
+                 FROM work_hours
+                 WHERE part_inventory_number = ANY($1)`,
+                [invChunk]
+              )
+            } catch (pgErr: any) {
+              const pgErrMsg = String(pgErr?.message || '').toLowerCase()
+              if (!pgErrMsg.includes('process_quantity') && !pgErrMsg.includes('completed_quantity')) throw pgErr
+              result = await query(
+                `SELECT id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at
+                 FROM work_hours
+                 WHERE part_inventory_number = ANY($1)`,
+                [invChunk]
+              )
+            }
             mergedRows = (((result as any)?.rows) || []) as any[]
           }
         }

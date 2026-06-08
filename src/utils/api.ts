@@ -2923,20 +2923,39 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           try {
             for (const chunk of chunkArray(inventoryNos, 120)) {
               const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              const baseSelectLegacy = 'id, inventory_no, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
               const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              const fallbackSelectLegacy = 'id, part_inventory_number, process_name, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
               let mergedRows: any[] = []
               try {
-                const [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
+                let [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
                   supabase.from('work_hours').select(baseSelect).in('inventory_no', chunk),
                   supabase.from('work_hours').select(baseSelect).in('part_inventory_number', chunk)
                 ])
+                const combinedErrMsg = `${String(rowsByInvErr?.message || '')} ${String(rowsByPartInvErr?.message || '')}`.toLowerCase()
+                if (combinedErrMsg.includes('process_quantity') || combinedErrMsg.includes('completed_quantity')) {
+                  ;([{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
+                    supabase.from('work_hours').select(baseSelectLegacy).in('inventory_no', chunk),
+                    supabase.from('work_hours').select(baseSelectLegacy).in('part_inventory_number', chunk)
+                  ]))
+                }
                 if (rowsByInvErr && rowsByPartInvErr) throw rowsByInvErr
                 mergedRows = [...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]
               } catch {
-                const { data: fallbackRows } = await supabase
+                let { data: fallbackRows, error: fallbackErr } = await supabase
                   .from('work_hours')
                   .select(fallbackSelect)
                   .in('part_inventory_number', chunk)
+                const fallbackErrMsg = String(fallbackErr?.message || '').toLowerCase()
+                if (fallbackErrMsg.includes('process_quantity') || fallbackErrMsg.includes('completed_quantity')) {
+                  const legacyResp = await supabase
+                    .from('work_hours')
+                    .select(fallbackSelectLegacy)
+                    .in('part_inventory_number', chunk)
+                  fallbackRows = legacyResp.data
+                  fallbackErr = legacyResp.error
+                }
+                if (fallbackErr) throw fallbackErr
                 mergedRows = (fallbackRows || []) as any[]
               }
               ;(mergedRows || []).forEach((row: any, idx: number) => {
