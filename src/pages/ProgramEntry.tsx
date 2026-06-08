@@ -60,6 +60,11 @@ const normalizeSearch = (value: string) => String(value || '')
   .replace(/[^A-Za-z0-9]/g, '')
   .trim()
   .toUpperCase()
+const normalizeProgramGroupValue = (value: string) => String(value || '')
+  .replace(/[\u200B-\u200D\uFEFF]/g, '')
+  .replace(/\s+/g, '')
+  .trim()
+  .toUpperCase()
 
 const ProgramEntry: React.FC = () => {
   const navigate = useNavigate()
@@ -157,6 +162,33 @@ const ProgramEntry: React.FC = () => {
   }, [rows])
 
   React.useEffect(() => {
+    setRows(prev => {
+      const nextProgramNoMap = new Map<string, string>()
+      const counterMap = new Map<string, number>()
+      prev.forEach((row) => {
+        const inventoryNo = normalizeProgramGroupValue(row.part_inventory_number)
+        const processName = normalizeProgramGroupValue(row.process_name)
+        if (!inventoryNo || !processName) {
+          nextProgramNoMap.set(row.id, '')
+          return
+        }
+        const groupKey = `${inventoryNo}__${processName}`
+        const nextCount = Number(counterMap.get(groupKey) || 0) + 1
+        counterMap.set(groupKey, nextCount)
+        nextProgramNoMap.set(row.id, String(nextCount))
+      })
+      let changed = false
+      const next = prev.map((row) => {
+        const nextProgramNo = nextProgramNoMap.get(row.id) ?? ''
+        if (String(row.program_no || '') === nextProgramNo) return row
+        changed = true
+        return { ...row, program_no: nextProgramNo, save_status: row.save_status === 'saved' ? 'idle' : row.save_status }
+      })
+      return changed ? next : prev
+    })
+  }, [rows])
+
+  React.useEffect(() => {
     fetchInventory('')
   }, [fetchInventory])
 
@@ -164,7 +196,6 @@ const ProgramEntry: React.FC = () => {
     return !!(
       String(row.part_inventory_number || '').trim()
       || String(row.process_name || '').trim()
-      || String(row.program_no || '').trim()
       || row.program_duration_minutes !== null
     )
   }, [])
@@ -174,7 +205,6 @@ const ProgramEntry: React.FC = () => {
       String(row.part_inventory_number || '').trim()
       && String(row.part_drawing_number || '').trim()
       && String(row.process_name || '').trim()
-      && String(row.program_no || '').trim()
       && row.program_duration_minutes !== null
       && row.program_duration_minutes !== undefined
       && Number(row.program_duration_minutes) >= 0
@@ -223,6 +253,7 @@ const ProgramEntry: React.FC = () => {
       part_drawing_number: nextInventoryNumber ? String(selected?.meta?.part_drawing_number || '') : '',
       process_name: '',
       process_options: processOptions,
+      program_no: '',
       programmed_at: nextInventoryNumber ? formatNow() : '',
       programmer: nextInventoryNumber ? latestProgrammer : '',
       save_status: 'idle'
@@ -249,7 +280,7 @@ const ProgramEntry: React.FC = () => {
           part_inventory_number: String(row.part_inventory_number || '').trim(),
           part_drawing_number: String(row.part_drawing_number || '').trim(),
           process_name: String(row.process_name || '').trim(),
-          program_no: String(row.program_no || '').trim(),
+          program_no: String(row.program_no || '').trim() || '1',
           program_duration_minutes: Number(row.program_duration_minutes || 0),
           programmed_at: programmedAt
         }]
@@ -360,17 +391,10 @@ const ProgramEntry: React.FC = () => {
     {
       title: '程序编号',
       dataIndex: 'program_no',
-      width: 160,
+      width: 120,
       align: 'center' as const,
       render: (_: any, row: ProgramEntryRow) => (
-        <Input
-          variant="borderless"
-          className="program-entry-cell-input"
-          value={row.program_no}
-          onChange={(e) => updateRow(row.id, { program_no: e.target.value, save_status: 'idle' })}
-          onBlur={() => requestSave(row.id)}
-          onPressEnter={() => requestSave(row.id)}
-        />
+        <div className="program-entry-cell-static">{row.program_no || ''}</div>
       )
     },
     {

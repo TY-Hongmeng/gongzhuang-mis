@@ -185,7 +185,10 @@ export function installApiInterceptor() {
       )
       
       if (cleanUrl.startsWith('/api/')) {
-        const strictBackendPath = cleanUrl.startsWith('/api/standard-parts')
+        const strictBackendPath =
+          cleanUrl.startsWith('/api/standard-parts') ||
+          cleanUrl.startsWith('/api/tooling/program-entries') ||
+          cleanUrl.startsWith('/api/tooling/program-management')
         // 在本地环境或开发模式下，强制优先走本地后端
         if ((isLocal || isDev) && !isGhPages) {
           try {
