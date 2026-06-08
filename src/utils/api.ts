@@ -2706,7 +2706,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const stripped = raw.replace(/^[0-9]+[.\-、:：]*/g, '').trim()
           return (stripped || raw).toLowerCase()
         }
-        }
         const parseClockMinutes = (v: any) => {
           const raw = String(v || '').trim()
           if (!raw) return null
