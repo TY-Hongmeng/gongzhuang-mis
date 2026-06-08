@@ -19,6 +19,7 @@ interface ProgramManagementItem {
   completion_status_key: 'all' | 'pending' | 'processing' | 'completed'
   program_count: number
   program_total_hours: number
+  average_program_hours: number
   program_runtime_hours: number
   average_runtime_hours: number
   program_runtime_display: string
@@ -158,10 +159,17 @@ const ProgramManagement: React.FC = () => {
       width: 100
     },
     {
-      title: '程序时长(小时)',
+      title: '程序总时长(小时)',
       dataIndex: 'program_total_hours',
       align: 'center' as const,
       width: 140,
+      render: (value: number) => Number(value || 0).toFixed(2)
+    },
+    {
+      title: '单件程序时长(小时)',
+      dataIndex: 'average_program_hours',
+      align: 'center' as const,
+      width: 150,
       render: (value: number) => Number(value || 0).toFixed(2)
     },
     {

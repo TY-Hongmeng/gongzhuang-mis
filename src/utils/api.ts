@@ -2862,49 +2862,53 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             tooling_id: string
             project_name: string
           }>()
-          for (const chunk of chunkArray(inventoryNos, 120)) {
-            const rows: any[] = []
-            const [{ data: byPartInv }, { data: byInventory }] = await Promise.all([
-              supabase
-                .from('parts_info')
-                .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
-                .in('part_inventory_number', chunk),
-              supabase
-                .from('parts_info')
-                .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
-                .in('inventory_number', chunk)
-            ])
-            rows.push(...((byPartInv || []) as any[]), ...((byInventory || []) as any[]))
-            rows.forEach((row: any) => {
-              const inventoryNo = normalizeInventoryNo(row?.part_inventory_number || row?.inventory_number)
-              if (!inventoryNo) return
-              const prev = partMetaMap.get(inventoryNo)
-              const partQuantity = Number(row?.part_quantity || 0)
-              partMetaMap.set(inventoryNo, {
-                part_name: String(row?.part_name || prev?.part_name || '').trim(),
-                part_drawing_number: String(row?.part_drawing_number || prev?.part_drawing_number || '').trim(),
-                part_quantity: Number.isFinite(partQuantity) && partQuantity > 0 ? partQuantity : Number(prev?.part_quantity || 0),
-                tooling_id: String(row?.tooling_id || prev?.tooling_id || '').trim(),
-                project_name: String(prev?.project_name || '').trim()
-              })
-            })
-          }
-          const toolingIds = Array.from(new Set(Array.from(partMetaMap.values()).map((item) => String(item.tooling_id || '').trim()).filter(Boolean)))
-          if (toolingIds.length > 0) {
-            for (const toolingChunk of chunkArray(toolingIds, 120)) {
-              const { data } = await supabase
-                .from('tooling_info')
-                .select('id, project_name')
-                .in('id', toolingChunk)
-              ;(data || []).forEach((row: any) => {
-                const id = String(row?.id || '').trim()
-                if (!id) return
-                const projectName = String(row?.project_name || '').trim()
-                partMetaMap.forEach((meta) => {
-                  if (meta.tooling_id === id && !meta.project_name) meta.project_name = projectName
+          try {
+            for (const chunk of chunkArray(inventoryNos, 120)) {
+              const rows: any[] = []
+              const [{ data: byPartInv }, { data: byInventory }] = await Promise.all([
+                supabase
+                  .from('parts_info')
+                  .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
+                  .in('part_inventory_number', chunk),
+                supabase
+                  .from('parts_info')
+                  .select('part_inventory_number, inventory_number, part_name, part_drawing_number, part_quantity, tooling_id')
+                  .in('inventory_number', chunk)
+              ])
+              rows.push(...((byPartInv || []) as any[]), ...((byInventory || []) as any[]))
+              rows.forEach((row: any) => {
+                const inventoryNo = normalizeInventoryNo(row?.part_inventory_number || row?.inventory_number)
+                if (!inventoryNo) return
+                const prev = partMetaMap.get(inventoryNo)
+                const partQuantity = Number(row?.part_quantity || 0)
+                partMetaMap.set(inventoryNo, {
+                  part_name: String(row?.part_name || prev?.part_name || '').trim(),
+                  part_drawing_number: String(row?.part_drawing_number || prev?.part_drawing_number || '').trim(),
+                  part_quantity: Number.isFinite(partQuantity) && partQuantity > 0 ? partQuantity : Number(prev?.part_quantity || 0),
+                  tooling_id: String(row?.tooling_id || prev?.tooling_id || '').trim(),
+                  project_name: String(prev?.project_name || '').trim()
                 })
               })
             }
+            const toolingIds = Array.from(new Set(Array.from(partMetaMap.values()).map((item) => String(item.tooling_id || '').trim()).filter(Boolean)))
+            if (toolingIds.length > 0) {
+              for (const toolingChunk of chunkArray(toolingIds, 120)) {
+                const { data } = await supabase
+                  .from('tooling_info')
+                  .select('id, project_name')
+                  .in('id', toolingChunk)
+                ;(data || []).forEach((row: any) => {
+                  const id = String(row?.id || '').trim()
+                  if (!id) return
+                  const projectName = String(row?.project_name || '').trim()
+                  partMetaMap.forEach((meta) => {
+                    if (meta.tooling_id === id && !meta.project_name) meta.project_name = projectName
+                  })
+                })
+              }
+            }
+          } catch (metaErr) {
+            console.error('Client program management metadata skipped:', metaErr)
           }
           Array.from(groupedMap.values()).forEach((group: any) => {
             const meta = partMetaMap.get(normalizeInventoryNo(group?.part_inventory_number))
@@ -2916,28 +2920,32 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             group.project_name = meta.project_name || ''
           })
           const workHourMap = new Map<string, any>()
-          for (const chunk of chunkArray(inventoryNos, 120)) {
-            const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-            const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
-            let mergedRows: any[] = []
-            try {
-              const [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
-                supabase.from('work_hours').select(baseSelect).in('inventory_no', chunk),
-                supabase.from('work_hours').select(baseSelect).in('part_inventory_number', chunk)
-              ])
-              if (rowsByInvErr && rowsByPartInvErr) throw rowsByInvErr
-              mergedRows = [...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]
-            } catch {
-              const { data: fallbackRows } = await supabase
-                .from('work_hours')
-                .select(fallbackSelect)
-                .in('part_inventory_number', chunk)
-              mergedRows = (fallbackRows || []) as any[]
+          try {
+            for (const chunk of chunkArray(inventoryNos, 120)) {
+              const baseSelect = 'id, inventory_no, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              const fallbackSelect = 'id, part_inventory_number, process_name, process_quantity, completed_quantity, operator, device_no, work_date, aux_start_time, aux_end_time, aux_hours, proc_hours, created_at'
+              let mergedRows: any[] = []
+              try {
+                const [{ data: rowsByInv, error: rowsByInvErr }, { data: rowsByPartInv, error: rowsByPartInvErr }] = await Promise.all([
+                  supabase.from('work_hours').select(baseSelect).in('inventory_no', chunk),
+                  supabase.from('work_hours').select(baseSelect).in('part_inventory_number', chunk)
+                ])
+                if (rowsByInvErr && rowsByPartInvErr) throw rowsByInvErr
+                mergedRows = [...((rowsByInv || []) as any[]), ...((rowsByPartInv || []) as any[])]
+              } catch {
+                const { data: fallbackRows } = await supabase
+                  .from('work_hours')
+                  .select(fallbackSelect)
+                  .in('part_inventory_number', chunk)
+                mergedRows = (fallbackRows || []) as any[]
+              }
+              ;(mergedRows || []).forEach((row: any, idx: number) => {
+                const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
+                if (!workHourMap.has(key)) workHourMap.set(key, row)
+              })
             }
-            ;(mergedRows || []).forEach((row: any, idx: number) => {
-              const key = String(row?.id || `${row?.inventory_no || ''}|${row?.part_inventory_number || ''}|${row?.process_name || ''}|${row?.created_at || ''}|${idx}`)
-              if (!workHourMap.has(key)) workHourMap.set(key, row)
-            })
+          } catch (workHourErr) {
+            console.error('Client program management work hours skipped:', workHourErr)
           }
 
           Array.from(workHourMap.values()).forEach((row: any) => {
@@ -3000,17 +3008,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const displayCompletedQuantity = totalQuantity > 0 ? Math.min(completedQuantity, totalQuantity) : completedQuantity
             const isCompleted = totalQuantity > 0 && completedQuantity >= totalQuantity
             const isProcessing = !isCompleted && displayCompletedQuantity > 0
+            const avgProgramHours = Number(group.program_total_minutes || 0) / 60
             const avgRuntimeHours = completedQuantity > 0 ? (runtimeHours / completedQuantity) : 0
             const progressDisplay = totalQuantity > 0
               ? `${formatQuantity(displayCompletedQuantity)}/${formatQuantity(totalQuantity)}`
               : formatQuantity(completedQuantity)
-            let runtimeDisplay = runtimeHours > 0 ? `${formatHours(runtimeHours)}小时` : '-'
-            if (operatorSummary) runtimeDisplay = runtimeDisplay === '-' ? operatorSummary : `${runtimeDisplay} | ${operatorSummary}`
-            if (totalQuantity > 0 && !isCompleted) {
-              runtimeDisplay = runtimeDisplay === '-' ? `进行中 ${progressDisplay}` : `${runtimeDisplay} | 进度${progressDisplay}`
-            } else if (totalQuantity > 0 && isCompleted && runtimeDisplay !== '-') {
-              runtimeDisplay = `${runtimeDisplay} | 已完成`
-            }
+            const runtimeDisplay = runtimeHours > 0 ? `${formatHours(runtimeHours)}小时${operatorSummary ? ` | ${operatorSummary}` : ''}` : '-'
             const completionStatusKey = isCompleted ? 'completed' : (isProcessing ? 'processing' : 'pending')
             const deviceNos = group.device_set instanceof Set ? Array.from(group.device_set).sort((a: string, b: string) => a.localeCompare(b, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })) : []
             return {
@@ -3028,12 +3031,13 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 : (completedQuantity > 0 ? `已记录 ${formatQuantity(completedQuantity)}` : '-'),
               program_count: group.program_segment_set instanceof Set ? group.program_segment_set.size : 0,
               program_total_hours: Number((Number(group.program_total_minutes || 0) / 60).toFixed(2)),
+              average_program_hours: Number(avgProgramHours.toFixed(2)),
               average_runtime_hours: Number(avgRuntimeHours.toFixed(2)),
               program_runtime_hours: Number(runtimeHours.toFixed(2)),
               program_runtime_display: runtimeDisplay,
               program_start_end_display: startAt && endAt
-                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)${!isCompleted && totalQuantity > 0 ? ' | 未完工' : ''}`
-                : (totalQuantity > 0 && !isCompleted ? `未完工，已完成${progressDisplay}` : '-'),
+                ? `${formatDateTime(startAt)} - ${formatDateTime(endAt)} (${formatHours(spanHours)}小时)`
+                : '-',
               device_no_display: deviceNos.length ? deviceNos.join('、') : '-',
               latest_programmed_at: group.latest_programmed_at || ''
             }
