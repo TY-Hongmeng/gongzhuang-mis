@@ -137,7 +137,7 @@ export const usePartTable = ({ toolingId, onEdit }: PartTableProps) => {
     {
       title: '材质',
       dataIndex: 'material_id',
-      width: 120,
+      width: 160,
       editable: true,
       render: (text: string) => {
         const material = materials.find(m => m.id === text)
