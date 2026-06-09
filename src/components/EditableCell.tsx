@@ -66,6 +66,11 @@ const EditableCell: React.FC<EditableCellProps> = ({
   }, [dataIndex, materialOptions, materialSourceOptions, partCategoryOptions, productionUnitOptions, categoryOptions, options])
 
   const selectOptions = useMemo(() => getSelectOptions(), [getSelectOptions])
+  const popupMinWidth = useMemo(() => {
+    if (dataIndex === 'material_id') return 240
+    if (dataIndex === 'material_source_id') return 220
+    return undefined
+  }, [dataIndex])
 
   useEffect(() => {
     const strValue = String(value ?? '')
@@ -190,6 +195,8 @@ const EditableCell: React.FC<EditableCellProps> = ({
           width: '100%',
           ...customStyle
         }}
+        popupMatchSelectWidth={popupMinWidth ? false : true}
+        dropdownStyle={popupMinWidth ? { minWidth: popupMinWidth } : undefined}
         showSearch
         options={selectOptions}
         optionFilterProp="label"
