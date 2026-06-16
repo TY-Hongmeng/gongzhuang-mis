@@ -37,9 +37,14 @@ const Dashboard: React.FC = () => {
     '个人设置': 'personal_settings', personal_settings: 'personal_settings',
     '标准件管理': 'standard_parts', standard_parts: 'standard_parts',
     '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue',
-    '出库记录': 'standard_parts_issue'
+    '出库记录': 'standard_parts_issue',
+    '量具台账': 'measure_tools', measure_tools: 'measure_tools'
   }
   const perms = (user as any)?.roles?.role_permissions || []
+  const isManager = String((user as any)?.roles?.name || '').includes('超级管理员')
+    || String((user as any)?.roles?.name || '').includes('库管')
+    || String((user as any)?.roles?.name || '').includes('仓管')
+    || String((user as any)?.roles?.name || '').includes('库房')
   const can = (module: string) => {
     const roleName = String((user as any)?.roles?.name || '')
     if (roleName === '超级管理员') return true
@@ -236,6 +241,24 @@ const Dashboard: React.FC = () => {
               </Link>
             </Col>
           )}
+          {(isManager || can('measure_tools')) && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Link to="/measure-tools" style={{ display: 'block' }}>
+                <Card hoverable className="text-center cursor-pointer">
+                  <BuildOutlined className="text-3xl text-amber-500 mb-2" />
+                  量具台账
+                </Card>
+              </Link>
+            </Col>
+          )}
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Link to="/my-measure-tools" style={{ display: 'block' }}>
+              <Card hoverable className="text-center cursor-pointer">
+                <UserOutlined className="text-3xl text-teal-500 mb-2" />
+                我的量具
+              </Card>
+            </Link>
+          </Col>
         </Row>
       </Card>
     </div>

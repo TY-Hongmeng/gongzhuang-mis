@@ -47,6 +47,8 @@ const WorkHours = lazyWithTrace("WorkHours", () => import("./pages/WorkHours"));
 const WorkHoursManagement = lazyWithTrace("WorkHoursManagement", () => import("./pages/WorkHoursManagement"));
 const ProgramEntry = lazyWithTrace("ProgramEntry", () => import("./pages/ProgramEntry"));
 const ProgramManagement = lazyWithTrace("ProgramManagement", () => import("./pages/ProgramManagement"));
+const MeasureToolsLedger = lazyWithTrace("MeasureToolsLedger", () => import("./pages/MeasureToolsLedger"));
+const MyMeasureTools = lazyWithTrace("MyMeasureTools", () => import("./pages/MyMeasureTools"));
 
 export default function App() {
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore()
@@ -90,6 +92,8 @@ export default function App() {
                 <Route path="work-hours-management" element={<ProtectedRoute requiredModule="work_hours"><WorkHoursManagement /></ProtectedRoute>} />
                 <Route path="program-entry" element={<ProtectedRoute requiredModule="program_entry"><ProgramEntry /></ProtectedRoute>} />
                 <Route path="program-management" element={<ProtectedRoute requiredModule="program_management"><ProgramManagement /></ProtectedRoute>} />
+                <Route path="measure-tools" element={<ProtectedRoute><MeasureToolsLedger /></ProtectedRoute>} />
+                <Route path="my-measure-tools" element={<ProtectedRoute><MyMeasureTools /></ProtectedRoute>} />
               </Route>
             )}
             <Route path="*" element={<Navigate to={isAuthenticated && user ? "/dashboard" : "/login"} replace />} />
