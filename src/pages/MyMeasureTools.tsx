@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   Modal,
-  Select,
   Space,
   Table,
   Tag,
@@ -31,6 +30,10 @@ const tagColorMap: Record<string, string> = {
   待归还确认: 'purple',
   待报废: 'volcano',
   已报废: 'red'
+}
+
+type MineRow = MaterialAssetItem & {
+  view_type: 'pending' | 'owned' | 'borrowed'
 }
 
 const MyMeasureTools: React.FC = () => {
@@ -58,6 +61,12 @@ const MyMeasureTools: React.FC = () => {
     userId: String((user as any)?.id || ''),
     operator: String(user?.real_name || '')
   }), [user])
+
+  const mergedItems = React.useMemo<MineRow[]>(() => ([
+    ...pendingItems.map((item) => ({ ...item, view_type: 'pending' as const })),
+    ...ownedItems.map((item) => ({ ...item, view_type: 'owned' as const })),
+    ...borrowedItems.map((item) => ({ ...item, view_type: 'borrowed' as const }))
+  ]), [borrowedItems, ownedItems, pendingItems])
 
   const loadMine = React.useCallback(async () => {
     try {
@@ -269,12 +278,22 @@ const MyMeasureTools: React.FC = () => {
     }
   }
 
-  const pendingColumns = [
+  const columns = [
     {
       title: '序号',
       width: 72,
       align: 'center' as const,
-      render: (_: any, __: MaterialAssetItem, index: number) => index + 1
+      render: (_: any, __: MineRow, index: number) => index + 1
+    },
+    {
+      title: '类型',
+      width: 120,
+      align: 'center' as const,
+      render: (_: any, record: MineRow) => {
+        if (record.view_type === 'pending') return <Tag color="gold">待我确认</Tag>
+        if (record.view_type === 'borrowed') return <Tag color="cyan">我借用的</Tag>
+        return <Tag color="blue">我负责的</Tag>
+      }
     },
     {
       title: '名称',
@@ -293,109 +312,37 @@ const MyMeasureTools: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
-      title: '待确认责任',
-      width: 240,
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap size={[4, 4]}>
-          {record.responsible_person ? <Tag color="blue">当前: {record.responsible_person}</Tag> : null}
-          {record.pending_responsible_person ? <Tag color="gold">待确认: {record.pending_responsible_person}</Tag> : null}
-          <Tag color={tagColorMap[record.responsibility_status] || 'default'}>{record.responsibility_status}</Tag>
-        </Space>
-      )
-    },
-    {
-      title: '备注',
-      dataIndex: 'remark',
-      render: (value: string) => value || '-'
-    },
-    {
-      title: '操作',
+      title: '责任关系',
       width: 220,
-      align: 'center' as const,
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap>
-          <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>
-            确认责任人
-          </Button>
-          <Button
-            type="link"
-            danger
-            onClick={() => {
-              setCurrentItem(record)
-              rejectTransferForm.resetFields()
-              setRejectTransferOpen(true)
-            }}
-          >
-            拒绝接收
-          </Button>
-        </Space>
+      render: (_: any, record: MineRow) => (
+        <div>
+          <div>{record.responsible_person || '未确认'}</div>
+          {record.pending_responsible_person ? <Text type="warning">待确认: {record.pending_responsible_person}</Text> : null}
+          {record.borrower_name && record.view_type !== 'borrowed' ? <Text type="secondary">借用人: {record.borrower_name}</Text> : null}
+        </div>
       )
-    }
-  ]
-
-  const ownedColumns = [
-    {
-      title: '序号',
-      width: 72,
-      align: 'center' as const,
-      render: (_: any, __: MaterialAssetItem, index: number) => index + 1
-    },
-    {
-      title: '名称',
-      dataIndex: 'name',
-      width: 150
-    },
-    {
-      title: '编号',
-      dataIndex: 'code',
-      width: 140
-    },
-    {
-      title: '型号规格',
-      dataIndex: 'model_spec',
-      width: 180,
-      render: (value: string) => value || '-'
     },
     {
       title: '状态',
       width: 220,
-      render: (_: any, record: MaterialAssetItem) => (
+      render: (_: any, record: MineRow) => (
         <Space wrap size={[4, 4]}>
           <Tag color={tagColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
           <Tag color={tagColorMap[record.responsibility_status] || 'default'}>{record.responsibility_status}</Tag>
+          {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'}>{record.borrow_status}</Tag> : null}
           {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'}>{record.scrap_status}</Tag> : null}
         </Space>
       )
     },
     {
-      title: '转移状态',
-      width: 180,
-      render: (_: any, record: MaterialAssetItem) => (
-        record.pending_responsible_person
-          ? <Text type="warning">待 {record.pending_responsible_person} 确认</Text>
-          : <Text type="secondary">-</Text>
-      )
-    },
-    {
-      title: '借用状态',
-      width: 220,
-      render: (_: any, record: MaterialAssetItem) => (
-        <div>
-          <div>
-            {record.borrow_status && record.borrow_status !== '无'
-              ? <Tag color={tagColorMap[record.borrow_status] || 'default'}>{record.borrow_status}</Tag>
-              : <Text type="secondary">未借出</Text>}
-          </div>
-          {record.borrower_name ? <Text type="secondary">借用人: {record.borrower_name}</Text> : null}
-        </div>
-      )
-    },
-    {
-      title: '备注',
-      width: 260,
-      render: (_: any, record: MaterialAssetItem) => (
+      title: '说明',
+      width: 300,
+      render: (_: any, record: MineRow) => (
         <div>
           <div>{record.remark || '-'}</div>
+          {record.pending_responsible_person ? <Text type="secondary">转移状态: 待 {record.pending_responsible_person} 确认</Text> : null}
+          {record.borrow_note ? <Text type="secondary">借用说明: {record.borrow_note}</Text> : null}
+          {record.borrow_return_note ? <Text type="secondary">归还说明: {record.borrow_return_note}</Text> : null}
           {record.scrap_reason ? <Text type="secondary">报废原因: {record.scrap_reason}</Text> : null}
         </div>
       )
@@ -404,132 +351,98 @@ const MyMeasureTools: React.FC = () => {
       title: '操作',
       width: 340,
       align: 'center' as const,
-      render: (_: any, record: MaterialAssetItem) => (
+      render: (_: any, record: MineRow) => (
         <Space wrap>
-          <Button
-            type="link"
-            disabled={record.asset_status === '报废'}
-            onClick={() => {
-              setCurrentItem(record)
-              transferForm.setFieldsValue({
-                target_name: '',
-                target_user_id: '',
-                remark: ''
-              })
-              setTransferOpen(true)
-            }}
-          >
-            转移责任人
-          </Button>
-          <Button
-            type="link"
-            disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'}
-            onClick={() => {
-              setCurrentItem(record)
-              borrowForm.setFieldsValue({
-                borrower_name: '',
-                borrower_user_id: '',
-                borrow_note: ''
-              })
-              setBorrowOpen(true)
-            }}
-          >
-            借出登记
-          </Button>
-          {record.responsibility_status === '待转移确认' && record.pending_responsible_person ? (
-            <Button type="link" onClick={() => cancelTransfer(record)} loading={acting}>
-              撤销转移
-            </Button>
+          {record.view_type === 'pending' ? (
+            <>
+              <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>
+                确认责任人
+              </Button>
+              <Button
+                type="link"
+                danger
+                onClick={() => {
+                  setCurrentItem(record)
+                  rejectTransferForm.resetFields()
+                  setRejectTransferOpen(true)
+                }}
+              >
+                拒绝接收
+              </Button>
+            </>
           ) : null}
-          {record.borrow_status === '待归还确认' ? (
-            <Button type="link" onClick={() => confirmReturn(record)} loading={acting}>
-              确认归还
-            </Button>
+          {record.view_type === 'owned' ? (
+            <>
+              <Button
+                type="link"
+                disabled={record.asset_status === '报废'}
+                onClick={() => {
+                  setCurrentItem(record)
+                  transferForm.setFieldsValue({
+                    target_name: '',
+                    target_user_id: '',
+                    remark: ''
+                  })
+                  setTransferOpen(true)
+                }}
+              >
+                转移责任人
+              </Button>
+              <Button
+                type="link"
+                disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'}
+                onClick={() => {
+                  setCurrentItem(record)
+                  borrowForm.setFieldsValue({
+                    borrower_name: '',
+                    borrower_user_id: '',
+                    borrow_note: ''
+                  })
+                  setBorrowOpen(true)
+                }}
+              >
+                借出登记
+              </Button>
+              {record.responsibility_status === '待转移确认' && record.pending_responsible_person ? (
+                <Button type="link" onClick={() => cancelTransfer(record)} loading={acting}>
+                  撤销转移
+                </Button>
+              ) : null}
+              {record.borrow_status === '待归还确认' ? (
+                <Button type="link" onClick={() => confirmReturn(record)} loading={acting}>
+                  确认归还
+                </Button>
+              ) : null}
+              <Button
+                type="link"
+                danger
+                disabled={record.asset_status === '报废' || record.scrap_status === '待报废' || record.borrow_status !== '无'}
+                onClick={() => {
+                  setCurrentItem(record)
+                  setScrapOpen(true)
+                }}
+              >
+                报废申请
+              </Button>
+            </>
           ) : null}
-          <Button
-            type="link"
-            danger
-            disabled={record.asset_status === '报废' || record.scrap_status === '待报废' || record.borrow_status !== '无'}
-            onClick={() => {
-              setCurrentItem(record)
-              setScrapOpen(true)
-            }}
-          >
-            报废申请
-          </Button>
-        </Space>
-      )
-    }
-  ]
-
-  const borrowedColumns = [
-    {
-      title: '序号',
-      width: 72,
-      align: 'center' as const,
-      render: (_: any, __: MaterialAssetItem, index: number) => index + 1
-    },
-    {
-      title: '名称',
-      dataIndex: 'name',
-      width: 150
-    },
-    {
-      title: '编号',
-      dataIndex: 'code',
-      width: 140
-    },
-    {
-      title: '型号规格',
-      dataIndex: 'model_spec',
-      width: 180,
-      render: (value: string) => value || '-'
-    },
-    {
-      title: '责任人',
-      dataIndex: 'responsible_person',
-      width: 120,
-      render: (value: string) => value || '-'
-    },
-    {
-      title: '借用状态',
-      width: 180,
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap size={[4, 4]}>
-          <Tag color={tagColorMap[record.borrow_status] || 'default'}>{record.borrow_status}</Tag>
-          <Tag color={tagColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
-        </Space>
-      )
-    },
-    {
-      title: '说明',
-      width: 260,
-      render: (_: any, record: MaterialAssetItem) => (
-        <div>
-          <div>{record.borrow_note || '-'}</div>
-          {record.borrow_return_note ? <Text type="secondary">归还说明: {record.borrow_return_note}</Text> : null}
-        </div>
-      )
-    },
-    {
-      title: '操作',
-      width: 180,
-      align: 'center' as const,
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap>
-          {record.borrow_status === '借用中' ? (
-            <Button
-              type="link"
-              onClick={() => {
-                setCurrentItem(record)
-                returnForm.setFieldsValue({ return_note: '' })
-                setReturnOpen(true)
-              }}
-            >
-              申请归还
-            </Button>
+          {record.view_type === 'borrowed' ? (
+            <>
+              {record.borrow_status === '借用中' ? (
+                <Button
+                  type="link"
+                  onClick={() => {
+                    setCurrentItem(record)
+                    returnForm.setFieldsValue({ return_note: '' })
+                    setReturnOpen(true)
+                  }}
+                >
+                  申请归还
+                </Button>
+              ) : null}
+              {record.borrow_status === '待归还确认' ? <Text type="warning">等待责任人确认</Text> : null}
+            </>
           ) : null}
-          {record.borrow_status === '待归还确认' ? <Text type="warning">等待责任人确认</Text> : null}
         </Space>
       )
     }
@@ -541,7 +454,7 @@ const MyMeasureTools: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
           <div>
             <Title level={4} style={{ margin: 0 }}>我的量具</Title>
-            <Text type="secondary">这里显示已确认归属你的量具，以及等待你确认接收责任的量具。</Text>
+            <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>
           </div>
           <Space wrap>
             <Button icon={<ReloadOutlined />} onClick={loadMine}>刷新</Button>
@@ -549,38 +462,14 @@ const MyMeasureTools: React.FC = () => {
           </Space>
         </div>
 
-        <Card size="small" title="待我确认" style={{ marginBottom: 16 }}>
+        <Card size="small" title="我的量具总表">
           <Table
-            rowKey="id"
+            rowKey={(record) => `${record.view_type}-${record.id}`}
             loading={loading}
-            dataSource={pendingItems}
-            columns={pendingColumns as any}
-            locale={{ emptyText: '暂无待确认数据' }}
-            pagination={{ pageSize: 10, showSizeChanger: true }}
-            scroll={{ x: 'max-content' }}
-          />
-        </Card>
-
-        <Card size="small" title="我负责的量具">
-          <Table
-            rowKey="id"
-            loading={loading}
-            dataSource={ownedItems}
-            columns={ownedColumns as any}
-            locale={{ emptyText: '暂无归属你的量具' }}
-            pagination={{ pageSize: 10, showSizeChanger: true }}
-            scroll={{ x: 'max-content' }}
-          />
-        </Card>
-
-        <Card size="small" title="我借用的量具" style={{ marginTop: 16 }}>
-          <Table
-            rowKey="id"
-            loading={loading}
-            dataSource={borrowedItems}
-            columns={borrowedColumns as any}
-            locale={{ emptyText: '暂无你借用的量具' }}
-            pagination={{ pageSize: 10, showSizeChanger: true }}
+            dataSource={mergedItems}
+            columns={columns as any}
+            locale={{ emptyText: '暂无量具数据' }}
+            pagination={false}
             scroll={{ x: 'max-content' }}
           />
         </Card>
