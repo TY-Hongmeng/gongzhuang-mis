@@ -24,6 +24,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/program-entries(\/|$)/.test(cleanUrl)
     || /^\/api\/tooling\/program-management(\/|$)/.test(cleanUrl)
     || /^\/api\/standard-parts(\/|$)/.test(cleanUrl)
+    || /^\/api\/material-assets(\/|$)/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
@@ -51,6 +52,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/backup-materials',
     '/api/manual-plans',
     '/api/standard-parts',
+    '/api/material-assets',
     '/api/users',
     '/api/companies'
   ]
@@ -79,7 +81,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       cleanUrl.startsWith('/api/tooling/fixed-inventory-options') ||
       cleanUrl.startsWith('/api/tooling/program-entries') ||
       cleanUrl.startsWith('/api/tooling/program-management') ||
-      cleanUrl.startsWith('/api/standard-parts')
+      cleanUrl.startsWith('/api/standard-parts') ||
+      cleanUrl.startsWith('/api/material-assets')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
     // 让 fetchWithFallback 继续执行并最终调用本地后端
@@ -198,7 +201,8 @@ export function installApiInterceptor() {
         const strictBackendPath =
           cleanUrl.startsWith('/api/standard-parts') ||
           cleanUrl.startsWith('/api/tooling/program-entries') ||
-          cleanUrl.startsWith('/api/tooling/program-management')
+          cleanUrl.startsWith('/api/tooling/program-management') ||
+          cleanUrl.startsWith('/api/material-assets')
         // 在本地环境或开发模式下，强制优先走本地后端
         if ((isLocal || isDev) && !isGhPages) {
           try {

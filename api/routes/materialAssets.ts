@@ -247,6 +247,13 @@ const loadAssetById = async (assetId: string) => {
   return rs.rows?.[0] || null
 }
 
+const duplicateCodeMessage = (message: string) => {
+  if (message.includes('measure_tool_assets_code_unique') || message.includes('duplicate key')) {
+    return '编号已存在，不能重复'
+  }
+  return ''
+}
+
 router.get('/ledger', async (req, res) => {
   try {
     await ensureSchema()
@@ -561,6 +568,74 @@ router.post('/batch-import', async (req, res) => {
   }
 })
 
+router.put('/:id', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    if (!actor.isManager) {
+      return res.status(403).json({ success: false, error: '仅库管或超级管理员可以编辑量具基础信息' })
+    }
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+
+    const name = normText(req.body?.name)
+    const code = normText(req.body?.code)
+    const modelSpec = normText(req.body?.model_spec)
+    const remark = normText(req.body?.remark)
+
+    if (!name || !code) {
+      return res.status(400).json({ success: false, error: '名称、编号不能为空' })
+    }
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          name = $2,
+          code = $3,
+          model_spec = $4,
+          remark = $5,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, name, code, modelSpec, remark])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'edit_basic_info',
+        actionLabel: '编辑基础信息',
+        operatorName: actor.actorName,
+        operatorUserId: actor.userId,
+        remark,
+        detail: {
+          before: {
+            name: normText(asset.name),
+            code: normText(asset.code),
+            model_spec: normText(asset.model_spec),
+            remark: normText(asset.remark)
+          },
+          after: {
+            name,
+            code,
+            model_spec: modelSpec,
+            remark
+          }
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    const message = String(err?.message || '')
+    const duplicateMessage = duplicateCodeMessage(message)
+    if (duplicateMessage) {
+      return res.status(400).json({ success: false, error: duplicateMessage })
+    }
+    res.status(500).json({ success: false, error: message || '编辑量具基础信息失败' })
+  }
+})
+
 router.post('/:id/confirm-responsible', async (req, res) => {
   try {
     await ensureSchema()
@@ -609,6 +684,59 @@ router.post('/:id/confirm-responsible', async (req, res) => {
     res.json({ success: true, item: updated })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '确认责任人失败' })
+  }
+})
+
+router.post('/:id/reject-transfer', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (normText(asset.responsibility_status) !== RESPONSIBILITY_STATUS.transferPending) {
+      return res.status(400).json({ success: false, error: '当前没有待拒绝的责任人转移' })
+    }
+    if (!canMatchActor(asset, actor, 'pending')) {
+      return res.status(403).json({ success: false, error: '仅待接收责任人本人可以拒绝接收' })
+    }
+    const reason = normText(req.body?.reason)
+    if (!reason) {
+      return res.status(400).json({ success: false, error: '请填写拒绝原因' })
+    }
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          pending_responsible_person = '',
+          pending_responsible_user_id = '',
+          responsibility_status = $2,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, RESPONSIBILITY_STATUS.confirmed])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'reject_transfer',
+        actionLabel: '拒绝接收责任人',
+        operatorName: actor.actorName || normText(asset.pending_responsible_person),
+        operatorUserId: actor.userId || normText(asset.pending_responsible_user_id),
+        targetName: normText(asset.responsible_person),
+        targetUserId: normText(asset.responsible_user_id),
+        remark: reason,
+        detail: {
+          rejected_target: normText(asset.pending_responsible_person),
+          reverted_to: normText(asset.responsible_person),
+          reason
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '拒绝接收责任人失败' })
   }
 })
 
@@ -806,6 +934,57 @@ router.post('/:id/approve-scrap', async (req, res) => {
     res.json({ success: true, item: updated })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '确认报废失败' })
+  }
+})
+
+router.post('/:id/reject-scrap', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    if (!actor.isManager) {
+      return res.status(403).json({ success: false, error: '仅库管或超级管理员可以驳回报废申请' })
+    }
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (normText(asset.scrap_status) !== SCRAP_STATUS.pending) {
+      return res.status(400).json({ success: false, error: '当前没有待驳回的报废申请' })
+    }
+    const reason = normText(req.body?.reason)
+    if (!reason) {
+      return res.status(400).json({ success: false, error: '请填写驳回原因' })
+    }
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          scrap_status = $2,
+          scrap_reason = '',
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, SCRAP_STATUS.none])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'reject_scrap',
+        actionLabel: '驳回报废申请',
+        operatorName: actor.actorName,
+        operatorUserId: actor.userId,
+        targetName: normText(asset.responsible_person),
+        targetUserId: normText(asset.responsible_user_id),
+        remark: reason,
+        detail: {
+          original_reason: normText(asset.scrap_reason),
+          reject_reason: reason
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '驳回报废申请失败' })
   }
 })
 

@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Button,
   Card,
+  Descriptions,
   Form,
   Input,
   Modal,
@@ -14,7 +15,7 @@ import {
   message
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { DownloadOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import { DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
@@ -47,15 +48,20 @@ const MeasureToolsLedger: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
+  const [rejectScrapForm] = Form.useForm()
   const [items, setItems] = React.useState<MaterialAssetItem[]>([])
   const [users, setUsers] = React.useState<MaterialAssetUserOption[]>([])
   const [loading, setLoading] = React.useState(false)
   const [submitLoading, setSubmitLoading] = React.useState(false)
   const [createOpen, setCreateOpen] = React.useState(false)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [rejectScrapOpen, setRejectScrapOpen] = React.useState(false)
   const [historyOpen, setHistoryOpen] = React.useState(false)
   const [historyLoading, setHistoryLoading] = React.useState(false)
   const [historyRows, setHistoryRows] = React.useState<MaterialAssetHistoryItem[]>([])
   const [historyAssetTitle, setHistoryAssetTitle] = React.useState('')
+  const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [search, setSearch] = React.useState('')
   const [assetStatusFilter, setAssetStatusFilter] = React.useState('')
   const [responsibilityStatusFilter, setResponsibilityStatusFilter] = React.useState('')
@@ -243,6 +249,67 @@ const MeasureToolsLedger: React.FC = () => {
     }
   }
 
+  const submitEdit = async (values: any) => {
+    if (!currentItem) return
+    try {
+      setSubmitLoading(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(currentItem.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: String(values.name || '').trim(),
+          code: String(values.code || '').trim(),
+          model_spec: String(values.model_spec || '').trim(),
+          remark: String(values.remark || '').trim(),
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '编辑量具基础信息失败'))
+      }
+      message.success('量具基础信息已更新')
+      setEditOpen(false)
+      setCurrentItem(null)
+      editForm.resetFields()
+      loadItems()
+    } catch (error: any) {
+      message.error(error?.message || '编辑量具基础信息失败')
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
+  const rejectScrap = async (values: any) => {
+    if (!currentItem) return
+    try {
+      setSubmitLoading(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(currentItem.id)}/reject-scrap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || ''),
+          reason: String(values.reason || '').trim()
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '驳回报废申请失败'))
+      }
+      message.success('已驳回报废申请')
+      setRejectScrapOpen(false)
+      setCurrentItem(null)
+      rejectScrapForm.resetFields()
+      loadItems()
+    } catch (error: any) {
+      message.error(error?.message || '驳回报废申请失败')
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
   const columns = [
     {
       title: '序号',
@@ -312,16 +379,44 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 140,
+      width: 220,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
-        record.scrap_status === '待报废'
-          ? (
-            <Button type="link" danger onClick={() => approveScrap(record)}>
-              确认报废
-            </Button>
-          )
-          : <Text type="secondary">-</Text>
+        <Space wrap>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setCurrentItem(record)
+              editForm.setFieldsValue({
+                name: record.name,
+                code: record.code,
+                model_spec: record.model_spec,
+                remark: record.remark
+              })
+              setEditOpen(true)
+            }}
+          >
+            编辑
+          </Button>
+          {record.scrap_status === '待报废' ? (
+            <>
+              <Button type="link" danger onClick={() => approveScrap(record)}>
+                确认报废
+              </Button>
+              <Button
+                type="link"
+                onClick={() => {
+                  setCurrentItem(record)
+                  rejectScrapForm.resetFields()
+                  setRejectScrapOpen(true)
+                }}
+              >
+                驳回报废
+              </Button>
+            </>
+          ) : null}
+        </Space>
       )
     } as never)
   }
@@ -475,6 +570,53 @@ const MeasureToolsLedger: React.FC = () => {
       </Modal>
 
       <Modal
+        title={currentItem ? `编辑量具 - ${currentItem.name}` : '编辑量具'}
+        open={editOpen}
+        onCancel={() => {
+          setEditOpen(false)
+          setCurrentItem(null)
+          editForm.resetFields()
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Descriptions size="small" column={1} style={{ marginBottom: 12 }}>
+          <Descriptions.Item label="责任人">{currentItem?.responsible_person || '未确认'}</Descriptions.Item>
+          <Descriptions.Item label="待确认责任人">{currentItem?.pending_responsible_person || '-'}</Descriptions.Item>
+          <Descriptions.Item label="责任状态">{currentItem?.responsibility_status || '-'}</Descriptions.Item>
+        </Descriptions>
+        <Form form={editForm} layout="vertical" onFinish={submitEdit}>
+          <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="编号" name="code" rules={[{ required: true, message: '请输入编号' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="型号规格" name="model_spec">
+            <Input />
+          </Form.Item>
+          <Form.Item label="备注" name="remark">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Text type="secondary">责任人相关变更请在“我的量具”中走确认/转移流程。</Text>
+          <Form.Item style={{ marginBottom: 0, marginTop: 12 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => {
+                setEditOpen(false)
+                setCurrentItem(null)
+                editForm.resetFields()
+              }}>
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit" loading={submitLoading}>
+                保存
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
         title={`历史记录 - ${historyAssetTitle}`}
         open={historyOpen}
         onCancel={() => setHistoryOpen(false)}
@@ -517,6 +659,38 @@ const MeasureToolsLedger: React.FC = () => {
             }
           ]}
         />
+      </Modal>
+
+      <Modal
+        title={currentItem ? `驳回报废申请 - ${currentItem.name}` : '驳回报废申请'}
+        open={rejectScrapOpen}
+        onCancel={() => {
+          setRejectScrapOpen(false)
+          setCurrentItem(null)
+          rejectScrapForm.resetFields()
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={rejectScrapForm} layout="vertical" onFinish={rejectScrap}>
+          <Form.Item label="驳回原因" name="reason" rules={[{ required: true, message: '请填写驳回原因' }]}>
+            <Input.TextArea rows={4} placeholder="请明确填写驳回原因，例如仍可修复、信息不完整等" />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => {
+                setRejectScrapOpen(false)
+                setCurrentItem(null)
+                rejectScrapForm.resetFields()
+              }}>
+                取消
+              </Button>
+              <Button htmlType="submit" type="primary" loading={submitLoading}>
+                确认驳回
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

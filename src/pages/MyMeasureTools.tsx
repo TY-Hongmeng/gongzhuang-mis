@@ -35,12 +35,14 @@ const MyMeasureTools: React.FC = () => {
   const { user } = useAuthStore()
   const [transferForm] = Form.useForm()
   const [scrapForm] = Form.useForm()
+  const [rejectTransferForm] = Form.useForm()
   const [ownedItems, setOwnedItems] = React.useState<MaterialAssetItem[]>([])
   const [pendingItems, setPendingItems] = React.useState<MaterialAssetItem[]>([])
   const [users, setUsers] = React.useState<MaterialAssetUserOption[]>([])
   const [loading, setLoading] = React.useState(false)
   const [transferOpen, setTransferOpen] = React.useState(false)
   const [scrapOpen, setScrapOpen] = React.useState(false)
+  const [rejectTransferOpen, setRejectTransferOpen] = React.useState(false)
   const [acting, setActing] = React.useState(false)
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
 
@@ -175,6 +177,25 @@ const MyMeasureTools: React.FC = () => {
     }
   }
 
+  const submitRejectTransfer = async (values: any) => {
+    if (!currentItem) return
+    try {
+      setActing(true)
+      await postAction(`/api/material-assets/${encodeURIComponent(currentItem.id)}/reject-transfer`, {
+        reason: String(values.reason || '').trim()
+      })
+      message.success('已拒绝接收责任人')
+      setRejectTransferOpen(false)
+      rejectTransferForm.resetFields()
+      setCurrentItem(null)
+      loadMine()
+    } catch (error: any) {
+      message.error(error?.message || '拒绝接收责任人失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
   const pendingColumns = [
     {
       title: '序号',
@@ -216,12 +237,25 @@ const MyMeasureTools: React.FC = () => {
     },
     {
       title: '操作',
-      width: 140,
+      width: 220,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
-        <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>
-          确认责任人
-        </Button>
+        <Space wrap>
+          <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>
+            确认责任人
+          </Button>
+          <Button
+            type="link"
+            danger
+            onClick={() => {
+              setCurrentItem(record)
+              rejectTransferForm.resetFields()
+              setRejectTransferOpen(true)
+            }}
+          >
+            拒绝接收
+          </Button>
+        </Space>
       )
     }
   ]
@@ -354,6 +388,38 @@ const MyMeasureTools: React.FC = () => {
           />
         </Card>
       </Card>
+
+      <Modal
+        title={currentItem ? `拒绝接收责任人 - ${currentItem.name}` : '拒绝接收责任人'}
+        open={rejectTransferOpen}
+        onCancel={() => {
+          setRejectTransferOpen(false)
+          setCurrentItem(null)
+          rejectTransferForm.resetFields()
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={rejectTransferForm} layout="vertical" onFinish={submitRejectTransfer}>
+          <Form.Item label="拒绝原因" name="reason" rules={[{ required: true, message: '请填写拒绝原因' }]}>
+            <Input.TextArea rows={4} placeholder="请明确填写拒绝原因，例如量具未实际交接、信息不符等" />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => {
+                setRejectTransferOpen(false)
+                setCurrentItem(null)
+                rejectTransferForm.resetFields()
+              }}>
+                取消
+              </Button>
+              <Button type="primary" danger htmlType="submit" loading={acting}>
+                确认拒绝
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title={currentItem ? `转移责任人 - ${currentItem.name}` : '转移责任人'}
