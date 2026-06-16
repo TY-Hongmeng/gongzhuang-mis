@@ -40,6 +40,8 @@ const statusColorMap: Record<string, string> = {
   待确认: 'orange',
   已确认: 'blue',
   待转移确认: 'gold',
+  借用中: 'cyan',
+  待归还确认: 'purple',
   无: 'default',
   待报废: 'volcano',
   已报废: 'red'
@@ -323,6 +325,30 @@ const MeasureToolsLedger: React.FC = () => {
     }
   }
 
+  const removeAsset = async (asset: MaterialAssetItem) => {
+    try {
+      setSubmitLoading(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(asset.id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '删除量具失败'))
+      }
+      message.success('量具已删除')
+      loadItems()
+    } catch (error: any) {
+      message.error(error?.message || '删除量具失败')
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
   const columns = [
     {
       title: '序号',
@@ -359,12 +385,24 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '状态',
-      width: 160,
+      width: 220,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
+          {record.borrow_status !== '无' ? <Tag color={statusColorMap[record.borrow_status] || 'default'}>{record.borrow_status}</Tag> : null}
           {record.scrap_status !== '无' ? <Tag color={statusColorMap[record.scrap_status] || 'default'}>{record.scrap_status}</Tag> : null}
         </Space>
+      )
+    },
+    {
+      title: '借用信息',
+      width: 220,
+      render: (_: any, record: MaterialAssetItem) => (
+        <div>
+          <div>{record.borrower_name || '-'}</div>
+          {record.borrow_note ? <Text type="secondary">借用说明: {record.borrow_note}</Text> : null}
+          {record.borrow_return_note ? <Text type="secondary">归还说明: {record.borrow_return_note}</Text> : null}
+        </div>
       )
     },
     {
@@ -392,7 +430,7 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 220,
+      width: 280,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap>
@@ -429,6 +467,23 @@ const MeasureToolsLedger: React.FC = () => {
               </Button>
             </>
           ) : null}
+          <Button
+            type="link"
+            danger
+            disabled={submitLoading || ['借用中', '待归还确认'].includes(record.borrow_status)}
+            onClick={() => {
+              Modal.confirm({
+                title: `确认删除量具“${record.name}”吗？`,
+                content: '删除后台账记录及历史记录将一并移除，且无法恢复。',
+                okText: '确认删除',
+                okButtonProps: { danger: true },
+                cancelText: '取消',
+                onOk: () => removeAsset(record)
+              })
+            }}
+          >
+            删除
+          </Button>
         </Space>
       )
     } as never)
@@ -460,7 +515,7 @@ const MeasureToolsLedger: React.FC = () => {
         <Space wrap style={{ marginBottom: 16 }}>
           <Input
             allowClear
-            placeholder="搜索名称/编号/责任人/备注"
+            placeholder="搜索名称/编号/责任人/借用人/备注"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ width: 260 }}

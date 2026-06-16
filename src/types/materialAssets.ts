@@ -11,6 +11,14 @@ export interface MaterialAssetItem {
   asset_status: '在用' | '报废'
   scrap_status: '无' | '待报废' | '已报废'
   scrap_reason: string
+  borrower_name: string
+  borrower_user_id: string
+  borrow_status: '无' | '借用中' | '待归还确认'
+  borrow_note: string
+  borrow_return_note: string
+  borrowed_at: string | null
+  return_requested_at: string | null
+  returned_at: string | null
   remark: string
   created_by: string
   created_by_user_id: string

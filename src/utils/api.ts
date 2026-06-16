@@ -1724,8 +1724,11 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               row?.model_spec,
               row?.responsible_person,
               row?.pending_responsible_person,
+              row?.borrower_name,
               row?.remark,
-              row?.scrap_reason
+              row?.scrap_reason,
+              row?.borrow_note,
+              row?.borrow_return_note
             ].some((v) => String(v || '').toLowerCase().includes(search))
             const assetHit = !assetStatus || normTextSafe(row?.asset_status) === assetStatus
             const responsibilityHit = !responsibilityStatus || normTextSafe(row?.responsibility_status) === responsibilityStatus
@@ -1763,7 +1766,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
             )
           )
-          return jsonResponse({ success: true, ownedItems, pendingConfirmItems })
+          const borrowedItems = rows.filter((row: any) =>
+            ['借用中', '待归还确认'].includes(normTextSafe(row?.borrow_status))
+            && (
+              (actor.userId && actor.userId === normTextSafe(row?.borrower_user_id))
+              || (actor.actorName && actor.actorName === normTextSafe(row?.borrower_name))
+            )
+          )
+          return jsonResponse({ success: true, ownedItems, pendingConfirmItems, borrowedItems })
         }
 
         if (method === 'GET' && /^\/api\/material-assets\/[^/]+\/history$/.test(path)) {
@@ -1922,6 +1932,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return jsonResponse({ success: true, item: data })
         }
 
+        if (method === 'DELETE' && /^\/api\/material-assets\/[^/]+$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以删除量具' }, 403)
+          const asset = await loadAsset(assetId)
+          if (['借用中', '待归还确认'].includes(normTextSafe(asset?.borrow_status))) {
+            return jsonResponse({ success: false, error: '借用中的量具不能删除，请先完成归还流程' }, 400)
+          }
+          const { error } = await scopedClient.from('measure_tool_assets').delete().eq('id', assetId)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+
         if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/confirm-responsible$/.test(path)) {
           const matched = path.match(/^\/api\/material-assets\/([^/]+)\/confirm-responsible$/)
           const assetId = normTextSafe(matched?.[1] || '')
@@ -1966,6 +1991,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (normTextSafe(asset?.asset_status) === '报废') return jsonResponse({ success: false, error: '已报废量具不能转移责任人' }, 400)
           const target = await resolveUser(body?.target_user_id, body?.target_name)
           if (!target.realName) return jsonResponse({ success: false, error: '请选择接收责任人' }, 400)
+          if (
+            target.realName === normTextSafe(asset?.responsible_person)
+            || (target.userId && target.userId === normTextSafe(asset?.responsible_user_id))
+          ) {
+            return jsonResponse({ success: false, error: '不能转移给当前责任人本人' }, 400)
+          }
           const { data, error } = await scopedClient.from('measure_tool_assets').update({
             pending_responsible_person: target.realName,
             pending_responsible_user_id: target.userId,
@@ -1985,6 +2016,129 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             detail_json: {
               from: normTextSafe(asset?.responsible_person),
               to: target.realName
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/borrow$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/borrow$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (!canMatchActor(asset, actor, 'responsible')) return jsonResponse({ success: false, error: '仅当前责任人本人可以登记借出' }, 403)
+          if (normTextSafe(asset?.asset_status) === '报废') return jsonResponse({ success: false, error: '已报废量具不能借出' }, 400)
+          if (normTextSafe(asset?.responsibility_status) !== '已确认') return jsonResponse({ success: false, error: '责任人未确认完成前不能借出' }, 400)
+          if (normTextSafe(asset?.borrow_status) !== '无') return jsonResponse({ success: false, error: '该量具当前已有借用记录，请先完成归还流程' }, 400)
+          const target = await resolveUser(body?.borrower_user_id, body?.borrower_name)
+          if (!target.realName) return jsonResponse({ success: false, error: '请选择借用人' }, 400)
+          if (
+            target.realName === normTextSafe(asset?.responsible_person)
+            || (target.userId && target.userId === normTextSafe(asset?.responsible_user_id))
+          ) {
+            return jsonResponse({ success: false, error: '责任人本人无需借用登记' }, 400)
+          }
+          const note = normTextSafe(body?.borrow_note)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            borrower_name: target.realName,
+            borrower_user_id: target.userId,
+            borrow_status: '借用中',
+            borrow_note: note,
+            borrow_return_note: '',
+            borrowed_at: nowIso(),
+            return_requested_at: null,
+            returned_at: null,
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'borrow_register',
+            action_label: '登记借出',
+            operator_name: actor.actorName || normTextSafe(asset?.responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.responsible_user_id),
+            target_name: target.realName,
+            target_user_id: target.userId,
+            remark: note,
+            detail_json: {
+              responsible_person: normTextSafe(asset?.responsible_person),
+              borrower_name: target.realName
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/request-return$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/request-return$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.borrow_status) !== '借用中') return jsonResponse({ success: false, error: '当前量具没有可申请归还的借用记录' }, 400)
+          const isBorrower = (
+            (actor.userId && actor.userId === normTextSafe(asset?.borrower_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(asset?.borrower_name))
+          )
+          if (!isBorrower && !actor.isManager) return jsonResponse({ success: false, error: '仅借用人本人可以申请归还' }, 403)
+          const note = normTextSafe(body?.return_note)
+          if (!note) return jsonResponse({ success: false, error: '请填写归还说明' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            borrow_status: '待归还确认',
+            borrow_return_note: note,
+            return_requested_at: nowIso(),
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'request_return',
+            action_label: '申请归还',
+            operator_name: actor.actorName || normTextSafe(asset?.borrower_name),
+            operator_user_id: actor.userId || normTextSafe(asset?.borrower_user_id),
+            target_name: normTextSafe(asset?.responsible_person),
+            target_user_id: normTextSafe(asset?.responsible_user_id),
+            remark: note,
+            detail_json: {
+              borrower_name: normTextSafe(asset?.borrower_name),
+              responsible_person: normTextSafe(asset?.responsible_person)
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/confirm-return$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/confirm-return$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.borrow_status) !== '待归还确认') return jsonResponse({ success: false, error: '当前没有待确认的归还申请' }, 400)
+          if (!canMatchActor(asset, actor, 'responsible')) return jsonResponse({ success: false, error: '仅当前责任人本人可以确认归还' }, 403)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            borrower_name: '',
+            borrower_user_id: '',
+            borrow_status: '无',
+            borrow_note: '',
+            borrow_return_note: '',
+            borrowed_at: null,
+            return_requested_at: null,
+            returned_at: nowIso(),
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'confirm_return',
+            action_label: '确认归还',
+            operator_name: actor.actorName || normTextSafe(asset?.responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.responsible_user_id),
+            target_name: normTextSafe(asset?.borrower_name),
+            target_user_id: normTextSafe(asset?.borrower_user_id),
+            remark: normTextSafe(asset?.borrow_return_note),
+            detail_json: {
+              borrower_name: normTextSafe(asset?.borrower_name),
+              responsible_person: normTextSafe(asset?.responsible_person)
             }
           })
           return jsonResponse({ success: true, item: data })

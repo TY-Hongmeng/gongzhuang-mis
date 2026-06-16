@@ -22,6 +22,12 @@ const SCRAP_STATUS = {
   done: '已报废'
 } as const
 
+const BORROW_STATUS = {
+  none: '无',
+  borrowed: '借用中',
+  pendingReturn: '待归还确认'
+} as const
+
 const normText = (value: any) => String(value || '').trim()
 
 const isManagerRole = (roleName: string) => {
@@ -51,6 +57,14 @@ const ensureSchema = async () => {
       asset_status TEXT NOT NULL DEFAULT '在用',
       scrap_status TEXT NOT NULL DEFAULT '无',
       scrap_reason TEXT NOT NULL DEFAULT '',
+      borrower_name TEXT NOT NULL DEFAULT '',
+      borrower_user_id TEXT NOT NULL DEFAULT '',
+      borrow_status TEXT NOT NULL DEFAULT '无',
+      borrow_note TEXT NOT NULL DEFAULT '',
+      borrow_return_note TEXT NOT NULL DEFAULT '',
+      borrowed_at TIMESTAMPTZ NULL,
+      return_requested_at TIMESTAMPTZ NULL,
+      returned_at TIMESTAMPTZ NULL,
       remark TEXT NOT NULL DEFAULT '',
       created_by TEXT NOT NULL DEFAULT '',
       created_by_user_id TEXT NOT NULL DEFAULT '',
@@ -61,7 +75,16 @@ const ensureSchema = async () => {
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_measure_tool_assets_code_unique ON measure_tool_assets(code)`)
   await query(`CREATE INDEX IF NOT EXISTS idx_measure_tool_assets_responsible_person ON measure_tool_assets(responsible_person)`)
   await query(`CREATE INDEX IF NOT EXISTS idx_measure_tool_assets_pending_responsible_person ON measure_tool_assets(pending_responsible_person)`)
+  await query(`CREATE INDEX IF NOT EXISTS idx_measure_tool_assets_borrower_person ON measure_tool_assets(borrower_name)`)
   await query(`CREATE INDEX IF NOT EXISTS idx_measure_tool_assets_status_mix ON measure_tool_assets(asset_status, responsibility_status, scrap_status)`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrower_name TEXT NOT NULL DEFAULT ''`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrower_user_id TEXT NOT NULL DEFAULT ''`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrow_status TEXT NOT NULL DEFAULT '无'`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrow_note TEXT NOT NULL DEFAULT ''`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrow_return_note TEXT NOT NULL DEFAULT ''`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrowed_at TIMESTAMPTZ NULL`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMPTZ NULL`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS returned_at TIMESTAMPTZ NULL`)
   await query(`
     CREATE TABLE IF NOT EXISTS measure_tool_asset_histories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -354,10 +377,22 @@ router.get('/mine', async (req, res) => {
       ORDER BY updated_at DESC, created_at DESC
     `, [actor.userId, actor.actorName, RESPONSIBILITY_STATUS.pending, RESPONSIBILITY_STATUS.transferPending])
 
+    const borrowedRs = await query(`
+      SELECT *
+      FROM measure_tool_assets
+      WHERE borrow_status IN ($3, $4)
+        AND (
+          ($1 <> '' AND borrower_user_id = $1)
+          OR ($2 <> '' AND borrower_name = $2)
+        )
+      ORDER BY updated_at DESC, created_at DESC
+    `, [actor.userId, actor.actorName, BORROW_STATUS.borrowed, BORROW_STATUS.pendingReturn])
+
     res.json({
       success: true,
       ownedItems: ownedRs.rows || [],
-      pendingConfirmItems: pendingRs.rows || []
+      pendingConfirmItems: pendingRs.rows || [],
+      borrowedItems: borrowedRs.rows || []
     })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载我的量具失败' })
@@ -636,6 +671,30 @@ router.put('/:id', async (req, res) => {
   }
 })
 
+router.delete('/:id', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    if (!actor.isManager) {
+      return res.status(403).json({ success: false, error: '仅库管或超级管理员可以删除量具' })
+    }
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if ([BORROW_STATUS.borrowed, BORROW_STATUS.pendingReturn].includes(normText(asset.borrow_status) as any)) {
+      return res.status(400).json({ success: false, error: '借用中的量具不能删除，请先完成归还流程' })
+    }
+
+    await transaction(async (client) => {
+      await client.query('DELETE FROM measure_tool_assets WHERE id = $1', [assetId])
+    })
+
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '删除量具失败' })
+  }
+})
+
 router.post('/:id/confirm-responsible', async (req, res) => {
   try {
     await ensureSchema()
@@ -890,6 +949,186 @@ router.post('/:id/scrap-request', async (req, res) => {
     res.json({ success: true, item: updated })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '申请报废失败' })
+  }
+})
+
+router.post('/:id/borrow', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (!canMatchActor(asset, actor, 'responsible')) {
+      return res.status(403).json({ success: false, error: '仅当前责任人本人可以登记借出' })
+    }
+    if (normText(asset.asset_status) === ASSET_STATUS.scrapped) {
+      return res.status(400).json({ success: false, error: '已报废量具不能借出' })
+    }
+    if (normText(asset.responsibility_status) !== RESPONSIBILITY_STATUS.confirmed) {
+      return res.status(400).json({ success: false, error: '责任人未确认完成前不能借出' })
+    }
+    if (normText(asset.borrow_status) !== BORROW_STATUS.none) {
+      return res.status(400).json({ success: false, error: '该量具当前已有借用记录，请先完成归还流程' })
+    }
+
+    const target = await resolveUserByIdentity(req.body?.borrower_user_id, req.body?.borrower_name)
+    if (!target.realName) {
+      return res.status(400).json({ success: false, error: '请选择借用人' })
+    }
+    if (
+      target.realName === normText(asset.responsible_person)
+      || (target.userId && target.userId === normText(asset.responsible_user_id))
+    ) {
+      return res.status(400).json({ success: false, error: '责任人本人无需借用登记' })
+    }
+    const note = normText(req.body?.borrow_note)
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          borrower_name = $2,
+          borrower_user_id = $3,
+          borrow_status = $4,
+          borrow_note = $5,
+          borrow_return_note = '',
+          borrowed_at = NOW(),
+          return_requested_at = NULL,
+          returned_at = NULL,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, target.realName, target.userId, BORROW_STATUS.borrowed, note])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'borrow_register',
+        actionLabel: '登记借出',
+        operatorName: actor.actorName || normText(asset.responsible_person),
+        operatorUserId: actor.userId || normText(asset.responsible_user_id),
+        targetName: target.realName,
+        targetUserId: target.userId,
+        remark: note,
+        detail: {
+          responsible_person: normText(asset.responsible_person),
+          borrower_name: target.realName
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '登记借出失败' })
+  }
+})
+
+router.post('/:id/request-return', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (normText(asset.borrow_status) !== BORROW_STATUS.borrowed) {
+      return res.status(400).json({ success: false, error: '当前量具没有可申请归还的借用记录' })
+    }
+    const matchedBorrower = (
+      (actor.userId && actor.userId === normText(asset.borrower_user_id))
+      || (actor.actorName && actor.actorName === normText(asset.borrower_name))
+    )
+    if (!matchedBorrower && !actor.isManager) {
+      return res.status(403).json({ success: false, error: '仅借用人本人可以申请归还' })
+    }
+    const note = normText(req.body?.return_note)
+    if (!note) {
+      return res.status(400).json({ success: false, error: '请填写归还说明' })
+    }
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          borrow_status = $2,
+          borrow_return_note = $3,
+          return_requested_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, BORROW_STATUS.pendingReturn, note])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'request_return',
+        actionLabel: '申请归还',
+        operatorName: actor.actorName || normText(asset.borrower_name),
+        operatorUserId: actor.userId || normText(asset.borrower_user_id),
+        targetName: normText(asset.responsible_person),
+        targetUserId: normText(asset.responsible_user_id),
+        remark: note,
+        detail: {
+          borrower_name: normText(asset.borrower_name),
+          responsible_person: normText(asset.responsible_person)
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '申请归还失败' })
+  }
+})
+
+router.post('/:id/confirm-return', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (normText(asset.borrow_status) !== BORROW_STATUS.pendingReturn) {
+      return res.status(400).json({ success: false, error: '当前没有待确认的归还申请' })
+    }
+    if (!canMatchActor(asset, actor, 'responsible')) {
+      return res.status(403).json({ success: false, error: '仅当前责任人本人可以确认归还' })
+    }
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          borrower_name = '',
+          borrower_user_id = '',
+          borrow_status = $2,
+          borrow_note = '',
+          borrow_return_note = '',
+          borrowed_at = NULL,
+          return_requested_at = NULL,
+          returned_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, BORROW_STATUS.none])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'confirm_return',
+        actionLabel: '确认归还',
+        operatorName: actor.actorName || normText(asset.responsible_person),
+        operatorUserId: actor.userId || normText(asset.responsible_user_id),
+        targetName: normText(asset.borrower_name),
+        targetUserId: normText(asset.borrower_user_id),
+        remark: normText(asset.borrow_return_note),
+        detail: {
+          borrower_name: normText(asset.borrower_name),
+          responsible_person: normText(asset.responsible_person)
+        }
+      })
+      return row
+    })
+
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '确认归还失败' })
   }
 })
 
