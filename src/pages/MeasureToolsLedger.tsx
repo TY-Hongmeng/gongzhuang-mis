@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  AutoComplete,
   Button,
   Card,
   Descriptions,
@@ -98,7 +99,9 @@ const MeasureToolsLedger: React.FC = () => {
     try {
       const res = await fetchWithFallback('/api/users')
       const json = await res.json().catch(() => ({}))
-      const list = Array.isArray(json?.items) ? json.items : []
+      const list = Array.isArray(json?.items)
+        ? json.items
+        : (Array.isArray(json?.users) ? json.users : [])
       setUsers(
         list
           .filter((item: any) => String(item?.status || '') === 'active' && String(item?.real_name || '').trim())
@@ -141,13 +144,17 @@ const MeasureToolsLedger: React.FC = () => {
   const handleCreate = async (values: any) => {
     try {
       setSubmitLoading(true)
-      const selectedUser = users.find((item) => item.id === String(values.responsible_user_id || ''))
+      const responsiblePerson = String(values.responsible_person || '').trim()
+      const selectedUser = users.find((item) =>
+        item.id === String(values.responsible_user_id || '')
+        || item.real_name === responsiblePerson
+      )
       const payload = {
         name: String(values.name || '').trim(),
         code: String(values.code || '').trim(),
         model_spec: String(values.model_spec || '').trim(),
-        responsible_person: String(selectedUser?.real_name || values.responsible_person || '').trim(),
-        responsible_user_id: String(values.responsible_user_id || ''),
+        responsible_person: String(selectedUser?.real_name || responsiblePerson).trim(),
+        responsible_user_id: String(selectedUser?.id || values.responsible_user_id || ''),
         asset_status: String(values.asset_status || '在用'),
         remark: String(values.remark || '').trim(),
         scrap_reason: String(values.scrap_reason || '').trim(),
@@ -171,6 +178,12 @@ const MeasureToolsLedger: React.FC = () => {
       message.error(error?.message || '新增量具失败')
     } finally {
       setSubmitLoading(false)
+    }
+  }
+
+  const handleCreateFailed = ({ errorFields }: any) => {
+    if (Array.isArray(errorFields) && errorFields.length > 0) {
+      message.warning(String(errorFields[0]?.errors?.[0] || '请先完善必填项'))
     }
   }
 
@@ -514,6 +527,7 @@ const MeasureToolsLedger: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleCreate}
+          onFinishFailed={handleCreateFailed}
           initialValues={{ asset_status: '在用' }}
         >
           <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
@@ -525,15 +539,30 @@ const MeasureToolsLedger: React.FC = () => {
           <Form.Item label="型号规格" name="model_spec">
             <Input />
           </Form.Item>
-          <Form.Item label="责任人" name="responsible_user_id" rules={[{ required: true, message: '请选择责任人' }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
+          <Form.Item label="责任人" name="responsible_person" rules={[{ required: true, message: '请输入或选择责任人' }]}>
+            <AutoComplete
+              allowClear
+              placeholder="可输入姓名，或从联想列表中选择"
               options={users.map((item) => ({
-                value: item.id,
-                label: item.real_name
+                value: item.real_name,
+                label: item.real_name,
+                userId: item.id
               }))}
+              filterOption={(inputValue, option) =>
+                String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())
+              }
+              onSelect={(_value, option: any) => {
+                form.setFieldValue('responsible_user_id', String(option?.userId || ''))
+              }}
+              onChange={(value) => {
+                const normalized = String(value || '').trim()
+                const matchedUser = users.find((item) => item.real_name === normalized)
+                form.setFieldValue('responsible_user_id', String(matchedUser?.id || ''))
+              }}
             />
+          </Form.Item>
+          <Form.Item name="responsible_user_id" hidden>
+            <Input />
           </Form.Item>
           <Form.Item label="状态" name="asset_status">
             <Select
