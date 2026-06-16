@@ -1616,6 +1616,537 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
       }
 
+      // Material assets
+      if (path.startsWith('/api/material-assets')) {
+        const normTextSafe = (v: any) => String(v || '').trim()
+        const nowIso = () => new Date().toISOString()
+        const isManagerRole = (roleName: string) => {
+          const normalized = normTextSafe(roleName)
+          return normalized.includes('超级管理员')
+            || normalized.includes('库管')
+            || normalized.includes('仓管')
+            || normalized.includes('库房')
+        }
+        const getActor = async (userIdInput?: any, operatorInput?: any) => {
+          const userId = normTextSafe(userIdInput)
+          const operator = normTextSafe(operatorInput)
+          let userRow: any = null
+          if (userId) {
+            const { data } = await supabase.from('users').select('id, real_name, role_id').eq('id', userId).limit(1)
+            userRow = (data || [])[0] || null
+          } else if (operator) {
+            const { data } = await supabase.from('users').select('id, real_name, role_id').eq('real_name', operator).limit(1)
+            userRow = (data || [])[0] || null
+          }
+          let roleName = ''
+          if (userRow?.role_id) {
+            const { data: roleRows } = await supabase.from('roles').select('name').eq('id', String(userRow.role_id)).limit(1)
+            roleName = String((roleRows || [])[0]?.name || '')
+          }
+          return {
+            userId: normTextSafe(userRow?.id || userId),
+            actorName: normTextSafe(userRow?.real_name || operator),
+            roleName,
+            isManager: isManagerRole(roleName)
+          }
+        }
+        const resolveUser = async (userIdInput?: any, userNameInput?: any) => {
+          const userId = normTextSafe(userIdInput)
+          const userName = normTextSafe(userNameInput)
+          if (userId) {
+            const { data } = await supabase.from('users').select('id, real_name').eq('id', userId).limit(1)
+            const row = (data || [])[0]
+            if (row) {
+              return {
+                userId: normTextSafe((row as any).id),
+                realName: normTextSafe((row as any).real_name)
+              }
+            }
+          }
+          if (userName) {
+            const { data } = await supabase.from('users').select('id, real_name').eq('real_name', userName).limit(1)
+            const row = (data || [])[0]
+            if (row) {
+              return {
+                userId: normTextSafe((row as any).id),
+                realName: normTextSafe((row as any).real_name)
+              }
+            }
+          }
+          return { userId, realName: userName }
+        }
+        const insertHistory = async (payload: any) => {
+          const { error } = await scopedClient.from('measure_tool_asset_histories').insert(payload)
+          if (error) throw error
+        }
+        const loadAsset = async (assetId: string) => {
+          const { data, error } = await scopedClient.from('measure_tool_assets').select('*').eq('id', assetId).single()
+          if (error) throw error
+          return data
+        }
+        const canMatchActor = (asset: any, actor: any, fieldName: 'responsible' | 'pending') => {
+          if (actor.isManager) return true
+          if (fieldName === 'responsible') {
+            return (
+              (actor.userId && actor.userId === normTextSafe(asset?.responsible_user_id))
+              || (actor.actorName && actor.actorName === normTextSafe(asset?.responsible_person))
+            )
+          }
+          return (
+            (actor.userId && actor.userId === normTextSafe(asset?.pending_responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(asset?.pending_responsible_person))
+          )
+        }
+
+        if (method === 'GET' && path === '/api/material-assets/ledger') {
+          const qs = getQuery(cleanUrl)
+          const search = normTextSafe(qs.get('search') || '').toLowerCase()
+          const assetStatus = normTextSafe(qs.get('assetStatus') || '')
+          const responsibilityStatus = normTextSafe(qs.get('responsibilityStatus') || '')
+          const scrapStatus = normTextSafe(qs.get('scrapStatus') || '')
+          const page = Math.max(Number(qs.get('page') || '1') || 1, 1)
+          const pageSize = Math.max(Number(qs.get('pageSize') || '200') || 200, 1)
+          const [assetsRes, historiesRes] = await Promise.all([
+            scopedClient.from('measure_tool_assets').select('*').order('updated_at', { ascending: false }).order('created_at', { ascending: false }),
+            scopedClient.from('measure_tool_asset_histories').select('asset_id')
+          ])
+          if (assetsRes.error) return jsonResponse({ success: false, error: assetsRes.error.message }, 500)
+          if (historiesRes.error) return jsonResponse({ success: false, error: historiesRes.error.message }, 500)
+          const historyCountMap = new Map<string, number>()
+          ;(historiesRes.data || []).forEach((row: any) => {
+            const key = normTextSafe(row?.asset_id)
+            historyCountMap.set(key, Number(historyCountMap.get(key) || 0) + 1)
+          })
+          let items = (assetsRes.data || []).filter((row: any) => {
+            const textHit = !search || [
+              row?.name,
+              row?.code,
+              row?.model_spec,
+              row?.responsible_person,
+              row?.pending_responsible_person,
+              row?.remark,
+              row?.scrap_reason
+            ].some((v) => String(v || '').toLowerCase().includes(search))
+            const assetHit = !assetStatus || normTextSafe(row?.asset_status) === assetStatus
+            const responsibilityHit = !responsibilityStatus || normTextSafe(row?.responsibility_status) === responsibilityStatus
+            const scrapHit = !scrapStatus || normTextSafe(row?.scrap_status) === scrapStatus
+            return textHit && assetHit && responsibilityHit && scrapHit
+          }).map((row: any) => ({
+            ...row,
+            history_count: Number(historyCountMap.get(normTextSafe(row?.id)) || 0)
+          }))
+          const total = items.length
+          const start = (page - 1) * pageSize
+          items = items.slice(start, start + pageSize)
+          return jsonResponse({ success: true, items, total, page, pageSize })
+        }
+
+        if (method === 'GET' && path === '/api/material-assets/mine') {
+          const qs = getQuery(cleanUrl)
+          const actor = await getActor(qs.get('userId') || '', qs.get('operator') || '')
+          if (!actor.userId && !actor.actorName) return jsonResponse({ success: false, error: '缺少当前用户信息' }, 400)
+          const { data, error } = await scopedClient
+            .from('measure_tool_assets')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const rows = data || []
+          const ownedItems = rows.filter((row: any) =>
+            (actor.userId && actor.userId === normTextSafe(row?.responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.responsible_person))
+          )
+          const pendingConfirmItems = rows.filter((row: any) =>
+            ['待确认', '待转移确认'].includes(normTextSafe(row?.responsibility_status))
+            && (
+              (actor.userId && actor.userId === normTextSafe(row?.pending_responsible_user_id))
+              || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
+            )
+          )
+          return jsonResponse({ success: true, ownedItems, pendingConfirmItems })
+        }
+
+        if (method === 'GET' && /^\/api\/material-assets\/[^/]+\/history$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/history$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const { data, error } = await scopedClient
+            .from('measure_tool_asset_histories')
+            .select('*')
+            .eq('asset_id', assetId)
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, items: data || [] })
+        }
+
+        if (method === 'POST' && path === '/api/material-assets') {
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以新增量具' }, 403)
+          const name = normTextSafe(body?.name)
+          const code = normTextSafe(body?.code)
+          const modelSpec = normTextSafe(body?.model_spec)
+          const responsibleInput = normTextSafe(body?.responsible_person)
+          const remark = normTextSafe(body?.remark)
+          const assetStatus = normTextSafe(body?.asset_status) === '报废' ? '报废' : '在用'
+          if (!name || !code || !responsibleInput) return jsonResponse({ success: false, error: '名称、编号、责任人不能为空' }, 400)
+          const resolvedUser = await resolveUser(body?.responsible_user_id, responsibleInput)
+          const payload = {
+            name,
+            code,
+            model_spec: modelSpec,
+            responsible_person: '',
+            responsible_user_id: '',
+            pending_responsible_person: resolvedUser.realName || responsibleInput,
+            pending_responsible_user_id: resolvedUser.userId,
+            responsibility_status: '待确认',
+            asset_status: assetStatus,
+            scrap_status: assetStatus === '报废' ? '已报废' : '无',
+            scrap_reason: assetStatus === '报废' ? normTextSafe(body?.scrap_reason || body?.remark) : '',
+            remark,
+            created_by: actor.actorName,
+            created_by_user_id: actor.userId
+          }
+          const { data, error } = await scopedClient.from('measure_tool_assets').insert(payload).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: data.id,
+            action_type: 'create',
+            action_label: '新增量具',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            target_name: resolvedUser.realName || responsibleInput,
+            target_user_id: resolvedUser.userId,
+            remark,
+            detail_json: {
+              name,
+              code,
+              model_spec: modelSpec,
+              asset_status: assetStatus
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && path === '/api/material-assets/batch-import') {
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以导入量具' }, 403)
+          const items = Array.isArray(body?.items) ? body.items : []
+          if (!items.length) return jsonResponse({ success: false, error: '缺少导入数据' }, 400)
+          const payload: any[] = []
+          for (const raw of items) {
+            const name = normTextSafe(raw?.name)
+            const code = normTextSafe(raw?.code)
+            const modelSpec = normTextSafe(raw?.model_spec)
+            const responsibleInput = normTextSafe(raw?.responsible_person)
+            const remark = normTextSafe(raw?.remark)
+            const assetStatus = normTextSafe(raw?.asset_status) === '报废' ? '报废' : '在用'
+            if (!name || !code || !responsibleInput) {
+              return jsonResponse({ success: false, error: `编号 ${code || '-'} 的名称、编号、责任人不能为空` }, 400)
+            }
+            const resolvedUser = await resolveUser(raw?.responsible_user_id, responsibleInput)
+            payload.push({
+              name,
+              code,
+              model_spec: modelSpec,
+              responsible_person: '',
+              responsible_user_id: '',
+              pending_responsible_person: resolvedUser.realName || responsibleInput,
+              pending_responsible_user_id: resolvedUser.userId,
+              responsibility_status: '待确认',
+              asset_status: assetStatus,
+              scrap_status: assetStatus === '报废' ? '已报废' : '无',
+              scrap_reason: assetStatus === '报废' ? normTextSafe(raw?.scrap_reason || raw?.remark) : '',
+              remark,
+              created_by: actor.actorName,
+              created_by_user_id: actor.userId
+            })
+          }
+          const { data, error } = await scopedClient.from('measure_tool_assets').insert(payload).select('*')
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          for (const row of (data || [])) {
+            await insertHistory({
+              asset_id: row.id,
+              action_type: 'import',
+              action_label: 'Excel导入',
+              operator_name: actor.actorName,
+              operator_user_id: actor.userId,
+              target_name: normTextSafe(row.pending_responsible_person),
+              target_user_id: normTextSafe(row.pending_responsible_user_id),
+              remark: normTextSafe(row.remark),
+              detail_json: {
+                name: normTextSafe(row.name),
+                code: normTextSafe(row.code),
+                model_spec: normTextSafe(row.model_spec),
+                asset_status: normTextSafe(row.asset_status)
+              }
+            })
+          }
+          return jsonResponse({ success: true, items: data || [], count: (data || []).length })
+        }
+
+        if (method === 'PUT' && /^\/api\/material-assets\/[^/]+$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以编辑量具基础信息' }, 403)
+          const existing = await loadAsset(assetId)
+          const payload = {
+            name: normTextSafe(body?.name),
+            code: normTextSafe(body?.code),
+            model_spec: normTextSafe(body?.model_spec),
+            remark: normTextSafe(body?.remark),
+            updated_at: nowIso()
+          }
+          if (!payload.name || !payload.code) return jsonResponse({ success: false, error: '名称、编号不能为空' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update(payload).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'edit_basic_info',
+            action_label: '编辑基础信息',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            remark: payload.remark,
+            detail_json: {
+              before: {
+                name: normTextSafe(existing?.name),
+                code: normTextSafe(existing?.code),
+                model_spec: normTextSafe(existing?.model_spec),
+                remark: normTextSafe(existing?.remark)
+              },
+              after: payload
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/confirm-responsible$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/confirm-responsible$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (!normTextSafe(asset?.pending_responsible_person)) return jsonResponse({ success: false, error: '当前没有待确认责任人' }, 400)
+          if (!canMatchActor(asset, actor, 'pending')) return jsonResponse({ success: false, error: '仅待确认责任人本人可以确认' }, 403)
+          const updatePayload = {
+            responsible_person: normTextSafe(asset?.pending_responsible_person) || actor.actorName,
+            responsible_user_id: normTextSafe(asset?.pending_responsible_user_id) || actor.userId,
+            pending_responsible_person: '',
+            pending_responsible_user_id: '',
+            responsibility_status: '已确认',
+            updated_at: nowIso()
+          }
+          const { data, error } = await scopedClient.from('measure_tool_assets').update(updatePayload).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'confirm_responsible',
+            action_label: '确认责任人',
+            operator_name: actor.actorName || updatePayload.responsible_person,
+            operator_user_id: actor.userId || updatePayload.responsible_user_id,
+            target_name: updatePayload.responsible_person,
+            target_user_id: updatePayload.responsible_user_id,
+            detail_json: {
+              previous_responsible_person: normTextSafe(asset?.responsible_person),
+              confirmed_responsible_person: updatePayload.responsible_person
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/transfer$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/transfer$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (!canMatchActor(asset, actor, 'responsible')) return jsonResponse({ success: false, error: '仅当前责任人本人可以发起转移' }, 403)
+          if (normTextSafe(asset?.asset_status) === '报废') return jsonResponse({ success: false, error: '已报废量具不能转移责任人' }, 400)
+          const target = await resolveUser(body?.target_user_id, body?.target_name)
+          if (!target.realName) return jsonResponse({ success: false, error: '请选择接收责任人' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            pending_responsible_person: target.realName,
+            pending_responsible_user_id: target.userId,
+            responsibility_status: '待转移确认',
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'transfer_responsible',
+            action_label: '发起责任人转移',
+            operator_name: actor.actorName || normTextSafe(asset?.responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.responsible_user_id),
+            target_name: target.realName,
+            target_user_id: target.userId,
+            remark: normTextSafe(body?.remark),
+            detail_json: {
+              from: normTextSafe(asset?.responsible_person),
+              to: target.realName
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/cancel-transfer$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/cancel-transfer$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.responsibility_status) !== '待转移确认') return jsonResponse({ success: false, error: '当前没有可撤销的转移申请' }, 400)
+          if (!canMatchActor(asset, actor, 'responsible')) return jsonResponse({ success: false, error: '仅当前责任人本人可以撤销转移' }, 403)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            pending_responsible_person: '',
+            pending_responsible_user_id: '',
+            responsibility_status: '已确认',
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'cancel_transfer',
+            action_label: '撤销责任人转移',
+            operator_name: actor.actorName || normTextSafe(asset?.responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.responsible_user_id),
+            target_name: normTextSafe(asset?.pending_responsible_person),
+            target_user_id: normTextSafe(asset?.pending_responsible_user_id),
+            detail_json: {
+              canceled_target: normTextSafe(asset?.pending_responsible_person)
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/reject-transfer$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/reject-transfer$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.responsibility_status) !== '待转移确认') return jsonResponse({ success: false, error: '当前没有待拒绝的责任人转移' }, 400)
+          if (!canMatchActor(asset, actor, 'pending')) return jsonResponse({ success: false, error: '仅待接收责任人本人可以拒绝接收' }, 403)
+          const reason = normTextSafe(body?.reason)
+          if (!reason) return jsonResponse({ success: false, error: '请填写拒绝原因' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            pending_responsible_person: '',
+            pending_responsible_user_id: '',
+            responsibility_status: '已确认',
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'reject_transfer',
+            action_label: '拒绝接收责任人',
+            operator_name: actor.actorName || normTextSafe(asset?.pending_responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.pending_responsible_user_id),
+            target_name: normTextSafe(asset?.responsible_person),
+            target_user_id: normTextSafe(asset?.responsible_user_id),
+            remark: reason,
+            detail_json: {
+              rejected_target: normTextSafe(asset?.pending_responsible_person),
+              reverted_to: normTextSafe(asset?.responsible_person),
+              reason
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/scrap-request$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/scrap-request$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          if (!canMatchActor(asset, actor, 'responsible')) return jsonResponse({ success: false, error: '仅当前责任人本人可以申请报废' }, 403)
+          if (normTextSafe(asset?.asset_status) === '报废') return jsonResponse({ success: false, error: '该量具已报废' }, 400)
+          const reason = normTextSafe(body?.reason)
+          if (!reason) return jsonResponse({ success: false, error: '请填写报废原因' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            scrap_status: '待报废',
+            scrap_reason: reason,
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'scrap_request',
+            action_label: '申请报废',
+            operator_name: actor.actorName || normTextSafe(asset?.responsible_person),
+            operator_user_id: actor.userId || normTextSafe(asset?.responsible_user_id),
+            remark: reason,
+            detail_json: {
+              reason
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/approve-scrap$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/approve-scrap$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以确认报废' }, 403)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.scrap_status) !== '待报废') return jsonResponse({ success: false, error: '当前没有待确认的报废申请' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            asset_status: '报废',
+            scrap_status: '已报废',
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'approve_scrap',
+            action_label: '确认报废',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            remark: normTextSafe(asset?.scrap_reason),
+            detail_json: {
+              reason: normTextSafe(asset?.scrap_reason)
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'POST' && /^\/api\/material-assets\/[^/]+\/reject-scrap$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/reject-scrap$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以驳回报废申请' }, 403)
+          const asset = await loadAsset(assetId)
+          if (normTextSafe(asset?.scrap_status) !== '待报废') return jsonResponse({ success: false, error: '当前没有待驳回的报废申请' }, 400)
+          const reason = normTextSafe(body?.reason)
+          if (!reason) return jsonResponse({ success: false, error: '请填写驳回原因' }, 400)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            scrap_status: '无',
+            scrap_reason: '',
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'reject_scrap',
+            action_label: '驳回报废申请',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            target_name: normTextSafe(asset?.responsible_person),
+            target_user_id: normTextSafe(asset?.responsible_user_id),
+            remark: reason,
+            detail_json: {
+              original_reason: normTextSafe(asset?.scrap_reason),
+              reject_reason: reason
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+      }
+
       // Manual purchase plans (临时计划)
       if (path.startsWith('/api/manual-plans')) {
         if (method === 'GET') {
