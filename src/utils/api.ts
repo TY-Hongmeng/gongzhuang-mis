@@ -2376,6 +2376,54 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
+
+        // ========== 临时计划分组 API ==========
+        if (method === 'GET' && path === '/api/temporary-plan-groups') {
+          const { data, error } = await supabase
+            .from('temporary_plan_groups')
+            .select('*')
+            .order('created_at', { ascending: true })
+          if (error) {
+            console.error('Error fetching temporary_plan_groups:', error)
+            return jsonResponse({ data: [] })
+          }
+          return jsonResponse({ data: data || [] })
+        }
+        if (method === 'POST' && path === '/api/temporary-plan-groups') {
+          const body = await readBody()
+          const payload: any = {
+            code: String(body.code || ''),
+            month_key: String(body.month_key || ''),
+            items: body.items || [],
+            created_by: String(body.created_by || ''),
+            created_at: new Date().toISOString()
+          }
+          const { data, error } = await supabase
+            .from('temporary_plan_groups')
+            .insert(payload)
+            .select('*')
+            .single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true, data })
+        }
+        if (method === 'POST' && path === '/api/temporary-plan-groups/batch-delete') {
+          const body = await readBody()
+          const ids: string[] = Array.isArray(body?.ids) ? body.ids : []
+          if (!ids.length) return jsonResponse({ success: false, error: '缺少ids' }, 400)
+          const { error } = await supabase.from('temporary_plan_groups').delete().in('id', ids)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
+        const tpg = path.match(/^\/api\/temporary-plan-groups\/([^\/]+)$/)
+        if (tpg && method === 'PUT') {
+          const id = tpg[1]
+          const body = await readBody()
+          const updateData: any = { updated_at: new Date().toISOString() }
+          if (body.items !== undefined) updateData.items = body.items
+          const { error } = await supabase.from('temporary_plan_groups').update(updateData).eq('id', id)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          return jsonResponse({ success: true })
+        }
       }
 
     }

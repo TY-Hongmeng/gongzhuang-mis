@@ -30,12 +30,43 @@ interface TempItem {
 interface TempGroup {
   code: string
   monthKey: string
+  month_key?: string
+  id?: string
   createdAt: string
+  created_at?: string
   items: TempItem[]
 }
 
 const readPlans = (): TempGroup[] => {
   try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] }
+}
+
+// 从数据库读取临时计划（优先），失败则回退到 localStorage
+const fetchPlansFromDB = async (): Promise<TempGroup[]> => {
+  try {
+    const res = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
+    if (res.ok) {
+      const json = await res.json()
+      const dbData = json.data || []
+      // 将数据库字段映射为前端格式
+      return dbData.map((g: any) => ({
+        code: g.code || '',
+        monthKey: g.month_key || g.monthKey || '',
+        month_key: g.month_key || '',
+        id: g.id,
+        createdAt: g.created_at || g.createdAt || '',
+        items: (g.items || []).map((it: any) => ({
+          ...it,
+          purchaser: it.purchaser || '',
+          arrival_date: it.arrival_date || '',
+          standard_inbound_done: it.standard_inbound_done || false
+        }))
+      }))
+    }
+  } catch (e) {
+    console.error('从数据库读取临时计划失败:', e)
+  }
+  return readPlans()
 }
 
 const resolveInboundLocationByGroup = (rawGroup: string) => {
@@ -75,8 +106,12 @@ export default function TemporaryPlans() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
 
+  // 初始化和刷新时从数据库读取
   useEffect(() => {
-    const handler = () => setGroups(readPlans())
+    fetchPlansFromDB().then(data => {
+      if (data.length > 0) setGroups(data)
+    })
+    const handler = () => fetchPlansFromDB().then(data => { if (data.length > 0) setGroups(data) })
     window.addEventListener('storage', handler)
     window.addEventListener('temporary_plans_updated', handler as any)
     return () => {
@@ -95,10 +130,16 @@ export default function TemporaryPlans() {
       const next = prev.map(g => {
         if (g.code !== code) return g
         const items = g.items.map(it => it.id === origId ? { ...it, purchaser: value } : it)
+        // 同步到数据库
+        if (g.id) {
+          fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ items })
+          }).catch(e => console.error('同步采购员失败:', e))
+        }
         return { ...g, items }
       })
       localStorage.setItem('temporary_plans', JSON.stringify(next))
-      // 状态：采购中
       const group = next.find(g => g.code === code)
       const item = group?.items.find(it => it.id === origId)
       const pid = (item as any)?.part_id
@@ -116,6 +157,13 @@ export default function TemporaryPlans() {
       const next = prev.map(g => {
         if (g.code !== code) return g
         const items = g.items.map(it => it.id === origId ? { ...it, arrival_date: checked ? dayjs().format('YYYY-MM-DD') : '' } : it)
+        // 同步到数据库
+        if (g.id) {
+          fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ items })
+          }).catch(e => console.error('同步到货状态失败:', e))
+        }
         return { ...g, items }
       })
       localStorage.setItem('temporary_plans', JSON.stringify(next))
@@ -238,6 +286,13 @@ export default function TemporaryPlans() {
               standard_inbound_ref_sig: inboundRefSig
             }
           })
+          // 同步到数据库
+          if (g.id) {
+            fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
+              method: 'PUT',
+              body: JSON.stringify({ items })
+            }).catch(e => console.error('同步入库状态失败:', e))
+          }
           return { ...g, items }
         })
         localStorage.setItem('temporary_plans', JSON.stringify(next))
@@ -257,19 +312,25 @@ export default function TemporaryPlans() {
       <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
         <Space>
-          <Button onClick={() => {
+          <Button onClick={async () => {
             if (selectedRowKeys.length === 0) { message.warning('请选择需要回退的项'); return }
+            // 先收集要删除的分组ID（如果某分组所有项都被选中，则删除整个分组）
+            const keys = selectedRowKeys.map(k => String(k))
+            const groupsToDelete: string[] = []
             setGroups(prev => {
-              const keys = selectedRowKeys.map(k => String(k))
               const next = prev.map(g => ({
                 ...g,
                 items: g.items.filter(it => !keys.includes(`${g.code}:${it.id}`))
-              })).filter(g => g.items.length > 0)
+              })).filter(g => {
+                if (g.items.length === 0) {
+                  if (g.id) groupsToDelete.push(g.id)
+                  return false
+                }
+                return true
+              })
               localStorage.setItem('temporary_plans', JSON.stringify(next))
-              // 取消隐藏并恢复状态
               const hiddenArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_ids') || '[]') } catch { return [] } })()
               const hidden = new Set<string>(Array.isArray(hiddenArr) ? hiddenArr : [])
-              // 同时处理手动/备份来源
               const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
               const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
               const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
@@ -296,6 +357,17 @@ export default function TemporaryPlans() {
               return next
             })
             setSelectedRowKeys([])
+            // 同步删除数据库中的空分组
+            if (groupsToDelete.length > 0) {
+              try {
+                await fetchWithFallback('/api/temporary-plan-groups/batch-delete', {
+                  method: 'POST',
+                  body: JSON.stringify({ ids: groupsToDelete })
+                })
+              } catch (e) {
+                console.error('删除数据库临时计划失败:', e)
+              }
+            }
           }}>回退</Button>
         </Space>
       </div>

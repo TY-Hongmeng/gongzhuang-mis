@@ -858,7 +858,7 @@ export default function PurchaseOrdersList() {
             }}>导出审批计划</Button>
             <Button
               type="primary"
-              onClick={() => {
+              onClick={async () => {
                 if (selectedRowKeys.length === 0) {
                   message.warning('请选择要生成临时计划的采购单')
                   return
@@ -874,10 +874,22 @@ export default function PurchaseOrdersList() {
                   monthGroups[key] = monthGroups[key] || []
                   monthGroups[key].push(item)
                 })
-                const existing: any[] = (() => { try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] } })()
-                const newGroups: any[] = []
-                Object.keys(monthGroups).forEach(key => {
-                  const seq = existing.filter(g => g.monthKey === key).length + 1
+                // 从数据库获取已有分组，计算序号
+                let existingGroups: any[] = []
+                try {
+                  const res = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
+                  if (res.ok) {
+                    const json = await res.json()
+                    existingGroups = json.data || []
+                  }
+                } catch (e) { /* 兜底用localStorage */ }
+                if (existingGroups.length === 0) {
+                  try { existingGroups = JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { existingGroups = [] }
+                }
+
+                const newGroupCodes: string[] = []
+                for (const key of Object.keys(monthGroups)) {
+                  const seq = existingGroups.filter((g: any) => g.month_key === key).length + 1
                   const code = key + String(seq).padStart(2, '0')
                   const items = monthGroups[key].map(it => ({
                     id: it.id,
@@ -894,14 +906,50 @@ export default function PurchaseOrdersList() {
                     part_id: (it as any).part_id,
                     child_item_id: (it as any).child_item_id
                   }))
-                  newGroups.push({ code, monthKey: key, createdAt: new Date().toISOString(), items })
+                  // 写入数据库
+                  try {
+                    await fetchWithFallback('/api/temporary-plan-groups', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        code,
+                        month_key: key,
+                        items,
+                        created_by: user?.real_name || user?.username || ''
+                      })
+                    })
+                  } catch (e) {
+                    console.error('写入临时计划失败:', e)
+                  }
+                  newGroupCodes.push(code)
+                }
+                // 同时写入 localStorage 作为本地缓存（兼容离线场景）
+                const localExisting: any[] = (() => { try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] } })()
+                const newLocalGroups: any[] = []
+                Object.keys(monthGroups).forEach(key => {
+                  const seq = localExisting.filter(g => g.monthKey === key).length + 1
+                  const code = key + String(seq).padStart(2, '0')
+                  const items = monthGroups[key].map(it => ({
+                    id: it.id,
+                    inventory_number: it.inventory_number,
+                    project_name: it.project_name,
+                    part_name: it.part_name,
+                    part_quantity: it.part_quantity,
+                    unit: it.unit,
+                    model: it.model,
+                    supplier: it.supplier,
+                    required_date: (it.demand_date || it.created_date),
+                    production_unit: it.production_unit,
+                    applicant: it.applicant,
+                    part_id: (it as any).part_id,
+                    child_item_id: (it as any).child_item_id
+                  }))
+                  newLocalGroups.push({ code, monthKey: key, createdAt: new Date().toISOString(), items })
                 })
-                const allGroups = [...existing, ...newGroups]
-                localStorage.setItem('temporary_plans', JSON.stringify(allGroups))
+                localStorage.setItem('temporary_plans', JSON.stringify([...localExisting, ...newLocalGroups]))
+
                 const hidden = new Set<string>(hiddenIds)
                 selected.forEach(s => hidden.add(s.id))
                 localStorage.setItem('temporary_hidden_ids', JSON.stringify(Array.from(hidden)))
-                // 同步隐藏采购申请页的来源行（manual/back-up）
                 const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
                 const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
                 const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
@@ -913,21 +961,18 @@ export default function PurchaseOrdersList() {
                 })
                 localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
                 localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
-                // 通知其他页面（同文档）刷新视图
+
                 window.dispatchEvent(new Event('temporary_plans_updated'))
                 window.dispatchEvent(new Event('status_updated'))
-                // 标记审批中状态（覆盖提计划）
                 selected.forEach(item => {
                   const pid = (item as any).part_id
                   const cid = (item as any).child_item_id
                   if (pid) updatePartPurchaseStatus(String(pid), '审批中')
                   if (cid) updateChildPurchaseStatus(String(cid), '审批中')
                 })
-                message.success(`已生成临时计划：${newGroups.map(g => g.code).join(', ')}`)
+                message.success(`已生成临时计划：${newGroupCodes.join(', ')}`)
                 setSelectedRowKeys([])
-                // 触发UI刷新
                 setTimeout(() => setData(prev => [...prev]), 0)
-                // 跳转到临时计划页面
                 navigate('/purchase-management?tab=temp')
               }}
             >
