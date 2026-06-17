@@ -1682,8 +1682,8 @@ export default function ManualPurchaseOrders() {
   }, []);
 
   return (
-    <div style={{ padding: '16px 0', height: 'calc(100vh - 200px)' }}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', paddingTop: 0, paddingBottom: 8 }} className="flex items-center justify-end mb-4">
+    <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', paddingTop: 0, paddingBottom: 8, flexShrink: 0 }} className="flex items-center justify-end mb-4">
         <Space>
           <Button danger disabled={(selectedManualRowKeys.length + selectedBackupRowKeys.length) === 0} onClick={handleBatchDeleteAll}>
             批量删除 ({selectedManualRowKeys.length + selectedBackupRowKeys.length})
@@ -1693,7 +1693,7 @@ export default function ManualPurchaseOrders() {
           </Button>
         </Space>
       </div>
-      <div ref={tableWrapRef} style={{ height: 'calc(100vh - 240px)', overflow: 'auto' }}>
+      <div ref={tableWrapRef} style={{ flex: 1, overflow: 'auto' }}>
         <style>{`
           .excel-table { --row-h: ${rowH}px; }
           .excel-table .ant-table-thead > tr > th {
@@ -1778,14 +1778,14 @@ export default function ManualPurchaseOrders() {
           dataSource={(() => {
             const hiddenManualIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
-            void refreshKey; 
-            
+            void refreshKey;
+
             const filtered = manualData.filter(r => {
               // 确保 ID 比较时类型一致，且去除可能的空白
               const rid = String(r.id).trim();
               return !hiddenManualIds.includes(rid);
             })
-            
+
             // 调试日志：检查过滤结果
             console.log('[ManualPurchaseOrders] Table filter (Manual):', {
               before: manualData.length,
@@ -1793,12 +1793,12 @@ export default function ManualPurchaseOrders() {
               hiddenCount: hiddenManualIds.length,
               hiddenIds: hiddenManualIds
             });
-            
+
             return filtered
           })()}
           pagination={false}
           bordered={false}
-          scroll={{ y: 'calc(100vh - 240px)' }}
+          scroll={{ y: 'calc(100% - 10px)' }}
           size="small"
           locale={{ emptyText: '' }}
           onRow={(record) => ({
@@ -1850,7 +1850,7 @@ export default function ManualPurchaseOrders() {
             const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey;
-            
+
             const filtered = backupData.filter(r => {
               // 确保 ID 比较时类型一致，且去除可能的空白
               const rid = String(r.id).trim();
@@ -1869,7 +1869,7 @@ export default function ManualPurchaseOrders() {
           })()}
             pagination={false}
             bordered={false}
-            scroll={{ y: 'calc(100vh - 240px)' }}
+            scroll={{ y: 'calc(100% - 10px)' }}
             size="small"
             locale={{ emptyText: '' }}
             onRow={(record) => ({

@@ -648,11 +648,11 @@ export default function PurchaseOrdersList() {
   }
 
   return (
-    <div style={{ padding: '16px 0', height: 'calc(100vh - 200px)' }}>
+    <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <StyleInjector />
-      
+
       {/* 操作按钮区域 - 移除筛选功能，保留复选框和批量删除 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={16} style={{ marginBottom: 16, flexShrink: 0 }}>
         <Col span={24} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Segmented
             options={[ '全部', '工装信息', '临时计划' ]}
@@ -666,12 +666,12 @@ export default function PurchaseOrdersList() {
               try {
                 const selectedSet = new Set<string>(selectedRowKeys.map(String))
                 const selectedItems = data.filter(d => selectedSet.has(String(d.id)))
-                
+
                 if (DEBUG) console.log('[PurchaseOrdersList] Calling rollbackPurchaseOrders with items:', selectedItems.length);
                 if (typeof rollbackPurchaseOrders !== 'function') {
                   throw new Error('回退服务未正确加载，请尝试刷新页面');
                 }
-                
+
                 // 调用回退服务（恢复数据并删除采购单）
                 await rollbackPurchaseOrders(selectedItems)
 
@@ -680,7 +680,7 @@ export default function PurchaseOrdersList() {
                 const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
                 const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
                 const hb = new Set<string>(Array.isArray(hbArr) ? hbArr : [])
-                
+
                 if (DEBUG) console.log('[PurchaseOrdersList] Rollback: Before cleanup', {
                   manualHidden: Array.from(hm),
                   backupHidden: Array.from(hb),
@@ -707,7 +707,7 @@ export default function PurchaseOrdersList() {
 
                 localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
                 localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
-                
+
                 if (DEBUG) console.log('[PurchaseOrdersList] Rollback: After cleanup', {
                   manualHidden: Array.from(hm),
                   backupHidden: Array.from(hb)
@@ -720,21 +720,21 @@ export default function PurchaseOrdersList() {
                   if (pid) updatePartPurchaseStatus(String(pid), '就绪')
                   if (cid) updateChildPurchaseStatus(String(cid), '就绪')
                 })
-                
+
                 const apprHidden = new Set<string>(approvalHiddenIds)
                 selectedRowKeys.forEach(id => apprHidden.add(String(id)))
                 const apprArr = Array.from(apprHidden)
                 localStorage.setItem('approval_hidden_ids', JSON.stringify(apprArr))
-                
+
                 // 通知其他页面刷新
                 window.dispatchEvent(new Event('approval_updated'))
-                
+
                 // 增加一个小延迟，确保数据库写入完成后再通知其他页面刷新
                 setTimeout(() => {
                   if (DEBUG) console.log('[PurchaseOrdersList] Dispatching status_updated event');
                 window.dispatchEvent(new Event('status_updated'))
                 }, 200);
-                
+
                 message.success('已回退所选采购单')
                 setSelectedRowKeys([])
                 setApprovalHiddenIds(apprArr)
@@ -787,7 +787,7 @@ export default function PurchaseOrdersList() {
               XLSX.utils.book_append_sheet(wb, ws, '采购审批')
               XLSX.writeFile(wb, `采购审批_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`)
             }}>导出审批计划</Button>
-            <Button 
+            <Button
               type="primary"
               onClick={() => {
                 if (selectedRowKeys.length === 0) {
@@ -867,7 +867,7 @@ export default function PurchaseOrdersList() {
           </Space>
         </Col>
       </Row>
-      <Row style={{ marginBottom: 8 }}>
+      <Row style={{ marginBottom: 8, flexShrink: 0 }}>
         <Col span={24}>
           <Space size={24}>
             <span style={{ fontWeight: 600 }}>总重量: {totals.weight ? totals.weight.toFixed(3) : '0.000'} kg</span>
@@ -876,8 +876,8 @@ export default function PurchaseOrdersList() {
         </Col>
       </Row>
 
-      {/* 采购单表格 - 加长样式与工装信息一致 */}
-      <div style={{ height: 'calc(100vh - 240px)', overflowY: 'hidden' }}>
+      {/* 采购单表格 - 使用flex布局自适应高度 */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         <Table
           rowKey="id"
           rowSelection={rowSelection}
@@ -885,7 +885,7 @@ export default function PurchaseOrdersList() {
           dataSource={filteredData}
           loading={loading}
           pagination={false}
-          scroll={{ x: 'max-content', y: 'calc(100vh - 240px)' }}
+          scroll={{ x: 'max-content', y: 'calc(100% - 10px)' }}
           size="small"
           bordered={false}
           locale={{ emptyText: '' }}

@@ -253,8 +253,8 @@ export default function TemporaryPlans() {
   }
 
   return (
-    <div style={{ padding: '16px 0', height: 'calc(100vh - 200px)' }}>
-      <div className="flex items-center justify-between mb-4">
+    <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
         <Space>
           <Button onClick={() => {
@@ -299,12 +299,14 @@ export default function TemporaryPlans() {
           }}>回退</Button>
         </Space>
       </div>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
       <Table
         rowKey={(r: any) => r.id}
         rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
         dataSource={flatData}
         pagination={false}
         bordered={false}
+        scroll={{ y: 'calc(100% - 10px)' }}
         columns={[
           { title: '分组编码', dataIndex: 'group_code', width: 100 },
           { title: '名称', dataIndex: 'part_name', width: 180 },
@@ -319,9 +321,9 @@ export default function TemporaryPlans() {
           { title: '投产单位', dataIndex: 'production_unit', width: 140, render: (t) => t || '-' },
           { title: '需求日期', dataIndex: 'required_date', width: 120, render: (t) => t || '-' },
           { title: '提交人', dataIndex: 'applicant', width: 120, render: (t) => t || '-' },
-          { 
-            title: '采购员', 
-            dataIndex: 'purchaser', 
+          {
+            title: '采购员',
+            dataIndex: 'purchaser',
             width: 140,
             render: (text: string, record: any) => (
               <EditableCell value={text} record={record} dataIndex={'purchaser' as any} onSave={handleSavePurchaser} />
@@ -363,6 +365,7 @@ export default function TemporaryPlans() {
           }
         ]}
       />
+      </div>
     </div>
   )
 }
