@@ -486,8 +486,8 @@ export default function PurchaseOrdersList() {
     // 表头约30mm + 表尾(审批区)52mm = 82mm固定占用
     // 数据区约195mm，行高7.5mm，基准28行/页
     const DENSITY_ROWS_MAP: Record<number, number> = {
-      1: 22, 2: 24, 3: 25, 4: 26, 5: 27,
-      6: 28, 7: 29, 8: 30, 9: 32, 10: 34
+      1: 26, 2: 28, 3: 29, 4: 30, 5: 31,
+      6: 32, 7: 33, 8: 34, 9: 36, 10: 38
     }
     const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
 
@@ -598,23 +598,18 @@ export default function PurchaseOrdersList() {
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm 10mm 0mm 10mm;
+              margin: 10mm 8mm 0mm 8mm;
             }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
+            * { box-sizing: border-box; }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
               width: 210mm;
             }
             body {
-              font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", SimSun, sans-serif;
-              font-size: 10.5pt;
-              line-height: 1.5;
-              -webkit-font-smoothing: antialiased;
-              -moz-osx-font-smoothing: grayscale;
+              font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
+              font-size: 10pt;
+              line-height: 1.35;
               color: #000;
               background: #fff;
             }
@@ -622,7 +617,8 @@ export default function PurchaseOrdersList() {
               width: 100%;
               page-break-after: always;
               page-break-inside: avoid;
-              box-sizing: border-box;
+              padding: 0 !important;
+              margin: 0 !important;
             }
             .print-page:last-child {
               page-break-after: auto;
@@ -642,20 +638,20 @@ export default function PurchaseOrdersList() {
               font-size: 9.5pt;
             }
             .header-line {
-              font-size: 15pt;
+              font-size: 14pt;
               font-weight: bold;
               text-align: center;
-              padding: 8px 4px;
+              padding: 5px 4px;
               letter-spacing: 1px;
             }
             th {
               background: #f0f0f0;
               font-weight: bold;
-              padding: 5px 3px;
+              padding: 4px 3px;
             }
             tbody tr {
-              height: 22px;
-              min-height: 22px;
+              height: 20px;
+              min-height: 20px;
               page-break-inside: avoid;
             }
             td.cell-no { width: 5%; font-size: 9pt; }
@@ -678,21 +674,19 @@ export default function PurchaseOrdersList() {
             td.cell-unit { width: 9%; word-break: break-all; }
             td.cell-date { width: 12%; white-space: nowrap; }
             td.cell-applicant { width: 8%; }
-            tfoot {
-              margin-top: auto;
-            }
             tfoot td {
-              height: 36px;
+              height: 28px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
               padding-left: 8px;
-              font-size: 10pt;
+              font-size: 9.5pt;
             }
             .page-number {
               text-align: right;
-              font-size: 9pt;
-              color: #666;
+              font-size: 8pt;
+              color: #999;
+              margin-top: 1mm;
             }
             .page-break { display: none; }
             @media print {
