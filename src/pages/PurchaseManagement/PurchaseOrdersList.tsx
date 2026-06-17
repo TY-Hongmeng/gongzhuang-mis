@@ -594,7 +594,6 @@ export default function PurchaseOrdersList() {
       <html>
         <head>
           <meta charset="UTF-8">
-          <title> </title>
           <style>
             @page {
               size: A4 portrait;
@@ -711,6 +710,7 @@ export default function PurchaseOrdersList() {
     w.document.open()
     w.document.write(html)
     w.document.close()
+    w.document.title = '临时物资采购清单'
     w.focus()
     // 延迟打印确保样式完全加载
     setTimeout(() => { w.print() }, 250)
