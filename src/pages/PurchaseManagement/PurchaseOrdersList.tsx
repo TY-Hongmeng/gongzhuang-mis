@@ -486,8 +486,8 @@ export default function PurchaseOrdersList() {
     // 表头约30mm + 表尾(审批区)52mm = 82mm固定占用
     // 数据区约195mm，行高7.5mm，基准28行/页
     const DENSITY_ROWS_MAP: Record<number, number> = {
-      1: 26, 2: 28, 3: 29, 4: 30, 5: 31,
-      6: 32, 7: 33, 8: 34, 9: 36, 10: 38
+      1: 24, 2: 26, 3: 27, 4: 28, 5: 29,
+      6: 30, 7: 31, 8: 32, 9: 34, 10: 36
     }
     const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
 
@@ -674,12 +674,12 @@ export default function PurchaseOrdersList() {
             td.cell-date { width: 12%; white-space: nowrap; }
             td.cell-applicant { width: 8%; }
             tfoot td {
-              height: 28px;
+              height: 52px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
               padding-left: 8px;
-              font-size: 9.5pt;
+              font-size: 10pt;
             }
             .page-number {
               text-align: right;
