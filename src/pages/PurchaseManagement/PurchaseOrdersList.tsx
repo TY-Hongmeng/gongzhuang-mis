@@ -597,7 +597,7 @@ export default function PurchaseOrdersList() {
           <style>
             @page {
               size: A4 portrait;
-              margin: 10mm;
+              margin: 15mm 10mm 8mm 10mm;
             }
             * {
               -webkit-print-color-adjust: exact !important;
@@ -683,7 +683,7 @@ export default function PurchaseOrdersList() {
               margin-top: auto;
             }
             tfoot td {
-              height: 52px;
+              height: 72px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
