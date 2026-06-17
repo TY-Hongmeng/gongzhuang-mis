@@ -465,48 +465,13 @@ export default function PurchaseOrdersList() {
       }
       return 0
     })
-    const estimateRowCost = (text: string, charsPerLine: number) => Math.max(1, Math.ceil(text.length / charsPerLine))
-    const rowsWithUnits = printRows.map((row) => {
-      const rowUnits = Math.max(
-        estimateRowCost(String(row.item.part_name || '').trim(), 10),
-        estimateRowCost(String(row.item.model || '').trim(), 12),
-        estimateRowCost(String(qtyText(row.item) || '').trim(), 8)
-      )
-      return { ...row, rowUnits: Math.max(1, rowUnits) }
-    })
-    const density = PRINT_DENSITY_PROFILES[printDensityLevel]
-    const pageUnitBudget = density.pageUnitBudget
-    const minLastPageUnits = density.minLastPageUnits
-    const pages: Array<typeof rowsWithUnits> = []
-    let currentPage: typeof rowsWithUnits = []
-    let currentUnits = 0
-    rowsWithUnits.forEach((row) => {
-      if (currentPage.length > 0 && currentUnits + row.rowUnits > pageUnitBudget) {
-        pages.push(currentPage)
-        currentPage = [row]
-        currentUnits = row.rowUnits
-      } else {
-        currentPage.push(row)
-        currentUnits += row.rowUnits
-      }
-    })
-    if (currentPage.length > 0) pages.push(currentPage)
-
-    const getUnits = (pageRows: typeof rowsWithUnits) => pageRows.reduce((sum, row) => sum + row.rowUnits, 0)
-    if (pages.length > 1) {
-      const lastPageIndex = pages.length - 1
-      let deficit = minLastPageUnits - getUnits(pages[lastPageIndex])
-      for (let donorIndex = lastPageIndex - 1; donorIndex >= 0 && deficit > 0; donorIndex -= 1) {
-        while (deficit > 0 && pages[donorIndex].length > 1) {
-          const donorPage = pages[donorIndex]
-          const candidate = donorPage[donorPage.length - 1]
-          const donorRemainUnits = getUnits(donorPage) - candidate.rowUnits
-          if (donorRemainUnits < minLastPageUnits) break
-          donorPage.pop()
-          pages[lastPageIndex].unshift(candidate)
-          deficit -= candidate.rowUnits
-        }
-      }
+    // 分页计算：基于A4纸实际可打印区域计算每页最大行数
+    // A4高度297mm - 上下边距20mm - 表头约30mm - 表尾约26mm = 221mm可用
+    // 每行约7.5mm（含边框），每页约28-29行，取28行留余量
+    const ROWS_PER_PAGE = 28
+    const pages: Array<typeof printRows> = []
+    for (let i = 0; i < printRows.length; i += ROWS_PER_PAGE) {
+      pages.push(printRows.slice(i, i + ROWS_PER_PAGE))
     }
 
     const calcRowSpans = (values: string[]) => {
@@ -598,38 +563,109 @@ export default function PurchaseOrdersList() {
     const html = `
       <html>
         <head>
-          <title></title>
+          <meta charset="UTF-8">
+          <title>临时物资采购清单</title>
           <style>
-            @page { size: A4 portrait; margin: 0; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; padding: 10mm; margin: 0; }
-            .header-line { font-size: 16px; font-weight: 700; text-align: center; }
-            .print-page { box-sizing: border-box; }
-            table.sheet { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+            @page {
+              size: A4 portrait;
+              margin: 10mm;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            html, body {
+              margin: 0;
+              padding: 0;
+              width: 210mm;
+            }
+            body {
+              font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", SimSun, sans-serif;
+              font-size: 10.5pt;
+              line-height: 1.5;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+              color: #000;
+              background: #fff;
+            }
+            .print-page {
+              width: 100%;
+              page-break-after: always;
+              page-break-inside: avoid;
+              box-sizing: border-box;
+            }
+            .print-page:last-child {
+              page-break-after: auto;
+            }
+            table.sheet {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+              border: 2px solid #000;
+            }
             th, td {
               border: 1px solid #333;
-              padding: 1.2mm 1.4mm;
+              padding: 3px 5px;
               text-align: center;
               vertical-align: middle;
-              line-height: 1.35;
-              white-space: normal;
-              word-break: break-word;
-              overflow-wrap: anywhere;
+              line-height: 1.45;
+              font-size: 9.5pt;
             }
-            th { background: #f3f3f3; font-weight: 700; }
-            thead th { min-height: 8mm; }
-            tbody tr { height: 8mm; }
-            td.cell-name, td.cell-model, td.cell-qty, td.cell-unit, td.cell-applicant {
-              white-space: nowrap;
-              word-break: normal;
-              overflow-wrap: normal;
+            .header-line {
+              font-size: 15pt;
+              font-weight: bold;
+              text-align: center;
+              padding: 8px 4px;
+              letter-spacing: 1px;
             }
+            th {
+              background: #f0f0f0;
+              font-weight: bold;
+              padding: 5px 3px;
+            }
+            tbody tr {
+              height: 22px;
+              min-height: 22px;
+              page-break-inside: avoid;
+            }
+            td.cell-no { width: 6%; font-size: 9pt; }
+            td.cell-name {
+              width: 10%;
+              text-align: left;
+              word-break: break-all;
+            }
+            td.cell-model {
+              width: 26%;
+              text-align: left;
+              word-break: break-all;
+            }
+            td.cell-qty { width: 8%; white-space: nowrap; }
             td.cell-project {
-              white-space: normal;
-              word-break: break-word;
-              overflow-wrap: anywhere;
+              width: 10%;
+              text-align: left;
+              word-break: break-all;
             }
-            tfoot td { height: 12mm; vertical-align: middle; font-weight: 600; text-align: left; padding-left: 2px; line-height: 1.2; }
-            .page-break { page-break-after: always; break-after: page; height: 0; }
+            td.cell-unit { width: 8%; word-break: break-all; }
+            td.cell-date { width: 12%; white-space: nowrap; }
+            td.cell-applicant { width: 8%; }
+            tfoot td {
+              height: 26px;
+              vertical-align: middle;
+              font-weight: normal;
+              text-align: left;
+              padding-left: 8px;
+              font-size: 10pt;
+            }
+            .page-break { display: none; }
+            @media print {
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .print-page {
+                page-break-after: always;
+                page-break-inside: avoid;
+              }
+              .print-page:last-child { page-break-after: auto; }
+              tbody tr { page-break-inside: avoid; }
+            }
           </style>
         </head>
         <body>
@@ -644,7 +680,8 @@ export default function PurchaseOrdersList() {
     w.document.write(html)
     w.document.close()
     w.focus()
-    w.print()
+    // 延迟打印确保样式完全加载
+    setTimeout(() => { w.print() }, 250)
   }
 
   return (
