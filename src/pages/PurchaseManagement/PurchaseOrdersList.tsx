@@ -552,8 +552,8 @@ export default function PurchaseOrdersList() {
             <col style="width:12%">
             <col style="width:9%">
             <col style="width:12%">
-            <col style="width:12%">
-            <col style="width:8%">
+            <col style="width:11%">
+            <col style="width:9%">
           </colgroup>
           <thead>
             <tr>
@@ -583,6 +583,10 @@ export default function PurchaseOrdersList() {
               <td colspan="5">公司副总审批：</td>
               <td colspan="4">公司总经理审批：</td>
             </tr>
+            <tr class="page-number-row">
+              <td colspan="5"></td>
+              <td colspan="4" class="page-number-cell">第 ${pageIndex + 1} 页 / 共 ${pages.length} 页</td>
+            </tr>
           </tfoot>
         </table>
         </div>
@@ -593,11 +597,11 @@ export default function PurchaseOrdersList() {
       <html>
         <head>
           <meta charset="UTF-8">
-          <title>临时物资采购清单</title>
+          <title></title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm 10mm 8mm 10mm;
+              margin: 15mm 10mm 5mm 10mm;
             }
             * {
               -webkit-print-color-adjust: exact !important;
@@ -689,6 +693,15 @@ export default function PurchaseOrdersList() {
               text-align: left;
               padding-left: 8px;
               font-size: 10pt;
+            }
+            .page-number-row td {
+              height: auto !important;
+              padding: 4px 5px !important;
+            }
+            .page-number-cell {
+              text-align: right !important;
+              font-size: 9pt !important;
+              color: #666;
             }
             .page-break { display: none; }
             @media print {
