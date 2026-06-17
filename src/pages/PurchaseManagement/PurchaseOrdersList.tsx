@@ -594,18 +594,19 @@ export default function PurchaseOrdersList() {
       <html>
         <head>
           <meta charset="UTF-8">
+          <title> </title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm 10mm 3mm 10mm;
+              margin: 12mm 10mm 0mm 10mm;
             }
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
             html, body {
-              margin: 0;
-              padding: 0;
+              margin: 0 !important;
+              padding: 0 !important;
               width: 210mm;
             }
             body {
@@ -619,14 +620,12 @@ export default function PurchaseOrdersList() {
             }
             .print-page {
               width: 100%;
-              min-height: 277mm;
               page-break-after: always;
               page-break-inside: avoid;
               box-sizing: border-box;
             }
             .print-page:last-child {
               page-break-after: auto;
-              min-height: auto;
             }
             table.sheet {
               width: 100%;
@@ -683,7 +682,7 @@ export default function PurchaseOrdersList() {
               margin-top: auto;
             }
             tfoot td {
-              height: 42px;
+              height: 36px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
@@ -694,7 +693,6 @@ export default function PurchaseOrdersList() {
               text-align: right;
               font-size: 9pt;
               color: #666;
-              padding-top: 1mm;
             }
             .page-break { display: none; }
             @media print {
