@@ -465,6 +465,22 @@ export default function PurchaseOrdersList() {
       }
       return 0
     })
+    // 计算rowspan合并：相同值的连续单元格合并
+    const calcRowSpans = (values: string[]) => {
+      const spans = Array(values.length).fill(1)
+      let i = 0
+      while (i < values.length) {
+        const current = values[i]
+        if (!current) { i += 1; continue }
+        let j = i + 1
+        while (j < values.length && values[j] === current) j += 1
+        spans[i] = j - i
+        for (let k = i + 1; k < j; k += 1) spans[k] = 0
+        i = j
+      }
+      return spans
+    }
+
     // 打印密度映射：密度档位 -> 每页最大行数
     // A4高度297mm - 上下边距20mm = 277mm可用
     // 表头约30mm + 表尾(审批区)52mm = 82mm固定占用
@@ -501,20 +517,6 @@ export default function PurchaseOrdersList() {
       pageStart = pageEnd
     }
 
-    const calcRowSpans = (values: string[]) => {
-      const spans = Array(values.length).fill(1)
-      let i = 0
-      while (i < values.length) {
-        const current = values[i]
-        if (!current) { i += 1; continue }
-        let j = i + 1
-        while (j < values.length && values[j] === current) j += 1
-        spans[i] = j - i
-        for (let k = i + 1; k < j; k += 1) spans[k] = 0
-        i = j
-      }
-      return spans
-    }
     let serialNo = 1
     const pagesHtml = pages.map((pageRows, pageIndex) => {
       const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
