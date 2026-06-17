@@ -590,6 +590,9 @@ export default function PurchaseOrdersList() {
             }
             .print-page {
               width: 100%;
+              height: 277mm;
+              display: flex;
+              flex-direction: column;
               page-break-after: always;
               page-break-inside: avoid;
               box-sizing: border-box;
@@ -602,6 +605,14 @@ export default function PurchaseOrdersList() {
               border-collapse: collapse;
               table-layout: fixed;
               border: 2px solid #000;
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+            }
+            table.sheet thead, table.sheet tbody, table.sheet tfoot {
+              display: table;
+              width: 100%;
+              table-layout: fixed;
             }
             th, td {
               border: 1px solid #333;
@@ -648,8 +659,11 @@ export default function PurchaseOrdersList() {
             td.cell-unit { width: 8%; word-break: break-all; }
             td.cell-date { width: 12%; white-space: nowrap; }
             td.cell-applicant { width: 8%; }
+            tfoot {
+              margin-top: auto;
+            }
             tfoot td {
-              height: 26px;
+              height: 52px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
