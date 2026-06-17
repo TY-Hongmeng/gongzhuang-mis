@@ -48,6 +48,9 @@ const MODULES = [
   { name: '我的量具', code: 'my_measure_tools' }
 ]
 
+// code -> 中文名称 映射
+const CODE_TO_NAME: Record<string, string> = Object.fromEntries(MODULES.map(m => [m.code, m.name]))
+
 // 角色数据类型
 interface Role {
   id: string
@@ -102,9 +105,12 @@ const Permissions: React.FC = () => {
 
           if (rpError) throw new Error(rpError.message)
 
-          // 提取模块列表
+          // 提取模块列表（code转中文名显示）
           const modules = Array.from(
-            new Set(rolePermissions?.map(rp => rp.permission.module).filter(Boolean) as string[])
+            new Set((rolePermissions || []).map(rp => {
+              const code = rp?.permission?.module
+              return code ? (CODE_TO_NAME[code] || code) : null
+            }).filter(Boolean) as string[])
           )
 
           return {
@@ -226,14 +232,13 @@ const Permissions: React.FC = () => {
           .from('role_permissions')
           .delete()
           .eq('role_id', roleId)
-        
+
         // 为每个模块创建或关联权限
-        for (const module of MODULES) {
-          // 检查模块访问权限是否存在，不存在则创建
+        for (const mod of MODULES) {
           const { data: existingPermission } = await supabase
             .from('permissions')
             .select('id')
-            .eq('module', module.name)
+            .eq('module', mod.code)
             .eq('name', '访问模块')
             .single()
 
@@ -245,10 +250,10 @@ const Permissions: React.FC = () => {
             const { data: newPermission, error: permError } = await supabase
               .from('permissions')
               .insert({
-                module: module.name,
+                module: mod.code,
                 name: '访问模块',
-                code: `${module.code}:access`,
-                description: `允许访问${module.name}模块`
+                code: `${mod.code}:access`,
+                description: `允许访问${mod.name}模块`
               })
               .select()
               .single()
@@ -257,48 +262,39 @@ const Permissions: React.FC = () => {
             permissionId = newPermission.id
           }
 
-          // 关联角色和权限
           await supabase
             .from('role_permissions')
-            .insert({
-              role_id: roleId,
-              permission_id: permissionId
-            })
+            .upsert({ role_id: roleId, permission_id: permission_id }, { onConflict: 'role_id,permission_id' })
         }
       } else {
         // 普通角色，根据选择的模块配置权限
-        // 删除角色现有所有权限
         await supabase
           .from('role_permissions')
           .delete()
           .eq('role_id', roleId)
 
-        // 为每个选中的模块创建或关联权限
         for (const selectedModuleName of values.modules) {
-          const module = MODULES.find(m => m.name === selectedModuleName)
-          if (!module) continue
+          const mod = MODULES.find(m => m.name === selectedModuleName)
+          if (!mod) continue
 
-          // 检查模块访问权限是否存在，不存在则创建
           const { data: existingPermission } = await supabase
             .from('permissions')
             .select('id')
-            .eq('module', selectedModuleName)
+            .eq('module', mod.code)
             .eq('name', '访问模块')
             .single()
 
           let permissionId: string
 
           if (existingPermission) {
-            // 使用现有权限
             permissionId = existingPermission.id
           } else {
-            // 创建新权限
             const { data: newPermission, error: permError } = await supabase
               .from('permissions')
               .insert({
-                module: selectedModuleName,
+                module: mod.code,
                 name: '访问模块',
-                code: `${module.code}:access`,
+                code: `${mod.code}:access`,
                 description: `允许访问${selectedModuleName}模块`
               })
               .select()
@@ -308,13 +304,9 @@ const Permissions: React.FC = () => {
             permissionId = newPermission.id
           }
 
-          // 关联角色和权限
           await supabase
             .from('role_permissions')
-            .insert({
-              role_id: roleId,
-              permission_id: permissionId
-            })
+            .upsert({ role_id: roleId, permission_id: permissionId }, { onConflict: 'role_id,permission_id' })
         }
       }
 
