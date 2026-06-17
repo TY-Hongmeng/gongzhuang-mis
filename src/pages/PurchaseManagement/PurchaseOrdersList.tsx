@@ -465,13 +465,40 @@ export default function PurchaseOrdersList() {
       }
       return 0
     })
-    // 分页计算：基于A4纸实际可打印区域计算每页最大行数
-    // A4高度297mm - 上下边距20mm - 表头约30mm - 表尾约26mm = 221mm可用
-    // 每行约7.5mm（含边框），每页约28-29行，取28行留余量
-    const ROWS_PER_PAGE = 28
+    // 打印密度映射：密度档位 -> 每页最大行数
+    // A4高度297mm - 上下边距20mm = 277mm可用
+    // 表头约30mm + 表尾(审批区)52mm = 82mm固定占用
+    // 数据区约195mm，行高7.5mm，基准28行/页
+    const DENSITY_ROWS_MAP: Record<number, number> = {
+      1: 22, 2: 24, 3: 25, 4: 26, 5: 27,
+      6: 28, 7: 29, 8: 30, 9: 32, 10: 34
+    }
+    const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
+
+    // 分页时需要考虑rowspan：同一组的行不能拆到两页
     const pages: Array<typeof printRows> = []
-    for (let i = 0; i < printRows.length; i += ROWS_PER_PAGE) {
-      pages.push(printRows.slice(i, i + ROWS_PER_PAGE))
+    let pageStart = 0
+    while (pageStart < printRows.length) {
+      let pageEnd = Math.min(pageStart + rowsPerPage, printRows.length)
+      // 检查是否截断了rowspan组：如果当前页最后一行的rowspan延伸到了下一页，提前截断
+      if (pageEnd < printRows.length) {
+        // 计算当前页各列的rowspan边界
+        const pageSlice = printRows.slice(pageStart, pageEnd)
+        const lastIdx = pageSlice.length - 1
+        // 如果最后一行有任何rowspan > 1（即它是某组的起始行且组未结束），则这行不能作为该页最后一行
+        const projectSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim()))
+        const productionSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim()))
+        const createdDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim()))
+        const demandDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim()))
+        const applicantSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
+        const spans = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
+        const hasCrossPageSpan = spans.some(s => s[lastIdx] > 1)
+        if (hasCrossPageSpan) {
+          pageEnd = Math.max(pageStart + 1, pageEnd - 1) // 至少保留1行，回退1行
+        }
+      }
+      pages.push(printRows.slice(pageStart, pageEnd))
+      pageStart = pageEnd
     }
 
     const calcRowSpans = (values: string[]) => {
@@ -516,12 +543,12 @@ export default function PurchaseOrdersList() {
         <div class="print-page">
         <table class="sheet">
           <colgroup>
-            <col style="width:6%">
-            <col style="width:10%">
-            <col style="width:26%">
+            <col style="width:5%">
+            <col style="width:12%">
+            <col style="width:22%">
             <col style="width:8%">
-            <col style="width:10%">
-            <col style="width:8%">
+            <col style="width:12%">
+            <col style="width:9%">
             <col style="width:12%">
             <col style="width:12%">
             <col style="width:8%">
@@ -590,29 +617,20 @@ export default function PurchaseOrdersList() {
             }
             .print-page {
               width: 100%;
-              height: 277mm;
-              display: flex;
-              flex-direction: column;
+              min-height: 277mm;
               page-break-after: always;
               page-break-inside: avoid;
               box-sizing: border-box;
             }
             .print-page:last-child {
               page-break-after: auto;
+              min-height: auto;
             }
             table.sheet {
               width: 100%;
               border-collapse: collapse;
               table-layout: fixed;
               border: 2px solid #000;
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-            }
-            table.sheet thead, table.sheet tbody, table.sheet tfoot {
-              display: table;
-              width: 100%;
-              table-layout: fixed;
             }
             th, td {
               border: 1px solid #333;
@@ -639,24 +657,24 @@ export default function PurchaseOrdersList() {
               min-height: 22px;
               page-break-inside: avoid;
             }
-            td.cell-no { width: 6%; font-size: 9pt; }
+            td.cell-no { width: 5%; font-size: 9pt; }
             td.cell-name {
-              width: 10%;
+              width: 12%;
               text-align: left;
               word-break: break-all;
             }
             td.cell-model {
-              width: 26%;
+              width: 22%;
               text-align: left;
               word-break: break-all;
             }
             td.cell-qty { width: 8%; white-space: nowrap; }
             td.cell-project {
-              width: 10%;
+              width: 12%;
               text-align: left;
               word-break: break-all;
             }
-            td.cell-unit { width: 8%; word-break: break-all; }
+            td.cell-unit { width: 9%; word-break: break-all; }
             td.cell-date { width: 12%; white-space: nowrap; }
             td.cell-applicant { width: 8%; }
             tfoot {
