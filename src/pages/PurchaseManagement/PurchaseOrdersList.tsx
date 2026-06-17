@@ -683,7 +683,7 @@ export default function PurchaseOrdersList() {
               margin-top: auto;
             }
             tfoot td {
-              height: 72px;
+              height: 42px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
@@ -694,7 +694,7 @@ export default function PurchaseOrdersList() {
               text-align: right;
               font-size: 9pt;
               color: #666;
-              padding-top: 2mm;
+              padding-top: 1mm;
             }
             .page-break { display: none; }
             @media print {
