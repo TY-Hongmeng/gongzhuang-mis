@@ -28,6 +28,7 @@ export async function runAutoMigrate() {
     path.resolve(__dirname, '..', 'supabase', 'migrations', '20260608_create_program_entries.sql'),
     path.resolve(__dirname, '..', 'supabase', 'migrations', '20251226_alter_work_hours_add_shift_date.sql'),
     path.resolve(__dirname, '..', 'supabase', 'migrations', '20260228_create_tooling_status.sql'),
+    path.resolve(__dirname, '..', 'supabase', 'migrations', '20260617_create_temporary_plan_groups.sql'),
   ]
   try {
     const sqlList = sqlPaths
