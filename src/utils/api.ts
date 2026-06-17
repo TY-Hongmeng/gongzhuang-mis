@@ -25,6 +25,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     || /^\/api\/tooling\/program-management(\/|$)/.test(cleanUrl)
     || /^\/api\/standard-parts(\/|$)/.test(cleanUrl)
     || /^\/api\/material-assets(\/|$)/.test(cleanUrl)
+    || /^\/api\/temporary-plan-groups(\/|$)/.test(cleanUrl)
   )
   const allowClientFallbackOn404 = /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
@@ -51,6 +52,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     '/api/purchase-orders',
     '/api/backup-materials',
     '/api/manual-plans',
+    '/api/temporary-plan-groups',
     '/api/standard-parts',
     '/api/material-assets',
     '/api/users',
@@ -82,7 +84,8 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       cleanUrl.startsWith('/api/tooling/program-entries') ||
       cleanUrl.startsWith('/api/tooling/program-management') ||
       cleanUrl.startsWith('/api/standard-parts') ||
-      cleanUrl.startsWith('/api/material-assets')
+      cleanUrl.startsWith('/api/material-assets') ||
+      cleanUrl.startsWith('/api/temporary-plan-groups')
     
     // 如果是本地开发环境且是关键订单路径，跳过 handleClientSideApi，
     // 让 fetchWithFallback 继续执行并最终调用本地后端

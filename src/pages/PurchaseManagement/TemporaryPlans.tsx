@@ -37,11 +37,7 @@ interface TempGroup {
   items: TempItem[]
 }
 
-const readPlans = (): TempGroup[] => {
-  try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] }
-}
-
-// 从数据库读取临时计划（优先），失败则回退到 localStorage
+// 从数据库读取临时计划
 const fetchPlansFromDB = async (): Promise<TempGroup[]> => {
   try {
     const res = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
@@ -66,7 +62,7 @@ const fetchPlansFromDB = async (): Promise<TempGroup[]> => {
   } catch (e) {
     console.error('从数据库读取临时计划失败:', e)
   }
-  return readPlans()
+  return []
 }
 
 const resolveInboundLocationByGroup = (rawGroup: string) => {
@@ -102,20 +98,32 @@ const buildInboundRefSig = (raw: {
 
 export default function TemporaryPlans() {
   const { user } = useAuthStore()
-  const [groups, setGroups] = useState<TempGroup[]>(readPlans())
+  const [groups, setGroups] = useState<TempGroup[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
+
+  const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
+    if (!groupId) return
+    const res = await fetchWithFallback(`/api/temporary-plan-groups/${groupId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items })
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      throw new Error(String(json?.error || '同步临时计划失败'))
+    }
+    window.dispatchEvent(new Event('temporary_plans_updated'))
+  }
 
   // 初始化和刷新时从数据库读取
   useEffect(() => {
     fetchPlansFromDB().then(data => {
-      if (data.length > 0) setGroups(data)
+      setGroups(data)
     })
-    const handler = () => fetchPlansFromDB().then(data => { if (data.length > 0) setGroups(data) })
-    window.addEventListener('storage', handler)
+    const handler = () => fetchPlansFromDB().then(data => setGroups(data))
     window.addEventListener('temporary_plans_updated', handler as any)
     return () => {
-      window.removeEventListener('storage', handler)
       window.removeEventListener('temporary_plans_updated', handler as any)
     }
   }, [])
@@ -130,16 +138,14 @@ export default function TemporaryPlans() {
       const next = prev.map(g => {
         if (g.code !== code) return g
         const items = g.items.map(it => it.id === origId ? { ...it, purchaser: value } : it)
-        // 同步到数据库
         if (g.id) {
-          fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ items })
-          }).catch(e => console.error('同步采购员失败:', e))
+          syncGroupItems(g.id, items).catch(e => {
+            console.error('同步采购员失败:', e)
+            message.error('同步采购员失败')
+          })
         }
         return { ...g, items }
       })
-      localStorage.setItem('temporary_plans', JSON.stringify(next))
       const group = next.find(g => g.code === code)
       const item = group?.items.find(it => it.id === origId)
       const pid = (item as any)?.part_id
@@ -157,16 +163,14 @@ export default function TemporaryPlans() {
       const next = prev.map(g => {
         if (g.code !== code) return g
         const items = g.items.map(it => it.id === origId ? { ...it, arrival_date: checked ? dayjs().format('YYYY-MM-DD') : '' } : it)
-        // 同步到数据库
         if (g.id) {
-          fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ items })
-          }).catch(e => console.error('同步到货状态失败:', e))
+          syncGroupItems(g.id, items).catch(e => {
+            console.error('同步到货状态失败:', e)
+            message.error('同步到货状态失败')
+          })
         }
         return { ...g, items }
       })
-      localStorage.setItem('temporary_plans', JSON.stringify(next))
       // 状态：已到货/审批中
       const group = next.find(g => g.code === code)
       const item = group?.items.find(it => it.id === origId)
@@ -186,9 +190,14 @@ export default function TemporaryPlans() {
       const next = prev.map(g => {
         if (g.code !== code) return g
         const items = g.items.map(it => it.id === origId ? { ...it, arrival_date: str } : it)
+        if (g.id) {
+          syncGroupItems(g.id, items).catch(e => {
+            console.error('同步到货日期失败:', e)
+            message.error('同步到货日期失败')
+          })
+        }
         return { ...g, items }
       })
-      localStorage.setItem('temporary_plans', JSON.stringify(next))
       // 状态更新：有日期则已到货，无日期则根据是否有采购员决定
       const group = next.find(g => g.code === code)
       const item = group?.items.find(it => it.id === origId)
@@ -286,17 +295,14 @@ export default function TemporaryPlans() {
               standard_inbound_ref_sig: inboundRefSig
             }
           })
-          // 同步到数据库
           if (g.id) {
-            fetchWithFallback(`/api/temporary-plan-groups/${g.id}`, {
-              method: 'PUT',
-              body: JSON.stringify({ items })
-            }).catch(e => console.error('同步入库状态失败:', e))
+            syncGroupItems(g.id, items).catch(e => {
+              console.error('同步入库状态失败:', e)
+              message.error('同步入库状态失败')
+            })
           }
           return { ...g, items }
         })
-        localStorage.setItem('temporary_plans', JSON.stringify(next))
-        window.dispatchEvent(new Event('temporary_plans_updated'))
         return next
       })
       message.success('已入库并同步到标准件入库台账')
@@ -314,60 +320,51 @@ export default function TemporaryPlans() {
         <Space>
           <Button onClick={async () => {
             if (selectedRowKeys.length === 0) { message.warning('请选择需要回退的项'); return }
-            // 先收集要删除的分组ID（如果某分组所有项都被选中，则删除整个分组）
             const keys = selectedRowKeys.map(k => String(k))
             const groupsToDelete: string[] = []
-            setGroups(prev => {
-              const next = prev.map(g => ({
-                ...g,
-                items: g.items.filter(it => !keys.includes(`${g.code}:${it.id}`))
-              })).filter(g => {
-                if (g.items.length === 0) {
-                  if (g.id) groupsToDelete.push(g.id)
-                  return false
+            const next = groups.map(g => ({
+              ...g,
+              items: g.items.filter(it => !keys.includes(`${g.code}:${it.id}`))
+            })).filter(g => {
+              if (g.items.length === 0) {
+                if (g.id) groupsToDelete.push(g.id)
+                return false
+              }
+              return true
+            })
+            try {
+              const updatePromises = next
+                .filter(g => g.id && groups.some(old => old.id === g.id && old.items.length !== g.items.length))
+                .map(g => syncGroupItems(g.id, g.items))
+              await Promise.all(updatePromises)
+              if (groupsToDelete.length > 0) {
+                const resp = await fetchWithFallback('/api/temporary-plan-groups/batch-delete', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ids: groupsToDelete })
+                })
+                const json = await resp.json().catch(() => ({}))
+                if (!resp.ok || json?.success === false) {
+                  throw new Error(String(json?.error || '删除临时计划分组失败'))
                 }
-                return true
-              })
-              localStorage.setItem('temporary_plans', JSON.stringify(next))
-              const hiddenArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_ids') || '[]') } catch { return [] } })()
-              const hidden = new Set<string>(Array.isArray(hiddenArr) ? hiddenArr : [])
-              const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
-              const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
-              const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
-              const hb = new Set<string>(Array.isArray(hbArr) ? hbArr : [])
-              prev.forEach(g => g.items.forEach(it => {
+              }
+              groups.forEach(g => g.items.forEach(it => {
                 const rowKey = `${g.code}:${it.id}`
                 if (keys.includes(rowKey)) {
-                  hidden.delete(String(it.id))
-                  const inv = String(it.inventory_number || '')
-                  if (inv.startsWith('MANUAL-')) hm.delete(inv.slice(7))
-                  if (inv.startsWith('BACKUP-')) hb.delete(inv.slice(7))
                   const pid = (it as any).part_id
                   const cid = (it as any).child_item_id
                   if (pid) updatePartPurchaseStatus(String(pid), '提计划')
                   if (cid) updateChildPurchaseStatus(String(cid), '提计划')
                 }
               }))
-              localStorage.setItem('temporary_hidden_ids', JSON.stringify(Array.from(hidden)))
-              localStorage.setItem('temporary_hidden_manual_ids', JSON.stringify(Array.from(hm)))
-              localStorage.setItem('temporary_hidden_backup_ids', JSON.stringify(Array.from(hb)))
+              setGroups(next)
               window.dispatchEvent(new Event('temporary_plans_updated'))
               window.dispatchEvent(new Event('status_updated'))
               message.success('已回退选中项')
-              return next
-            })
-            setSelectedRowKeys([])
-            // 同步删除数据库中的空分组
-            if (groupsToDelete.length > 0) {
-              try {
-                await fetchWithFallback('/api/temporary-plan-groups/batch-delete', {
-                  method: 'POST',
-                  body: JSON.stringify({ ids: groupsToDelete })
-                })
-              } catch (e) {
-                console.error('删除数据库临时计划失败:', e)
-              }
+            } catch (e: any) {
+              message.error(String(e?.message || '回退失败'))
             }
+            setSelectedRowKeys([])
           }}>回退</Button>
         </Space>
       </div>

@@ -22,6 +22,7 @@ import cuttingOrdersRoutes from './routes/cuttingOrders.js'
 import purchaseOrdersRoutes from './routes/purchaseOrders.js'
 import backupMaterialsRoutes from './routes/backupMaterials.js'
 import manualPlansRoutes from './routes/manualPlans.js'
+import temporaryPlanGroupsRoutes from './routes/temporaryPlanGroups.js'
 import permissionsRoutes from './routes/permissions.js'
 import standardPartsRoutes from './routes/standardParts.js'
 import materialAssetsRoutes from './routes/materialAssets.js'
@@ -58,6 +59,7 @@ app.use('/api/cutting-orders', cuttingOrdersRoutes)
 app.use('/api/purchase-orders', purchaseOrdersRoutes)
 app.use('/api/backup-materials', backupMaterialsRoutes)
 app.use('/api/manual-plans', manualPlansRoutes)
+app.use('/api/temporary-plan-groups', temporaryPlanGroupsRoutes)
 app.use('/api/permissions', permissionsRoutes)
 app.use('/api/standard-parts', standardPartsRoutes)
 app.use('/api/material-assets', materialAssetsRoutes)

@@ -14,6 +14,7 @@ import { calculateTotalPrice } from '../../utils/priceCalculator';
 import SpecificationsInput from '../../components/SpecificationsInput';
 import EditableCell from '../../components/EditableCell';
 import { useToolingOperations } from '../../hooks/useToolingOperations';
+import { fetchWithFallback } from '../../utils/api';
 
 // 解析体积公式并提取变量
 const parseVolumeFormula = (formula: string): string[] => {
@@ -180,6 +181,8 @@ export default function ManualPurchaseOrders() {
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [materials, setMaterials] = useState<{id: string, name: string, density?: number, unit_price?: number}[]>([]);
   const [hiddenTick, setHiddenTick] = useState(0)
+  const [tempHiddenManualIds, setTempHiddenManualIds] = useState<string[]>([])
+  const [tempHiddenBackupIds, setTempHiddenBackupIds] = useState<string[]>([])
   const [manualAll, setManualAll] = useState<ManualPurchaseOrder[]>([])
   const [backupAll, setBackupAll] = useState<BackupMaterial[]>([])
   const [manualLimit, setManualLimit] = useState<number>(500)
@@ -552,6 +555,29 @@ export default function ManualPurchaseOrders() {
 
   const [refreshKey, setRefreshKey] = useState(0);
 
+  const loadTempPlanHiddenIds = useCallback(async () => {
+    try {
+      const resp = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
+      const json = await resp.json().catch(() => ({}))
+      const groups = Array.isArray(json?.data) ? json.data : []
+      const manualIds = new Set<string>()
+      const backupIds = new Set<string>()
+      groups.forEach((group: any) => {
+        const items = Array.isArray(group?.items) ? group.items : []
+        items.forEach((item: any) => {
+          const inventoryNumber = String(item?.inventory_number || '').trim()
+          if (inventoryNumber.startsWith('MANUAL-')) manualIds.add(inventoryNumber.slice(7).trim())
+          if (inventoryNumber.startsWith('BACKUP-')) backupIds.add(inventoryNumber.slice(7).trim())
+        })
+      })
+      setTempHiddenManualIds(Array.from(manualIds))
+      setTempHiddenBackupIds(Array.from(backupIds))
+    } catch {
+      setTempHiddenManualIds([])
+      setTempHiddenBackupIds([])
+    }
+  }, [])
+
   // 监听状态更新事件
   useEffect(() => {
     const handleStatusUpdate = () => {
@@ -559,6 +585,7 @@ export default function ManualPurchaseOrders() {
       setRefreshKey(prev => prev + 1);
       fetchManualData();
       fetchBackupData();
+      void loadTempPlanHiddenIds();
     };
     
     // 强制刷新处理
@@ -567,35 +594,25 @@ export default function ManualPurchaseOrders() {
       setRefreshKey(prev => prev + 1);
       fetchManualData();
       fetchBackupData();
-    };
-
-    // 监听 localStorage 变化 (处理跨标签页同步)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'temporary_hidden_manual_ids' || e.key === 'temporary_hidden_backup_ids') {
-        console.log('[ManualPurchaseOrders] LocalStorage changed, refreshing view');
-        setRefreshKey(prev => prev + 1);
-      }
+      void loadTempPlanHiddenIds();
     };
 
     window.addEventListener('status_updated', handleStatusUpdate);
     window.addEventListener('force_refresh', handleForceRefresh);
-    window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('status_updated', handleStatusUpdate);
       window.removeEventListener('force_refresh', handleForceRefresh);
-      window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [loadTempPlanHiddenIds]);
 
   // 紧急刷新功能：清空隐藏列表并重新加载
   const handleEmergencyRefresh = () => {
     console.log('[ManualPurchaseOrders] Emergency refresh triggered');
-    localStorage.removeItem('temporary_hidden_manual_ids');
-    localStorage.removeItem('temporary_hidden_backup_ids');
     setRefreshKey(prev => prev + 1);
     fetchManualData();
     fetchBackupData();
-    message.success('已刷新并清理隐藏列表');
+    void loadTempPlanHiddenIds();
+    message.success('已刷新页面数据');
   };
 
   // 获取手动输入的数据（使用独立的临时计划数据源）
@@ -1668,10 +1685,12 @@ export default function ManualPurchaseOrders() {
     fetchPartTypes();
     fetchManualData();
     fetchBackupData();
+    void loadTempPlanHiddenIds();
     const handler = () => setHiddenTick(v => v + 1)
     const statusHandler = () => {
       fetchManualData();
       fetchBackupData();
+      void loadTempPlanHiddenIds();
     };
     window.addEventListener('temporary_plans_updated', handler)
     window.addEventListener('status_updated', statusHandler)
@@ -1679,7 +1698,7 @@ export default function ManualPurchaseOrders() {
       window.removeEventListener('temporary_plans_updated', handler)
       window.removeEventListener('status_updated', statusHandler)
     }
-  }, []);
+  }, [loadTempPlanHiddenIds]);
 
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -1776,22 +1795,22 @@ export default function ManualPurchaseOrders() {
           rowSelection={manualRowSelection}
           columns={manualColumns}
           dataSource={(() => {
-            const hiddenManualIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey;
+            void hiddenTick;
 
             const filtered = manualData.filter(r => {
               // 确保 ID 比较时类型一致，且去除可能的空白
               const rid = String(r.id).trim();
-              return !hiddenManualIds.includes(rid);
+              return !tempHiddenManualIds.includes(rid);
             })
 
             // 调试日志：检查过滤结果
             console.log('[ManualPurchaseOrders] Table filter (Manual):', {
               before: manualData.length,
               after: filtered.length,
-              hiddenCount: hiddenManualIds.length,
-              hiddenIds: hiddenManualIds
+              hiddenCount: tempHiddenManualIds.length,
+              hiddenIds: tempHiddenManualIds
             });
 
             return filtered
@@ -1847,22 +1866,22 @@ export default function ManualPurchaseOrders() {
             rowSelection={backupRowSelection}
             columns={backupColumns}
           dataSource={(() => {
-            const hiddenBackupIds = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
             // 使用 refreshKey 确保数据过滤在状态更新后重新执行
             void refreshKey;
+            void hiddenTick;
 
             const filtered = backupData.filter(r => {
               // 确保 ID 比较时类型一致，且去除可能的空白
               const rid = String(r.id).trim();
-              return !hiddenBackupIds.includes(rid);
+              return !tempHiddenBackupIds.includes(rid);
             })
 
             // 调试日志
             console.log('[ManualPurchaseOrders] Table filter (Backup):', {
               before: backupData.length,
               after: filtered.length,
-              hiddenCount: hiddenBackupIds.length,
-              hiddenIds: hiddenBackupIds
+              hiddenCount: tempHiddenBackupIds.length,
+              hiddenIds: tempHiddenBackupIds
             });
 
             return filtered

@@ -259,14 +259,21 @@ export default function PurchaseOrdersList() {
     columnWidth: 40,
   }), [selectedRowKeys]);
 
-  const [hiddenIds, setHiddenIds] = useState<string[]>([])
+  const [tempPlanOrderIds, setTempPlanOrderIds] = useState<string[]>([])
   const [approvalHiddenIds, setApprovalHiddenIds] = useState<string[]>([])
   useEffect(() => {
-    const loadHidden = () => {
+    const loadTempPlanOrderIds = async () => {
       try {
-        const arr = JSON.parse(localStorage.getItem('temporary_hidden_ids') || '[]')
-        setHiddenIds(Array.isArray(arr) ? arr : [])
-      } catch { setHiddenIds([]) }
+        const resp = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
+        const json = await resp.json().catch(() => ({}))
+        const groups = Array.isArray(json?.data) ? json.data : []
+        const ids = groups.flatMap((group: any) =>
+          Array.isArray(group?.items) ? group.items.map((item: any) => String(item?.id || '').trim()).filter(Boolean) : []
+        )
+        setTempPlanOrderIds(Array.from(new Set(ids)))
+      } catch {
+        setTempPlanOrderIds([])
+      }
     }
     const loadApprovalHidden = () => {
       try {
@@ -274,13 +281,11 @@ export default function PurchaseOrdersList() {
         setApprovalHiddenIds(Array.isArray(arr) ? arr : [])
       } catch { setApprovalHiddenIds([]) }
     }
-    loadHidden()
+    loadTempPlanOrderIds()
     loadApprovalHidden()
-    const handler = () => loadHidden()
+    const handler = () => { void loadTempPlanOrderIds() }
     const handler2 = () => loadApprovalHidden()
-    const storageHandler = () => { loadHidden(); loadApprovalHidden() }
     window.addEventListener('temporary_plans_updated', handler)
-    window.addEventListener('storage', storageHandler)
     window.addEventListener('approval_updated', handler2)
     
     // 监听状态更新事件（如生成采购单后）
@@ -292,7 +297,6 @@ export default function PurchaseOrdersList() {
 
     return () => {
       window.removeEventListener('temporary_plans_updated', handler)
-      window.removeEventListener('storage', storageHandler)
       window.removeEventListener('approval_updated', handler2)
       window.removeEventListener('status_updated', statusHandler)
     }
@@ -321,7 +325,7 @@ export default function PurchaseOrdersList() {
   const filteredData = useMemo(() => {
     if (isTechnician && !teamsLoaded) return []
     let arr = data
-      .filter(item => !hiddenIds.includes(item.id) && !approvalHiddenIds.includes(item.id))
+      .filter(item => !tempPlanOrderIds.includes(String(item.id)) && !approvalHiddenIds.includes(item.id))
       .filter(item => sourceFilter === '全部' ? true : item.source === sourceFilter)
     if (isTechnician && myTeamName) {
       arr = arr.filter((item: any) => {
@@ -331,7 +335,7 @@ export default function PurchaseOrdersList() {
       })
     }
     return arr
-  }, [data, hiddenIds, approvalHiddenIds, sourceFilter, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
+  }, [data, tempPlanOrderIds, approvalHiddenIds, sourceFilter, isTechnician, myTeamName, userTeamsMap, teamsLoaded])
 
   const columns: ColumnsType<PurchaseOrder> = useMemo(() => ([
     {
@@ -882,10 +886,7 @@ export default function PurchaseOrdersList() {
                     const json = await res.json()
                     existingGroups = json.data || []
                   }
-                } catch (e) { /* 兜底用localStorage */ }
-                if (existingGroups.length === 0) {
-                  try { existingGroups = JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { existingGroups = [] }
-                }
+                } catch (e) {}
 
                 const newGroupCodes: string[] = []
                 for (const key of Object.keys(monthGroups)) {
@@ -908,8 +909,9 @@ export default function PurchaseOrdersList() {
                   }))
                   // 写入数据库
                   try {
-                    await fetchWithFallback('/api/temporary-plan-groups', {
+                    const resp = await fetchWithFallback('/api/temporary-plan-groups', {
                       method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         code,
                         month_key: key,
@@ -917,39 +919,16 @@ export default function PurchaseOrdersList() {
                         created_by: user?.real_name || user?.username || ''
                       })
                     })
+                    const json = await resp.json().catch(() => ({}))
+                    if (!resp.ok || json?.success === false) {
+                      throw new Error(String(json?.error || '写入临时计划失败'))
+                    }
                   } catch (e) {
                     console.error('写入临时计划失败:', e)
+                    throw e
                   }
                   newGroupCodes.push(code)
                 }
-                // 同时写入 localStorage 作为本地缓存（兼容离线场景）
-                const localExisting: any[] = (() => { try { return JSON.parse(localStorage.getItem('temporary_plans') || '[]') } catch { return [] } })()
-                const newLocalGroups: any[] = []
-                Object.keys(monthGroups).forEach(key => {
-                  const seq = localExisting.filter(g => g.monthKey === key).length + 1
-                  const code = key + String(seq).padStart(2, '0')
-                  const items = monthGroups[key].map(it => ({
-                    id: it.id,
-                    inventory_number: it.inventory_number,
-                    project_name: it.project_name,
-                    part_name: it.part_name,
-                    part_quantity: it.part_quantity,
-                    unit: it.unit,
-                    model: it.model,
-                    supplier: it.supplier,
-                    required_date: (it.demand_date || it.created_date),
-                    production_unit: it.production_unit,
-                    applicant: it.applicant,
-                    part_id: (it as any).part_id,
-                    child_item_id: (it as any).child_item_id
-                  }))
-                  newLocalGroups.push({ code, monthKey: key, createdAt: new Date().toISOString(), items })
-                })
-                localStorage.setItem('temporary_plans', JSON.stringify([...localExisting, ...newLocalGroups]))
-
-                const hidden = new Set<string>(hiddenIds)
-                selected.forEach(s => hidden.add(s.id))
-                localStorage.setItem('temporary_hidden_ids', JSON.stringify(Array.from(hidden)))
                 const hmArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_manual_ids') || '[]') } catch { return [] } })()
                 const hbArr = (() => { try { return JSON.parse(localStorage.getItem('temporary_hidden_backup_ids') || '[]') } catch { return [] } })()
                 const hm = new Set<string>(Array.isArray(hmArr) ? hmArr : [])
