@@ -452,14 +452,14 @@ export default function ManualPurchaseOrders() {
 
           const tasks: Promise<Response>[] = []
           if (manualIds.length > 0) {
-            tasks.push(fetch('/api/manual-plans/batch-delete', {
+            tasks.push(fetchWithFallback('/api/manual-plans/batch-delete', {
               method: 'POST',
               headers,
               body: JSON.stringify({ ids: manualIds })
             }))
           }
           if (backupIds.length > 0) {
-            tasks.push(fetch('/api/backup-materials/batch-delete', {
+            tasks.push(fetchWithFallback('/api/backup-materials/batch-delete', {
               method: 'POST',
               headers,
               body: JSON.stringify({ ids: backupIds })
@@ -487,7 +487,7 @@ export default function ManualPurchaseOrders() {
   // 获取投产单位选项 - 与工装信息保持一致
   const fetchProductionUnits = async () => {
     try {
-      const response = await fetch('/api/options/production-units', { cache: 'no-store' });
+      const response = await fetchWithFallback('/api/options/production-units', { cache: 'no-store' });
       if (response.ok) {
         const result = await response.json();
         if (result && result.data) {
@@ -503,7 +503,7 @@ export default function ManualPurchaseOrders() {
   // 获取供应商选项
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('/api/options/suppliers', { cache: 'no-store' });
+      const response = await fetchWithFallback('/api/options/suppliers', { cache: 'no-store' });
       if (response.ok) {
         const result = await response.json();
         if (result && result.data) {
@@ -519,7 +519,7 @@ export default function ManualPurchaseOrders() {
   // 获取材质选项 - 与工装信息保持一致
   const fetchMaterials = async () => {
     try {
-      const response = await fetch('/api/materials', { cache: 'no-store' });
+      const response = await fetchWithFallback('/api/materials', { cache: 'no-store' });
       if (response.ok) {
         const result = await response.json();
         if (result && result.data) {
@@ -534,7 +534,7 @@ export default function ManualPurchaseOrders() {
   // 获取料型选项 - 与工装信息保持一致
   const fetchPartTypes = async () => {
     try {
-      const response = await fetch('/api/part-types', { cache: 'no-store' });
+      const response = await fetchWithFallback('/api/part-types', { cache: 'no-store' });
       if (response.ok) {
         const result = await response.json();
         if (result && result.data) {
@@ -581,7 +581,6 @@ export default function ManualPurchaseOrders() {
   // 监听状态更新事件
   useEffect(() => {
     const handleStatusUpdate = () => {
-      console.log('ManualPurchaseOrders received status_updated event, refreshing data...');
       setRefreshKey(prev => prev + 1);
       fetchManualData();
       fetchBackupData();
@@ -590,7 +589,6 @@ export default function ManualPurchaseOrders() {
     
     // 强制刷新处理
     const handleForceRefresh = () => {
-      console.log('ManualPurchaseOrders received force_refresh event');
       setRefreshKey(prev => prev + 1);
       fetchManualData();
       fetchBackupData();
@@ -607,7 +605,6 @@ export default function ManualPurchaseOrders() {
 
   // 紧急刷新功能：清空隐藏列表并重新加载
   const handleEmergencyRefresh = () => {
-    console.log('[ManualPurchaseOrders] Emergency refresh triggered');
     setRefreshKey(prev => prev + 1);
     fetchManualData();
     fetchBackupData();
@@ -618,7 +615,7 @@ export default function ManualPurchaseOrders() {
   // 获取手动输入的数据（使用独立的临时计划数据源）
   const fetchManualData = async () => {
     try {
-      const response = await fetch('/api/manual-plans');
+      const response = await fetchWithFallback('/api/manual-plans');
       
       if (response.ok) {
         const result = await response.json();
@@ -632,12 +629,6 @@ export default function ManualPurchaseOrders() {
           
           setManualAll(manualOrders);
 
-          // 打印调试日志，检查数据完整性
-          console.log('[ManualPurchaseOrders] fetchManualData:', {
-            total: manualOrders.length,
-            sample: manualOrders.slice(0, 3)
-          });
-          
           // 根据本地位置映射排序，保持用户创建时的行位置
           const posMap = getManualPos();
           const placed = applyPositions(manualOrders as any, posMap) as any[]
@@ -667,7 +658,7 @@ export default function ManualPurchaseOrders() {
   // 获取备用材料数据
   const fetchBackupData = async () => {
     try {
-      const response = await fetch('/api/backup-materials');
+      const response = await fetchWithFallback('/api/backup-materials');
       
       if (response.ok) {
         const result = await response.json();
@@ -883,7 +874,7 @@ export default function ManualPurchaseOrders() {
           
           
           try {
-            const response = await fetch('/api/manual-plans', {
+            const response = await fetchWithFallback('/api/manual-plans', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ orders: [postData] })
@@ -958,7 +949,7 @@ export default function ManualPurchaseOrders() {
           // 前端乐观更新，减少卡顿
           setManualDataPreserveScroll(prev => prev.map(r => r.id === id ? { ...r, [key]: value } : r));
 
-          const response = await fetch(`/api/manual-plans/${id}`, {
+          const response = await fetchWithFallback(`/api/manual-plans/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -996,7 +987,7 @@ export default function ManualPurchaseOrders() {
     }
 
     try {
-      const response = await fetch('/api/manual-plans/batch-delete', {
+      const response = await fetchWithFallback('/api/manual-plans/batch-delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1142,7 +1133,7 @@ export default function ManualPurchaseOrders() {
           
           
           try {
-            const response = await fetch('/api/backup-materials', {
+            const response = await fetchWithFallback('/api/backup-materials', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ materials: [postData] })
@@ -1202,8 +1193,6 @@ export default function ManualPurchaseOrders() {
       } else {
         // 更新现有记录
         try {
-          console.log('更新现有备用材料记录:', { id, key, value });
-          
           // 构建更新数据（最小字段集），避免无关字段阻塞保存
           let updateData: any = { [key]: value };
           if (key === 'specifications') {
@@ -1237,7 +1226,7 @@ export default function ManualPurchaseOrders() {
             total_price: updatedRow.total_price ?? 0,
           } : r))
 
-          const response = await fetch(`/api/backup-materials/${id}`, {
+          const response = await fetchWithFallback(`/api/backup-materials/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -1273,7 +1262,7 @@ export default function ManualPurchaseOrders() {
     }
 
     try {
-      const response = await fetch('/api/backup-materials/batch-delete', {
+      const response = await fetchWithFallback('/api/backup-materials/batch-delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1303,14 +1292,14 @@ export default function ManualPurchaseOrders() {
     try {
       const tasks: Promise<Response>[] = []
       if (manualIds.length > 0) {
-        tasks.push(fetch('/api/manual-plans/batch-delete', {
+        tasks.push(fetchWithFallback('/api/manual-plans/batch-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ids: manualIds })
         }))
       }
       if (backupIds.length > 0) {
-        tasks.push(fetch('/api/backup-materials/batch-delete', {
+        tasks.push(fetchWithFallback('/api/backup-materials/batch-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ids: backupIds })
@@ -1805,14 +1794,6 @@ export default function ManualPurchaseOrders() {
               return !tempHiddenManualIds.includes(rid);
             })
 
-            // 调试日志：检查过滤结果
-            console.log('[ManualPurchaseOrders] Table filter (Manual):', {
-              before: manualData.length,
-              after: filtered.length,
-              hiddenCount: tempHiddenManualIds.length,
-              hiddenIds: tempHiddenManualIds
-            });
-
             return filtered
           })()}
           pagination={false}
@@ -1875,14 +1856,6 @@ export default function ManualPurchaseOrders() {
               const rid = String(r.id).trim();
               return !tempHiddenBackupIds.includes(rid);
             })
-
-            // 调试日志
-            console.log('[ManualPurchaseOrders] Table filter (Backup):', {
-              before: backupData.length,
-              after: filtered.length,
-              hiddenCount: tempHiddenBackupIds.length,
-              hiddenIds: tempHiddenBackupIds
-            });
 
             return filtered
           })()}

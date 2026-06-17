@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Table, Space, Button, Checkbox, DatePicker, message } from 'antd'
+import { Table, Space, Button, Checkbox, DatePicker, message, Segmented } from 'antd'
 import dayjs from 'dayjs'
 import EditableCell from '../../components/EditableCell'
 import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService'
@@ -101,6 +101,7 @@ export default function TemporaryPlans() {
   const [groups, setGroups] = useState<TempGroup[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
+  const [arrivalFilter, setArrivalFilter] = useState<'全部' | '已到' | '未到'>('未到')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -129,8 +130,11 @@ export default function TemporaryPlans() {
   }, [])
 
   const flatData = useMemo(() => {
-    return groups.flatMap(g => g.items.map(it => ({ ...it, group_code: g.code, id: `${g.code}:${it.id}` })))
-  }, [groups])
+    const allData = groups.flatMap(g => g.items.map(it => ({ ...it, group_code: g.code, id: `${g.code}:${it.id}` })))
+    if (arrivalFilter === '全部') return allData
+    if (arrivalFilter === '已到') return allData.filter(r => !!r.arrival_date)
+    return allData.filter(r => !r.arrival_date)
+  }, [groups, arrivalFilter])
 
   const handleSavePurchaser = (rowId: string, _key: string, value: string) => {
     const [code, origId] = String(rowId).split(':')
@@ -316,7 +320,14 @@ export default function TemporaryPlans() {
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
+          <Segmented
+            value={arrivalFilter}
+            onChange={(v) => setArrivalFilter(v as any)}
+            options={['全部', '已到', '未到']}
+          />
+        </div>
         <Space>
           <Button onClick={async () => {
             if (selectedRowKeys.length === 0) { message.warning('请选择需要回退的项'); return }

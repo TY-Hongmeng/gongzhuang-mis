@@ -290,7 +290,6 @@ export default function PurchaseOrdersList() {
     
     // 监听状态更新事件（如生成采购单后）
     const statusHandler = () => {
-      console.log('收到 status_updated 事件，刷新采购单列表')
       fetchPurchaseOrders()
     }
     window.addEventListener('status_updated', statusHandler)
