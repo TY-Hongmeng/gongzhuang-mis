@@ -18,7 +18,10 @@ const MODULE_ALIASES: Record<string, string> = {
   '个人设置': 'personal_settings', personal_settings: 'personal_settings',
   '标准件管理': 'standard_parts', standard_parts: 'standard_parts',
   '标准件出库': 'standard_parts_issue', standard_parts_issue: 'standard_parts_issue',
-  '出库记录': 'standard_parts_issue'
+  '出库记录': 'standard_parts_issue',
+  '量具管理': 'measure_tools', measure_tools: 'measure_tools',
+  '量具台账': 'measure_tools', my_measure_tools: 'my_measure_tools',
+  '我的量具': 'my_measure_tools'
 }
 
 interface ProtectedRouteProps {

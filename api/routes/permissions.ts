@@ -86,7 +86,7 @@ const DEFAULT_MODULES: Record<string, string[]> = {
   personal_settings: [
     '访问模块'
   ],
-  // 量具管理
+  // 量具管理（量具台账）
   measure_tools: [
     '访问模块',
     '查看量具台账',
@@ -94,6 +94,13 @@ const DEFAULT_MODULES: Record<string, string[]> = {
     '导入量具',
     '确认报废',
     '查看历史记录'
+  ],
+  // 我的量具
+  my_measure_tools: [
+    '访问模块',
+    '查看我的量具',
+    '领取量具',
+    '归还量具'
   ]
 }
 

@@ -92,8 +92,8 @@ export default function App() {
                 <Route path="work-hours-management" element={<ProtectedRoute requiredModule="work_hours"><WorkHoursManagement /></ProtectedRoute>} />
                 <Route path="program-entry" element={<ProtectedRoute requiredModule="program_entry"><ProgramEntry /></ProtectedRoute>} />
                 <Route path="program-management" element={<ProtectedRoute requiredModule="program_management"><ProgramManagement /></ProtectedRoute>} />
-                <Route path="measure-tools" element={<ProtectedRoute><MeasureToolsLedger /></ProtectedRoute>} />
-                <Route path="my-measure-tools" element={<ProtectedRoute><MyMeasureTools /></ProtectedRoute>} />
+                <Route path="measure-tools" element={<ProtectedRoute requiredModule="measure_tools"><MeasureToolsLedger /></ProtectedRoute>} />
+                <Route path="my-measure-tools" element={<ProtectedRoute requiredModule="my_measure_tools"><MyMeasureTools /></ProtectedRoute>} />
               </Route>
             )}
             <Route path="*" element={<Navigate to={isAuthenticated && user ? "/dashboard" : "/login"} replace />} />

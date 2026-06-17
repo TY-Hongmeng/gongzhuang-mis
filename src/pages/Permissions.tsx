@@ -43,7 +43,9 @@ const MODULES = [
   { name: '工时录入', code: 'work_hours_entry' },
   { name: '程序录入', code: 'program_entry' },
   { name: '程序管理', code: 'program_management' },
-  { name: '工时管理', code: 'work_hours' }
+  { name: '工时管理', code: 'work_hours' },
+  { name: '量具台账', code: 'measure_tools' },
+  { name: '我的量具', code: 'my_measure_tools' }
 ]
 
 // 角色数据类型
