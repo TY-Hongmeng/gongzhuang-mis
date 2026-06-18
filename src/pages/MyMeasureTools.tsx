@@ -68,7 +68,6 @@ const MobileCard: React.FC<{
   record: MineRow
   acting: boolean
   onConfirmResponsible: () => void
-  onRejectTransfer: () => void
   onCancelTransfer: () => void
   onOpenTransfer: () => void
   onOpenBorrow: () => void
@@ -157,7 +156,6 @@ function renderMobileActions(
   acting: boolean,
   actions: {
     onConfirmResponsible: () => void
-    onRejectTransfer: () => void
     onCancelTransfer: () => void
     onOpenTransfer: () => void
     onOpenBorrow: () => void
@@ -176,16 +174,10 @@ function renderMobileActions(
 
   if (record.view_type === 'pending') {
     return (
-      <Space direction="vertical" style={{ width: '100%' }} size={8}>
-        <Button type="primary" block icon={<CheckCircleOutlined />}
-          onClick={actions.onConfirmResponsible} loading={acting} size="large" style={btnStyle}>
-          确认责任人
-        </Button>
-        <Button danger ghost block icon={<CloseCircleOutlined />}
-          onClick={actions.onRejectTransfer} size="large" style={{ ...btnStyle, borderColor: '#ffccc7' }}>
-          拒绝接收
-        </Button>
-      </Space>
+      <Button type="primary" block icon={<CheckCircleOutlined />}
+        onClick={actions.onConfirmResponsible} loading={acting} size="large" style={btnStyle}>
+        确认责任人
+      </Button>
     )
   }
 
@@ -564,10 +556,7 @@ const MyMeasureTools: React.FC = () => {
       render: (_: any, record: MineRow) => (
         <Space wrap>
           {record.view_type === 'pending' ? (
-            <>
-              <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>确认责任人</Button>
-              <Button type="link" danger onClick={() => { setCurrentItem(record); rejectTransferForm.resetFields(); setRejectTransferOpen(true) }}>拒绝接收</Button>
-            </>
+            <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>确认责任人</Button>
           ) : null}
           {record.view_type === 'owned' ? (
             <>
@@ -652,7 +641,6 @@ const MyMeasureTools: React.FC = () => {
                   record={item}
                   acting={acting}
                   onConfirmResponsible={() => confirmResponsible(item)}
-                  onRejectTransfer={() => { setCurrentItem(item); rejectTransferForm.resetFields(); setRejectTransferOpen(true) }}
                   onCancelTransfer={() => cancelTransfer(item)}
                   onOpenTransfer={() => { setCurrentItem(item); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}
                   onOpenBorrow={() => { setCurrentItem(item); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}
