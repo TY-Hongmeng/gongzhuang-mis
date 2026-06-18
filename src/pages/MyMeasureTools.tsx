@@ -10,9 +10,24 @@ import {
   Table,
   Tag,
   Typography,
-  message
+  message,
+  List,
+  Badge,
+  Divider,
+  Spin
 } from 'antd'
-import { LeftOutlined, ReloadOutlined } from '@ant-design/icons'
+import {
+  LeftOutlined,
+  ReloadOutlined,
+  SwapOutlined,
+  UserAddOutlined,
+  DeleteOutlined,
+  RollbackOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  WarningOutlined
+} from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithFallback } from '../utils/api'
 import { useAuthStore } from '../stores/authStore'
@@ -36,8 +51,250 @@ type MineRow = MaterialAssetItem & {
   view_type: 'pending' | 'owned' | 'borrowed'
 }
 
+// 手机端检测
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = React.useState(false)
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
+
+// ========== 手机端卡片组件 ==========
+const MobileCard: React.FC<{
+  record: MineRow
+  acting: boolean
+  onConfirmResponsible: () => void
+  onRejectTransfer: () => void
+  onCancelTransfer: () => void
+  onOpenTransfer: () => void
+  onOpenBorrow: () => void
+  onConfirmReturn: () => void
+  onOpenScrap: () => void
+  onOpenReturn: () => void
+}> = ({ record, acting, ...actions }) => {
+  // 类型标签颜色和文字
+  const typeInfo = (() => {
+    if (record.view_type === 'pending') return { color: 'gold', text: '待我确认' }
+    if (record.view_type === 'borrowed') return { color: 'cyan', text: '我借用的' }
+    return { color: 'blue', text: '我负责的' }
+  })()
+
+  return (
+    <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
+      {/* 头部：名称 + 类型标签 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Text strong style={{ fontSize: 15 }}>{record.name || '-'}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 13 }}>{record.code || '-'}</Text>
+        </div>
+        <Tag color={typeInfo.color} style={{ flexShrink: 0, margin: 0 }}>{typeInfo.text}</Tag>
+      </div>
+
+      {/* 型号规格 */}
+      {record.model_spec ? (
+        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
+          规格: {record.model_spec}
+        </Text>
+      ) : null}
+
+      {/* 责任关系 */}
+      <div style={{ marginBottom: 6, fontSize: 13 }}>
+        <span style={{ color: '#666' }}>责任人: </span>
+        <span>{record.responsible_person || '未确认'}</span>
+        {record.pending_responsible_person ? (
+          <div><WarningOutlined style={{ color: '#faad14', marginRight: 4 }} /><Text type="warning">待{record.pending_responsible_person}确认</Text></div>
+        ) : null}
+        {record.borrower_name && record.view_type !== 'borrowed' ? (
+          <div><Text type="secondary">借用人: {record.borrower_name}</Text></div>
+        ) : null}
+      </div>
+
+      {/* 状态标签 */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+        <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0 }}>{record.asset_status}</Tag>
+        <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0 }}>{record.responsibility_status}</Tag>
+        {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0 }}>{record.borrow_status}</Tag> : null}
+        {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0 }}>{record.scrap_status}</Tag> : null}
+      </div>
+
+      {/* 说明信息 */}
+      {(record.remark || record.borrow_note || record.scrap_reason) && (
+        <div style={{ background: '#fafafa', borderRadius: 6, padding: '6px 8px', marginBottom: 10, fontSize: 12, lineHeight: 1.5 }}>
+          {record.remark ? <div>{record.remark}</div> : null}
+          {record.borrow_note ? <div style={{ color: '#888' }}>借用: {record.borrow_note}</div> : null}
+          {record.scrap_reason ? <div style={{ color: '#888' }}>报废原因: {record.scrap_reason}</div> : null}
+        </div>
+      )}
+
+      <Divider style={{ margin: '8px 0' }} />
+
+      {/* 操作按钮 - 大按钮，易点击 */}
+      {renderMobileActions(record, acting, actions)}
+    </Card>
+  )
+}
+
+function renderMobileActions(
+  record: MineRow,
+  acting: boolean,
+  actions: {
+    onConfirmResponsible: () => void
+    onRejectTransfer: () => void
+    onCancelTransfer: () => void
+    onOpenTransfer: () => void
+    onOpenBorrow: () => void
+    onConfirmReturn: () => void
+    onOpenScrap: () => void
+    onOpenReturn: () => void
+  }
+) {
+  if (record.view_type === 'pending') {
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size={8}>
+        <Button
+          type="primary"
+          block
+          icon={<CheckCircleOutlined />}
+          onClick={actions.onConfirmResponsible}
+          loading={acting}
+          size="large"
+          style={{ height: 44 }}
+        >
+          确认责任人
+        </Button>
+        <Button
+          danger
+          block
+          icon={<CloseCircleOutlined />}
+          onClick={actions.onRejectTransfer}
+          size="large"
+          style={{ height: 44 }}
+        >
+          拒绝接收
+        </Button>
+      </Space>
+    )
+  }
+
+  if (record.view_type === 'owned') {
+    const btns = []
+    btns.push(
+      <Button
+        key="transfer"
+        block
+        icon={<SwapOutlined />}
+        onClick={actions.onOpenTransfer}
+        disabled={record.asset_status === '报废'}
+        size="large"
+        style={{ height: 44 }}
+      >
+        转移责任人
+      </Button>
+    )
+    if (record.responsibility_status === '待转移确认' && record.pending_responsible_person) {
+      btns.push(
+        <Button
+          key="cancel"
+          block
+          icon={<CloseCircleOutlined />}
+          onClick={actions.onCancelTransfer}
+          loading={acting}
+          size="large"
+          danger
+          style={{ height: 44 }}
+        >
+          撤销转移
+        </Button>
+      )
+    }
+    if (record.asset_status !== '报废' && record.responsibility_status === '已确认' && record.borrow_status === '无') {
+      btns.push(
+        <Button
+          key="borrow"
+          block
+          icon={<UserAddOutlined />}
+          onClick={actions.onOpenBorrow}
+          size="large"
+          style={{ height: 44 }}
+        >
+          借出登记
+        </Button>
+      )
+    }
+    if (record.borrow_status === '待归还确认') {
+      btns.push(
+        <Button
+          key="return"
+          type="primary"
+          block
+          icon={<RollbackOutlined />}
+          onClick={actions.onConfirmReturn}
+          loading={acting}
+          size="large"
+          style={{ height: 44 }}
+        >
+          确认归还
+        </Button>
+      )
+    }
+    if (record.asset_status !== '报废' && record.scrap_status !== '待报废' && record.borrow_status === '无') {
+      btns.push(
+        <Button
+          key="scrap"
+          block
+          danger
+          icon={<DeleteOutlined />}
+          onClick={actions.onOpenScrap}
+          size="large"
+          ghost
+          style={{ height: 44 }}
+        >
+          报废申请
+        </Button>
+      )
+    }
+    return <Space direction="vertical" style={{ width: '100%' }} size={8}>{btns}</Space>
+  }
+
+  if (record.view_type === 'borrowed') {
+    const btns = []
+    if (record.borrow_status === '借用中') {
+      btns.push(
+        <Button
+          key="return"
+          type="primary"
+          block
+          icon={<RollbackOutlined />}
+          onClick={actions.onOpenReturn}
+          size="large"
+          style={{ height: 44 }}
+        >
+          申请归还
+        </Button>
+      )
+    }
+    if (record.borrow_status === '待归还确认') {
+      btns.push(
+        <div key="waiting" style={{ textAlign: 'center', padding: '4px 0' }}>
+          <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: 4 }} />
+          <Text type="warning">等待责任人确认归还</Text>
+        </div>
+      )
+    }
+    return <Space direction="vertical" style={{ width: '100%' }} size={8}>{btns}</Space>
+  }
+
+  return null
+}
+
 const MyMeasureTools: React.FC = () => {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const { user } = useAuthStore()
   const [transferForm] = Form.useForm()
   const [scrapForm] = Form.useForm()
@@ -67,6 +324,13 @@ const MyMeasureTools: React.FC = () => {
     ...ownedItems.map((item) => ({ ...item, view_type: 'owned' as const })),
     ...borrowedItems.map((item) => ({ ...item, view_type: 'borrowed' as const }))
   ]), [borrowedItems, ownedItems, pendingItems])
+
+  // 统计数量
+  const stats = React.useMemo(() => ({
+    pending: pendingItems.length,
+    owned: ownedItems.length,
+    borrowed: borrowedItems.length
+  }), [pendingItems, ownedItems, borrowedItems])
 
   const loadMine = React.useCallback(async () => {
     try {
@@ -107,22 +371,14 @@ const MyMeasureTools: React.FC = () => {
     } catch {}
   }, [user?.real_name])
 
-  React.useEffect(() => {
-    loadMine()
-  }, [loadMine])
-
-  React.useEffect(() => {
-    loadUsers()
-  }, [loadUsers])
+  React.useEffect(() => { loadMine() }, [loadMine])
+  React.useEffect(() => { loadUsers() }, [loadUsers])
 
   const postAction = async (url: string, body: Record<string, any>) => {
     const res = await fetchWithFallback(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...actorPayload,
-        ...body
-      })
+      body: JSON.stringify({ ...actorPayload, ...body })
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok || json?.success === false) {
@@ -162,8 +418,7 @@ const MyMeasureTools: React.FC = () => {
       setActing(true)
       const targetName = String(values.target_name || '').trim()
       const target = users.find((item) =>
-        item.id === String(values.target_user_id || '')
-        || item.real_name === targetName
+        item.id === String(values.target_user_id || '') || item.real_name === targetName
       )
       await postAction(`/api/material-assets/${encodeURIComponent(currentItem.id)}/transfer`, {
         target_user_id: String(target?.id || values.target_user_id || ''),
@@ -188,8 +443,7 @@ const MyMeasureTools: React.FC = () => {
       setActing(true)
       const borrowerName = String(values.borrower_name || '').trim()
       const borrower = users.find((item) =>
-        item.id === String(values.borrower_user_id || '')
-        || item.real_name === borrowerName
+        item.id === String(values.borrower_user_id || '') || item.real_name === borrowerName
       )
       await postAction(`/api/material-assets/${encodeURIComponent(currentItem.id)}/borrow`, {
         borrower_user_id: String(borrower?.id || values.borrower_user_id || ''),
@@ -278,6 +532,7 @@ const MyMeasureTools: React.FC = () => {
     }
   }
 
+  // 桌面端列定义
   const columns = [
     {
       title: '序号',
@@ -295,25 +550,14 @@ const MyMeasureTools: React.FC = () => {
         return <Tag color="blue">我负责的</Tag>
       }
     },
+    { title: '名称', dataIndex: 'name', width: 150 },
+    { title: '编号', dataIndex: 'code', width: 140 },
     {
-      title: '名称',
-      dataIndex: 'name',
-      width: 150
-    },
-    {
-      title: '编号',
-      dataIndex: 'code',
-      width: 140
-    },
-    {
-      title: '型号规格',
-      dataIndex: 'model_spec',
-      width: 180,
+      title: '型号规格', dataIndex: 'model_spec', width: 180,
       render: (value: string) => value || '-'
     },
     {
-      title: '责任关系',
-      width: 220,
+      title: '责任关系', width: 220,
       render: (_: any, record: MineRow) => (
         <div>
           <div>{record.responsible_person || '未确认'}</div>
@@ -323,8 +567,7 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '状态',
-      width: 220,
+      title: '状态', width: 220,
       render: (_: any, record: MineRow) => (
         <Space wrap size={[4, 4]}>
           <Tag color={tagColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
@@ -335,8 +578,7 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '说明',
-      width: 300,
+      title: '说明', width: 300,
       render: (_: any, record: MineRow) => (
         <div>
           <div>{record.remark || '-'}</div>
@@ -348,97 +590,32 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '操作',
-      width: 340,
-      align: 'center' as const,
+      title: '操作', width: 340, align: 'center' as const,
       render: (_: any, record: MineRow) => (
         <Space wrap>
           {record.view_type === 'pending' ? (
             <>
-              <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>
-                确认责任人
-              </Button>
-              <Button
-                type="link"
-                danger
-                onClick={() => {
-                  setCurrentItem(record)
-                  rejectTransferForm.resetFields()
-                  setRejectTransferOpen(true)
-                }}
-              >
-                拒绝接收
-              </Button>
+              <Button type="link" onClick={() => confirmResponsible(record)} loading={acting}>确认责任人</Button>
+              <Button type="link" danger onClick={() => { setCurrentItem(record); rejectTransferForm.resetFields(); setRejectTransferOpen(true) }}>拒绝接收</Button>
             </>
           ) : null}
           {record.view_type === 'owned' ? (
             <>
-              <Button
-                type="link"
-                disabled={record.asset_status === '报废'}
-                onClick={() => {
-                  setCurrentItem(record)
-                  transferForm.setFieldsValue({
-                    target_name: '',
-                    target_user_id: '',
-                    remark: ''
-                  })
-                  setTransferOpen(true)
-                }}
-              >
-                转移责任人
-              </Button>
-              <Button
-                type="link"
-                disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'}
-                onClick={() => {
-                  setCurrentItem(record)
-                  borrowForm.setFieldsValue({
-                    borrower_name: '',
-                    borrower_user_id: '',
-                    borrow_note: ''
-                  })
-                  setBorrowOpen(true)
-                }}
-              >
-                借出登记
-              </Button>
+              <Button type="link" disabled={record.asset_status === '报废'} onClick={() => { setCurrentItem(record); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}>转移责任人</Button>
+              <Button type="link" disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'} onClick={() => { setCurrentItem(record); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}>借出登记</Button>
               {record.responsibility_status === '待转移确认' && record.pending_responsible_person ? (
-                <Button type="link" onClick={() => cancelTransfer(record)} loading={acting}>
-                  撤销转移
-                </Button>
+                <Button type="link" onClick={() => cancelTransfer(record)} loading={acting}>撤销转移</Button>
               ) : null}
               {record.borrow_status === '待归还确认' ? (
-                <Button type="link" onClick={() => confirmReturn(record)} loading={acting}>
-                  确认归还
-                </Button>
+                <Button type="link" onClick={() => confirmReturn(record)} loading={acting}>确认归还</Button>
               ) : null}
-              <Button
-                type="link"
-                danger
-                disabled={record.asset_status === '报废' || record.scrap_status === '待报废' || record.borrow_status !== '无'}
-                onClick={() => {
-                  setCurrentItem(record)
-                  setScrapOpen(true)
-                }}
-              >
-                报废申请
-              </Button>
+              <Button type="link" danger disabled={record.asset_status === '报废' || record.scrap_status === '待报废' || record.borrow_status !== '无'} onClick={() => { setCurrentItem(record); setScrapOpen(true) }}>报废申请</Button>
             </>
           ) : null}
           {record.view_type === 'borrowed' ? (
             <>
               {record.borrow_status === '借用中' ? (
-                <Button
-                  type="link"
-                  onClick={() => {
-                    setCurrentItem(record)
-                    returnForm.setFieldsValue({ return_note: '' })
-                    setReturnOpen(true)
-                  }}
-                >
-                  申请归还
-                </Button>
+                <Button type="link" onClick={() => { setCurrentItem(record); returnForm.setFieldsValue({ return_note: '' }); setReturnOpen(true) }}>申请归还</Button>
               ) : null}
               {record.borrow_status === '待归还确认' ? <Text type="warning">等待责任人确认</Text> : null}
             </>
@@ -448,41 +625,96 @@ const MyMeasureTools: React.FC = () => {
     }
   ]
 
+  // ========== 渲染 ==========
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: isMobile ? 12 : 16 }}>
       <Card bordered={false}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        {/* 标题栏 */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          marginBottom: isMobile ? 12 : 16
+        }}>
           <div>
-            <Title level={4} style={{ margin: 0 }}>我的量具</Title>
-            <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>我的量具</Title>
+            {!isMobile && <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>}
           </div>
           <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={loadMine}>刷新</Button>
-            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
+            <Button icon={<ReloadOutlined />} onClick={loadMine} size={isMobile ? 'middle' : 'default'}>刷新</Button>
+            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size={isMobile ? 'middle' : 'default'}>返回</Button>
           </Space>
         </div>
 
-        <Card size="small" title="我的量具总表">
-          <Table
-            rowKey={(record) => `${record.view_type}-${record.id}`}
-            loading={loading}
-            dataSource={mergedItems}
-            columns={columns as any}
-            locale={{ emptyText: '暂无量具数据' }}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
-        </Card>
+        {/* 手机端统计条 */}
+        {isMobile && (
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            marginBottom: 12,
+            overflowX: 'auto'
+          }}>
+            <Badge count={stats.pending} offset={[0, 0]} size="small">
+              <Tag color="gold" style={{ fontSize: 14, padding: '4px 12px' }}>待确认</Tag>
+            </Badge>
+            <Badge count={stats.owned} offset={[0, 0]} size="small">
+              <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>我负责</Tag>
+            </Badge>
+            <Badge count={stats.borrowed} offset={[0, 0]} size="small">
+              <Tag color="cyan" style={{ fontSize: 14, padding: '4px 12px' }}>我借用</Tag>
+            </Badge>
+          </div>
+        )}
+
+        {/* 内容区 */}
+        {isMobile ? (
+          /* ====== 手机端卡片列表 ====== */
+          <div>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="加载中..." /></div>
+            ) : mergedItems.length > 0 ? (
+              mergedItems.map((item) => (
+                <MobileCard
+                  key={`${item.view_type}-${item.id}`}
+                  record={item}
+                  acting={acting}
+                  onConfirmResponsible={() => confirmResponsible(item)}
+                  onRejectTransfer={() => { setCurrentItem(item); rejectTransferForm.resetFields(); setRejectTransferOpen(true) }}
+                  onCancelTransfer={() => cancelTransfer(item)}
+                  onOpenTransfer={() => { setCurrentItem(item); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}
+                  onOpenBorrow={() => { setCurrentItem(item); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}
+                  onConfirmReturn={() => confirmReturn(item)}
+                  onOpenScrap={() => { setCurrentItem(item); setScrapOpen(true) }}
+                  onOpenReturn={() => { setCurrentItem(item); returnForm.setFieldsValue({ return_note: '' }); setReturnOpen(true) }}
+                />
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>暂无量具数据</div>
+            )}
+          </div>
+        ) : (
+          /* ====== 桌面端表格 ====== */
+          <Card size="small" title="我的量具总表">
+            <Table
+              rowKey={(record) => `${record.view_type}-${record.id}`}
+              loading={loading}
+              dataSource={mergedItems}
+              columns={columns as any}
+              locale={{ emptyText: '暂无量具数据' }}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+            />
+          </Card>
+        )}
       </Card>
 
+      {/* ====== 弹窗（桌面/手机共用） ====== */}
       <Modal
-        title={currentItem ? `拒绝接收责任人 - ${currentItem.name}` : '拒绝接收责任人'}
+        title={`拒绝接收责任人${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={rejectTransferOpen}
-        onCancel={() => {
-          setRejectTransferOpen(false)
-          setCurrentItem(null)
-          rejectTransferForm.resetFields()
-        }}
+        onCancel={() => { setRejectTransferOpen(false); setCurrentItem(null); rejectTransferForm.resetFields() }}
         footer={null}
         destroyOnClose
       >
@@ -492,29 +724,17 @@ const MyMeasureTools: React.FC = () => {
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setRejectTransferOpen(false)
-                setCurrentItem(null)
-                rejectTransferForm.resetFields()
-              }}>
-                取消
-              </Button>
-              <Button type="primary" danger htmlType="submit" loading={acting}>
-                确认拒绝
-              </Button>
+              <Button onClick={() => { setRejectTransferOpen(false); setCurrentItem(null); rejectTransferForm.resetFields() }}>取消</Button>
+              <Button type="primary" danger htmlType="submit" loading={acting}>确认拒绝</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={currentItem ? `转移责任人 - ${currentItem.name}` : '转移责任人'}
+        title={`转移责任人${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={transferOpen}
-        onCancel={() => {
-          setTransferOpen(false)
-          setCurrentItem(null)
-          transferForm.resetFields()
-        }}
+        onCancel={() => { setTransferOpen(false); setCurrentItem(null); transferForm.resetFields() }}
         footer={null}
         destroyOnClose
       >
@@ -523,55 +743,34 @@ const MyMeasureTools: React.FC = () => {
             <AutoComplete
               allowClear
               placeholder="可输入姓名，或从联想列表中选择"
-              options={users.map((item) => ({
-                value: item.real_name,
-                label: item.real_name,
-                userId: item.id
-              }))}
+              options={users.map((item) => ({ value: item.real_name, label: item.real_name, userId: item.id }))}
               filterOption={(inputValue, option) =>
                 String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())
               }
-              onSelect={(_value, option: any) => {
-                transferForm.setFieldValue('target_user_id', String(option?.userId || ''))
-              }}
+              onSelect={(_value, option: any) => transferForm.setFieldValue('target_user_id', String(option?.userId || ''))}
               onChange={(value) => {
-                const normalized = String(value || '').trim()
-                const matchedUser = users.find((item) => item.real_name === normalized)
+                const matchedUser = users.find((item) => item.real_name === String(value || '').trim())
                 transferForm.setFieldValue('target_user_id', String(matchedUser?.id || ''))
               }}
             />
           </Form.Item>
-          <Form.Item name="target_user_id" hidden>
-            <Input />
-          </Form.Item>
+          <Form.Item name="target_user_id" hidden><Input /></Form.Item>
           <Form.Item label="转移说明" name="remark">
             <Input.TextArea rows={3} placeholder="可选，说明本次责任转移原因" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setTransferOpen(false)
-                setCurrentItem(null)
-                transferForm.resetFields()
-              }}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit" loading={acting}>
-                提交
-              </Button>
+              <Button onClick={() => { setTransferOpen(false); setCurrentItem(null); transferForm.resetFields() }}>取消</Button>
+              <Button type="primary" htmlType="submit" loading={acting}>提交</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={currentItem ? `借出登记 - ${currentItem.name}` : '借出登记'}
+        title={`借出登记${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={borrowOpen}
-        onCancel={() => {
-          setBorrowOpen(false)
-          setCurrentItem(null)
-          borrowForm.resetFields()
-        }}
+        onCancel={() => { setBorrowOpen(false); setCurrentItem(null); borrowForm.resetFields() }}
         footer={null}
         destroyOnClose
       >
@@ -580,55 +779,34 @@ const MyMeasureTools: React.FC = () => {
             <AutoComplete
               allowClear
               placeholder="可输入姓名，或从联想列表中选择"
-              options={users.map((item) => ({
-                value: item.real_name,
-                label: item.real_name,
-                userId: item.id
-              }))}
+              options={users.map((item) => ({ value: item.real_name, label: item.real_name, userId: item.id }))}
               filterOption={(inputValue, option) =>
                 String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())
               }
-              onSelect={(_value, option: any) => {
-                borrowForm.setFieldValue('borrower_user_id', String(option?.userId || ''))
-              }}
+              onSelect={(_value, option: any) => borrowForm.setFieldValue('borrower_user_id', String(option?.userId || ''))}
               onChange={(value) => {
-                const normalized = String(value || '').trim()
-                const matchedUser = users.find((item) => item.real_name === normalized)
+                const matchedUser = users.find((item) => item.real_name === String(value || '').trim())
                 borrowForm.setFieldValue('borrower_user_id', String(matchedUser?.id || ''))
               }}
             />
           </Form.Item>
-          <Form.Item name="borrower_user_id" hidden>
-            <Input />
-          </Form.Item>
+          <Form.Item name="borrower_user_id" hidden><Input /></Form.Item>
           <Form.Item label="借用说明" name="borrow_note">
             <Input.TextArea rows={3} placeholder="可选，说明借用用途、交接情况等" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setBorrowOpen(false)
-                setCurrentItem(null)
-                borrowForm.resetFields()
-              }}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit" loading={acting}>
-                提交
-              </Button>
+              <Button onClick={() => { setBorrowOpen(false); setCurrentItem(null); borrowForm.resetFields() }}>取消</Button>
+              <Button type="primary" htmlType="submit" loading={acting}>提交</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={currentItem ? `报废申请 - ${currentItem.name}` : '报废申请'}
+        title={`报废申请${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={scrapOpen}
-        onCancel={() => {
-          setScrapOpen(false)
-          setCurrentItem(null)
-          scrapForm.resetFields()
-        }}
+        onCancel={() => { setScrapOpen(false); setCurrentItem(null); scrapForm.resetFields() }}
         footer={null}
         destroyOnClose
       >
@@ -638,29 +816,17 @@ const MyMeasureTools: React.FC = () => {
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setScrapOpen(false)
-                setCurrentItem(null)
-                scrapForm.resetFields()
-              }}>
-                取消
-              </Button>
-              <Button type="primary" danger htmlType="submit" loading={acting}>
-                提交申请
-              </Button>
+              <Button onClick={() => { setScrapOpen(false); setCurrentItem(null); scrapForm.resetFields() }}>取消</Button>
+              <Button type="primary" danger htmlType="submit" loading={acting}>提交申请</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={currentItem ? `申请归还 - ${currentItem.name}` : '申请归还'}
+        title={`申请归还${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={returnOpen}
-        onCancel={() => {
-          setReturnOpen(false)
-          setCurrentItem(null)
-          returnForm.resetFields()
-        }}
+        onCancel={() => { setReturnOpen(false); setCurrentItem(null); returnForm.resetFields() }}
         footer={null}
         destroyOnClose
       >
@@ -670,16 +836,8 @@ const MyMeasureTools: React.FC = () => {
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => {
-                setReturnOpen(false)
-                setCurrentItem(null)
-                returnForm.resetFields()
-              }}>
-                取消
-              </Button>
-              <Button type="primary" htmlType="submit" loading={acting}>
-                提交申请
-              </Button>
+              <Button onClick={() => { setReturnOpen(false); setCurrentItem(null); returnForm.resetFields() }}>取消</Button>
+              <Button type="primary" htmlType="submit" loading={acting}>提交</Button>
             </Space>
           </Form.Item>
         </Form>
