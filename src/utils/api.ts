@@ -2379,8 +2379,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           return jsonResponse({ success: true })
         }
+      }
 
-        // ========== 临时计划分组 API ==========
+      // ========== 临时计划分组 API ==========
+      if (path.startsWith('/api/temporary-plan-groups')) {
         if (method === 'GET' && path === '/api/temporary-plan-groups') {
           const { data, error } = await supabase
             .from('temporary_plan_groups')
