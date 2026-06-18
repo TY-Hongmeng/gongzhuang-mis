@@ -84,56 +84,69 @@ const MobileCard: React.FC<{
   })()
 
   return (
-    <Card size="small" style={{ marginBottom: 12 }} bodyStyle={{ padding: 12 }}>
+    <Card
+      size="small"
+      style={{ marginBottom: 10, borderRadius: 10 }}
+      bodyStyle={{ padding: '14px 16px' }}
+    >
       {/* 头部：名称 + 类型标签 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Text strong style={{ fontSize: 15 }}>{record.name || '-'}</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 13 }}>{record.code || '-'}</Text>
-        </div>
-        <Tag color={typeInfo.color} style={{ flexShrink: 0, margin: 0 }}>{typeInfo.text}</Tag>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Text strong style={{ fontSize: 16, lineHeight: 1.3 }}>{record.name || '-'}</Text>
+        <Tag color={typeInfo.color} style={{ flexShrink: 0, margin: 0, fontSize: 12, padding: '2px 8px', borderRadius: 4 }}>
+          {typeInfo.text}
+        </Tag>
       </div>
 
-      {/* 型号规格 */}
-      {record.model_spec ? (
-        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
-          规格: {record.model_spec}
-        </Text>
-      ) : null}
+      {/* 编号 + 规格（同一行） */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 10, fontSize: 12, color: '#999' }}>
+        <span>{record.code || '-'}</span>
+        {record.model_spec ? <span>规格: {record.model_spec}</span> : null}
+      </div>
 
       {/* 责任关系 */}
-      <div style={{ marginBottom: 6, fontSize: 13 }}>
-        <span style={{ color: '#666' }}>责任人: </span>
-        <span>{record.responsible_person || '未确认'}</span>
+      <div style={{ marginBottom: 10, fontSize: 14, lineHeight: 1.6 }}>
+        <div>
+          <span style={{ color: '#999', fontSize: 12 }}>责任人 </span>
+          <span style={{ fontWeight: 500 }}>{record.responsible_person || '未确认'}</span>
+        </div>
         {record.pending_responsible_person ? (
-          <div><WarningOutlined style={{ color: '#faad14', marginRight: 4 }} /><Text type="warning">待{record.pending_responsible_person}确认</Text></div>
+          <div style={{ color: '#d48806', fontSize: 12, marginTop: 2 }}>
+            <WarningOutlined style={{ marginRight: 4 }} />待 {record.pending_responsible_person} 确认接收
+          </div>
         ) : null}
         {record.borrower_name && record.view_type !== 'borrowed' ? (
-          <div><Text type="secondary">借用人: {record.borrower_name}</Text></div>
+          <div style={{ color: '#999', fontSize: 12, marginTop: 2 }}>借用人: {record.borrower_name}</div>
         ) : null}
       </div>
 
       {/* 状态标签 */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-        <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0 }}>{record.asset_status}</Tag>
-        <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0 }}>{record.responsibility_status}</Tag>
-        {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0 }}>{record.borrow_status}</Tag> : null}
-        {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0 }}>{record.scrap_status}</Tag> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.asset_status}</Tag>
+        <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.responsibility_status}</Tag>
+        {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.borrow_status}</Tag> : null}
+        {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.scrap_status}</Tag> : null}
       </div>
 
       {/* 说明信息 */}
       {(record.remark || record.borrow_note || record.scrap_reason) && (
-        <div style={{ background: '#fafafa', borderRadius: 6, padding: '6px 8px', marginBottom: 10, fontSize: 12, lineHeight: 1.5 }}>
+        <div style={{
+          background: '#f5f5f5',
+          borderRadius: 6,
+          padding: '8px 10px',
+          marginBottom: 10,
+          fontSize: 12,
+          color: '#666',
+          lineHeight: 1.6
+        }}>
           {record.remark ? <div>{record.remark}</div> : null}
-          {record.borrow_note ? <div style={{ color: '#888' }}>借用: {record.borrow_note}</div> : null}
-          {record.scrap_reason ? <div style={{ color: '#888' }}>报废原因: {record.scrap_reason}</div> : null}
+          {record.borrow_note ? <div>借用说明: {record.borrow_note}</div> : null}
+          {record.scrap_reason ? <div>报废原因: {record.scrap_reason}</div> : null}
         </div>
       )}
 
-      <Divider style={{ margin: '8px 0' }} />
+      <Divider style={{ margin: '10px 0' }} />
 
-      {/* 操作按钮 - 大按钮，易点击 */}
+      {/* 操作按钮 */}
       {renderMobileActions(record, acting, actions)}
     </Card>
   )
@@ -153,28 +166,23 @@ function renderMobileActions(
     onOpenReturn: () => void
   }
 ) {
+  // 统一按钮样式：圆角、高度、字号
+  const btnStyle: React.CSSProperties = {
+    height: 42,
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: 500
+  }
+
   if (record.view_type === 'pending') {
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={8}>
-        <Button
-          type="primary"
-          block
-          icon={<CheckCircleOutlined />}
-          onClick={actions.onConfirmResponsible}
-          loading={acting}
-          size="large"
-          style={{ height: 44 }}
-        >
+        <Button type="primary" block icon={<CheckCircleOutlined />}
+          onClick={actions.onConfirmResponsible} loading={acting} size="large" style={btnStyle}>
           确认责任人
         </Button>
-        <Button
-          danger
-          block
-          icon={<CloseCircleOutlined />}
-          onClick={actions.onRejectTransfer}
-          size="large"
-          style={{ height: 44 }}
-        >
+        <Button danger ghost block icon={<CloseCircleOutlined />}
+          onClick={actions.onRejectTransfer} size="large" style={{ ...btnStyle, borderColor: '#ffccc7' }}>
           拒绝接收
         </Button>
       </Space>
@@ -184,76 +192,39 @@ function renderMobileActions(
   if (record.view_type === 'owned') {
     const btns = []
     btns.push(
-      <Button
-        key="transfer"
-        block
-        icon={<SwapOutlined />}
-        onClick={actions.onOpenTransfer}
-        disabled={record.asset_status === '报废'}
-        size="large"
-        style={{ height: 44 }}
-      >
+      <Button key="transfer" block icon={<SwapOutlined />} onClick={actions.onOpenTransfer}
+        disabled={record.asset_status === '报废'} size="large" style={btnStyle}>
         转移责任人
       </Button>
     )
     if (record.responsibility_status === '待转移确认' && record.pending_responsible_person) {
       btns.push(
-        <Button
-          key="cancel"
-          block
-          icon={<CloseCircleOutlined />}
-          onClick={actions.onCancelTransfer}
-          loading={acting}
-          size="large"
-          danger
-          style={{ height: 44 }}
-        >
+        <Button key="cancel" danger ghost block icon={<CloseCircleOutlined />}
+          onClick={actions.onCancelTransfer} loading={acting} size="large" style={{ ...btnStyle, borderColor: '#ffccc7' }}>
           撤销转移
         </Button>
       )
     }
     if (record.asset_status !== '报废' && record.responsibility_status === '已确认' && record.borrow_status === '无') {
       btns.push(
-        <Button
-          key="borrow"
-          block
-          icon={<UserAddOutlined />}
-          onClick={actions.onOpenBorrow}
-          size="large"
-          style={{ height: 44 }}
-        >
+        <Button key="borrow" block icon={<UserAddOutlined />}
+          onClick={actions.onOpenBorrow} size="large" style={btnStyle}>
           借出登记
         </Button>
       )
     }
     if (record.borrow_status === '待归还确认') {
       btns.push(
-        <Button
-          key="return"
-          type="primary"
-          block
-          icon={<RollbackOutlined />}
-          onClick={actions.onConfirmReturn}
-          loading={acting}
-          size="large"
-          style={{ height: 44 }}
-        >
+        <Button key="return" type="primary" block icon={<RollbackOutlined />}
+          onClick={actions.onConfirmReturn} loading={acting} size="large" style={btnStyle}>
           确认归还
         </Button>
       )
     }
     if (record.asset_status !== '报废' && record.scrap_status !== '待报废' && record.borrow_status === '无') {
       btns.push(
-        <Button
-          key="scrap"
-          block
-          danger
-          icon={<DeleteOutlined />}
-          onClick={actions.onOpenScrap}
-          size="large"
-          ghost
-          style={{ height: 44 }}
-        >
+        <Button key="scrap" danger ghost block icon={<DeleteOutlined />}
+          onClick={actions.onOpenScrap} size="large" style={{ ...btnStyle, borderColor: '#ffccc7' }}>
           报废申请
         </Button>
       )
@@ -265,24 +236,23 @@ function renderMobileActions(
     const btns = []
     if (record.borrow_status === '借用中') {
       btns.push(
-        <Button
-          key="return"
-          type="primary"
-          block
-          icon={<RollbackOutlined />}
-          onClick={actions.onOpenReturn}
-          size="large"
-          style={{ height: 44 }}
-        >
+        <Button key="return" type="primary" block icon={<RollbackOutlined />}
+          onClick={actions.onOpenReturn} size="large" style={btnStyle}>
           申请归还
         </Button>
       )
     }
     if (record.borrow_status === '待归还确认') {
       btns.push(
-        <div key="waiting" style={{ textAlign: 'center', padding: '4px 0' }}>
-          <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: 4 }} />
-          <Text type="warning">等待责任人确认归还</Text>
+        <div key="waiting" style={{
+          textAlign: 'center',
+          padding: '8px 0',
+          background: '#fffbe6',
+          borderRadius: 8,
+          border: '1px solid #ffe58f'
+        }}>
+          <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: 6 }} />
+          <Text type="warning" style={{ fontSize: 13 }}>等待责任人确认归还</Text>
         </div>
       )
     }
@@ -627,8 +597,8 @@ const MyMeasureTools: React.FC = () => {
 
   // ========== 渲染 ==========
   return (
-    <div style={{ padding: isMobile ? 12 : 16 }}>
-      <Card bordered={false}>
+    <div style={{ padding: isMobile ? 8 : 16 }}>
+      <Card bordered={false} style={isMobile ? { borderRadius: 0, boxShadow: 'none' } : undefined}>
         {/* 标题栏 */}
         <div style={{
           display: 'flex',
@@ -636,15 +606,15 @@ const MyMeasureTools: React.FC = () => {
           alignItems: isMobile ? 'flex-start' : 'center',
           gap: 8,
           flexWrap: 'wrap',
-          marginBottom: isMobile ? 12 : 16
+          marginBottom: isMobile ? 10 : 16
         }}>
           <div>
-            <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>我的量具</Title>
+            <Title level={isMobile ? 5 : 4} style={{ margin: 0, fontSize: isMobile ? 17 : undefined }}>我的量具</Title>
             {!isMobile && <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>}
           </div>
-          <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={loadMine} size={isMobile ? 'middle' : 'default'}>刷新</Button>
-            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size={isMobile ? 'middle' : 'default'}>返回</Button>
+          <Space wrap size={isMobile ? 4 : 8}>
+            <Button icon={<ReloadOutlined />} onClick={loadMine} size="small">刷新</Button>
+            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size="small">返回</Button>
           </Space>
         </div>
 
@@ -652,18 +622,19 @@ const MyMeasureTools: React.FC = () => {
         {isMobile && (
           <div style={{
             display: 'flex',
-            gap: 8,
-            marginBottom: 12,
-            overflowX: 'auto'
+            gap: 6,
+            marginBottom: 10,
+            paddingBottom: 10,
+            borderBottom: '1px solid #f0f0f0'
           }}>
-            <Badge count={stats.pending} offset={[0, 0]} size="small">
-              <Tag color="gold" style={{ fontSize: 14, padding: '4px 12px' }}>待确认</Tag>
+            <Badge count={stats.pending} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
+              <Tag color="gold" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>待确认</Tag>
             </Badge>
-            <Badge count={stats.owned} offset={[0, 0]} size="small">
-              <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>我负责</Tag>
+            <Badge count={stats.owned} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
+              <Tag color="blue" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>我负责</Tag>
             </Badge>
-            <Badge count={stats.borrowed} offset={[0, 0]} size="small">
-              <Tag color="cyan" style={{ fontSize: 14, padding: '4px 12px' }}>我借用</Tag>
+            <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
+              <Tag color="cyan" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>我借用</Tag>
             </Badge>
           </div>
         )}
@@ -673,7 +644,7 @@ const MyMeasureTools: React.FC = () => {
           /* ====== 手机端卡片列表 ====== */
           <div>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><Spin tip="加载中..." /></div>
+              <div style={{ textAlign: 'center', padding: '60px 0' }}><Spin tip="加载中..." /></div>
             ) : mergedItems.length > 0 ? (
               mergedItems.map((item) => (
                 <MobileCard
@@ -691,7 +662,7 @@ const MyMeasureTools: React.FC = () => {
                 />
               ))
             ) : (
-              <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>暂无量具数据</div>
+              <div style={{ textAlign: 'center', padding: '60px 0', color: '#bbb', fontSize: 14 }}>暂无量具数据</div>
             )}
           </div>
         ) : (
