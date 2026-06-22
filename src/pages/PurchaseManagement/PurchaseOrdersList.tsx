@@ -501,7 +501,7 @@ export default function PurchaseOrdersList() {
         return <span style={{ color: show !== null ? '#333' : '#999' }}>{show !== null ? `¥${show.toFixed(2)}` : '-'}</span>;
       }
     }
-  ]), []);
+  ]), [editingDate, handleDateChange]);
 
   useEffect(() => {
     if (didInitRef.current) return;
