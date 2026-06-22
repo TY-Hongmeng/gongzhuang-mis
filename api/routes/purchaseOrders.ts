@@ -865,6 +865,50 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/purchase-orders/:id
+// 更新采购单字段（申请日期、需求日期等）
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { created_date, demand_date } = req.body;
+
+    if (!created_date && !demand_date) {
+      return res.status(400).json({ success: false, error: '缺少更新的字段参数' });
+    }
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (created_date) {
+      fields.push(`created_date = $${idx++}`);
+      values.push(created_date);
+    }
+    if (demand_date) {
+      fields.push(`demand_date = $${idx++}`);
+      values.push(demand_date);
+    }
+
+    fields.push(`updated_date = $${idx++}`);
+    values.push(new Date().toISOString());
+    values.push(id);
+
+    const result = await queryDatabase(
+      `UPDATE purchase_orders SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: '采购单不存在' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (dbError) {
+    console.error('Update purchase order error:', dbError);
+    res.status(500).json({ success: false, error: '数据库更新失败' });
+  }
+});
+
 // PUT /api/purchase-orders/:id/status
 // 更新采购单状态
 router.put('/:id/status', async (req, res) => {

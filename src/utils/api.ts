@@ -4866,14 +4866,30 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const body = await readBody()
         const ids = Array.isArray(body?.ids) ? body.ids : []
         if (ids.length === 0) return jsonResponse({ success: false, error: '缺少ids' }, 400)
-        
+
         const { error } = await supabase
           .from('purchase_orders')
           .delete()
           .in('id', ids)
-          
+
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
+      }
+
+      // PUT /api/purchase-orders/:id - 更新采购单字段（申请日期、需求日期）
+      if (method === 'PUT' && path.match(/^\/api\/purchase-orders\/[^\/]+$/) && !path.endsWith('/status')) {
+        const id = path.split('/').pop()
+        const body = await readBody()
+        if (!id || (!body.created_date && !body.demand_date)) return jsonResponse({ success: false, error: '缺少参数' }, 400)
+
+        const updateData: Record<string, any> = {}
+        if (body.created_date) updateData.created_date = body.created_date
+        if (body.demand_date) updateData.demand_date = body.demand_date
+        updateData.updated_date = new Date().toISOString()
+
+        const { data, error } = await supabase.from('purchase_orders').update(updateData).eq('id', id).select('*').single()
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+        return jsonResponse({ success: true, data })
       }
 
 

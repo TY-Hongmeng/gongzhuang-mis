@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, message, Row, Col, Space, Segmented, Select } from 'antd';
+import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
 import { fetchWithFallback } from '../../utils/api'
 import { rollbackPurchaseOrders, updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService';
@@ -111,6 +111,8 @@ export default function PurchaseOrdersList() {
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
   const [printDensityLevel, setPrintDensityLevel] = useState<PrintDensityLevel>(PRINT_DENSITY_LEVEL)
+  // 日期编辑状态: { id_field: boolean } 如 "123_created_date": true
+  const [editingDate, setEditingDate] = useState<Record<string, boolean>>({})
   const DEBUG = (import.meta as any)?.env?.DEV === true;
 
   const totals = useMemo(() => {
@@ -210,6 +212,50 @@ export default function PurchaseOrdersList() {
       inFlightRef.current = false;
     }
   };
+
+  // 批量更新日期：同提交人+同项目一起改
+  const handleDateChange = async (recordId: string, field: 'created_date' | 'demand_date', dateValue: dayjs.Dayjs | null) => {
+    if (!dateValue) return
+    const isoStr = dateValue.format('YYYY-MM-DD')
+    const record = data.find(d => d.id === recordId)
+    if (!record) return
+
+    // 找出所有同提交人+同项目的记录
+    const matchedIds = data
+      .filter(d => d.applicant === record.applicant && d.project_name === record.project_name)
+      .map(d => d.id)
+
+    setEditingDate(prev => ({ ...prev, [`${recordId}_${field}`]: false }))
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: HeadersInit = {}
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+
+      // 并发更新所有匹配的记录
+      const results = await Promise.all(
+        matchedIds.map(id =>
+          fetchWithFallback(`/api/purchase-orders/${id}`, {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [field]: isoStr })
+          })
+        )
+      )
+
+      const failedCount = results.filter(r => !r || !r.ok).length
+      if (failedCount > 0) {
+        message.error(`部分更新失败（${failedCount}/${matchedIds.length}）`)
+      } else {
+        message.success(`已同步更新 ${matchedIds.length} 条记录的${field === 'created_date' ? '申请日期' : '需求日期'}`)
+      }
+
+      // 刷新数据
+      fetchPurchaseOrders()
+    } catch (err) {
+      message.error('更新失败: ' + (err as Error).message)
+    }
+  }
 
   const handleBatchDelete = async () => {
     if (selectedRowKeys.length === 0) {
@@ -376,14 +422,57 @@ export default function PurchaseOrdersList() {
     {
       title: '申请日期',
       dataIndex: 'created_date',
-      width: 110,
-      render: (date) => dayjs(date).format('YYYY-MM-DD')
+      width: 140,
+      render: (date, record) => {
+        const key = `${record.id}_created_date`
+        if (editingDate[key]) {
+          return (
+            <DatePicker
+              size="small"
+              defaultValue={dayjs(date)}
+              onChange={(val) => handleDateChange(record.id, 'created_date', val)}
+              onBlur={() => setEditingDate(prev => ({ ...prev, [key]: false }))}
+              style={{ width: '100%' }}
+            />
+          )
+        }
+        return (
+          <span
+            onClick={() => setEditingDate(prev => ({ ...prev, [key]: true }))}
+            style={{ cursor: 'pointer', color: '#1677ff', padding: '2px 4px', borderRadius: 3 }}
+          >
+            {dayjs(date).format('YYYY-MM-DD')}
+          </span>
+        )
+      }
     },
     {
       title: '需求日期',
       dataIndex: 'demand_date',
-      width: 110,
-      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-'
+      width: 140,
+      render: (date, record) => {
+        const key = `${record.id}_demand_date`
+        if (editingDate[key]) {
+          return (
+            <DatePicker
+              size="small"
+              defaultValue={date ? dayjs(date) : null}
+              onChange={(val) => handleDateChange(record.id, 'demand_date', val)}
+              onBlur={() => setEditingDate(prev => ({ ...prev, [key]: false }))}
+              style={{ width: '100%' }}
+              placeholder="选择需求日期"
+            />
+          )
+        }
+        return (
+          <span
+            onClick={() => setEditingDate(prev => ({ ...prev, [key]: true }))}
+            style={{ cursor: 'pointer', color: date ? '#1677ff' : '#999', padding: '2px 4px', borderRadius: 3 }}
+          >
+            {date ? dayjs(date).format('YYYY-MM-DD') : '-'}
+          </span>
+        )
+      }
     },
     {
       title: '提交人',
