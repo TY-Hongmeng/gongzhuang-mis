@@ -510,6 +510,185 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
+  // 导出审批清单电子版Excel（与打印格式一致）
+  const exportApprovalExcel = () => {
+    if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批清单'); return; }
+    const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
+    if (rows.length === 0) { message.warning('没有可导出的审批清单'); return }
+
+    const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
+    const exportRows = rows.map((item) => ({
+      item,
+      cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
+      ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
+    })).sort((a, b) => {
+      const compare = (x: string, y: string) => x.localeCompare(y, 'zh-CN')
+      const keysA = [
+        String(a.item.project_name || '').trim(), String(a.item.production_unit || '').trim(),
+        String(a.cdate || '').trim(), String(a.ddate || '').trim(),
+        String(a.item.applicant || '').trim(), String(a.item.part_name || '').trim(),
+        String(a.item.model || '').trim(), String(qtyText(a.item)).trim()
+      ]
+      const keysB = [
+        String(b.item.project_name || '').trim(), String(b.item.production_unit || '').trim(),
+        String(b.cdate || '').trim(), String(b.ddate || '').trim(),
+        String(b.item.applicant || '').trim(), String(b.item.part_name || '').trim(),
+        String(b.item.model || '').trim(), String(qtyText(b.item)).trim()
+      ]
+      for (let i = 0; i < keysA.length; i += 1) {
+        const diff = compare(keysA[i], keysB[i])
+        if (diff !== 0) return diff
+      }
+      return 0
+    })
+
+    // 计算rowspan合并位置
+    const calcMergeRanges = (values: string[], colIdx: number): XLSX.Range[] => {
+      const merges: XLSX.Range[] = []
+      let i = 0
+      while (i < values.length) {
+        const current = values[i]
+        if (!current) { i += 1; continue }
+        let j = i + 1
+        while (j < values.length && values[j] === current) j += 1
+        if (j - i > 1) {
+          merges.push({ s: { r: DATA_START_ROW + i, c: colIdx }, e: { r: DATA_START_ROW + j - 1, c: colIdx } })
+        }
+        i = j
+      }
+      return merges
+    }
+
+    const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
+    const HEADER_TITLE_ROW = 0       // 标题行
+    const COL_HEADER_ROW = 1          // 列头行
+    const DATA_START_ROW = 2           // 数据起始行（从第3行开始，0-indexed=2）
+    const projectValues = exportRows.map(r => String(r.item.project_name || '').trim())
+    const productionValues = exportRows.map(r => String(r.item.production_unit || '').trim())
+    const createdDateValues = exportRows.map(r => String(r.cdate || '').trim())
+    const demandDateValues = exportRows.map(r => String(r.ddate || '').trim())
+    const applicantValues = exportRows.map(r => String(r.item.applicant || '').trim())
+
+    // 构建数据数组
+    const aoa: any[][] = [
+      ['吉林省通用机械（集团）有限责任公司 临时物资采购清单'],   // 标题行
+      ['序号', '名称', '型号', '数量', '项目名称', '投产单位', '申请日期', '需求日期', '提交人']  // 列头
+    ]
+
+    exportRows.forEach(({ item, cdate, ddate }, idx) => {
+      aoa.push([
+        idx + 1,
+        item.part_name || '',
+        item.model || '',
+        qtyText(item),
+        item.project_name || '',
+        item.production_unit || '',
+        cdate,
+        ddate,
+        item.applicant || ''
+      ])
+    })
+
+    // 审批区行
+    const footerStart = DATA_START_ROW + exportRows.length
+    aoa.push(['生产单位领导审批：', '', '', '', '', '', '计划部门审批：', '', ''])
+    aoa.push(['公司副总审批：', '', '', '', '', '', '公司总经理审批：', '', ''])
+
+    // 创建工作表
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+    // 合并单元格：标题行
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
+
+    // 合并单元格：数据行中相同值的列（项目名称=4, 投产单位=5, 申请日期=6, 需求日期=7, 提交人=8）
+    ws['!merges'].push(
+      ...calcMergeRanges(projectValues, 4),
+      ...calcMergeRanges(productionValues, 5),
+      ...calcMergeRanges(createdDateValues, 6),
+      ...calcMergeRanges(demandDateValues, 7),
+      ...calcMergeRanges(applicantValues, 8)
+    )
+
+    // 合并审批区单元格
+    ws['!merges'].push(
+      { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },
+      { s: { r: footerStart, c: 6 }, e: { r: footerStart, c: 8 } },
+      { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } },
+      { s: { r: footerStart + 1, c: 6 }, e: { r: footerStart + 1, c: 8 } }
+    )
+
+    // 列宽设置
+    ws['!cols'] = [
+      { wch: 6 },   // A 序号
+      { wch: 18 },  // B 名称
+      { wch: 22 },  // C 型号
+      { wch: 10 },  // D 数量
+      { wch: 18 },  // E 项目名称
+      { wch: 14 },  // F 投产单位
+      { wch: 14 },  // G 申请日期
+      { wch: 14 },  // H 需求日期
+      { wch: 10 },  // I 提交人
+    ]
+
+    // 行高设置
+    ws['!rows'] = [
+      { hpt: 28 },  // 标题行
+      { hpt: 20 },  // 列头行
+      ...exportRows.map(() => ({ hpt: 18 })),  // 数据行
+      { hpt: 24 },  // 审批行1
+      { hpt: 24 },  // 审批行2
+    ]
+
+    // 单元格样式
+    for (let R = 0; R <= footerStart + 1; R++) {
+      for (let C = 0; C <= 8; C++) {
+        const cellRef = COLS[C] + (R + 1)
+        if (!ws[cellRef]) continue
+        ws[cellRef].s = {
+          alignment: { vertical: 'center', horizontal: C === 0 ? 'center' : (C <= 3 ? 'left' : 'center') },
+          border: {
+            top: { style: 'thin', color: '000000' },
+            bottom: { style: 'thin', color: '000000' },
+            left: { style: 'thin', color: '000000' },
+            right: { style: 'thin', color: '000000' }
+          }
+        }
+      }
+    }
+
+    // 标题行样式：加粗居中大字
+    ws['A1'].s = {
+      font: { bold: true, sz: 16, name: '微软雅黑' },
+      alignment: { vertical: 'center', horizontal: 'center' }
+    }
+
+    // 列头样式：加粗居中背景色
+    for (let C = 0; C <= 8; C++) {
+      ws[COLS[C] + '2'].s = {
+        font: { bold: true, sz: 10, name: '微软雅黑' },
+        fill: { fgColor: { rgb: 'D9E1F2' } },
+        alignment: { vertical: 'center', horizontal: 'center' },
+        border: {
+          top: { style: 'thin', color: '000000' },
+          bottom: { style: 'thin', color: '000000' },
+          left: { style: 'thin', color: '000000' },
+          right: { style: 'thin', color: '000000' }
+        }
+      }
+    }
+
+    // 审批区样式
+    const approveCells = [`A${footerStart + 1}`, `G${footerStart + 1}`, `A${footerStart + 2}`, `G${footerStart + 2}`]
+    approveCells.forEach(ref => {
+      if (ws[ref]) ws[ref].s.font = { sz: 11, name: '微软雅黑' }
+    })
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, '采购审批清单')
+    XLSX.writeFile(wb, `采购审批清单_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`)
+    message.success(`已导出 ${rows.length} 条记录`)
+  }
+
   const printApprovalList = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择需要打印的审批清单'); return; }
     const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
@@ -916,6 +1095,7 @@ export default function PurchaseOrdersList() {
               />
             </Space>
             <Button onClick={printApprovalList}>打印审批清单</Button>
+            <Button type="primary" ghost onClick={exportApprovalExcel}>导出电子版</Button>
             <Button onClick={() => {
               if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批计划');
                 return;
