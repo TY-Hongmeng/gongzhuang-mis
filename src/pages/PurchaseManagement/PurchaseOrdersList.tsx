@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -510,14 +510,18 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
-  // 导出审批清单电子版Excel（与打印格式一致，支持分页多Sheet）
+  // 导出审批清单电子版Excel（与打印格式一模一样）
   const exportApprovalExcel = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批清单'); return; }
     const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
-    if (rows.length === 0) { message.warning('没有可导出的审批清单'); return }
+    if (rows.length === 0) { message.warning('没有可导出的审批清单'); return; }
 
     const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
-    const exportRows = rows.map((item) => ({
+    const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
+    const nowStr = dayjs().format('YYYY/MM/DD HH:mm')
+
+    // ===== 与printApprovalList完全一致的排序 =====
+    const printRows = rows.map((item) => ({
       item,
       cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
       ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
@@ -527,22 +531,19 @@ export default function PurchaseOrdersList() {
         String(a.item.project_name || '').trim(), String(a.item.production_unit || '').trim(),
         String(a.cdate || '').trim(), String(a.ddate || '').trim(),
         String(a.item.applicant || '').trim(), String(a.item.part_name || '').trim(),
-        String(a.item.model || '').trim(), String(qtyText(a.item)).trim()
+        String(a.item.model || ''), String(qtyText(a.item)).trim()
       ]
       const keysB = [
         String(b.item.project_name || '').trim(), String(b.item.production_unit || '').trim(),
         String(b.cdate || '').trim(), String(b.ddate || '').trim(),
         String(b.item.applicant || '').trim(), String(b.item.part_name || '').trim(),
-        String(b.item.model || '').trim(), String(qtyText(b.item)).trim()
+        String(b.item.model || ''), String(qtyText(b.item)).trim()
       ]
-      for (let i = 0; i < keysA.length; i += 1) {
-        const diff = compare(keysA[i], keysB[i])
-        if (diff !== 0) return diff
-      }
+      for (let i = 0; i < keysA.length; i++) { const diff = compare(keysA[i], keysB[i]); if (diff !== 0) return diff }
       return 0
     })
 
-    // 计算rowspan合并：相同值的连续单元格合并（与print一致）
+    // ===== rowspan计算（与print一致）=====
     const calcRowSpans = (values: string[]) => {
       const spans = Array(values.length).fill(1)
       let i = 0
@@ -558,218 +559,163 @@ export default function PurchaseOrdersList() {
       return spans
     }
 
-    // 打印密度映射：密度档位 -> 每页最大行数（与print完全一致）
+    // ===== 分页逻辑（与print完全一致）=====
     const DENSITY_ROWS_MAP: Record<number, number> = {
       1: 24, 2: 26, 3: 27, 4: 28, 5: 29,
       6: 30, 7: 31, 8: 32, 9: 34, 10: 36
     }
     const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
 
-    // 分页逻辑：rowspan组不跨页（与print完全一致）
-    const pages: Array<typeof exportRows> = []
+    const pages: Array<typeof printRows> = []
     let pageStart = 0
-    while (pageStart < exportRows.length) {
-      let pageEnd = Math.min(pageStart + rowsPerPage, exportRows.length)
-      if (pageEnd < exportRows.length) {
-        const pageSlice = exportRows.slice(pageStart, pageEnd)
+    while (pageStart < printRows.length) {
+      let pageEnd = Math.min(pageStart + rowsPerPage, printRows.length)
+      if (pageEnd < printRows.length) {
+        const pageSlice = printRows.slice(pageStart, pageEnd)
         const lastIdx = pageSlice.length - 1
-        const projectSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim()))
-        const productionSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim()))
-        const createdDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim()))
-        const demandDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim()))
-        const applicantSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
-        const spans = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
-        const hasCrossPageSpan = spans.some(s => s[lastIdx] > 1)
-        if (hasCrossPageSpan) {
+        const spansToCheck = [
+          calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim())),
+          calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim())),
+          calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim())),
+          calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim())),
+          calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
+        ]
+        if (spansToCheck.some(s => s[lastIdx] > 1)) {
           pageEnd = Math.max(pageStart + 1, pageEnd - 1)
         }
       }
-      pages.push(exportRows.slice(pageStart, pageEnd))
+      pages.push(printRows.slice(pageStart, pageEnd))
       pageStart = pageEnd
     }
 
-    const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-    const HEADER_TITLE_ROW = 0
-    const COL_HEADER_ROW = 1
-    const DATA_START_ROW = 2
-
-    // 计算某页数据在XLSX中的merge ranges
-    const calcMergeRangesForPage = (pageRows: typeof exportRows): XLSX.Range[] => {
-      const merges: XLSX.Range[] = []
-      const colConfigs = [
-        { colIdx: 4, getter: (r: typeof exportRows[number]) => String(r.item.project_name || '').trim() },
-        { colIdx: 5, getter: (r: typeof exportRows[number]) => String(r.item.production_unit || '').trim() },
-        { colIdx: 6, getter: (r: typeof exportRows[number]) => String(r.cdate || '').trim() },
-        { colIdx: 7, getter: (r: typeof exportRows[number]) => String(r.ddate || '').trim() },
-        { colIdx: 8, getter: (r: typeof exportRows[number]) => String(r.item.applicant || '').trim() },
-      ]
-      for (const { colIdx, getter } of colConfigs) {
-        const values = pageRows.map(getter)
-        let i = 0
-        while (i < values.length) {
-          const current = values[i]
-          if (!current) { i += 1; continue }
-          let j = i + 1
-          while (j < values.length && values[j] === current) j += 1
-          if (j - i > 1) {
-            merges.push({ s: { r: DATA_START_ROW + i, c: colIdx }, e: { r: DATA_START_ROW + j - 1, c: colIdx } })
-          }
-          i = j
-        }
-      }
-      return merges
+    // ===== 样式常量 =====
+    const thinBorder = {
+      top: { style: 'thin' as const, color: { rgb: '000000' } },
+      bottom: { style: 'thin' as const, color: { rgb: '000000' } },
+      left: { style: 'thin' as const, color: { rgb: '000000' } },
+      right: { style: 'thin' as const, color: { rgb: '000000' } }
     }
+    const noBorder: any = {}
+    const fontYaHei = { name: '微软雅黑' }
 
-    // 构建单个sheet的工作表数据
-    const buildSheet = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): XLSX.WorkSheet => {
+    // ===== 构建单个sheet（完全复刻打印的一页结构）=====
+    const buildOneSheet = (pageRows: typeof printRows, pageIndex: number, startNo: number): XLSX.WorkSheet => {
+      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
+      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
+      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
+      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
+      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
+
+      const R_DATE = 0, R_TITLE = 1, R_HEADER = 2, R_DATA_START = 3
       const dataRowCount = pageRows.length
-      const footerStart = DATA_START_ROW + dataRowCount
+      const R_FOOTER1 = R_DATA_START + dataRowCount
+      const R_FOOTER2 = R_FOOTER1 + 1
+      const R_PAGENO = R_FOOTER2 + 1
 
-      // 构建AOA数据
-      const aoa: any[][] = [
-        ['吉林省通用机械（集团）有限责任公司 临时物资采购清单'],   // 行0: 标题
-        ['序号', '名称', '型号', '数量', '项目名称', '投产单位', '申请日期', '需求日期', '提交人']  // 行1: 列头
-      ]
+      const aoa: any[][] = []
 
-      let serialNo = startSerialNo
-      pageRows.forEach(({ item, cdate, ddate }) => {
+      // 行0: 日期头
+      aoa.push([nowStr, '', '', '', '', '', '临时物资采购清单', '', ''])
+      // 行1: 大标题
+      aoa.push(['吉林省通用机械（集团）有限责任公司 临时物资采购清单'])
+      // 行2: 列头
+      aoa.push(['序号', '名称', '型号', '数量', '项目名称', '投产单位', '申请日期', '需求日期', '提交人'])
+
+      // 数据行（rowspan为0的列填null，确保XLSX正确合并）
+      let serialNo = startNo
+      pageRows.forEach(({ item, cdate, ddate }, idx) => {
         aoa.push([
           serialNo,
           item.part_name || '',
           item.model || '',
           qtyText(item),
-          item.project_name || '',
-          item.production_unit || '',
-          cdate,
-          ddate,
-          item.applicant || ''
+          projectSpans[idx] > 0 ? (item.project_name || '') : null,
+          productionSpans[idx] > 0 ? (item.production_unit || '') : null,
+          createdDateSpans[idx] > 0 ? cdate : null,
+          demandDateSpans[idx] > 0 ? ddate : null,
+          applicantSpans[idx] > 0 ? (item.applicant || '') : null
         ])
-        serialNo += 1
+        serialNo++
       })
 
-      // 审批行
-      aoa.push(['生产单位领导审批：', '', '', '', '', '', '计划部门审批：', '', ''])
-      aoa.push(['公司副总审批：', '', '', '', '', '', '公司总经理审批：', '', ''])
-
-      // 页码行
-      aoa.push([`第 ${pageIndex + 1} 页 / 共 ${totalPages} 页`])
+      // 审批区
+      aoa.push(['生产单位领导审批：', null, null, null, null, null, '计划部门审批：', null, null])
+      aoa.push(['公司副总审批：', null, null, null, null, null, '公司总经理审批：', null, null])
+      // 页码
+      aoa.push([`第 ${pageIndex + 1} 页 / 共 ${pages.length} 页`])
 
       const ws = XLSX.utils.aoa_to_sheet(aoa)
 
-      // 合并：标题行（9列合并）
-      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-
-      // 合并：数据行rowspan
-      ws['!merges'].push(...calcMergeRangesForPage(pageRows))
-
-      // 合并：审批区
-      ws['!merges'].push(
-        { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },
-        { s: { r: footerStart, c: 6 }, e: { r: footerStart, c: 8 } },
-        { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } },
-        { s: { r: footerStart + 1, c: 6 }, e: { r: footerStart + 1, c: 8 } }
+      // 合并单元格
+      const merges: XLSX.Range[] = []
+      merges.push({ s: { r: R_DATE, c: 6 }, e: { r: R_DATE, c: 8 } })
+      merges.push({ s: { r: R_TITLE, c: 0 }, e: { r: R_TITLE, c: 8 } })
+      for (let idx = 0; idx < pageRows.length; idx++) {
+        const r = R_DATA_START + idx
+        if (projectSpans[idx] > 1) merges.push({ s: { r, c: 4 }, e: { r + projectSpans[idx] - 1, c: 4 } })
+        if (productionSpans[idx] > 1) merges.push({ s: { r, c: 5 }, e: { r + productionSpans[idx] - 1, c: 5 } })
+        if (createdDateSpans[idx] > 1) merges.push({ s: { r, c: 6 }, e: { r + createdDateSpans[idx] - 1, c: 6 } })
+        if (demandDateSpans[idx] > 1) merges.push({ s: { r, c: 7 }, e: { r + demandDateSpans[idx] - 1, c: 7 } })
+        if (applicantSpans[idx] > 1) merges.push({ s: { r, c: 8 }, e: { r + applicantSpans[idx] - 1, c: 8 } })
+      }
+      merges.push(
+        { s: { r: R_FOOTER1, c: 0 }, e: { r: R_FOOTER1, c: 5 } },
+        { s: { r: R_FOOTER1, c: 6 }, e: { r: R_FOOTER1, c: 8 } },
+        { s: { r: R_FOOTER2, c: 0 }, e: { r: R_FOOTER2, c: 5 } },
+        { s: { r: R_FOOTER2, c: 6 }, e: { r: R_FOOTER2, c: 8 } }
       )
+      merges.push({ s: { r: R_PAGENO, c: 0 }, e: { r: R_PAGENO, c: 8 } })
+      ws['!merges'] = merges
 
-      // 合并：页码行（9列合并）
-      ws['!merges'].push({ s: { r: footerStart + 2, c: 0 }, e: { r: footerStart + 2, c: 8 } })
-
-      // 列宽
-      ws['!cols'] = [
-        { wch: 6 },   // A 序号
-        { wch: 18 },  // B 名称
-        { wch: 22 },  // C 型号
-        { wch: 10 },  // D 数量
-        { wch: 18 },  // E 项目名称
-        { wch: 14 },  // F 投产单位
-        { wch: 14 },  // G 申请日期
-        { wch: 14 },  // H 需求日期
-        { wch: 12 },  // I 提交人
-      ]
-
-      // 行高：标题28pt, 列头22pt, 数据20pt, 审批28pt, 页码20pt
+      ws['!cols'] = [{ wch: 6 }, { wch: 18 }, { wch: 22 }, { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }]
       ws['!rows'] = [
-        { hpt: 28 },   // 标题行
-        { hpt: 22 },   // 列头行
-        ...pageRows.map(() => ({ hpt: 20 })),  // 数据行
-        { hpt: 28 },   // 审批行1
-        { hpt: 28 },   // 审批行2
-        { hpt: 20 },   // 页码行
+        { hpt: 16 }, { hpt: 28 }, { hpt: 22 },
+        ...pageRows.map(() => ({ hpt: 20 })),
+        { hpt: 28 }, { hpt: 28 }, { hpt: 18 },
       ]
 
-      // ===== 单元格样式 =====
-
-      // 通用细边框样式
-      const thinBorder = {
-        top: { style: 'thin' as const, color: { rgb: '000000' } },
-        bottom: { style: 'thin' as const, color: { rgb: '000000' } },
-        left: { style: 'thin' as const, color: { rgb: '000000' } },
-        right: { style: 'thin' as const, color: { rgb: '000000' } }
-      }
-
-      // 标题行样式：加粗16号字居中，无边框
-      ws['A1'].s = {
-        font: { bold: true, sz: 16, name: '微软雅黑' },
-        alignment: { vertical: 'center', horizontal: 'center' }
-      }
-
-      // 列头行样式：蓝色背景加粗居中 + 细边框
+      // 样式：日期头
       for (let C = 0; C <= 8; C++) {
-        ws[COLS[C] + '2'].s = {
-          font: { bold: true, sz: 10, name: '微软雅黑' },
-          fill: { fgColor: { rgb: 'D9E1F2' } },
-          alignment: { vertical: 'center', horizontal: 'center' },
-          border: thinBorder
-        }
+        const ref = COLS[C] + '1'
+        if (!ws[ref]) continue
+        ws[ref].s = { font: { ...fontYaHei, sz: 9, color: { rgb: '999999' } }, alignment: { vertical: 'center', horizontal: C <= 5 ? 'left' : 'right' }, border: noBorder }
       }
-
-      // 数据行样式：细边框 + 居中/左对齐
-      for (let R = DATA_START_ROW; R < footerStart; R++) {
+      // 标题
+      ws['A2'].s = { font: { ...fontYaHei, bold: true, sz: 16 }, alignment: { vertical: 'center', horizontal: 'center' }, border: noBorder }
+      // 列头
+      for (let C = 0; C <= 8; C++) {
+        ws[COLS[C] + '3'].s = { font: { ...fontYaHei, bold: true, sz: 10 }, fill: { fgColor: { rgb: 'D9E1F2' } }, alignment: { vertical: 'center', horizontal: 'center' }, border: thinBorder }
+      }
+      // 数据行
+      for (let R = R_DATA_START; R < R_FOOTER1; R++) {
         for (let C = 0; C <= 8; C++) {
-          const cellRef = COLS[C] + (R + 1)
-          if (!ws[cellRef]) continue
-          ws[cellRef].s = {
-            alignment: {
-              vertical: 'center',
-              horizontal: C === 0 ? 'center' : (C <= 3 ? 'left' : 'center')
-            },
-            border: thinBorder
-          }
+          const ref = COLS[C] + (R + 1)
+          if (!ws[ref]) continue
+          ws[ref].s = { font: { ...fontYaHei, sz: 10 }, alignment: { vertical: 'center', horizontal: C === 0 ? 'center' : (C <= 3 ? 'left' : 'center') }, border: thinBorder }
         }
       }
-
-      // 审批区样式：细边框
+      // 审批区
       for (let offset = 0; offset <= 1; offset++) {
-        const row = footerStart + offset
+        const row = R_FOOTER1 + offset
         for (let C = 0; C <= 8; C++) {
-          const cellRef = COLS[C] + (row + 1)
-          if (!ws[cellRef]) continue
-          ws[cellRef].s = {
-            font: { sz: 11, name: '微软雅黑' },
-            alignment: { vertical: 'center', horizontal: 'left' },
-            border: thinBorder
-          }
+          const ref = COLS[C] + (row + 1)
+          if (!ws[ref]) continue
+          ws[ref].s = { font: { ...fontYaHei, sz: 11 }, alignment: { vertical: 'center', horizontal: 'left' }, border: thinBorder }
         }
       }
-
-      // 页码行样式：灰色字体，无边框
-      const pageCellRef = COLS[0] + (footerStart + 2 + 1)
-      if (ws[pageCellRef]) {
-        ws[pageCellRef].s = {
-          font: { sz: 9, name: '微软雅黑', color: { rgb: '999999' } },
-          alignment: { vertical: 'center', horizontal: 'center' }
-        }
-      }
+      // 页码
+      const pageNoRef = COLS[0] + (R_PAGENO + 1)
+      if (ws[pageNoRef]) ws[pageNoRef].s = { font: { ...fontYaHei, sz: 9, color: { rgb: '888888' } }, alignment: { vertical: 'center', horizontal: 'center' }, border: noBorder }
 
       return ws
     }
 
-    // 构建所有sheet
+    // ===== 生成所有sheet =====
     const wb = XLSX.utils.book_new()
     let serialNo = 1
-    pages.forEach((pageRows, pageIndex) => {
-      const sheetName = pages.length > 1 ? `第${pageIndex + 1}页` : '采购审批清单'
-      const ws = buildSheet(pageRows, pageIndex, pages.length, serialNo)
-      XLSX.utils.book_append_sheet(wb, ws, sheetName)
+    pages.forEach((pageRows, idx) => {
+      const ws = buildOneSheet(pageRows, idx, serialNo)
+      XLSX.utils.book_append_sheet(wb, ws, pages.length === 1 ? '采购审批清单' : `第${idx + 1}页`)
       serialNo += pageRows.length
     })
 
