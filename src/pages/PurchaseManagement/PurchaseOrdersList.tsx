@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -692,16 +692,15 @@ export default function PurchaseOrdersList() {
         { wpx: 66 },   // I 提交人 9%   → 17.5mm × 3.78 ≈ 66px
       ]
 
-      // ===== 行高：与打印CSS像素值一一对应 =====
-      // print .header-line: font-size:14pt + padding:5px → 约28px
-      // print th: padding:4px + font-size:9.5pt → 约21px
-      // print tbody tr: height:20px → 20px
-      // print tfoot td: height:52px → 52px
-      // print .page-number: font-size:8pt + margin-top:1mm → 约16px
+      // ===== 行高 =====
+      // 标题/列头/审批/页码行：固定高度，与print CSS对应
+      // 数据行：不设固定高度！print中 tbody tr height:20px 是最小值，
+      //   实际行高由内容决定（word-break:break-all 的列会自动换行撑高）
       ws['!rows'] = [
         { hpx: 28 },   // 标题行（print header-line: 14pt + padding:5px ≈ 28px）
         { hpx: 21 },   // 列头行（print th: padding:4px + 9.5pt ≈ 21px）
-        ...pageRows.map(() => ({ hpx: 20 })),  // 数据行（print tbody tr height:20px）
+        // 数据行：省略，由Excel根据内容和wrapText自动计算
+        ...Array(pageRows.length).fill(undefined),
         { hpx: 52 },   // 审批行1（print tfoot td height:52px）
         { hpx: 52 },   // 审批行2
         { hpx: 16 },   // 页码行（print .page-number: 8pt + margin-top:1mm ≈ 16px）
@@ -736,6 +735,9 @@ export default function PurchaseOrdersList() {
 
       // 数据行样式（对应print td: font-size:9.5pt, border:1px solid #333）
       // 对齐规则：print th/td默认text-align:center，只有cell-name(B)、cell-model(C)、cell-project(E)显式设为left
+      // 换行规则：print中 cell-name/model/project/unit 使用 word-break:break-all 自动换行，
+      //   Excel中对应列开启 wrapText，行高由内容自动撑开（不设固定hpx）
+      const WRAP_COLS = new Set([1, 2, 4, 5])  // B(名称), C(型号), E(项目名称), F(投产单位)
       for (let R = DATA_START_ROW; R < footerStart; R++) {
         for (let C = 0; C <= 8; C++) {
           const cellRef = COLS[C] + (R + 1)
@@ -744,7 +746,8 @@ export default function PurchaseOrdersList() {
             font: { sz: 9.5, name: '微软雅黑' },
             alignment: {
               vertical: 'center',
-              horizontal: [1, 2, 4].includes(C) ? 'left' : 'center'  // B(名称)、C(型号)、E(项目名称)左对齐，其余居中
+              horizontal: [1, 2, 4].includes(C) ? 'left' : 'center',  // B(名称)、C(型号)、E(项目名称)左对齐
+              wrapText: WRAP_COLS.has(C)  // 需要换行的列开启自动换行
             },
             border: thinBorder
           }
