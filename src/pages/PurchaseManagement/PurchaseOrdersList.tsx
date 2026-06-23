@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -693,18 +693,53 @@ export default function PurchaseOrdersList() {
       ]
 
       // ===== 行高 =====
-      // 标题/列头/审批/页码行：固定高度，与print CSS对应
-      // 数据行：不设固定高度！print中 tbody tr height:20px 是最小值，
-      //   实际行高由内容决定（word-break:break-all 的列会自动换行撑高）
-      ws['!rows'] = [
-        { hpx: 28 },   // 标题行（print header-line: 14pt + padding:5px ≈ 28px）
-        { hpx: 21 },   // 列头行（print th: padding:4px + 9.5pt ≈ 21px）
-        // 数据行：省略，由Excel根据内容和wrapText自动计算
-        ...Array(pageRows.length).fill(undefined),
-        { hpx: 52 },   // 审批行1（print tfoot td height:52px）
-        { hpx: 52 },   // 审批行2
-        { hpx: 16 },   // 页码行（print .page-number: 8pt + margin-top:1mm ≈ 16px）
-      ]
+      // XLSX的限制：不在!rows中配置的行会用Excel默认固定行高，不会自动适配内容
+      // 解决方案：手动估算每行数据需要的行高（模拟print中word-break:break-all的自动换行效果）
+      const CHAR_WIDTH_ZH = 4.8     // 9.5pt微软雅黑中文字符宽度(px)
+      const CHAR_WIDTH_EN = 2.6     // 9.5pt微软雅黑英文/数字宽度(px)
+      const LINE_HEIGHT = 19        // 单行高度(px)，对应print line-height:1.45 × 9.5pt ≈ 13pt + padding
+      const CELL_PADDING = 8        // 单元格左右padding之和(px)
+      // 各列宽度(px)，用于计算该列能容纳多少字符
+      const colWidthPx = [37, 88, 162, 59, 88, 66, 88, 81, 66]
+      // 需要检查是否换行的列: B(名称), C(型号), E(项目名称), F(投产单位)
+      const WRAP_CHECK_COLS = [1, 2, 4, 5]
+
+      const estimateRowHeight = (item: PurchaseOrder): number => {
+        let maxLines = 1
+        for (const colIdx of WRAP_CHECK_COLS) {
+          const texts: string[] = []
+          if (colIdx === 1) texts.push(item.part_name || '')
+          else if (colIdx === 2) texts.push(item.model || '')
+          else if (colIdx === 4) texts.push(item.project_name || '')
+          else if (colIdx === 5) texts.push(item.production_unit || '')
+          const text = texts[0]
+          if (!text) continue
+          // 计算文本总像素宽度
+          let textPx = 0
+          for (const ch of text) {
+            textPx += /[\u4e00-\u9fa5]/.test(ch) ? CHAR_WIDTH_ZH : CHAR_WIDTH_EN
+          }
+          // 该列可用宽度 = 列宽 - padding
+          const availablePx = colWidthPx[colIdx] - CELL_PADDING
+          if (availablePx > 0 && textPx > availablePx) {
+            const lines = Math.ceil(textPx / availablePx)
+            maxLines = Math.max(maxLines, lines)
+          }
+        }
+        return Math.max(LINE_HEIGHT, maxLines * LINE_HEIGHT)
+      }
+
+      const rowHeightConfig: any[] = []
+      rowHeightConfig[0] = { hpx: 28 }                        // 标题行
+      rowHeightConfig[1] = { hpx: 21 }                        // 列头行
+      // 数据行：逐行估算高度
+      pageRows.forEach(({ item }, idx) => {
+        rowHeightConfig[DATA_START_ROW + idx] = { hpx: estimateRowHeight(item) }
+      })
+      rowHeightConfig[footerStart] = { hpx: 52 }              // 审批行1
+      rowHeightConfig[footerStart + 1] = { hpx: 52 }          // 审批行2
+      rowHeightConfig[footerStart + 2] = { hpx: 16 }          // 页码行
+      ws['!rows'] = rowHeightConfig
 
       // ===== 单元格样式 =====
 
