@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -510,7 +510,7 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
-  // 导出审批清单电子版Excel（与打印格式完全一致，支持分页多Sheet）
+  // 导出审批清单电子版Excel（与打印格式完全一致，通过HTML表格+Excel XML命名空间实现样式）
   const exportApprovalExcel = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批清单'); return; }
     const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
@@ -592,241 +592,204 @@ export default function PurchaseOrdersList() {
       pageStart = pageEnd
     }
 
-    const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-    const DATA_START_ROW = 2  // 行0标题, 行1列头, 行2起数据
-
-    // 构建单个sheet：与print的HTML结构一一对应
-    const buildSheet = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): XLSX.WorkSheet => {
-      // === 与print一致：先计算每列的rowspan ===
+    // 构建单页HTML表格（与printApprovalList的HTML/CSS 100%一致）
+    const buildPageHtml = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): string => {
       const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
       const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
       const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
       const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
       const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
 
-      // === 构建AOA：模拟print中rowspan的行为，被合并的单元格留空 ===
-      const aoa: any[][] = [
-        ['吉林省通用机械（集团）有限责任公司 临时物资采购清单'],   // 行0: 标题
-        ['序号', '名称', '型号', '数量', '项目名称', '投产单位', '申请日期', '需求日期', '提交人']  // 行1: 列头
-      ]
-
       let serialNo = startSerialNo
-      pageRows.forEach(({ item, cdate, ddate }, idx) => {
-        // 与print的<tr>结构完全对应：
-        // print中 rowSpan>0 时渲染<td>并带rowspan属性，rowSpan===0时不渲染<td>
-        // Excel中 rowSpan>0 时写入值（作为合并起始格），rowSpan===0时写入空字符串（合并覆盖区）
-        aoa.push([
-          serialNo,
-          item.part_name || '',
-          item.model || '',
-          qtyText(item),
-          projectSpans[idx] > 0 ? (item.project_name || '') : '',       // E列: 项目名称
-          productionSpans[idx] > 0 ? (item.production_unit || '') : '', // F列: 投产单位
-          createdDateSpans[idx] > 0 ? cdate : '',                      // G列: 申请日期
-          demandDateSpans[idx] > 0 ? ddate : '',                       // H列: 需求日期
-          applicantSpans[idx] > 0 ? (item.applicant || '') : ''         // I列: 提交人
-        ])
+      const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
+        const rowHtml = `
+          <tr>
+          <td class="cell-no">${serialNo}</td>
+          <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
+          <td class="cell-model">${escapeHtml(item.model || '')}</td>
+          <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
+          ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+          ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+          ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+          ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+          ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          </tr>`
         serialNo += 1
-      })
+        return rowHtml
+      }).join('')
 
-      const dataRowCount = pageRows.length
-      const footerStart = DATA_START_ROW + dataRowCount
-
-      // 审批行（与print tfoot完全一致）
-      aoa.push(['生产单位领导审批：', '', '', '', '', '', '计划部门审批：', '', ''])
-      aoa.push(['公司副总审批：', '', '', '', '', '', '公司总经理审批：', '', ''])
-
-      // 页码行（与print .page-number 完全一致）
-      aoa.push([`第 ${pageIndex + 1} 页 / 共 ${totalPages} 页`])
-
-      const ws = XLSX.utils.aoa_to_sheet(aoa)
-
-      // ===== 合并区域 =====
-
-      // 标题行9列合并（对应print th[colspan="9"]）
-      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-
-      // 数据行rowspan合并（对应print中的rowspan属性）
-      const mergeColConfigs = [
-        { colIdx: 4, spans: projectSpans },
-        { colIdx: 5, spans: productionSpans },
-        { colIdx: 6, spans: createdDateSpans },
-        { colIdx: 7, spans: demandDateSpans },
-        { colIdx: 8, spans: applicantSpans },
-      ]
-      for (const { colIdx, spans } of mergeColConfigs) {
-        for (let i = 0; i < spans.length; i++) {
-          if (spans[i] > 1) {
-            ws['!merges'].push({
-              s: { r: DATA_START_ROW + i, c: colIdx },
-              e: { r: DATA_START_ROW + i + spans[i] - 1, c: colIdx }
-            })
-          }
-        }
-      }
-
-      // 审批区合并（对应print tfoot td[colspan="5"]和[colspan="4"]）
-      ws['!merges'].push(
-        { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },     // 生产单位领导审批： A-E
-        { s: { r: footerStart, c: 6 }, e: { r: footerStart, c: 8 } },     // 计划部门审批： G-I
-        { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } }, // 公司副总审批： A-E
-        { s: { r: footerStart + 1, c: 6 }, e: { r: footerStart + 1, c: 8 } }  // 公司总经理审批： G-I
-      )
-
-      // 页码行9列合并（对应print .page-number 独立div，Excel中用合并模拟整行）
-      ws['!merges'].push({ s: { r: footerStart + 2, c: 0 }, e: { r: footerStart + 2, c: 8 } })
-
-      // ===== 列宽：按A4打印尺寸精确换算为像素 =====
-      // 打印 @page: A4 portrait, margin: 10mm 8mm 0mm 8mm → 可用宽度 194mm
-      // 打印colgroup百分比: 5% 12% 22% 8% 12% 9% 12% 11% 9%
-      // 换算: 194mm × 百分比 × 3.78(96dpi) = 像素值(wpx)
-      ws['!cols'] = [
-        { wpx: 37 },   // A 序号 5%  → 9.7mm  × 3.78 ≈ 37px
-        { wpx: 88 },   // B 名称 12%  → 23.3mm × 3.78 ≈ 88px
-        { wpx: 162 },  // C 型号 22%  → 42.7mm × 3.78 ≈ 161px (+1取整)
-        { wpx: 59 },   // D 数量 8%   → 15.5mm × 3.78 ≈ 59px
-        { wpx: 88 },   // E 项目名称 12% → 23.3mm × 3.78 ≈ 88px
-        { wpx: 66 },   // F 投产单位 9%  → 17.5mm × 3.78 ≈ 66px
-        { wpx: 88 },   // G 申请日期 12% → 23.3mm × 3.78 ≈ 88px
-        { wpx: 81 },   // H 需求日期 11% → 21.3mm × 3.78 ≈ 81px
-        { wpx: 66 },   // I 提交人 9%   → 17.5mm × 3.78 ≈ 66px
-      ]
-
-      // ===== 行高 =====
-      // XLSX的限制：不在!rows中配置的行会用Excel默认固定行高，不会自动适配内容
-      // 解决方案：手动估算每行数据需要的行高（模拟print中word-break:break-all的自动换行效果）
-      const CHAR_WIDTH_ZH = 4.8     // 9.5pt微软雅黑中文字符宽度(px)
-      const CHAR_WIDTH_EN = 2.6     // 9.5pt微软雅黑英文/数字宽度(px)
-      const LINE_HEIGHT = 19        // 单行高度(px)，对应print line-height:1.45 × 9.5pt ≈ 13pt + padding
-      const CELL_PADDING = 8        // 单元格左右padding之和(px)
-      // 各列宽度(px)，用于计算该列能容纳多少字符
-      const colWidthPx = [37, 88, 162, 59, 88, 66, 88, 81, 66]
-      // 需要检查是否换行的列: B(名称), C(型号), E(项目名称), F(投产单位)
-      const WRAP_CHECK_COLS = [1, 2, 4, 5]
-
-      const estimateRowHeight = (item: PurchaseOrder): number => {
-        let maxLines = 1
-        for (const colIdx of WRAP_CHECK_COLS) {
-          const texts: string[] = []
-          if (colIdx === 1) texts.push(item.part_name || '')
-          else if (colIdx === 2) texts.push(item.model || '')
-          else if (colIdx === 4) texts.push(item.project_name || '')
-          else if (colIdx === 5) texts.push(item.production_unit || '')
-          const text = texts[0]
-          if (!text) continue
-          // 计算文本总像素宽度
-          let textPx = 0
-          for (const ch of text) {
-            textPx += /[\u4e00-\u9fa5]/.test(ch) ? CHAR_WIDTH_ZH : CHAR_WIDTH_EN
-          }
-          // 该列可用宽度 = 列宽 - padding
-          const availablePx = colWidthPx[colIdx] - CELL_PADDING
-          if (availablePx > 0 && textPx > availablePx) {
-            const lines = Math.ceil(textPx / availablePx)
-            maxLines = Math.max(maxLines, lines)
-          }
-        }
-        return Math.max(LINE_HEIGHT, maxLines * LINE_HEIGHT)
-      }
-
-      const rowHeightConfig: any[] = []
-      rowHeightConfig[0] = { hpx: 28 }                        // 标题行
-      rowHeightConfig[1] = { hpx: 21 }                        // 列头行
-      // 数据行：逐行估算高度
-      pageRows.forEach(({ item }, idx) => {
-        rowHeightConfig[DATA_START_ROW + idx] = { hpx: estimateRowHeight(item) }
-      })
-      rowHeightConfig[footerStart] = { hpx: 52 }              // 审批行1
-      rowHeightConfig[footerStart + 1] = { hpx: 52 }          // 审批行2
-      rowHeightConfig[footerStart + 2] = { hpx: 16 }          // 页码行
-      ws['!rows'] = rowHeightConfig
-
-      // ===== 单元格样式 =====
-
-      // 统一边框样式（对应print table.sheet border:2px solid #000 + td/th border:1px solid #333）
-      const thinBorder = {
-        top: { style: 'thin' as const, color: { rgb: '000000' } },
-        bottom: { style: 'thin' as const, color: { rgb: '000000' } },
-        left: { style: 'thin' as const, color: { rgb: '000000' } },
-        right: { style: 'thin' as const, color: { rgb: '000000' } }
-      }
-
-      // 标题行样式（对应print .header-line: font-size:14pt, font-weight:bold, text-align:center）
-      ws['A1'].s = {
-        font: { bold: true, sz: 14, name: '微软雅黑' },
-        alignment: { vertical: 'center', horizontal: 'center' },
-        border: thinBorder
-      }
-
-      // 列头行样式（对应print th: background:#f0f0f0, font-weight:bold, text-align:center, font-size:9.5pt）
-      for (let C = 0; C <= 8; C++) {
-        ws[COLS[C] + '2'].s = {
-          font: { bold: true, sz: 9.5, name: '微软雅黑' },
-          fill: { fgColor: { rgb: 'F0F0F0' } },
-          alignment: { vertical: 'center', horizontal: 'center' },
-          border: thinBorder
-        }
-      }
-
-      // 数据行样式（对应print td: font-size:9.5pt, border:1px solid #333）
-      // 对齐规则：print th/td默认text-align:center，只有cell-name(B)、cell-model(C)、cell-project(E)显式设为left
-      // 换行规则：print中 cell-name/model/project/unit 使用 word-break:break-all 自动换行，
-      //   Excel中对应列开启 wrapText，行高由内容自动撑开（不设固定hpx）
-      const WRAP_COLS = new Set([1, 2, 4, 5])  // B(名称), C(型号), E(项目名称), F(投产单位)
-      for (let R = DATA_START_ROW; R < footerStart; R++) {
-        for (let C = 0; C <= 8; C++) {
-          const cellRef = COLS[C] + (R + 1)
-          if (!ws[cellRef]) continue
-          ws[cellRef].s = {
-            font: { sz: 9.5, name: '微软雅黑' },
-            alignment: {
-              vertical: 'center',
-              horizontal: [1, 2, 4].includes(C) ? 'left' : 'center',  // B(名称)、C(型号)、E(项目名称)左对齐
-              wrapText: WRAP_COLS.has(C)  // 需要换行的列开启自动换行
-            },
-            border: thinBorder
-          }
-        }
-      }
-
-      // 审批区样式（对应print tfoot td: height:52px, font-size:10pt, text-align:left, padding-left:8px）
-      // padding-left:8px ≈ 2个字符indent（10pt字体约4-5px/字符）
-      for (let offset = 0; offset <= 1; offset++) {
-        const row = footerStart + offset
-        for (let C = 0; C <= 8; C++) {
-          const cellRef = COLS[C] + (row + 1)
-          if (!ws[cellRef]) continue
-          ws[cellRef].s = {
-            font: { sz: 10, name: '微软雅黑' },
-            alignment: { vertical: 'center', horizontal: 'left', indent: 2 },
-            border: thinBorder
-          }
-        }
-      }
-
-      // 页码行样式（对应print .page-number: font-size:8pt, color:#999, text-align:right）
-      const pageCellRef = COLS[0] + (footerStart + 2 + 1)
-      if (ws[pageCellRef]) {
-        ws[pageCellRef].s = {
-          font: { sz: 8, name: '微软雅黑', color: { rgb: '999999' } },
-          alignment: { vertical: 'center', horizontal: 'right' }
-        }
-      }
-
-      return ws
+      return `
+        <table class="sheet">
+          <colgroup>
+            <col style="width:5%">
+            <col style="width:12%">
+            <col style="width:22%">
+            <col style="width:8%">
+            <col style="width:12%">
+            <col style="width:9%">
+            <col style="width:12%">
+            <col style="width:11%">
+            <col style="width:9%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
+            </tr>
+            <tr>
+              <th>序号</th>
+              <th>名称</th>
+              <th>型号</th>
+              <th>数量</th>
+              <th>项目名称</th>
+              <th>投产单位</th>
+              <th>申请日期</th>
+              <th>需求日期</th>
+              <th>提交人</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5">生产单位领导审批：</td>
+              <td colspan="4">计划部门审批：</td>
+            </tr>
+            <tr>
+              <td colspan="5">公司副总审批：</td>
+              <td colspan="4">公司总经理审批：</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="page-number">第 ${pageIndex + 1} 页 / 共 ${totalPages} 页</div>
+        ${pageIndex < totalPages - 1 ? '<br style="page-break-after:always">' : ''}`
     }
 
-    // 构建所有sheet
-    const wb = XLSX.utils.book_new()
+    // 构建所有页的HTML
     let serialNo = 1
-    pages.forEach((pageRows, pageIndex) => {
-      const sheetName = pages.length > 1 ? `第${pageIndex + 1}页` : '采购审批清单'
-      const ws = buildSheet(pageRows, pageIndex, pages.length, serialNo)
-      XLSX.utils.book_append_sheet(wb, ws, sheetName)
-      serialNo += pageRows.length
-    })
+    const tablesHtml = pages.map((pageRows, pageIndex) =>
+      buildPageHtml(pageRows, pageIndex, pages.length, serialNo)
+    ).join('')
 
-    XLSX.writeFile(wb, `采购审批清单_${dayjs().format('YYYYMMDD_HHmmss')}.xlsx`)
+    // 与printApprovalList完全一致的CSS样式
+    const cssStyles = `
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 210mm;
+      }
+      body {
+        font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
+        font-size: 10pt;
+        line-height: 1.35;
+        color: #000;
+        background: #fff;
+      }
+      table.sheet {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        border: 2px solid #000;
+      }
+      th, td {
+        border: 1px solid #333;
+        padding: 3px 5px;
+        text-align: center;
+        vertical-align: middle;
+        line-height: 1.45;
+        font-size: 9.5pt;
+      }
+      .header-line {
+        font-size: 14pt;
+        font-weight: bold;
+        text-align: center;
+        padding: 5px 4px;
+        letter-spacing: 1px;
+      }
+      th {
+        background: #f0f0f0;
+        font-weight: bold;
+        padding: 4px 3px;
+      }
+      tbody tr {
+        height: 20px;
+        min-height: 20px;
+      }
+      td.cell-no { width: 5%; font-size: 9pt; }
+      td.cell-name {
+        width: 12%;
+        text-align: left;
+        word-break: break-all;
+      }
+      td.cell-model {
+        width: 22%;
+        text-align: left;
+        word-break: break-all;
+      }
+      td.cell-qty { width: 8%; white-space: nowrap; }
+      td.cell-project {
+        width: 12%;
+        text-align: left;
+        word-break: break-all;
+      }
+      td.cell-unit { width: 9%; word-break: break-all; }
+      td.cell-date { width: 12%; white-space: nowrap; }
+      td.cell-applicant { width: 8%; }
+      tfoot td {
+        height: 52px;
+        vertical-align: middle;
+        font-weight: normal;
+        text-align: left;
+        padding-left: 8px;
+        font-size: 10pt;
+      }
+      .page-number {
+        text-align: right;
+        font-size: 8pt;
+        color: #999;
+        margin-top: 1mm;
+      }`
+
+    // 组装完整HTML，添加Excel XML命名空间使Excel识别为电子表格
+    const html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<style>${cssStyles}</style>
+<!--[if gte mso 9]>
+<xml>
+  <x:ExcelWorkbook>
+    <x:ExcelWorksheets>
+      <x:ExcelWorksheet>
+        <x:Name>采购审批清单</x:Name>
+        <x:WorksheetOptions>
+          <x:DisplayGridlines/>
+        </x:WorksheetOptions>
+      </x:ExcelWorksheet>
+    </x:ExcelWorksheets>
+  </x:ExcelWorkbook>
+</xml>
+<![endif]-->
+</head>
+<body>
+${tablesHtml}
+</body>
+</html>`
+
+    // 通过Blob下载为.xls文件
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `采购审批清单_${dayjs().format('YYYYMMDD_HHmmss')}.xls`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
     message.success(`已导出 ${rows.length} 条记录，共 ${pages.length} 页`)
   }
 
