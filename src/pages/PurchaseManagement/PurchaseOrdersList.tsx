@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -724,32 +724,27 @@ export default function PurchaseOrdersList() {
         border: thinBorder
       }
 
-      // 列头行样式（对应print th: background:#f0f0f0, font-weight:bold, text-align:center, border:1px solid #333）
+      // 列头行样式（对应print th: background:#f0f0f0, font-weight:bold, text-align:center, font-size:9.5pt）
       for (let C = 0; C <= 8; C++) {
         ws[COLS[C] + '2'].s = {
-          font: { bold: true, sz: 10, name: '微软雅黑' },
+          font: { bold: true, sz: 9.5, name: '微软雅黑' },
           fill: { fgColor: { rgb: 'F0F0F0' } },
           alignment: { vertical: 'center', horizontal: 'center' },
           border: thinBorder
         }
       }
 
-      // 数据行样式（对应print td: font-size:9.5pt, border:1px solid #333, 对齐方式按列不同）
+      // 数据行样式（对应print td: font-size:9.5pt, border:1px solid #333）
+      // 对齐规则：print th/td默认text-align:center，只有cell-name(B)、cell-model(C)、cell-project(E)显式设为left
       for (let R = DATA_START_ROW; R < footerStart; R++) {
         for (let C = 0; C <= 8; C++) {
           const cellRef = COLS[C] + (R + 1)
           if (!ws[cellRef]) continue
-          // 对齐规则与print一致：
-          // cell-no(A): center, cell-name(B): left, cell-model(C): left, cell-qty(D): left(white-space:nowrap)
-          // cell-project(E): left(word-break), cell-unit(F): left(word-break), cell-date(G/H): center(nowrap), cell-applicant(I): center
           ws[cellRef].s = {
-            font: { sz: 10, name: '微软雅黑' },
+            font: { sz: 9.5, name: '微软雅黑' },
             alignment: {
               vertical: 'center',
-              horizontal:
-                C === 0 ? 'center' :
-                [1, 2, 3, 4, 5].includes(C) ? 'left' :
-                'center'
+              horizontal: [1, 2, 4].includes(C) ? 'left' : 'center'  // B(名称)、C(型号)、E(项目名称)左对齐，其余居中
             },
             border: thinBorder
           }
@@ -757,6 +752,7 @@ export default function PurchaseOrdersList() {
       }
 
       // 审批区样式（对应print tfoot td: height:52px, font-size:10pt, text-align:left, padding-left:8px）
+      // padding-left:8px ≈ 2个字符indent（10pt字体约4-5px/字符）
       for (let offset = 0; offset <= 1; offset++) {
         const row = footerStart + offset
         for (let C = 0; C <= 8; C++) {
@@ -764,7 +760,7 @@ export default function PurchaseOrdersList() {
           if (!ws[cellRef]) continue
           ws[cellRef].s = {
             font: { sz: 10, name: '微软雅黑' },
-            alignment: { vertical: 'center', horizontal: 'left', indent: 1 },
+            alignment: { vertical: 'center', horizontal: 'left', indent: 2 },
             border: thinBorder
           }
         }
@@ -774,7 +770,7 @@ export default function PurchaseOrdersList() {
       const pageCellRef = COLS[0] + (footerStart + 2 + 1)
       if (ws[pageCellRef]) {
         ws[pageCellRef].s = {
-          font: { sz: 9, name: '微软雅黑', color: { rgb: '999999' } },
+          font: { sz: 8, name: '微软雅黑', color: { rgb: '999999' } },
           alignment: { vertical: 'center', horizontal: 'right' }
         }
       }
