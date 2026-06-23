@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -621,15 +621,15 @@ export default function PurchaseOrdersList() {
       return `
         <table class="sheet">
           <colgroup>
-            <col style="width:5%">
-            <col style="width:12%">
-            <col style="width:22%">
-            <col style="width:8%">
-            <col style="width:12%">
-            <col style="width:9%">
-            <col style="width:12%">
-            <col style="width:11%">
-            <col style="width:9%">
+            <col style="width:40px">
+            <col style="width:90px">
+            <col style="width:170px">
+            <col style="width:55px">
+            <col style="width:90px">
+            <col style="width:70px">
+            <col style="width:85px">
+            <col style="width:80px">
+            <col style="width:60px">
           </colgroup>
           <thead>
             <tr>
@@ -671,71 +671,65 @@ export default function PurchaseOrdersList() {
       buildPageHtml(pageRows, pageIndex, pages.length, serialNo)
     ).join('')
 
-    // 与printApprovalList完全一致的CSS样式
+    // 与printApprovalList完全一致的CSS样式（针对Excel渲染优化）
     const cssStyles = `
       * { box-sizing: border-box; }
       html, body {
         margin: 0 !important;
-        padding: 0 !important;
-        width: 210mm;
+        padding: 10px !important;
       }
       body {
         font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
         font-size: 10pt;
-        line-height: 1.35;
+        line-height: 1.4;
         color: #000;
         background: #fff;
       }
       table.sheet {
-        width: 100%;
+        width: 740px;
         border-collapse: collapse;
         table-layout: fixed;
         border: 2px solid #000;
       }
       th, td {
         border: 1px solid #333;
-        padding: 3px 5px;
+        padding: 4px 6px;
         text-align: center;
         vertical-align: middle;
-        line-height: 1.45;
+        line-height: 1.5;
         font-size: 9.5pt;
       }
       .header-line {
         font-size: 14pt;
         font-weight: bold;
         text-align: center;
-        padding: 5px 4px;
+        padding: 6px 4px;
         letter-spacing: 1px;
       }
       th {
         background: #f0f0f0;
         font-weight: bold;
-        padding: 4px 3px;
+        padding: 5px 4px;
       }
       tbody tr {
-        height: 20px;
-        min-height: 20px;
+        height: 26px;
       }
-      td.cell-no { width: 5%; font-size: 9pt; }
+      td.cell-no { font-size: 9pt; text-align: center; }
       td.cell-name {
-        width: 12%;
         text-align: left;
         word-break: break-all;
       }
       td.cell-model {
-        width: 22%;
         text-align: left;
         word-break: break-all;
       }
-      td.cell-qty { width: 8%; white-space: nowrap; }
+      td.cell-qty { white-space: nowrap; }
       td.cell-project {
-        width: 12%;
         text-align: left;
         word-break: break-all;
       }
-      td.cell-unit { width: 9%; word-break: break-all; }
-      td.cell-date { width: 12%; white-space: nowrap; }
-      td.cell-applicant { width: 8%; }
+      td.cell-unit { word-break: break-all; }
+      td.cell-date { white-space: nowrap; }
       tfoot td {
         height: 52px;
         vertical-align: middle;
@@ -748,7 +742,7 @@ export default function PurchaseOrdersList() {
         text-align: right;
         font-size: 8pt;
         color: #999;
-        margin-top: 1mm;
+        margin-top: 4px;
       }`
 
     // 组装完整HTML，添加Excel XML命名空间使Excel识别为电子表格
