@@ -4990,7 +4990,7 @@ const ToolingInfoPage: React.FC = () => {
         }
 
         if (partInventoryNumber) {
-          if (existingPartInvSet.has(partInventoryNumber)) errors.push(`零件盘存编号“${partInventoryNumber}”已存在于系统中`)
+          if (existingPartInvSet.has(partInventoryNumber)) errors.push(`零件盘存编号“${partInventoryNumber}”已存在于系统中，导入时将自动更新`)
           if ((filePartInvCounts[partInventoryNumber] || 0) > 1) errors.push(`零件盘存编号“${partInventoryNumber}”在导入文件中重复出现`)
         }
 
@@ -5041,12 +5041,13 @@ const ToolingInfoPage: React.FC = () => {
         
         // 验证工装信息
         const toolingErrors: string[] = []
+        const toolingWarnings: string[] = []
         appendMissingRequiredErrors(toolingErrors, formattedTooling, ['盘存编号', '项目名称', '投产单位', '工装类别', '接收日期'])
 
-        // 盘存编号重复校验（系统内、文件内）
+        // 盘存编号重复校验（系统内→警告允许导入，文件内→错误拒绝）
         const inv = normalizeText(formattedTooling['盘存编号'])
         if (inv) {
-          if (existingInvSet.has(inv)) toolingErrors.push(`盘存编号“${inv}”已存在于系统中`)
+          if (existingInvSet.has(inv)) toolingWarnings.push(`盘存编号“${inv}”已存在于系统中，导入时将自动更新`)
           if ((fileInvCounts[inv] || 0) > 1) toolingErrors.push(`盘存编号“${inv}”在导入文件中重复出现`)
         }
         
@@ -5067,6 +5068,7 @@ const ToolingInfoPage: React.FC = () => {
           _sheet: '工装信息',
           _index: index + 1,
           _errors: toolingErrors,
+          _warnings: toolingWarnings,
           _valid: toolingErrors.length === 0,
           _parts: validatedParts,
           _childItems: validatedChildItems
