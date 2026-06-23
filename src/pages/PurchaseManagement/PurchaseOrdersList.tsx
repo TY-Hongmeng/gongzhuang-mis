@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -510,12 +510,16 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
-  // 导出审批清单电子版Excel（与打印格式一致，支持分页多Sheet）
+  // 导出审批清单电子版Excel（与打印格式完全一致，支持分页多Sheet）
   const exportApprovalExcel = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批清单'); return; }
     const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
     if (rows.length === 0) { message.warning('没有可导出的审批清单'); return }
 
+    const escapeHtml = (value: any) => {
+      const text = String(value ?? '')
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    }
     const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
     const exportRows = rows.map((item) => ({
       item,
@@ -542,7 +546,7 @@ export default function PurchaseOrdersList() {
       return 0
     })
 
-    // 计算rowspan合并：相同值的连续单元格合并（与print一致）
+    // 计算rowspan合并：相同值的连续单元格合并（与print完全一致）
     const calcRowSpans = (values: string[]) => {
       const spans = Array(values.length).fill(1)
       let i = 0
@@ -558,7 +562,7 @@ export default function PurchaseOrdersList() {
       return spans
     }
 
-    // 打印密度映射：密度档位 -> 每页最大行数（与print完全一致）
+    // 打印密度映射：与print完全一致
     const DENSITY_ROWS_MAP: Record<number, number> = {
       1: 24, 2: 26, 3: 27, 4: 28, 5: 29,
       6: 30, 7: 31, 8: 32, 9: 34, 10: 36
@@ -589,116 +593,119 @@ export default function PurchaseOrdersList() {
     }
 
     const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
-    const HEADER_TITLE_ROW = 0
-    const COL_HEADER_ROW = 1
-    const DATA_START_ROW = 2
+    const DATA_START_ROW = 2  // 行0标题, 行1列头, 行2起数据
 
-    // 计算某页数据在XLSX中的merge ranges
-    const calcMergeRangesForPage = (pageRows: typeof exportRows): XLSX.Range[] => {
-      const merges: XLSX.Range[] = []
-      const colConfigs = [
-        { colIdx: 4, getter: (r: typeof exportRows[number]) => String(r.item.project_name || '').trim() },
-        { colIdx: 5, getter: (r: typeof exportRows[number]) => String(r.item.production_unit || '').trim() },
-        { colIdx: 6, getter: (r: typeof exportRows[number]) => String(r.cdate || '').trim() },
-        { colIdx: 7, getter: (r: typeof exportRows[number]) => String(r.ddate || '').trim() },
-        { colIdx: 8, getter: (r: typeof exportRows[number]) => String(r.item.applicant || '').trim() },
-      ]
-      for (const { colIdx, getter } of colConfigs) {
-        const values = pageRows.map(getter)
-        let i = 0
-        while (i < values.length) {
-          const current = values[i]
-          if (!current) { i += 1; continue }
-          let j = i + 1
-          while (j < values.length && values[j] === current) j += 1
-          if (j - i > 1) {
-            merges.push({ s: { r: DATA_START_ROW + i, c: colIdx }, e: { r: DATA_START_ROW + j - 1, c: colIdx } })
-          }
-          i = j
-        }
-      }
-      return merges
-    }
-
-    // 构建单个sheet的工作表数据
+    // 构建单个sheet：与print的HTML结构一一对应
     const buildSheet = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): XLSX.WorkSheet => {
-      const dataRowCount = pageRows.length
-      const footerStart = DATA_START_ROW + dataRowCount
+      // === 与print一致：先计算每列的rowspan ===
+      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
+      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
+      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
+      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
+      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
 
-      // 构建AOA数据
+      // === 构建AOA：模拟print中rowspan的行为，被合并的单元格留空 ===
       const aoa: any[][] = [
         ['吉林省通用机械（集团）有限责任公司 临时物资采购清单'],   // 行0: 标题
         ['序号', '名称', '型号', '数量', '项目名称', '投产单位', '申请日期', '需求日期', '提交人']  // 行1: 列头
       ]
 
       let serialNo = startSerialNo
-      pageRows.forEach(({ item, cdate, ddate }) => {
+      pageRows.forEach(({ item, cdate, ddate }, idx) => {
+        // 与print的<tr>结构完全对应：
+        // print中 rowSpan>0 时渲染<td>并带rowspan属性，rowSpan===0时不渲染<td>
+        // Excel中 rowSpan>0 时写入值（作为合并起始格），rowSpan===0时写入空字符串（合并覆盖区）
         aoa.push([
           serialNo,
           item.part_name || '',
           item.model || '',
           qtyText(item),
-          item.project_name || '',
-          item.production_unit || '',
-          cdate,
-          ddate,
-          item.applicant || ''
+          projectSpans[idx] > 0 ? (item.project_name || '') : '',       // E列: 项目名称
+          productionSpans[idx] > 0 ? (item.production_unit || '') : '', // F列: 投产单位
+          createdDateSpans[idx] > 0 ? cdate : '',                      // G列: 申请日期
+          demandDateSpans[idx] > 0 ? ddate : '',                       // H列: 需求日期
+          applicantSpans[idx] > 0 ? (item.applicant || '') : ''         // I列: 提交人
         ])
         serialNo += 1
       })
 
-      // 审批行
+      const dataRowCount = pageRows.length
+      const footerStart = DATA_START_ROW + dataRowCount
+
+      // 审批行（与print tfoot完全一致）
       aoa.push(['生产单位领导审批：', '', '', '', '', '', '计划部门审批：', '', ''])
       aoa.push(['公司副总审批：', '', '', '', '', '', '公司总经理审批：', '', ''])
 
-      // 页码行
+      // 页码行（与print .page-number 完全一致）
       aoa.push([`第 ${pageIndex + 1} 页 / 共 ${totalPages} 页`])
 
       const ws = XLSX.utils.aoa_to_sheet(aoa)
 
-      // 合并：标题行（9列合并）
+      // ===== 合并区域 =====
+
+      // 标题行9列合并（对应print th[colspan="9"]）
       ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
 
-      // 合并：数据行rowspan
-      ws['!merges'].push(...calcMergeRangesForPage(pageRows))
+      // 数据行rowspan合并（对应print中的rowspan属性）
+      const mergeColConfigs = [
+        { colIdx: 4, spans: projectSpans },
+        { colIdx: 5, spans: productionSpans },
+        { colIdx: 6, spans: createdDateSpans },
+        { colIdx: 7, spans: demandDateSpans },
+        { colIdx: 8, spans: applicantSpans },
+      ]
+      for (const { colIdx, spans } of mergeColConfigs) {
+        for (let i = 0; i < spans.length; i++) {
+          if (spans[i] > 1) {
+            ws['!merges'].push({
+              s: { r: DATA_START_ROW + i, c: colIdx },
+              e: { r: DATA_START_ROW + i + spans[i] - 1, c: colIdx }
+            })
+          }
+        }
+      }
 
-      // 合并：审批区
+      // 审批区合并（对应print tfoot td[colspan="5"]和[colspan="4"]）
       ws['!merges'].push(
-        { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },
-        { s: { r: footerStart, c: 6 }, e: { r: footerStart, c: 8 } },
-        { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } },
-        { s: { r: footerStart + 1, c: 6 }, e: { r: footerStart + 1, c: 8 } }
+        { s: { r: footerStart, c: 0 }, e: { r: footerStart, c: 4 } },     // 生产单位领导审批： A-E
+        { s: { r: footerStart, c: 6 }, e: { r: footerStart, c: 8 } },     // 计划部门审批： G-I
+        { s: { r: footerStart + 1, c: 0 }, e: { r: footerStart + 1, c: 4 } }, // 公司副总审批： A-E
+        { s: { r: footerStart + 1, c: 6 }, e: { r: footerStart + 1, c: 8 } }  // 公司总经理审批： G-I
       )
 
-      // 合并：页码行（9列合并）
+      // 页码行9列合并（对应print .page-number 独立div，Excel中用合并模拟整行）
       ws['!merges'].push({ s: { r: footerStart + 2, c: 0 }, e: { r: footerStart + 2, c: 8 } })
 
-      // 列宽
+      // ===== 列宽：按打印CSS百分比比例计算 =====
+      // 打印colgroup: 5% 12% 22% 8% 12% 9% 12% 11% 9%
+      // A4可打印宽度约190mm，换算为字符宽(wch约≈mm/1.5)
       ws['!cols'] = [
-        { wch: 6 },   // A 序号
-        { wch: 18 },  // B 名称
-        { wch: 22 },  // C 型号
-        { wch: 10 },  // D 数量
-        { wch: 18 },  // E 项目名称
-        { wch: 14 },  // F 投产单位
-        { wch: 14 },  // G 申请日期
-        { wch: 14 },  // H 需求日期
-        { wch: 12 },  // I 提交人
+        { wch: 6 },   // A 序号 5%
+        { wch: 16 },  // B 名称 12%
+        { wch: 28 },  // C 型号 22%（最宽，容纳长型号字符串）
+        { wch: 8 },   // D 数量 8%
+        { wch: 16 },  // E 项目名称 12%
+        { wch: 12 },  // F 投产单位 9%
+        { wch: 14 },  // G 申请日期 12%
+        { wch: 13 },  // H 需求日期 11%
+        { wch: 10 },  // I 提交人 9%
       ]
 
-      // 行高：标题20pt(≈14pt@96dpi), 列头17pt(≈打印th), 数据15pt(≈9.5pt), 审批39pt(≈52px), 页码12pt(≈8pt)
+      // ===== 行高：与打印CSS像素值对应 =====
+      // 打印: header-line无固定高度(由padding决定), th padding:4px→约17pt,
+      //       tbody tr height:20px→约15pt, tfoot td height:52px→约39pt, .page-number font-size:8pt→约10pt
       ws['!rows'] = [
-        { hpt: 20 },   // 标题行
-        { hpt: 17 },   // 列头行
-        ...pageRows.map(() => ({ hpt: 15 })),  // 数据行
-        { hpt: 39 },   // 审批行1（与打印52px一致）
-        { hpt: 39 },   // 审批行2（与打印52px一致）
-        { hpt: 12 },   // 页码行
+        { hpt: 22 },   // 标题行（print header-line font-size:14pt + padding）
+        { hpt: 18 },   // 列头行（print th padding:4px + font-size:9.5pt）
+        ...pageRows.map(() => ({ hpt: 15 })),  // 数据行（print tbody tr height:20px ≈ 15pt@96dpi）
+        { hpt: 39 },   // 审批行1（print tfoot td height:52px ≈ 39pt）
+        { hpt: 39 },   // 审批行2
+        { hpt: 14 },   // 页码行（print .page-number font-size:8pt + margin-top:1mm）
       ]
 
       // ===== 单元格样式 =====
 
-      // 通用细边框样式
+      // 统一边框样式（对应print table.sheet border:2px solid #000 + td/th border:1px solid #333）
       const thinBorder = {
         top: { style: 'thin' as const, color: { rgb: '000000' } },
         bottom: { style: 'thin' as const, color: { rgb: '000000' } },
@@ -706,14 +713,14 @@ export default function PurchaseOrdersList() {
         right: { style: 'thin' as const, color: { rgb: '000000' } }
       }
 
-      // 标题行样式：加粗14号字居中 + 细边框（与打印header-line在表格内一致）
+      // 标题行样式（对应print .header-line: font-size:14pt, font-weight:bold, text-align:center）
       ws['A1'].s = {
         font: { bold: true, sz: 14, name: '微软雅黑' },
         alignment: { vertical: 'center', horizontal: 'center' },
         border: thinBorder
       }
 
-      // 列头行样式：浅灰背景加粗居中 + 细边框（与打印th #f0f0f0一致）
+      // 列头行样式（对应print th: background:#f0f0f0, font-weight:bold, text-align:center, border:1px solid #333）
       for (let C = 0; C <= 8; C++) {
         ws[COLS[C] + '2'].s = {
           font: { bold: true, sz: 10, name: '微软雅黑' },
@@ -723,23 +730,29 @@ export default function PurchaseOrdersList() {
         }
       }
 
-      // 数据行样式：9.5pt字体 + 细边框 + 居中/左对齐（与打印td 9.5pt一致）
+      // 数据行样式（对应print td: font-size:9.5pt, border:1px solid #333, 对齐方式按列不同）
       for (let R = DATA_START_ROW; R < footerStart; R++) {
         for (let C = 0; C <= 8; C++) {
           const cellRef = COLS[C] + (R + 1)
           if (!ws[cellRef]) continue
+          // 对齐规则与print一致：
+          // cell-no(A): center, cell-name(B): left, cell-model(C): left, cell-qty(D): left(white-space:nowrap)
+          // cell-project(E): left(word-break), cell-unit(F): left(word-break), cell-date(G/H): center(nowrap), cell-applicant(I): center
           ws[cellRef].s = {
             font: { sz: 10, name: '微软雅黑' },
             alignment: {
               vertical: 'center',
-              horizontal: C === 0 ? 'center' : (C <= 3 ? 'left' : 'center')
+              horizontal:
+                C === 0 ? 'center' :
+                [1, 2, 3, 4, 5].includes(C) ? 'left' :
+                'center'
             },
             border: thinBorder
           }
         }
       }
 
-      // 审批区样式：细边框 + 10pt字体（与打印tfoot td font-size:10pt一致）
+      // 审批区样式（对应print tfoot td: height:52px, font-size:10pt, text-align:left, padding-left:8px）
       for (let offset = 0; offset <= 1; offset++) {
         const row = footerStart + offset
         for (let C = 0; C <= 8; C++) {
@@ -747,13 +760,13 @@ export default function PurchaseOrdersList() {
           if (!ws[cellRef]) continue
           ws[cellRef].s = {
             font: { sz: 10, name: '微软雅黑' },
-            alignment: { vertical: 'center', horizontal: 'left' },
+            alignment: { vertical: 'center', horizontal: 'left', indent: 1 },
             border: thinBorder
           }
         }
       }
 
-      // 页码行样式：灰色字体右对齐，无边框（与打印.page-number text-align:right一致）
+      // 页码行样式（对应print .page-number: font-size:8pt, color:#999, text-align:right）
       const pageCellRef = COLS[0] + (footerStart + 2 + 1)
       if (ws[pageCellRef]) {
         ws[pageCellRef].s = {
