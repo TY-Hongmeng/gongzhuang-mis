@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -676,31 +676,35 @@ export default function PurchaseOrdersList() {
       // 页码行9列合并（对应print .page-number 独立div，Excel中用合并模拟整行）
       ws['!merges'].push({ s: { r: footerStart + 2, c: 0 }, e: { r: footerStart + 2, c: 8 } })
 
-      // ===== 列宽：按打印CSS百分比比例计算 =====
-      // 打印colgroup: 5% 12% 22% 8% 12% 9% 12% 11% 9%
-      // A4可打印宽度约190mm，换算为字符宽(wch约≈mm/1.5)
+      // ===== 列宽：按A4打印尺寸精确换算为像素 =====
+      // 打印 @page: A4 portrait, margin: 10mm 8mm 0mm 8mm → 可用宽度 194mm
+      // 打印colgroup百分比: 5% 12% 22% 8% 12% 9% 12% 11% 9%
+      // 换算: 194mm × 百分比 × 3.78(96dpi) = 像素值(wpx)
       ws['!cols'] = [
-        { wch: 6 },   // A 序号 5%
-        { wch: 16 },  // B 名称 12%
-        { wch: 28 },  // C 型号 22%（最宽，容纳长型号字符串）
-        { wch: 8 },   // D 数量 8%
-        { wch: 16 },  // E 项目名称 12%
-        { wch: 12 },  // F 投产单位 9%
-        { wch: 14 },  // G 申请日期 12%
-        { wch: 13 },  // H 需求日期 11%
-        { wch: 10 },  // I 提交人 9%
+        { wpx: 37 },   // A 序号 5%  → 9.7mm  × 3.78 ≈ 37px
+        { wpx: 88 },   // B 名称 12%  → 23.3mm × 3.78 ≈ 88px
+        { wpx: 162 },  // C 型号 22%  → 42.7mm × 3.78 ≈ 161px (+1取整)
+        { wpx: 59 },   // D 数量 8%   → 15.5mm × 3.78 ≈ 59px
+        { wpx: 88 },   // E 项目名称 12% → 23.3mm × 3.78 ≈ 88px
+        { wpx: 66 },   // F 投产单位 9%  → 17.5mm × 3.78 ≈ 66px
+        { wpx: 88 },   // G 申请日期 12% → 23.3mm × 3.78 ≈ 88px
+        { wpx: 81 },   // H 需求日期 11% → 21.3mm × 3.78 ≈ 81px
+        { wpx: 66 },   // I 提交人 9%   → 17.5mm × 3.78 ≈ 66px
       ]
 
-      // ===== 行高：与打印CSS像素值对应 =====
-      // 打印: header-line无固定高度(由padding决定), th padding:4px→约17pt,
-      //       tbody tr height:20px→约15pt, tfoot td height:52px→约39pt, .page-number font-size:8pt→约10pt
+      // ===== 行高：与打印CSS像素值一一对应 =====
+      // print .header-line: font-size:14pt + padding:5px → 约28px
+      // print th: padding:4px + font-size:9.5pt → 约21px
+      // print tbody tr: height:20px → 20px
+      // print tfoot td: height:52px → 52px
+      // print .page-number: font-size:8pt + margin-top:1mm → 约16px
       ws['!rows'] = [
-        { hpt: 22 },   // 标题行（print header-line font-size:14pt + padding）
-        { hpt: 18 },   // 列头行（print th padding:4px + font-size:9.5pt）
-        ...pageRows.map(() => ({ hpt: 15 })),  // 数据行（print tbody tr height:20px ≈ 15pt@96dpi）
-        { hpt: 39 },   // 审批行1（print tfoot td height:52px ≈ 39pt）
-        { hpt: 39 },   // 审批行2
-        { hpt: 14 },   // 页码行（print .page-number font-size:8pt + margin-top:1mm）
+        { hpx: 28 },   // 标题行（print header-line: 14pt + padding:5px ≈ 28px）
+        { hpx: 21 },   // 列头行（print th: padding:4px + 9.5pt ≈ 21px）
+        ...pageRows.map(() => ({ hpx: 20 })),  // 数据行（print tbody tr height:20px）
+        { hpx: 52 },   // 审批行1（print tfoot td height:52px）
+        { hpx: 52 },   // 审批行2
+        { hpx: 16 },   // 页码行（print .page-number: 8pt + margin-top:1mm ≈ 16px）
       ]
 
       // ===== 单元格样式 =====
