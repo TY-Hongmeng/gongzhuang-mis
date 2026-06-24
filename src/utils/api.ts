@@ -3283,15 +3283,26 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const rows: any[] = []
           let lastQueryError: any = null
           for (const invChunk of chunkArray(invs, 120)) {
-            const { data, error } = await supabase
-              .from('work_hours')
-              .select('part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
-              .in('part_inventory_number', invChunk)
-            if (error) {
-              lastQueryError = error
+            const [{ data: dataByInvNo, error: errByInvNo }, { data: dataByPartInvNo, error: errByPartInvNo }] = await Promise.all([
+              supabase
+                .from('work_hours')
+                .select('id,inventory_no,part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
+                .in('inventory_no', invChunk),
+              supabase
+                .from('work_hours')
+                .select('id,inventory_no,part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
+                .in('part_inventory_number', invChunk),
+            ])
+            if (errByInvNo && errByPartInvNo) {
+              lastQueryError = errByPartInvNo || errByInvNo
               continue
             }
-            rows.push(...(data || []))
+            const mergeMap = new Map<string, any>()
+            ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
+              const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
+              if (!mergeMap.has(key)) mergeMap.set(key, r)
+            })
+            rows.push(...Array.from(mergeMap.values()))
           }
           if (rows.length === 0 && lastQueryError) return jsonResponse({ success: false, error: lastQueryError.message }, 500)
           const map: Record<string, string[]> = {}
@@ -3302,7 +3313,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
           const normalizedRows = rows.map((r: any) => {
-            const inv = String(r.part_inventory_number || '').trim().toUpperCase()
+            const inv = String(r.inventory_no || r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
             const completedQty = Number(r.completed_quantity || 0)
