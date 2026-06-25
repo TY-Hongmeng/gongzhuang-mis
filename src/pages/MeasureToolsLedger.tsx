@@ -117,12 +117,11 @@ const EditableRemarkCell: React.FC<EditableRemarkCellProps> = ({ record, onSaved
         cursor: 'text',
         minHeight: 22,
         whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        color: display ? '#000' : '#999'
+        wordBreak: 'break-word'
       }}
       title="点击修改备注"
     >
-      {display || '点击填写备注'}
+      {display || '-'}
     </div>
   )
 }
