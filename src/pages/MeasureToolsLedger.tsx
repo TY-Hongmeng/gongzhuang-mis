@@ -398,19 +398,8 @@ const MeasureToolsLedger: React.FC = () => {
       )
     },
     {
-      title: '借用信息',
-      width: 220,
-      render: (_: any, record: MaterialAssetItem) => (
-        <div>
-          <div>{record.borrower_name || '-'}</div>
-          {record.borrow_note ? <Text type="secondary">借用说明: {record.borrow_note}</Text> : null}
-          {record.borrow_return_note ? <Text type="secondary">归还说明: {record.borrow_return_note}</Text> : null}
-        </div>
-      )
-    },
-    {
       title: '备注',
-      width: 280,
+      width: 500,
       render: (_: any, record: MaterialAssetItem) => (
         <div>
           <div>{record.remark || '-'}</div>
