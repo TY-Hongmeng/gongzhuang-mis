@@ -97,15 +97,23 @@ const MobileCard: React.FC<{
       </div>
 
       {/* 编号 + 规格（同一行） */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 10, fontSize: 12, color: '#999' }}>
-        <span>{record.code || '-'}</span>
-        {record.model_spec ? <span>规格: {record.model_spec}</span> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 10, fontSize: 13, color: '#333' }}>
+        <span>
+          <span style={{ color: '#999', fontSize: 12 }}>编号：</span>
+          <span>{record.code || '-'}</span>
+        </span>
+        {record.model_spec ? (
+          <span>
+            <span style={{ color: '#999', fontSize: 12 }}>规格：</span>
+            <span>{record.model_spec}</span>
+          </span>
+        ) : null}
       </div>
 
       {/* 责任关系 */}
       <div style={{ marginBottom: 10, fontSize: 14, lineHeight: 1.6 }}>
         <div>
-          <span style={{ color: '#999', fontSize: 12 }}>责任人 </span>
+          <span style={{ color: '#999', fontSize: 12 }}>责任人：</span>
           <span style={{ fontWeight: 500 }}>{record.responsible_person || '未确认'}</span>
         </div>
         {record.pending_responsible_person ? (
@@ -119,7 +127,8 @@ const MobileCard: React.FC<{
       </div>
 
       {/* 状态标签 */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+        <span style={{ color: '#999', fontSize: 12 }}>状态：</span>
         <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.asset_status}</Tag>
         <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.responsibility_status}</Tag>
         {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.borrow_status}</Tag> : null}
@@ -137,9 +146,24 @@ const MobileCard: React.FC<{
           color: '#666',
           lineHeight: 1.6
         }}>
-          {record.remark ? <div>{record.remark}</div> : null}
-          {record.borrow_note ? <div>借用说明: {record.borrow_note}</div> : null}
-          {record.scrap_reason ? <div>报废原因: {record.scrap_reason}</div> : null}
+          {record.remark ? (
+            <div>
+              <span style={{ color: '#999' }}>备注：</span>
+              <span>{record.remark}</span>
+            </div>
+          ) : null}
+          {record.borrow_note ? (
+            <div>
+              <span style={{ color: '#999' }}>借用说明：</span>
+              <span>{record.borrow_note}</span>
+            </div>
+          ) : null}
+          {record.scrap_reason ? (
+            <div>
+              <span style={{ color: '#999' }}>报废原因：</span>
+              <span>{record.scrap_reason}</span>
+            </div>
+          ) : null}
         </div>
       )}
 
