@@ -374,12 +374,18 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '责任人',
-      width: 320,
+      width: 200,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
-          {record.responsible_person ? <Tag color="blue">{record.responsible_person}</Tag> : <Tag>未确认</Tag>}
-          {record.pending_responsible_person ? <Tag color="gold">待确认: {record.pending_responsible_person}</Tag> : null}
-          <Tag color={statusColorMap[record.responsibility_status] || 'default'}>{record.responsibility_status}</Tag>
+          {record.responsible_person
+            ? <Tag color="blue">{record.responsible_person}</Tag>
+            : <Tag color="default">未确认</Tag>}
+          {record.pending_responsible_person
+            ? <Tag color="gold">{record.pending_responsible_person}</Tag>
+            : null}
+          {record.responsibility_status && record.responsibility_status !== '已确认' && record.responsibility_status !== '无'
+            ? <Tag color={statusColorMap[record.responsibility_status] || 'default'}>{record.responsibility_status}</Tag>
+            : null}
         </Space>
       )
     },
