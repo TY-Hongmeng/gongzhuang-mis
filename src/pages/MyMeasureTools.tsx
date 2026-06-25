@@ -89,50 +89,53 @@ const MobileCard: React.FC<{
       bodyStyle={{ padding: '14px 16px' }}
     >
       {/* 头部：名称 + 类型标签 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <Text strong style={{ fontSize: 16, lineHeight: 1.3 }}>{record.name || '-'}</Text>
-        <Tag color={typeInfo.color} style={{ flexShrink: 0, margin: 0, fontSize: 12, padding: '2px 8px', borderRadius: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ color: '#999', fontSize: 14, marginRight: 6 }}>名称：</span>
+          <Text strong style={{ fontSize: 20, lineHeight: 1.3, color: '#000' }}>{record.name || '-'}</Text>
+        </div>
+        <Tag color={typeInfo.color} style={{ flexShrink: 0, margin: 0, fontSize: 13, padding: '4px 10px', borderRadius: 4 }}>
           {typeInfo.text}
         </Tag>
       </div>
 
       {/* 编号 + 规格（同一行） */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 10, fontSize: 13, color: '#333' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 12, fontSize: 15, color: '#333' }}>
         <span>
-          <span style={{ color: '#999', fontSize: 12 }}>编号：</span>
+          <span style={{ color: '#999', fontSize: 14 }}>编号：</span>
           <span>{record.code || '-'}</span>
         </span>
         {record.model_spec ? (
           <span>
-            <span style={{ color: '#999', fontSize: 12 }}>规格：</span>
+            <span style={{ color: '#999', fontSize: 14 }}>规格：</span>
             <span>{record.model_spec}</span>
           </span>
         ) : null}
       </div>
 
       {/* 责任关系 */}
-      <div style={{ marginBottom: 10, fontSize: 14, lineHeight: 1.6 }}>
+      <div style={{ marginBottom: 12, fontSize: 16, lineHeight: 1.6 }}>
         <div>
-          <span style={{ color: '#999', fontSize: 12 }}>责任人：</span>
+          <span style={{ color: '#999', fontSize: 14 }}>责任人：</span>
           <span style={{ fontWeight: 500 }}>{record.responsible_person || '未确认'}</span>
         </div>
         {record.pending_responsible_person ? (
-          <div style={{ color: '#d48806', fontSize: 12, marginTop: 2 }}>
+          <div style={{ color: '#d48806', fontSize: 14, marginTop: 4 }}>
             <WarningOutlined style={{ marginRight: 4 }} />待 {record.pending_responsible_person} 确认接收
           </div>
         ) : null}
         {record.borrower_name && record.view_type !== 'borrowed' ? (
-          <div style={{ color: '#999', fontSize: 12, marginTop: 2 }}>借用人: {record.borrower_name}</div>
+          <div style={{ color: '#999', fontSize: 14, marginTop: 4 }}>借用人: {record.borrower_name}</div>
         ) : null}
       </div>
 
       {/* 状态标签 */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, alignItems: 'center' }}>
-        <span style={{ color: '#999', fontSize: 12 }}>状态：</span>
-        <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.asset_status}</Tag>
-        <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.responsibility_status}</Tag>
-        {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.borrow_status}</Tag> : null}
-        {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0, fontSize: 12 }}>{record.scrap_status}</Tag> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12, alignItems: 'center' }}>
+        <span style={{ color: '#999', fontSize: 14 }}>状态：</span>
+        <Tag color={tagColorMap[record.asset_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.asset_status}</Tag>
+        <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.responsibility_status}</Tag>
+        {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.borrow_status}</Tag> : null}
+        {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.scrap_status}</Tag> : null}
       </div>
 
       {/* 说明信息 */}
@@ -140,11 +143,11 @@ const MobileCard: React.FC<{
         <div style={{
           background: '#f5f5f5',
           borderRadius: 6,
-          padding: '8px 10px',
-          marginBottom: 10,
-          fontSize: 12,
+          padding: '10px 12px',
+          marginBottom: 12,
+          fontSize: 14,
           color: '#666',
-          lineHeight: 1.6
+          lineHeight: 1.7
         }}>
           {record.remark ? (
             <div>
@@ -167,7 +170,7 @@ const MobileCard: React.FC<{
         </div>
       )}
 
-      <Divider style={{ margin: '10px 0' }} />
+      <Divider style={{ margin: '12px 0' }} />
 
       {/* 操作按钮 */}
       {renderMobileActions(record, acting, actions)}
