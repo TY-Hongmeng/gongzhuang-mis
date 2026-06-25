@@ -385,7 +385,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '状态',
-      width: 160,
+      width: 80,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
@@ -430,7 +430,7 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 280,
+      width: 140,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap>
