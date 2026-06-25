@@ -444,24 +444,24 @@ const MeasureToolsLedger: React.FC = () => {
   const columns = [
     {
       title: '序号',
-      width: 72,
+      width: 60,
       align: 'center' as const,
       render: (_: any, __: MaterialAssetItem, index: number) => index + 1
     },
     {
       title: '名称',
       dataIndex: 'name',
-      width: 150
+      width: 120
     },
     {
       title: '编号',
       dataIndex: 'code',
-      width: 140
+      width: 110
     },
     {
       title: '型号规格',
       dataIndex: 'model_spec',
-      width: 180,
+      width: 110,
       render: (value: string) => value || '-'
     },
     {
@@ -480,7 +480,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '状态',
-      width: 80,
+      width: 100,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
@@ -491,14 +491,14 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '备注',
-      width: 500,
+      width: 260,
       render: (_: any, record: MaterialAssetItem) => (
         <EditableRemarkCell record={record} onSaved={loadItems} />
       )
     },
     {
       title: '历史记录',
-      width: 120,
+      width: 100,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Button type="link" icon={<HistoryOutlined />} onClick={() => openHistory(record)}>
@@ -511,7 +511,7 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 233,
+      width: 220,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap>
