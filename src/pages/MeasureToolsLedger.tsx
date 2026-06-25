@@ -564,7 +564,7 @@ const MeasureToolsLedger: React.FC = () => {
           dataSource={items}
           columns={columns as any}
           scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showQuickJumper: true }}
+          pagination={false}
         />
       </Card>
 
