@@ -430,7 +430,7 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 140,
+      width: 233,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap>
