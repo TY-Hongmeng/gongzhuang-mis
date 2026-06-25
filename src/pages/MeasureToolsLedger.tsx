@@ -34,6 +34,99 @@ const isManagerRole = (roleName: string) => {
     || normalized.includes('库房')
 }
 
+interface EditableRemarkCellProps {
+  record: MaterialAssetItem
+  onSaved?: () => void
+}
+
+const EditableRemarkCell: React.FC<EditableRemarkCellProps> = ({ record, onSaved }) => {
+  const { user } = useAuthStore()
+  const [editing, setEditing] = React.useState(false)
+  const [value, setValue] = React.useState<string>(String(record.remark || ''))
+  const [saving, setSaving] = React.useState(false)
+  const inputRef = React.useRef<any>(null)
+
+  React.useEffect(() => {
+    if (!editing) setValue(String(record.remark || ''))
+  }, [record.remark, editing])
+
+  React.useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus?.()
+      inputRef.current.select?.()
+    }
+  }, [editing])
+
+  const save = async () => {
+    const next = String(value || '').trim()
+    const prev = String(record.remark || '').trim()
+    if (next === prev) {
+      setEditing(false)
+      return
+    }
+    try {
+      setSaving(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(record.id)}/remark`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          remark: next,
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '保存备注失败'))
+      }
+      message.success('备注已保存')
+      setEditing(false)
+      onSaved?.()
+    } catch (err: any) {
+      message.error(err?.message || '保存备注失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <Input.TextArea
+        ref={inputRef as any}
+        value={value}
+        autoSize={{ minRows: 1, maxRows: 4 }}
+        disabled={saving}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault()
+            ;(e.target as any).blur()
+          }
+        }}
+        placeholder="请输入备注"
+      />
+    )
+  }
+
+  const display = String(record.remark || '').trim()
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      style={{
+        cursor: 'text',
+        minHeight: 22,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        color: display ? '#000' : '#999'
+      }}
+      title="点击修改备注"
+    >
+      {display || '点击填写备注'}
+    </div>
+  )
+}
+
 const statusColorMap: Record<string, string> = {
   在用: 'green',
   报废: 'red',
@@ -401,10 +494,7 @@ const MeasureToolsLedger: React.FC = () => {
       title: '备注',
       width: 500,
       render: (_: any, record: MaterialAssetItem) => (
-        <div>
-          <div>{record.remark || '-'}</div>
-          {record.scrap_reason ? <Text type="secondary">报废原因: {record.scrap_reason}</Text> : null}
-        </div>
+        <EditableRemarkCell record={record} onSaved={loadItems} />
       )
     },
     {
