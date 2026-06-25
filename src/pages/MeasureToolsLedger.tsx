@@ -383,9 +383,6 @@ const MeasureToolsLedger: React.FC = () => {
           {record.pending_responsible_person
             ? <Tag color="gold">{record.pending_responsible_person}</Tag>
             : null}
-          {record.responsibility_status && record.responsibility_status !== '已确认' && record.responsibility_status !== '无'
-            ? <Tag color={statusColorMap[record.responsibility_status] || 'default'}>{record.responsibility_status}</Tag>
-            : null}
         </Space>
       )
     },
