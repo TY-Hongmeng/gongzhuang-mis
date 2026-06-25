@@ -374,7 +374,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '责任人',
-      width: 220,
+      width: 320,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           {record.responsible_person ? <Tag color="blue">{record.responsible_person}</Tag> : <Tag>未确认</Tag>}
@@ -385,7 +385,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '状态',
-      width: 220,
+      width: 160,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
