@@ -461,12 +461,12 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '型号规格',
       dataIndex: 'model_spec',
-      width: 150,
+      width: 180,
       render: (value: string) => value || '-'
     },
     {
       title: '责任人',
-      width: 230,
+      width: 260,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           {record.responsible_person
@@ -480,7 +480,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '状态',
-      width: 120,
+      width: 140,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
@@ -491,7 +491,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '备注',
-      width: 360,
+      width: 280,
       render: (_: any, record: MaterialAssetItem) => (
         <EditableRemarkCell record={record} onSaved={loadItems} />
       )
