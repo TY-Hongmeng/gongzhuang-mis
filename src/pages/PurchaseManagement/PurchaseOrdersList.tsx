@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -122,12 +122,12 @@ export default function PurchaseOrdersList() {
     for (const item of data) {
       if (!set.has(String(item.id))) continue
       const w = typeof item.weight === 'number' ? item.weight : parseFloat(String(item.weight ?? ''))
-      const p = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
+      const p = computeAmount(item)
       if (!isNaN(w)) weight += w
-      if (!isNaN(p)) price += p
+      if (p !== null) price += p
     }
     return { weight, price }
-  }, [data, selectedRowKeys])
+  }, [data, selectedRowKeys, computeAmount])
 
 
   const fetchPurchaseOrders = async () => {
@@ -367,6 +367,67 @@ export default function PurchaseOrdersList() {
     })()
   }, [])
 
+  // 材料单价索引 + 工装零件索引（用于实时计算采购单金额）
+  const [materialUnitPriceMap, setMaterialUnitPriceMap] = useState<Record<string, number>>({})
+  const [partInfoMap, setPartInfoMap] = useState<Record<string, { materialId: string; unitWeight: number }>>({})
+  useEffect(() => {
+    (async () => {
+      try {
+        // 拉取材料单价表
+        const mResp = await fetchWithFallback('/api/materials?pageSize=10000')
+        const mJson = await mResp.json().catch(() => ({}))
+        const mMap: Record<string, number> = {}
+        const list = Array.isArray(mJson?.items) ? mJson.items : Array.isArray(mJson?.data) ? mJson.data : []
+        list.forEach((m: any) => {
+          const id = String(m?.id || m?.material_id || '')
+          const p = Number(m?.unit_price ?? m?.price ?? 0)
+          if (id) mMap[id] = p
+        })
+        setMaterialUnitPriceMap(mMap)
+      } catch {}
+      try {
+        // 拉取工装零件：建立 inventory_no -> { materialId, unitWeight }
+        const pResp = await fetchWithFallback('/api/tooling/parts?pageSize=10000')
+        const pJson = await pResp.json().catch(() => ({}))
+        const pMap: Record<string, { materialId: string; unitWeight: number }> = {}
+        const plist = Array.isArray(pJson?.items) ? pJson.items : Array.isArray(pJson?.data) ? pJson.data : []
+        plist.forEach((p: any) => {
+          const inv = String(p?.part_inventory_number || p?.inventory_number || '').trim()
+          if (!inv) return
+          pMap[inv] = {
+            materialId: String(p?.material_id || ''),
+            unitWeight: Number(p?.weight || 0)
+          }
+        })
+        setPartInfoMap(pMap)
+      } catch {}
+    })()
+  }, [])
+
+  // 实时计算金额：与工装信息子表逻辑一致 = 件数 × 单件重 × 材料单价
+  const computeAmount = useCallback((item: PurchaseOrder): number | null => {
+    const qty = Number(item.part_quantity || 0)
+    const inv = String(item.inventory_number || '').trim()
+    const partInfo = partInfoMap[inv]
+    const unitWeight = partInfo?.unitWeight && partInfo.unitWeight > 0
+      ? partInfo.unitWeight
+      : Number(item.weight || 0)
+    const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
+    let materialId = partInfo?.materialId || ''
+    // 回退：根据名称/型号查 part 表（兼容未拉到的数据）
+    if (!materialId) {
+      const match = Object.values(partInfoMap).find((p) => p.materialId)
+      if (match) materialId = match.materialId
+    }
+    const unitPrice = Number(materialUnitPriceMap[materialId] || 0)
+    if (totalWeight > 0 && unitPrice > 0) {
+      return Math.round(totalWeight * unitPrice * 100) / 100
+    }
+    // 无法计算则回退到后端值
+    const stored = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
+    return isNaN(stored) ? null : stored
+  }, [materialUnitPriceMap, partInfoMap])
+
   const filteredData = useMemo(() => {
     if (isTechnician && !teamsLoaded) return []
     let arr = data
@@ -495,13 +556,13 @@ export default function PurchaseOrdersList() {
       dataIndex: 'total_price',
       width: 120,
       align: 'center',
-      render: (val: number | string | undefined) => {
-        const n = typeof val === 'number' ? val : parseFloat(String(val ?? ''));
-        const show = !isNaN(n) ? n : null;
+      render: (val: number | string | undefined, record: PurchaseOrder) => {
+        const n = computeAmount(record)
+        const show = n !== null ? n : null
         return <span style={{ color: show !== null ? '#333' : '#999' }}>{show !== null ? `¥${show.toFixed(2)}` : '-'}</span>;
       }
     }
-  ]), [editingDate, handleDateChange]);
+  ]), [editingDate, handleDateChange, computeAmount]);
 
   useEffect(() => {
     if (didInitRef.current) return;
