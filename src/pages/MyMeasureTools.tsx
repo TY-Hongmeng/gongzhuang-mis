@@ -293,6 +293,7 @@ const MyMeasureTools: React.FC = () => {
   const [borrowedItems, setBorrowedItems] = React.useState<MaterialAssetItem[]>([])
   const [users, setUsers] = React.useState<MaterialAssetUserOption[]>([])
   const [loading, setLoading] = React.useState(false)
+  const [mobileTab, setMobileTab] = React.useState<'pending' | 'owned' | 'borrowed'>('pending')
   const [transferOpen, setTransferOpen] = React.useState(false)
   const [scrapOpen, setScrapOpen] = React.useState(false)
   const [rejectTransferOpen, setRejectTransferOpen] = React.useState(false)
@@ -634,7 +635,7 @@ const MyMeasureTools: React.FC = () => {
           </Space>
         </div>
 
-        {/* 手机端统计条 */}
+        {/* 手机端统计条 + Tab 切换 */}
         {isMobile && (
           <div style={{
             display: 'flex',
@@ -643,15 +644,54 @@ const MyMeasureTools: React.FC = () => {
             paddingBottom: 10,
             borderBottom: '1px solid #f0f0f0'
           }}>
-            <Badge count={stats.pending} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
-              <Tag color="gold" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>待确认</Tag>
-            </Badge>
-            <Badge count={stats.owned} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
-              <Tag color="blue" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>我负责</Tag>
-            </Badge>
-            <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: -2 }}>
-              <Tag color="cyan" style={{ fontSize: 12, padding: '3px 10px', borderRadius: 4 }}>我借用</Tag>
-            </Badge>
+            <div
+              onClick={() => setMobileTab('pending')}
+              style={{
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 6,
+                background: mobileTab === 'pending' ? '#fff7e6' : 'transparent',
+                border: mobileTab === 'pending' ? '1px solid #ffd591' : '1px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              <Badge count={stats.pending} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
+                <span style={{ fontSize: 14, color: mobileTab === 'pending' ? '#d46b08' : '#666', fontWeight: mobileTab === 'pending' ? 600 : 400 }}>待确认</span>
+              </Badge>
+            </div>
+            <div
+              onClick={() => setMobileTab('owned')}
+              style={{
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 6,
+                background: mobileTab === 'owned' ? '#e6f7ff' : 'transparent',
+                border: mobileTab === 'owned' ? '1px solid #91d5ff' : '1px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              <Badge count={stats.owned} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
+                <span style={{ fontSize: 14, color: mobileTab === 'owned' ? '#1890ff' : '#666', fontWeight: mobileTab === 'owned' ? 600 : 400 }}>我负责</span>
+              </Badge>
+            </div>
+            <div
+              onClick={() => setMobileTab('borrowed')}
+              style={{
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 6,
+                background: mobileTab === 'borrowed' ? '#e6fffb' : 'transparent',
+                border: mobileTab === 'borrowed' ? '1px solid #87e8de' : '1px solid transparent',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
+                <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>我借用</span>
+              </Badge>
+            </div>
           </div>
         )}
 
@@ -661,8 +701,13 @@ const MyMeasureTools: React.FC = () => {
           <div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px 0' }}><Spin tip="加载中..." /></div>
-            ) : mergedItems.length > 0 ? (
-              mergedItems.map((item) => (
+            ) : (() => {
+              const filtered = mergedItems.filter((it) => it.view_type === mobileTab)
+              if (filtered.length === 0) {
+                const emptyText = mobileTab === 'pending' ? '暂无待确认量具' : mobileTab === 'owned' ? '暂无我负责的量具' : '暂无借用的量具'
+                return <div style={{ textAlign: 'center', padding: '60px 0', color: '#bbb', fontSize: 14 }}>{emptyText}</div>
+              }
+              return filtered.map((item) => (
                 <MobileCard
                   key={`${item.view_type}-${item.id}`}
                   record={item}
@@ -676,9 +721,7 @@ const MyMeasureTools: React.FC = () => {
                   onOpenReturn={() => { setCurrentItem(item); returnForm.setFieldsValue({ return_note: '' }); setReturnOpen(true) }}
                 />
               ))
-            ) : (
-              <div style={{ textAlign: 'center', padding: '60px 0', color: '#bbb', fontSize: 14 }}>暂无量具数据</div>
-            )}
+            })()}
           </div>
         ) : (
           /* ====== 桌面端表格 ====== */
