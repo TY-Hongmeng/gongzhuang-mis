@@ -88,8 +88,8 @@ const MobileCard: React.FC<{
       style={{ marginBottom: 10, borderRadius: 10 }}
       bodyStyle={{ padding: '14px 16px' }}
     >
-      {/* 头部：名称 + 类型标签 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      {/* 名称：独立一行 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <span style={{ color: '#999', fontSize: 14, marginRight: 6 }}>名称：</span>
           <Text strong style={{ fontSize: 20, lineHeight: 1.3, color: '#000' }}>{record.name || '-'}</Text>
@@ -99,19 +99,21 @@ const MobileCard: React.FC<{
         </Tag>
       </div>
 
-      {/* 编号 + 规格（同一行） */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 12, fontSize: 15, color: '#333' }}>
-        <span>
-          <span style={{ color: '#999', fontSize: 14 }}>编号：</span>
-          <span>{record.code || '-'}</span>
-        </span>
-        {record.model_spec ? (
-          <span>
-            <span style={{ color: '#999', fontSize: 14 }}>规格：</span>
-            <span>{record.model_spec}</span>
-          </span>
-        ) : null}
+      {/* 编号：独立一行 */}
+      <div style={{ marginBottom: 10, fontSize: 15, color: '#333' }}>
+        <span style={{ color: '#999', fontSize: 14 }}>编号：</span>
+        <span>{record.code || '-'}</span>
       </div>
+
+      {/* 规格：独立一行（仅当有值时显示） */}
+      {record.model_spec ? (
+        <div style={{ marginBottom: 12, fontSize: 15, color: '#333' }}>
+          <span style={{ color: '#999', fontSize: 14 }}>规格：</span>
+          <span>{record.model_spec}</span>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }} />
+      )}
 
       {/* 责任关系 */}
       <div style={{ marginBottom: 12, fontSize: 16, lineHeight: 1.6 }}>
