@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -114,6 +114,67 @@ export default function PurchaseOrdersList() {
   // 日期编辑状态: { id_field: boolean } 如 "123_created_date": true
   const [editingDate, setEditingDate] = useState<Record<string, boolean>>({})
   const DEBUG = (import.meta as any)?.env?.DEV === true;
+
+  // 材料单价索引 + 工装零件索引（用于实时计算采购单金额）
+  const [materialUnitPriceMap, setMaterialUnitPriceMap] = useState<Record<string, number>>({})
+  const [partInfoMap, setPartInfoMap] = useState<Record<string, { materialId: string; unitWeight: number }>>({})
+  useEffect(() => {
+    (async () => {
+      try {
+        // 拉取材料单价表
+        const mResp = await fetchWithFallback('/api/materials?pageSize=10000')
+        const mJson = await mResp.json().catch(() => ({}))
+        const mMap: Record<string, number> = {}
+        const list = Array.isArray(mJson?.items) ? mJson.items : Array.isArray(mJson?.data) ? mJson.data : []
+        list.forEach((m: any) => {
+          const id = String(m?.id || m?.material_id || '')
+          const p = Number(m?.unit_price ?? m?.price ?? 0)
+          if (id) mMap[id] = p
+        })
+        setMaterialUnitPriceMap(mMap)
+      } catch {}
+      try {
+        // 拉取工装零件：建立 inventory_no -> { materialId, unitWeight }
+        const pResp = await fetchWithFallback('/api/tooling/parts?pageSize=10000')
+        const pJson = await pResp.json().catch(() => ({}))
+        const pMap: Record<string, { materialId: string; unitWeight: number }> = {}
+        const plist = Array.isArray(pJson?.items) ? pJson.items : Array.isArray(pJson?.data) ? pJson.data : []
+        plist.forEach((p: any) => {
+          const inv = String(p?.part_inventory_number || p?.inventory_number || '').trim()
+          if (!inv) return
+          pMap[inv] = {
+            materialId: String(p?.material_id || ''),
+            unitWeight: Number(p?.weight || 0)
+          }
+        })
+        setPartInfoMap(pMap)
+      } catch {}
+    })()
+  }, [])
+
+  // 实时计算金额：与工装信息子表逻辑一致 = 件数 × 单件重 × 材料单价
+  const computeAmount = useCallback((item: PurchaseOrder): number | null => {
+    const qty = Number(item.part_quantity || 0)
+    const inv = String(item.inventory_number || '').trim()
+    const partInfo = partInfoMap[inv]
+    const unitWeight = partInfo?.unitWeight && partInfo.unitWeight > 0
+      ? partInfo.unitWeight
+      : Number(item.weight || 0)
+    const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
+    let materialId = partInfo?.materialId || ''
+    // 回退：根据名称/型号查 part 表（兼容未拉到的数据）
+    if (!materialId) {
+      const match = Object.values(partInfoMap).find((p) => p.materialId)
+      if (match) materialId = match.materialId
+    }
+    const unitPrice = Number(materialUnitPriceMap[materialId] || 0)
+    if (totalWeight > 0 && unitPrice > 0) {
+      return Math.round(totalWeight * unitPrice * 100) / 100
+    }
+    // 无法计算则回退到后端值
+    const stored = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
+    return isNaN(stored) ? null : stored
+  }, [materialUnitPriceMap, partInfoMap])
 
   const totals = useMemo(() => {
     const set = new Set<string>(selectedRowKeys.map(String))
@@ -366,67 +427,6 @@ export default function PurchaseOrdersList() {
       } catch {}
     })()
   }, [])
-
-  // 材料单价索引 + 工装零件索引（用于实时计算采购单金额）
-  const [materialUnitPriceMap, setMaterialUnitPriceMap] = useState<Record<string, number>>({})
-  const [partInfoMap, setPartInfoMap] = useState<Record<string, { materialId: string; unitWeight: number }>>({})
-  useEffect(() => {
-    (async () => {
-      try {
-        // 拉取材料单价表
-        const mResp = await fetchWithFallback('/api/materials?pageSize=10000')
-        const mJson = await mResp.json().catch(() => ({}))
-        const mMap: Record<string, number> = {}
-        const list = Array.isArray(mJson?.items) ? mJson.items : Array.isArray(mJson?.data) ? mJson.data : []
-        list.forEach((m: any) => {
-          const id = String(m?.id || m?.material_id || '')
-          const p = Number(m?.unit_price ?? m?.price ?? 0)
-          if (id) mMap[id] = p
-        })
-        setMaterialUnitPriceMap(mMap)
-      } catch {}
-      try {
-        // 拉取工装零件：建立 inventory_no -> { materialId, unitWeight }
-        const pResp = await fetchWithFallback('/api/tooling/parts?pageSize=10000')
-        const pJson = await pResp.json().catch(() => ({}))
-        const pMap: Record<string, { materialId: string; unitWeight: number }> = {}
-        const plist = Array.isArray(pJson?.items) ? pJson.items : Array.isArray(pJson?.data) ? pJson.data : []
-        plist.forEach((p: any) => {
-          const inv = String(p?.part_inventory_number || p?.inventory_number || '').trim()
-          if (!inv) return
-          pMap[inv] = {
-            materialId: String(p?.material_id || ''),
-            unitWeight: Number(p?.weight || 0)
-          }
-        })
-        setPartInfoMap(pMap)
-      } catch {}
-    })()
-  }, [])
-
-  // 实时计算金额：与工装信息子表逻辑一致 = 件数 × 单件重 × 材料单价
-  const computeAmount = useCallback((item: PurchaseOrder): number | null => {
-    const qty = Number(item.part_quantity || 0)
-    const inv = String(item.inventory_number || '').trim()
-    const partInfo = partInfoMap[inv]
-    const unitWeight = partInfo?.unitWeight && partInfo.unitWeight > 0
-      ? partInfo.unitWeight
-      : Number(item.weight || 0)
-    const totalWeight = qty > 0 && unitWeight > 0 ? Math.round(unitWeight * qty * 1000) / 1000 : 0
-    let materialId = partInfo?.materialId || ''
-    // 回退：根据名称/型号查 part 表（兼容未拉到的数据）
-    if (!materialId) {
-      const match = Object.values(partInfoMap).find((p) => p.materialId)
-      if (match) materialId = match.materialId
-    }
-    const unitPrice = Number(materialUnitPriceMap[materialId] || 0)
-    if (totalWeight > 0 && unitPrice > 0) {
-      return Math.round(totalWeight * unitPrice * 100) / 100
-    }
-    // 无法计算则回退到后端值
-    const stored = typeof item.total_price === 'number' ? item.total_price : parseFloat(String(item.total_price ?? ''))
-    return isNaN(stored) ? null : stored
-  }, [materialUnitPriceMap, partInfoMap])
 
   const filteredData = useMemo(() => {
     if (isTechnician && !teamsLoaded) return []
