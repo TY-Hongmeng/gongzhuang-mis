@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -911,99 +911,20 @@ ${tablesHtml}
       return spans
     }
 
-    // ============= 智能分页：按行高逐行计算 =============
-    // A4 尺寸：210mm × 297mm，portrait（纵向）
-    // 实际可用：浏览器/打印机的最小物理边距约 5mm，安全预留 8mm
-    // 总可用高度 ≈ 297 - 16 = 281mm
-    // 占用项：表头(标题+列头) ≈ 16mm，tfoot 审批区 ≈ 18mm，页码 ≈ 4mm，合计 38mm
-    // 数据区理论可用 ≈ 281 - 38 = 243mm
-
-    // 估算每行高度：基础行高 ≈ 4.0mm（9.5pt + 1.45 行高 + padding 3px×2）
-    // 长内容（名称/型号列）可能换行，按字符宽度估算需要的行数
-    const CHAR_WIDTH_MM = 1.85   // 9.5pt 微软雅黑：每字符平均宽度（混合中英文）
-    const BASE_LINE_HEIGHT_MM = 4.0
-    const TABLE_PADDING_MM = 1.4 // td padding 3px × 2
-    // A4 内宽 ≈ 194mm（210-16 边距），按列宽百分比换算各列实际 mm
-    const COL_WIDTHS_MM = {
-      name: 194 * 0.12 - 2 * 0.8,     // 12%
-      model: 194 * 0.22 - 2 * 0.8,    // 22%
-      project: 194 * 0.12 - 2 * 0.8,  // 12%
-      unit: 194 * 0.09 - 2 * 0.8,     // 9%
-    }
-    // 估算一行需要多少文字行
-    const estimateRowHeight = (item: PurchaseOrder) => {
-      const linesOf = (text: string, colMm: number) => {
-        const chars = String(text || '').length
-        if (chars === 0) return 1
-        return Math.max(1, Math.ceil(chars * CHAR_WIDTH_MM / Math.max(colMm, 1)))
-      }
-      const maxLines = Math.max(
-        linesOf(item.part_name || '', COL_WIDTHS_MM.name),
-        linesOf(item.model || '', COL_WIDTHS_MM.model),
-        linesOf(item.project_name || '', COL_WIDTHS_MM.project),
-        linesOf(item.production_unit || '', COL_WIDTHS_MM.unit)
-      )
-      return maxLines * BASE_LINE_HEIGHT_MM + 2 * TABLE_PADDING_MM
-    }
-    // 密度档位 -> 数据区可用高度（mm）：密度 1(最紧凑) 到 10(最宽松)
-    // 默认密度 4 → 约 200mm 给数据区，比之前 170mm 宽松，匹配实际可用
-    const DENSITY_HEIGHT_MAP: Record<number, number> = {
-      1: 165, 2: 178, 3: 190, 4: 200, 5: 210,
-      6: 218, 7: 225, 8: 232, 9: 238, 10: 243
-    }
-    const availableDataHeight = DENSITY_HEIGHT_MAP[printDensityLevel] || 200
-
-    // 逐行累加高度，按 rowspan 边界切页
-    const pages: Array<typeof printRows> = []
-    let pageStart = 0
-    while (pageStart < printRows.length) {
-      let accHeight = 0
-      let pageEnd = pageStart
-      // 不断尝试累加，直到超过可用高度
-      while (pageEnd < printRows.length) {
-        const rowH = estimateRowHeight(printRows[pageEnd].item)
-        if (accHeight + rowH > availableDataHeight && pageEnd > pageStart) break
-        accHeight += rowH
-        pageEnd += 1
-      }
-      // 检查 rowspan 边界：当前页最后一行如果属于某个跨页组，则回退
-      if (pageEnd < printRows.length) {
-        const lastIdx = pageEnd - 1 - pageStart
-        const pageSlice = printRows.slice(pageStart, pageEnd)
-        const projectSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim()))
-        const productionSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim()))
-        const createdDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim()))
-        const demandDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim()))
-        const applicantSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
-        const hasCrossPageSpan = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
-          .some(s => s[lastIdx] > 1)
-        if (hasCrossPageSpan) {
-          // 回退到组起始位置之前
-          const groupStart = Math.max(
-            projectSpansCheck[lastIdx] > 0 ? lastIdx - projectSpansCheck[lastIdx] + 1 : lastIdx,
-            productionSpansCheck[lastIdx] > 0 ? lastIdx - productionSpansCheck[lastIdx] + 1 : lastIdx,
-            createdDateSpansCheck[lastIdx] > 0 ? lastIdx - createdDateSpansCheck[lastIdx] + 1 : lastIdx,
-            demandDateSpansCheck[lastIdx] > 0 ? lastIdx - demandDateSpansCheck[lastIdx] + 1 : lastIdx,
-            applicantSpansCheck[lastIdx] > 0 ? lastIdx - applicantSpansCheck[lastIdx] + 1 : lastIdx
-          )
-          pageEnd = pageStart + groupStart
-          if (pageEnd <= pageStart) pageEnd = pageStart + 1
-        }
-      }
-      pages.push(printRows.slice(pageStart, pageEnd))
-      pageStart = pageEnd
-    }
+    // ============= 单一表格，浏览器自然分页 =============
+    // 不再做 JS 端手动分页，让浏览器根据实际内容长度自然分页
+    // 表头和审批区用 CSS display: table-header-group / table-footer-group 让每页自动重复
 
     let serialNo = 1
-    const pagesHtml = pages.map((pageRows, pageIndex) => {
-      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
-      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
-      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
-      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
-      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
-      const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
-        const rowHtml = `
-          <tr>
+    const projectSpans = calcRowSpans(printRows.map(r => String(r.item.project_name || '').trim()))
+    const productionSpans = calcRowSpans(printRows.map(r => String(r.item.production_unit || '').trim()))
+    const createdDateSpans = calcRowSpans(printRows.map(r => String(r.cdate || '').trim()))
+    const demandDateSpans = calcRowSpans(printRows.map(r => String(r.ddate || '').trim()))
+    const applicantSpans = calcRowSpans(printRows.map(r => String(r.item.applicant || '').trim()))
+
+    const rowsHtml = printRows.map(({ item, cdate, ddate }, idx) => {
+      const rowHtml = `
+        <tr>
           <td class="cell-no">${serialNo}</td>
           <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
           <td class="cell-model">${escapeHtml(item.model || '')}</td>
@@ -1013,60 +934,57 @@ ${tablesHtml}
           ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
           ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
           ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
-          </tr>
-        `
-        serialNo += 1
-        return rowHtml
-      }).join('')
-      return `
-        <div class="print-page">
-        <table class="sheet">
-          <colgroup>
-            <col style="width:5%">
-            <col style="width:12%">
-            <col style="width:22%">
-            <col style="width:8%">
-            <col style="width:12%">
-            <col style="width:9%">
-            <col style="width:12%">
-            <col style="width:11%">
-            <col style="width:9%">
-          </colgroup>
-          <thead>
-            <tr>
-              <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
-            </tr>
-            <tr>
-              <th>序号</th>
-              <th>名称</th>
-              <th>型号</th>
-              <th>数量</th>
-              <th>项目名称</th>
-              <th>投产单位</th>
-              <th>申请日期</th>
-              <th>需求日期</th>
-              <th>提交人</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="5">生产单位领导审批：</td>
-              <td colspan="4">计划部门审批：</td>
-            </tr>
-            <tr>
-              <td colspan="5">公司副总审批：</td>
-              <td colspan="4">公司总经理审批：</td>
-            </tr>
-          </tfoot>
-        </table>
-        <div class="page-number">第 ${pageIndex + 1} 页 / 共 ${pages.length} 页</div>
-        </div>
-        ${pageIndex < pages.length - 1 ? '<div class="page-break"></div>' : ''}
+        </tr>
       `
+      serialNo += 1
+      return rowHtml
     }).join('')
+
+    const tableHtml = `
+      <table class="sheet">
+        <colgroup>
+          <col style="width:5%">
+          <col style="width:12%">
+          <col style="width:22%">
+          <col style="width:8%">
+          <col style="width:12%">
+          <col style="width:9%">
+          <col style="width:12%">
+          <col style="width:11%">
+          <col style="width:9%">
+        </colgroup>
+        <thead>
+          <tr>
+            <th colspan="9" class="header-line">吉林省通用机械（集团）有限责任公司 临时物资采购清单</th>
+          </tr>
+          <tr>
+            <th>序号</th>
+            <th>名称</th>
+            <th>型号</th>
+            <th>数量</th>
+            <th>项目名称</th>
+            <th>投产单位</th>
+            <th>申请日期</th>
+            <th>需求日期</th>
+            <th>提交人</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5">生产单位领导审批：</td>
+            <td colspan="4">计划部门审批：</td>
+          </tr>
+          <tr>
+            <td colspan="5">公司副总审批：</td>
+            <td colspan="4">公司总经理审批：</td>
+          </tr>
+        </tfoot>
+      </table>
+    `
+
     const html = `
       <html>
         <head>
@@ -1089,15 +1007,6 @@ ${tablesHtml}
               color: #000;
               background: #fff;
             }
-            .print-page {
-              width: 100%;
-              page-break-after: always;
-              padding: 0 !important;
-              margin: 0 !important;
-            }
-            .print-page:last-child {
-              page-break-after: auto;
-            }
             table.sheet {
               width: 100%;
               border-collapse: collapse;
@@ -1119,13 +1028,15 @@ ${tablesHtml}
               padding: 3px 4px;
               letter-spacing: 1px;
             }
+            /* 关键：让表头/表尾在每页自动重复 */
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            /* 单行不切 */
+            tbody tr { page-break-inside: avoid; }
             th {
               background: #f0f0f0;
               font-weight: bold;
               padding: 3px 3px;
-            }
-            tbody tr {
-              min-height: 18px;
             }
             td.cell-no { width: 5%; font-size: 8.5pt; }
             td.cell-name {
@@ -1155,24 +1066,13 @@ ${tablesHtml}
               padding-left: 6px;
               font-size: 9pt;
             }
-            .page-number {
-              text-align: right;
-              font-size: 7.5pt;
-              color: #666;
-              margin-top: 1mm;
-            }
-            .page-break { display: none; }
             @media print {
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .print-page {
-                page-break-after: always;
-              }
-              .print-page:last-child { page-break-after: auto; }
             }
           </style>
         </head>
         <body>
-          ${pagesHtml}
+          ${tableHtml}
         </body>
       </html>
     `
