@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -911,36 +911,83 @@ ${tablesHtml}
       return spans
     }
 
-    // 打印密度映射：密度档位 -> 每页最大行数
-    // A4高度297mm - 上下边距20mm = 277mm可用
-    // 表头约30mm + 表尾(审批区)52mm = 82mm固定占用
-    // 数据区约195mm，行高7.5mm，基准28行/页
-    const DENSITY_ROWS_MAP: Record<number, number> = {
-      1: 24, 2: 26, 3: 27, 4: 28, 5: 29,
-      6: 30, 7: 31, 8: 32, 9: 34, 10: 36
-    }
-    const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
+    // ============= 智能分页：按行高逐行计算 =============
+    // A4 尺寸：210mm × 297mm，portrait（纵向）
+    // 边距：上 10mm + 下 0mm = 10mm
+    // 可用内容高度 = 297 - 10 = 287mm
+    // 表头(标题行+列头) ≈ 18mm，tfoot 审批区(3行) ≈ 50mm，页码 ≈ 5mm
+    // 数据区可用高度 ≈ 287 - 18 - 50 - 5 = 214mm
 
-    // 分页时需要考虑rowspan：同一组的行不能拆到两页
+    // 估算每行高度：基础行高 5mm（9.5pt + 1.45 行高 + padding 3px×2 ≈ 4.8mm）
+    // 长内容（名称/型号列）可能换行，按中文字符宽度估算
+    const CHAR_WIDTH_MM = 1.95   // 9.5pt 微软雅黑：每字符宽度
+    const BASE_LINE_HEIGHT_MM = 4.6
+    const TABLE_PADDING_MM = 1.5 // td padding 3px × 2
+    // A4 内宽 194mm（210-16边距），按列宽百分比换算各列实际 mm
+    const COL_WIDTHS_MM = {
+      name: 194 * 0.12 - 2 * 1.0,     // 12%
+      model: 194 * 0.22 - 2 * 1.0,    // 22%
+      project: 194 * 0.12 - 2 * 1.0,  // 12%
+      unit: 194 * 0.09 - 2 * 1.0,     // 9%
+    }
+    // 估算一行需要多少文字行（行高 = 行数 × BASE_LINE_HEIGHT_MM + 上下 padding）
+    const estimateRowHeight = (item: PurchaseOrder) => {
+      const maxLines = Math.max(
+        // 名称列
+        Math.ceil(String(item.part_name || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.name, 1)),
+        // 型号列（最容易撑高）
+        Math.ceil(String(item.model || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.model, 1)),
+        // 项目名称
+        Math.ceil(String(item.project_name || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.project, 1)),
+        // 投产单位
+        Math.ceil(String(item.production_unit || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.unit, 1)),
+        1
+      )
+      return maxLines * BASE_LINE_HEIGHT_MM + 2 * TABLE_PADDING_MM
+    }
+    // 密度档位 -> 数据区可用高度（mm）：密度 1(最紧凑) 到 10(最宽松)
+    // 调整策略：密度 4 默认 → 给出约 170mm 给数据区（保守余量）
+    const DENSITY_HEIGHT_MAP: Record<number, number> = {
+      1: 145, 2: 155, 3: 162, 4: 170, 5: 178,
+      6: 185, 7: 192, 8: 198, 9: 205, 10: 210
+    }
+    const availableDataHeight = DENSITY_HEIGHT_MAP[printDensityLevel] || 170
+
+    // 逐行累加高度，按 rowspan 边界切页
     const pages: Array<typeof printRows> = []
     let pageStart = 0
     while (pageStart < printRows.length) {
-      let pageEnd = Math.min(pageStart + rowsPerPage, printRows.length)
-      // 检查是否截断了rowspan组：如果当前页最后一行的rowspan延伸到了下一页，提前截断
+      let accHeight = 0
+      let pageEnd = pageStart
+      // 不断尝试累加，直到超过可用高度
+      while (pageEnd < printRows.length) {
+        const rowH = estimateRowHeight(printRows[pageEnd].item)
+        if (accHeight + rowH > availableDataHeight && pageEnd > pageStart) break
+        accHeight += rowH
+        pageEnd += 1
+      }
+      // 检查 rowspan 边界：当前页最后一行如果属于某个跨页组，则回退
       if (pageEnd < printRows.length) {
-        // 计算当前页各列的rowspan边界
+        const lastIdx = pageEnd - 1 - pageStart
         const pageSlice = printRows.slice(pageStart, pageEnd)
-        const lastIdx = pageSlice.length - 1
-        // 如果最后一行有任何rowspan > 1（即它是某组的起始行且组未结束），则这行不能作为该页最后一行
         const projectSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim()))
         const productionSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim()))
         const createdDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim()))
         const demandDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim()))
         const applicantSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
-        const spans = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
-        const hasCrossPageSpan = spans.some(s => s[lastIdx] > 1)
+        const hasCrossPageSpan = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
+          .some(s => s[lastIdx] > 1)
         if (hasCrossPageSpan) {
-          pageEnd = Math.max(pageStart + 1, pageEnd - 1) // 至少保留1行，回退1行
+          // 回退到组起始位置之前
+          const groupStart = Math.max(
+            projectSpansCheck[lastIdx] > 0 ? lastIdx - projectSpansCheck[lastIdx] + 1 : lastIdx,
+            productionSpansCheck[lastIdx] > 0 ? lastIdx - productionSpansCheck[lastIdx] + 1 : lastIdx,
+            createdDateSpansCheck[lastIdx] > 0 ? lastIdx - createdDateSpansCheck[lastIdx] + 1 : lastIdx,
+            demandDateSpansCheck[lastIdx] > 0 ? lastIdx - demandDateSpansCheck[lastIdx] + 1 : lastIdx,
+            applicantSpansCheck[lastIdx] > 0 ? lastIdx - applicantSpansCheck[lastIdx] + 1 : lastIdx
+          )
+          pageEnd = pageStart + groupStart
+          if (pageEnd <= pageStart) pageEnd = pageStart + 1
         }
       }
       pages.push(printRows.slice(pageStart, pageEnd))
@@ -1079,7 +1126,6 @@ ${tablesHtml}
               padding: 4px 3px;
             }
             tbody tr {
-              height: 20px;
               min-height: 20px;
               page-break-inside: avoid;
             }
