@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -913,45 +913,45 @@ ${tablesHtml}
 
     // ============= 智能分页：按行高逐行计算 =============
     // A4 尺寸：210mm × 297mm，portrait（纵向）
-    // 边距：上 10mm + 下 0mm = 10mm
-    // 可用内容高度 = 297 - 10 = 287mm
-    // 表头(标题行+列头) ≈ 18mm，tfoot 审批区(3行) ≈ 50mm，页码 ≈ 5mm
-    // 数据区可用高度 ≈ 287 - 18 - 50 - 5 = 214mm
+    // 实际可用：浏览器/打印机的最小物理边距约 5mm，安全预留 8mm
+    // 总可用高度 ≈ 297 - 16 = 281mm
+    // 占用项：表头(标题+列头) ≈ 16mm，tfoot 审批区 ≈ 18mm，页码 ≈ 4mm，合计 38mm
+    // 数据区理论可用 ≈ 281 - 38 = 243mm
 
-    // 估算每行高度：基础行高 5mm（9.5pt + 1.45 行高 + padding 3px×2 ≈ 4.8mm）
-    // 长内容（名称/型号列）可能换行，按中文字符宽度估算
-    const CHAR_WIDTH_MM = 1.95   // 9.5pt 微软雅黑：每字符宽度
-    const BASE_LINE_HEIGHT_MM = 4.6
-    const TABLE_PADDING_MM = 1.5 // td padding 3px × 2
-    // A4 内宽 194mm（210-16边距），按列宽百分比换算各列实际 mm
+    // 估算每行高度：基础行高 ≈ 4.0mm（9.5pt + 1.45 行高 + padding 3px×2）
+    // 长内容（名称/型号列）可能换行，按字符宽度估算需要的行数
+    const CHAR_WIDTH_MM = 1.85   // 9.5pt 微软雅黑：每字符平均宽度（混合中英文）
+    const BASE_LINE_HEIGHT_MM = 4.0
+    const TABLE_PADDING_MM = 1.4 // td padding 3px × 2
+    // A4 内宽 ≈ 194mm（210-16 边距），按列宽百分比换算各列实际 mm
     const COL_WIDTHS_MM = {
-      name: 194 * 0.12 - 2 * 1.0,     // 12%
-      model: 194 * 0.22 - 2 * 1.0,    // 22%
-      project: 194 * 0.12 - 2 * 1.0,  // 12%
-      unit: 194 * 0.09 - 2 * 1.0,     // 9%
+      name: 194 * 0.12 - 2 * 0.8,     // 12%
+      model: 194 * 0.22 - 2 * 0.8,    // 22%
+      project: 194 * 0.12 - 2 * 0.8,  // 12%
+      unit: 194 * 0.09 - 2 * 0.8,     // 9%
     }
-    // 估算一行需要多少文字行（行高 = 行数 × BASE_LINE_HEIGHT_MM + 上下 padding）
+    // 估算一行需要多少文字行
     const estimateRowHeight = (item: PurchaseOrder) => {
+      const linesOf = (text: string, colMm: number) => {
+        const chars = String(text || '').length
+        if (chars === 0) return 1
+        return Math.max(1, Math.ceil(chars * CHAR_WIDTH_MM / Math.max(colMm, 1)))
+      }
       const maxLines = Math.max(
-        // 名称列
-        Math.ceil(String(item.part_name || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.name, 1)),
-        // 型号列（最容易撑高）
-        Math.ceil(String(item.model || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.model, 1)),
-        // 项目名称
-        Math.ceil(String(item.project_name || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.project, 1)),
-        // 投产单位
-        Math.ceil(String(item.production_unit || '').length * CHAR_WIDTH_MM / Math.max(COL_WIDTHS_MM.unit, 1)),
-        1
+        linesOf(item.part_name || '', COL_WIDTHS_MM.name),
+        linesOf(item.model || '', COL_WIDTHS_MM.model),
+        linesOf(item.project_name || '', COL_WIDTHS_MM.project),
+        linesOf(item.production_unit || '', COL_WIDTHS_MM.unit)
       )
       return maxLines * BASE_LINE_HEIGHT_MM + 2 * TABLE_PADDING_MM
     }
     // 密度档位 -> 数据区可用高度（mm）：密度 1(最紧凑) 到 10(最宽松)
-    // 调整策略：密度 4 默认 → 给出约 170mm 给数据区（保守余量）
+    // 默认密度 4 → 约 200mm 给数据区，比之前 170mm 宽松，匹配实际可用
     const DENSITY_HEIGHT_MAP: Record<number, number> = {
-      1: 145, 2: 155, 3: 162, 4: 170, 5: 178,
-      6: 185, 7: 192, 8: 198, 9: 205, 10: 210
+      1: 165, 2: 178, 3: 190, 4: 200, 5: 210,
+      6: 218, 7: 225, 8: 232, 9: 238, 10: 243
     }
-    const availableDataHeight = DENSITY_HEIGHT_MAP[printDensityLevel] || 170
+    const availableDataHeight = DENSITY_HEIGHT_MAP[printDensityLevel] || 200
 
     // 逐行累加高度，按 rowspan 边界切页
     const pages: Array<typeof printRows> = []
@@ -1074,25 +1074,24 @@ ${tablesHtml}
           <style>
             @page {
               size: A4 portrait;
-              margin: 10mm 8mm 0mm 8mm;
+              margin: 6mm 6mm 4mm 6mm;
             }
             * { box-sizing: border-box; }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              width: 210mm;
+              width: 198mm;
             }
             body {
               font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
-              font-size: 10pt;
-              line-height: 1.35;
+              font-size: 9pt;
+              line-height: 1.3;
               color: #000;
               background: #fff;
             }
             .print-page {
               width: 100%;
               page-break-after: always;
-              page-break-inside: avoid;
               padding: 0 !important;
               margin: 0 !important;
             }
@@ -1107,29 +1106,28 @@ ${tablesHtml}
             }
             th, td {
               border: 1px solid #333;
-              padding: 3px 5px;
+              padding: 2px 4px;
               text-align: center;
               vertical-align: middle;
-              line-height: 1.45;
-              font-size: 9.5pt;
+              line-height: 1.3;
+              font-size: 9pt;
             }
             .header-line {
-              font-size: 14pt;
+              font-size: 13pt;
               font-weight: bold;
               text-align: center;
-              padding: 5px 4px;
+              padding: 3px 4px;
               letter-spacing: 1px;
             }
             th {
               background: #f0f0f0;
               font-weight: bold;
-              padding: 4px 3px;
+              padding: 3px 3px;
             }
             tbody tr {
-              min-height: 20px;
-              page-break-inside: avoid;
+              min-height: 18px;
             }
-            td.cell-no { width: 5%; font-size: 9pt; }
+            td.cell-no { width: 5%; font-size: 8.5pt; }
             td.cell-name {
               width: 12%;
               text-align: left;
@@ -1150,17 +1148,17 @@ ${tablesHtml}
             td.cell-date { width: 12%; white-space: nowrap; }
             td.cell-applicant { width: 8%; }
             tfoot td {
-              height: 52px;
+              height: 32px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
-              padding-left: 8px;
-              font-size: 10pt;
+              padding-left: 6px;
+              font-size: 9pt;
             }
             .page-number {
               text-align: right;
-              font-size: 8pt;
-              color: #999;
+              font-size: 7.5pt;
+              color: #666;
               margin-top: 1mm;
             }
             .page-break { display: none; }
@@ -1168,10 +1166,8 @@ ${tablesHtml}
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               .print-page {
                 page-break-after: always;
-                page-break-inside: avoid;
               }
               .print-page:last-child { page-break-after: auto; }
-              tbody tr { page-break-inside: avoid; }
             }
           </style>
         </head>
