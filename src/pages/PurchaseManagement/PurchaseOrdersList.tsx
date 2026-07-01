@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -943,11 +943,11 @@ ${tablesHtml}
     const tableHtml = `
       <table class="sheet">
         <colgroup>
-          <col style="width:5%">
-          <col style="width:12%">
-          <col style="width:22%">
-          <col style="width:8%">
-          <col style="width:12%">
+          <col style="width:4%">
+          <col style="width:10%">
+          <col style="width:18%">
+          <col style="width:7%">
+          <col style="width:14%">
           <col style="width:9%">
           <col style="width:12%">
           <col style="width:11%">
@@ -991,14 +991,14 @@ ${tablesHtml}
           <meta charset="UTF-8">
           <style>
             @page {
-              size: A4 portrait;
+              size: A4 landscape;
               margin: 6mm 6mm 4mm 6mm;
             }
             * { box-sizing: border-box; }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              width: 198mm;
+              width: 285mm;
             }
             body {
               font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
@@ -1038,28 +1038,29 @@ ${tablesHtml}
               font-weight: bold;
               padding: 3px 3px;
             }
-            td.cell-no { width: 5%; font-size: 8.5pt; }
+            /* 横向打印列宽：12列更宽，型号列可显示更长的型号 */
+            td.cell-no { width: 4%; font-size: 8.5pt; }
             td.cell-name {
-              width: 12%;
+              width: 10%;
               text-align: left;
               word-break: break-all;
             }
             td.cell-model {
-              width: 22%;
+              width: 18%;
               text-align: left;
               word-break: break-all;
             }
-            td.cell-qty { width: 8%; white-space: nowrap; }
+            td.cell-qty { width: 7%; white-space: nowrap; }
             td.cell-project {
-              width: 12%;
+              width: 14%;
               text-align: left;
               word-break: break-all;
             }
             td.cell-unit { width: 9%; word-break: break-all; }
             td.cell-date { width: 12%; white-space: nowrap; }
-            td.cell-applicant { width: 8%; }
+            td.cell-applicant { width: 9%; }
             tfoot td {
-              height: 32px;
+              height: 30px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
