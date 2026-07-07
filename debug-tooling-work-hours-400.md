@@ -52,3 +52,6 @@
 - R5: `src/pages/ToolingInfo.tsx` 展开子表的工时拉取只收集零件盘存号，并在立即拉取后写入去重键，避免紧接着再触发一轮重复防抖请求。
 - R6: `src/utils/api.ts` 运行时强制 `/api/tooling/work-hours/aggregates` 只走后端，不再让工装信息模块在浏览器侧直连 Supabase 聚合。
 - R7: `src/pages/ToolingInfo.tsx` 删除未参与显示的 `workHoursProcessAmountData` 状态、未使用的批量保存函数以及多余调试日志，减少无效渲染与控制台噪音。
+- R8: 回滚 R6 的过度限制，恢复静态环境下 `/api/tooling/work-hours/aggregates` 的客户端回退；本地后端环境仍优先走后端。
+- R9: 修复 `src/utils/api.ts` 中 `/refresh-totals` 客户端实现把新算出的 `material_total` 又覆盖回旧值的问题。
+- R10: `src/pages/ToolingInfo.tsx` 在本地校准父表总额后立即调用 `/save-totals-direct` 落库，避免刷新后又回到旧的 `0/null`。

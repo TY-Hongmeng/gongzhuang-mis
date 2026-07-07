@@ -1009,6 +1009,30 @@ const ToolingInfoPage: React.FC = () => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
   }, [])
+  const saveToolingTotalsRef = useRef<Set<string>>(new Set())
+  const persistToolingTotals = useCallback(async (toolingId: string, materialTotal: number | null, processTotal: number | null) => {
+    const normalizedId = String(toolingId || '').trim()
+    if (!normalizedId || normalizedId.startsWith('blank-')) return
+    const payloadKey = `${normalizedId}|${materialTotal ?? 'null'}|${processTotal ?? 'null'}`
+    if (saveToolingTotalsRef.current.has(payloadKey)) return
+    saveToolingTotalsRef.current.add(payloadKey)
+    try {
+      await fetchWithFallback(`/api/tooling/${encodeURIComponent(normalizedId)}/save-totals-direct`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          material_total: materialTotal,
+          process_total: processTotal
+        })
+      })
+    } catch {
+    } finally {
+      window.setTimeout(() => {
+        saveToolingTotalsRef.current.delete(payloadKey)
+      }, 1500)
+    }
+  }, [])
   const resolvePartProcessAmount = useCallback((part: any): number | null => {
     const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
     if (inv && Object.prototype.hasOwnProperty.call(workHoursAmountDataRef.current, inv)) {
@@ -1022,7 +1046,14 @@ const ToolingInfoPage: React.FC = () => {
     if (!normalizedId || normalizedId.startsWith('blank-')) return
 
     const parts = (partsMapRef.current[normalizedId] || []).filter((p: any) => !String(p?.id || '').startsWith('blank-'))
-    if (parts.length === 0) return
+    if (parts.length === 0) {
+      applyToolingTotalsToRow(normalizedId, {
+        material_total: null,
+        process_total: null
+      })
+      void persistToolingTotals(normalizedId, null, null)
+      return
+    }
 
     let materialTotal = 0
     let processTotal = 0
@@ -1048,11 +1079,14 @@ const ToolingInfoPage: React.FC = () => {
 
     })
 
+    const roundedMaterialTotal = Math.round(materialTotal)
+    const roundedProcessTotal = Math.round(processTotal)
     applyToolingTotalsToRow(normalizedId, {
-      material_total: Math.round(materialTotal),
-      process_total: Math.round(processTotal)
+      material_total: roundedMaterialTotal,
+      process_total: roundedProcessTotal
     })
-  }, [applyToolingTotalsToRow, resolvePartProcessAmount])
+    void persistToolingTotals(normalizedId, roundedMaterialTotal, roundedProcessTotal)
+  }, [applyToolingTotalsToRow, persistToolingTotals, resolvePartProcessAmount])
   
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据

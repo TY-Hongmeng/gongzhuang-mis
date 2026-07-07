@@ -18,7 +18,6 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     /^\/api\/tooling\/status/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
-    || /^\/api\/tooling\/work-hours\/aggregates/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
@@ -209,7 +208,6 @@ export function installApiInterceptor() {
       if (cleanUrl.startsWith('/api/')) {
         const strictBackendPath =
           cleanUrl.startsWith('/api/standard-parts') ||
-          cleanUrl.startsWith('/api/tooling/work-hours/aggregates') ||
           cleanUrl.startsWith('/api/tooling/program-entries') ||
           cleanUrl.startsWith('/api/tooling/program-management') ||
           cleanUrl.startsWith('/api/material-assets')
@@ -2724,10 +2722,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 : 0
               return sum + (Number.isFinite(computedTotal) ? computedTotal : 0)
             }, 0)
-
-            if (existingTotals?.material_total != null) {
-              materialTotal = existingTotals.material_total
-            }
 
             const invList = Array.from(new Set(
               meaningfulParts
