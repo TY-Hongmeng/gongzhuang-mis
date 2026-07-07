@@ -18,6 +18,7 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
     /^\/api\/tooling\/status/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/parts/.test(cleanUrl)
     || /^\/api\/tooling\/[^\/]+\/child-items/.test(cleanUrl)
+    || /^\/api\/tooling\/work-hours\/aggregates/.test(cleanUrl)
     || /^\/api\/tooling\/parts\//.test(cleanUrl)
     || /^\/api\/tooling\/child-items\//.test(cleanUrl)
     || /^\/api\/tooling\/parts\/process-routes/.test(cleanUrl)
@@ -208,6 +209,7 @@ export function installApiInterceptor() {
       if (cleanUrl.startsWith('/api/')) {
         const strictBackendPath =
           cleanUrl.startsWith('/api/standard-parts') ||
+          cleanUrl.startsWith('/api/tooling/work-hours/aggregates') ||
           cleanUrl.startsWith('/api/tooling/program-entries') ||
           cleanUrl.startsWith('/api/tooling/program-management') ||
           cleanUrl.startsWith('/api/material-assets')

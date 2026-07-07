@@ -52,33 +52,14 @@ type WorkHoursLatestMetaMap = Record<string, {
   at: number
 }>
 
-type WorkHoursAggregateResult = {
-  data: Record<string, string[]>
-  processCompletedQtyData: Record<string, Record<string, number>>
-  processHoursData: Record<string, Record<string, number>>
-  processAmountData: Record<string, Record<string, number>>
-  amountData: Record<string, number>
-  processLatestMetaData: Record<string, WorkHoursLatestMetaMap>
-}
-
 type WorkHoursAggregateCacheEntry = {
   fetchedAt: number
   data: string[]
   processCompletedQtyData: Record<string, number>
   processHoursData: Record<string, number>
-  processAmountData: Record<string, number>
   amountData: number
   processLatestMetaData: WorkHoursLatestMetaMap
 }
-
-const createEmptyWorkHoursAggregateResult = (): WorkHoursAggregateResult => ({
-  data: {},
-  processCompletedQtyData: {},
-  processHoursData: {},
-  processAmountData: {},
-  amountData: {},
-  processLatestMetaData: {}
-})
 
 const chunkArray = <T,>(items: T[], size: number): T[][] => {
   if (!Array.isArray(items) || items.length === 0) return []
@@ -1045,7 +1026,6 @@ const ToolingInfoPage: React.FC = () => {
 
     let materialTotal = 0
     let processTotal = 0
-    const debugParts: any[] = []
 
     parts.forEach((part: any) => {
       const qty = Number(part?.part_quantity || 0)
@@ -1066,32 +1046,7 @@ const ToolingInfoPage: React.FC = () => {
       const invAmount = Number(resolvedAmount || 0)
       processTotal += invAmount
 
-      debugParts.push({
-        name: part?.part_name,
-        inv,
-        qty,
-        weight: storedWeight,
-        unitWeight,
-        totalWeight,
-        materialId: part?.material_id,
-        unitPrice,
-        matAmount,
-        invAmount
-      })
     })
-
-    // 调试日志 - 帮助诊断总额不显示的问题
-    console.log(`[syncLocalToolingTotals] 工装ID: ${normalizedId}`)
-    console.log(`[syncLocalToolingTotals] 零件数: ${parts.length}`)
-    console.log(`[syncLocalToolingTotals] 材料总额: ${Math.round(materialTotal)}, 加工总额: ${Math.round(processTotal)}`)
-    console.log(`[syncLocalToolingTotals] workHoursAmountData keys:`, Object.keys(workHoursAmountDataRef.current))
-    console.log(`[syncLocalToolingTotals] materialUnitPriceMap keys:`, Object.keys(materialUnitPriceMapRef.current))
-    if (debugParts.length <= 5) {
-      console.table(debugParts)
-    } else {
-      console.log(`[syncLocalToolingTotals] 前5个零件详情:`)
-      console.table(debugParts.slice(0, 5))
-    }
 
     applyToolingTotalsToRow(normalizedId, {
       material_total: Math.round(materialTotal),
@@ -1099,55 +1054,6 @@ const ToolingInfoPage: React.FC = () => {
     })
   }, [applyToolingTotalsToRow, resolvePartProcessAmount])
   
-  // 🔥 新增函数：批量保存零件的加工金额到数据库
-  const savePartProcessAmounts = useCallback(async (toolingId: string, parts: any[]) => {
-    try {
-      const updates = parts.map(part => {
-        const partId = part?.id
-        if (!partId || String(partId).startsWith('blank-')) return null
-        
-        const storedAmount = toNullableProcessAmount(part?.process_amount)
-        if (storedAmount !== null) return null  // 已有值的不更新
-        
-        const inventoryNo = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-        const calculatedAmount = Number(workHoursAmountDataRef.current[inventoryNo] || 0)
-        
-        if (calculatedAmount === 0) return null  // 为0的不更新
-        
-        return {
-          id: partId,
-          process_amount: Math.round(calculatedAmount),
-          amounts_updated_at: new Date().toISOString()
-        }
-      }).filter(Boolean)
-      
-      if (updates.length === 0) return
-      
-      console.log(`[零件加工金额] 💚 批量保存 ${updates.length} 个零件的加工金额`)
-      
-      // 使用 handleClientSideApi 风格的批量更新
-      for (const update of updates) {
-        try {
-          await fetchWithFallback(`/api/parts/${encodeURIComponent(update.id)}/update-process-amount`, {
-            method: 'POST',
-            cache: 'no-store',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              process_amount: update.process_amount,
-              amounts_updated_at: update.amounts_updated_at
-            })
-          })
-        } catch (e) {
-          // 单个失败不影响其他
-        }
-      }
-      
-      console.log(`[零件加工金额] ✅ 批量保存完成`)
-    } catch (err) {
-      console.warn('[零件加工金额] 批量保存异常:', err.message)
-    }
-  }, [])
-
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
     if (expandedLoadInflightRef.current.has(toolingId)) return
@@ -1745,7 +1651,6 @@ const ToolingInfoPage: React.FC = () => {
   const [workHoursData, setWorkHoursData] = useState<Record<string, string[]>>({})
   const [workHoursProcessCompletedQtyData, setWorkHoursProcessCompletedQtyData] = useState<Record<string, Record<string, number>>>({})
   const [workHoursProcessHoursData, setWorkHoursProcessHoursData] = useState<Record<string, Record<string, number>>>({})
-  const [workHoursProcessAmountData, setWorkHoursProcessAmountData] = useState<Record<string, Record<string, number>>>({})
   const [workHoursAmountData, setWorkHoursAmountData] = useState<Record<string, number>>({})
   const [workHoursProcessLatestMetaData, setWorkHoursProcessLatestMetaData] = useState<Record<string, Record<string, {
     process_name: string
@@ -1780,7 +1685,6 @@ const ToolingInfoPage: React.FC = () => {
       setWorkHoursData({})
       setWorkHoursProcessCompletedQtyData({})
       setWorkHoursProcessHoursData({})
-      setWorkHoursProcessAmountData({})
       setWorkHoursAmountData({})
       setWorkHoursProcessLatestMetaData({})
       return
@@ -1790,7 +1694,6 @@ const ToolingInfoPage: React.FC = () => {
       const nextData: Record<string, string[]> = {}
       const nextProcessCompletedQty: Record<string, Record<string, number>> = {}
       const nextProcessHours: Record<string, Record<string, number>> = {}
-      const nextProcessAmount: Record<string, Record<string, number>> = {}
       const nextAmount: Record<string, number> = {}
       const nextLatestMeta: Record<string, WorkHoursLatestMetaMap> = {}
       targetInvs.forEach((inv) => {
@@ -1799,14 +1702,12 @@ const ToolingInfoPage: React.FC = () => {
         nextData[inv] = Array.isArray(entry.data) ? [...entry.data] : []
         nextProcessCompletedQty[inv] = { ...(entry.processCompletedQtyData || {}) }
         nextProcessHours[inv] = { ...(entry.processHoursData || {}) }
-        nextProcessAmount[inv] = { ...(entry.processAmountData || {}) }
         nextAmount[inv] = Number(entry.amountData || 0)
         nextLatestMeta[inv] = { ...(entry.processLatestMetaData || {}) }
       })
       setWorkHoursData(nextData)
       setWorkHoursProcessCompletedQtyData(nextProcessCompletedQty)
       setWorkHoursProcessHoursData(nextProcessHours)
-      setWorkHoursProcessAmountData(nextProcessAmount)
       setWorkHoursAmountData(nextAmount)
       setWorkHoursProcessLatestMetaData(nextLatestMeta)
       return nextData
@@ -1844,7 +1745,6 @@ const ToolingInfoPage: React.FC = () => {
         const hoursByInventoryNo: Record<string, string[]> = result?.data || {}
         const processCompletedQtyByInventoryNo: Record<string, Record<string, number>> = result?.processCompletedQtyData || {}
         const processHoursByInventoryNo: Record<string, Record<string, number>> = result?.processHoursData || {}
-        const processAmountByInventoryNo: Record<string, Record<string, number>> = result?.processAmountData || {}
         const amountByInventoryNo: Record<string, number> = result?.amountData || {}
         const processLatestMetaByInventoryNo: Record<string, WorkHoursLatestMetaMap> = result?.processLatestMetaData || {}
 
@@ -1854,7 +1754,6 @@ const ToolingInfoPage: React.FC = () => {
             data: Array.isArray(hoursByInventoryNo[inv]) ? [...hoursByInventoryNo[inv]] : [],
             processCompletedQtyData: { ...(processCompletedQtyByInventoryNo[inv] || {}) },
             processHoursData: { ...(processHoursByInventoryNo[inv] || {}) },
-            processAmountData: { ...(processAmountByInventoryNo[inv] || {}) },
             amountData: Number(amountByInventoryNo[inv] || 0),
             processLatestMetaData: { ...(processLatestMetaByInventoryNo[inv] || {}) }
           }
@@ -1932,12 +1831,6 @@ const ToolingInfoPage: React.FC = () => {
     // 2. 用户展开某行的子表 → 触发一次校准计算 + 保存到数据库
     // 3. 使用 calibratedToolingIds 记录已校准的行，避免重复
 
-    // 仅在开发环境输出诊断信息
-    if (process.env.NODE_ENV === 'development' && allToolingIds.length > 0) {
-      const sampleRow = data.find((item: any) => String(item.id) === allToolingIds[0])
-      console.log(`[Totals] 总行数: ${allToolingIds.length}, 已校准: ${calibratedToolingIdsRef.current.size}`)
-      console.log(`[Totals] 示例值: material_total=${sampleRow?.material_total}, process_total=${sampleRow?.process_total}`)
-    }
   }, [data, partsMap, workHoursAmountData])
   
   // 监听工时提交广播，刷新工时数据
@@ -3598,7 +3491,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [renderStatusText, resolvePartProcessAmount, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData, workHoursProcessHoursData, workHoursProcessAmountData, workHoursProcessLatestMetaData, manualStepUpdateMap, processRoutes, user])
+  }, [renderStatusText, resolvePartProcessAmount, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData, workHoursProcessHoursData, workHoursProcessLatestMetaData, manualStepUpdateMap, processRoutes, user])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [
@@ -3817,16 +3710,6 @@ const ToolingInfoPage: React.FC = () => {
         return `${k}:{${processMap}}`
       })
       .join('|')
-    const amountKey = Object.entries(workHoursProcessAmountData)
-      .sort(([a], [b]) => String(a).localeCompare(String(b)))
-      .map(([k, v]) => {
-        const processMap = Object.entries(v || {})
-          .sort(([p1], [p2]) => String(p1).localeCompare(String(p2)))
-          .map(([p, amount]) => `${p}:${amount}`)
-          .join(',')
-        return `${k}:{${processMap}}`
-      })
-      .join('|')
     const amountTotalKey = Object.entries(workHoursAmountData)
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([k, amount]) => `${k}:${amount}`)
@@ -3845,7 +3728,7 @@ const ToolingInfoPage: React.FC = () => {
       .sort(([a], [b]) => String(a).localeCompare(String(b)))
       .map(([pid, info]) => `${pid}:${info?.step_key || ''}|${info?.operator || ''}|${info?.updated_at || 0}`)
       .join(',')
-    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${hoursKey}-${amountKey}-${amountTotalKey}-${latestMetaKey}-${manualUpdateKey}`
+    const cacheKey = `${toolingId}-${parentProject}-${parentUnit}-${parentApplicant}-${workHoursKey}-${completedQtyKey}-${hoursKey}-${amountTotalKey}-${latestMetaKey}-${manualUpdateKey}`
     let cols = partColumnsCacheRef.current.get(cacheKey)
     if (!cols) {
       cols = createPartColumns(toolingId, parentProject, parentUnit, parentApplicant)
@@ -3920,7 +3803,6 @@ const ToolingInfoPage: React.FC = () => {
     workHoursData,
     workHoursProcessCompletedQtyData,
     workHoursProcessHoursData,
-    workHoursProcessAmountData,
     workHoursAmountData,
     workHoursProcessLatestMetaData,
     manualStepUpdateMap,
@@ -4346,7 +4228,6 @@ const ToolingInfoPage: React.FC = () => {
         const msg = backendFailed > 0
           ? `工艺路线导入完成：成功更新${backendUpdated}条，未匹配${backendFailed}条`
           : `生成并保存工艺路线：共${Object.keys(mapUpdates).length}条映射`
-        console.table({ 映射条数: Object.keys(mapUpdates).length, 页面子编号数: allChildKeysOnPage.length })
         message.success({ content: msg, key: loadingKey })
         if (unresolvedInvs.length > 0) {
           message.warning(`有${unresolvedInvs.length}个盘存编号未匹配到零件：${unresolvedInvs.slice(0, 5).join('，')}${unresolvedInvs.length > 5 ? ' 等' : ''}`)
@@ -6412,7 +6293,6 @@ const ToolingInfoPage: React.FC = () => {
                 // 这里不再重复调用，避免同一工具被保存多次
                 if (!calibratedToolingIdsRef.current.has(id)) {
                   calibratedToolingIdsRef.current.add(id)
-                  console.log(`[Totals] 首次展开子表，标记工具 ${id} 为待校准（由 ensureExpandedDataLoaded 触发）`)
                 }
               }
             },

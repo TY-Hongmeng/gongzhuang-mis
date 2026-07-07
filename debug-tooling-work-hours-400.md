@@ -50,3 +50,5 @@
 - R3: `src/pages/ToolingInfo.tsx` 子表 `加工金额` 改为“实时聚合优先，`process_amount` 兜底”。
 - R4: `src/pages/ToolingInfo.tsx` 父表 `加工总额` 改为汇总子表的已解析金额，不再被空聚合结果覆盖成 `0`。
 - R5: `src/pages/ToolingInfo.tsx` 展开子表的工时拉取只收集零件盘存号，并在立即拉取后写入去重键，避免紧接着再触发一轮重复防抖请求。
+- R6: `src/utils/api.ts` 运行时强制 `/api/tooling/work-hours/aggregates` 只走后端，不再让工装信息模块在浏览器侧直连 Supabase 聚合。
+- R7: `src/pages/ToolingInfo.tsx` 删除未参与显示的 `workHoursProcessAmountData` 状态、未使用的批量保存函数以及多余调试日志，减少无效渲染与控制台噪音。
