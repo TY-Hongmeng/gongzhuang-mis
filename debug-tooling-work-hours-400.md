@@ -32,6 +32,10 @@
 - E3: `src/pages/WorkHours.tsx` 提交工时时使用的主键是 `part_inventory_number`，并非父表 `inventory_no`。
 - E4: `src/utils/api.ts` 的工时聚合分支 pre-fix 同时查询 `inventory_no` 与 `part_inventory_number`，且没有像其它模块那样为 `work_hours` 做安全回退。
 - E5: `src/pages/ToolingInfo.tsx` pre-fix 在工时聚合失败后仍会按空 `workHoursAmountData` 重新汇总父表，导致 `加工总额` 被覆盖成 `0`；子表 `加工金额` 也只认实时聚合，不认已存的 `process_amount`。
+- E6: 直接复现 Supabase REST：
+  - `part_inventory_number=in.(LJ26070301,LJ26070302)` 返回 `200`
+  - `inventory_no=in.(LJ26070301,LJ26070302)` 返回 `400`
+  - 错误体为 `column work_hours.inventory_no does not exist`
 
 ## 7. 假设结论
 - H1: 已确认。客户端聚合查询链路确实会触发 Supabase `400`。
