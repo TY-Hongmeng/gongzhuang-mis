@@ -3104,27 +3104,21 @@ router.get('/work-hours/aggregates', async (req, res) => {
       return chunks
     }
 
-    // 查询这些盘存编号对应的所有工时记录（兼容 inventory_no / part_inventory_number 两种字段）
-    const baseSelect = 'id, inventory_no, part_inventory_number, process_name, completed_quantity, aux_hours, proc_hours, operator, shift, device_no, created_at, work_date'
+    // 工装信息模块按零件盘存编号聚合工时；工时录入也以 part_inventory_number 为主键。
+    const baseSelect = 'id, part_inventory_number, process_name, completed_quantity, aux_hours, proc_hours, operator, shift, device_no, created_at, work_date'
     const mergeMap = new Map<string, any>()
     let lastQueryError: any = null
     for (const invChunk of chunkArray(invList, 120)) {
-      const [{ data: dataByInvNo, error: errByInvNo }, { data: dataByPartInvNo, error: errByPartInvNo }] = await Promise.all([
-        supabase
-          .from('work_hours')
-          .select(baseSelect)
-          .in('inventory_no', invChunk),
-        supabase
-          .from('work_hours')
-          .select(baseSelect)
-          .in('part_inventory_number', invChunk)
-      ])
-      if (errByInvNo && errByPartInvNo) {
-        lastQueryError = errByPartInvNo
+      const { data: partRows, error: partRowsErr } = await supabase
+        .from('work_hours')
+        .select(baseSelect)
+        .in('part_inventory_number', invChunk)
+      if (partRowsErr) {
+        lastQueryError = partRowsErr
         continue
       }
-      ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
-        const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
+      ;((partRows || []) as any[]).forEach((r: any, idx: number) => {
+        const key = String(r?.id || `${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
         if (!mergeMap.has(key)) mergeMap.set(key, r)
       })
     }
@@ -3140,7 +3134,7 @@ router.get('/work-hours/aggregates', async (req, res) => {
     const processAmountMap: Record<string, Record<string, number>> = {}
     const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
     const normalizedRows = (data || []).map((row: any) => {
-      const inv = String(row.inventory_no || row.part_inventory_number || '').trim().toUpperCase()
+      const inv = String(row.part_inventory_number || '').trim().toUpperCase()
       const process = String(row.process_name || '').trim()
       const processKey = normalizeProcessKey(process)
       const completedQty = Number(row.completed_quantity || 0)

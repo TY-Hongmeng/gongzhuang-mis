@@ -1028,6 +1028,14 @@ const ToolingInfoPage: React.FC = () => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
   }, [])
+  const resolvePartProcessAmount = useCallback((part: any): number | null => {
+    const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
+    if (inv && Object.prototype.hasOwnProperty.call(workHoursAmountDataRef.current, inv)) {
+      const liveAmount = Number(workHoursAmountDataRef.current[inv] || 0)
+      if (Number.isFinite(liveAmount)) return liveAmount
+    }
+    return toNullableProcessAmount(part?.process_amount)
+  }, [toNullableProcessAmount])
   const syncLocalToolingTotals = useCallback((toolingId: string) => {
     const normalizedId = String(toolingId || '').trim()
     if (!normalizedId || normalizedId.startsWith('blank-')) return
@@ -1054,7 +1062,8 @@ const ToolingInfoPage: React.FC = () => {
       materialTotal += matAmount
 
       const inv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
-      const invAmount = Number(workHoursAmountDataRef.current[inv] || 0)
+      const resolvedAmount = resolvePartProcessAmount(part)
+      const invAmount = Number(resolvedAmount || 0)
       processTotal += invAmount
 
       debugParts.push({
@@ -1088,7 +1097,7 @@ const ToolingInfoPage: React.FC = () => {
       material_total: Math.round(materialTotal),
       process_total: Math.round(processTotal)
     })
-  }, [applyToolingTotalsToRow])
+  }, [applyToolingTotalsToRow, resolvePartProcessAmount])
   
   // 🔥 新增函数：批量保存零件的加工金额到数据库
   const savePartProcessAmounts = useCallback(async (toolingId: string, parts: any[]) => {
@@ -1197,6 +1206,14 @@ const ToolingInfoPage: React.FC = () => {
       // 🔥 关键：等待工时数据加载完成后，再计算总额
       if (workHoursPromise) {
         await workHoursPromise
+        const finalParts = partsMapRef.current[toolingId] || []
+        const finalInvs = finalParts
+          .map((p: any) => String(p.part_inventory_number || p.inventory_number || '').trim().toUpperCase())
+          .filter(Boolean)
+        if (finalInvs.length > 0) {
+          workHoursFetchRef.current.lastKey = finalInvs.slice().sort().join('|')
+          workHoursFetchRef.current.lastFetchTime = Date.now()
+        }
       }
 
       syncLocalToolingTotals(toolingId)
@@ -1872,12 +1889,9 @@ const ToolingInfoPage: React.FC = () => {
     }
     const invsSet = new Set<string>()
     activeExpandedToolingIds.forEach((toolingId) => {
-      const parent = dataRef.current.find((row: any) => String(row?.id || '') === toolingId)
-      const inv = String(parent?.inventory_number || '').trim().toUpperCase()
-      if (inv) invsSet.add(inv)
       const partsList = partsMapRef.current[toolingId] || []
       partsList.forEach((part: any) => {
-        const partInv = String(part?.part_inventory_number || '').trim().toUpperCase()
+        const partInv = String(part?.part_inventory_number || part?.inventory_number || '').trim().toUpperCase()
         if (partInv) invsSet.add(partInv)
       })
     })
@@ -3406,11 +3420,11 @@ const ToolingInfoPage: React.FC = () => {
         dataIndex: '__process_price',
         width: 110,
         render: (_text: any, rec: PartItem) => {
-          const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
-          if (!Object.prototype.hasOwnProperty.call(workHoursAmountData, inventoryNo)) {
+          const resolvedAmount = resolvePartProcessAmount(rec)
+          if (resolvedAmount === null) {
             return <span style={{ color: '#999' }}>-</span>
           }
-          const calculatedAmount = Number(workHoursAmountData[inventoryNo] || 0)
+          const calculatedAmount = Number(resolvedAmount || 0)
           return <span style={{ color: '#000000' }}>{Number.isFinite(calculatedAmount) ? calculatedAmount.toFixed(0) : '0'}</span>
         }
       },
@@ -3584,7 +3598,7 @@ const ToolingInfoPage: React.FC = () => {
       },
       
     ]
-  }, [renderStatusText, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData, workHoursProcessHoursData, workHoursProcessAmountData, workHoursProcessLatestMetaData, manualStepUpdateMap, processRoutes, user])
+  }, [renderStatusText, resolvePartProcessAmount, saveStatusInput, workHoursData, workHoursProcessCompletedQtyData, workHoursProcessHoursData, workHoursProcessAmountData, workHoursProcessLatestMetaData, manualStepUpdateMap, processRoutes, user])
 
   const createChildColumns = useCallback((toolingId: string, parentProject: string, parentUnit: string, parentApplicant: string) => {
     return [

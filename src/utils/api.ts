@@ -99,6 +99,11 @@ export async function fetchWithFallback(url: string, init?: RequestInit): Promis
       }
       // 只有在明确是 GitHub Pages 或者是远程生产环境且没有本地后端时，才走 client-side API
       if ((isGhPages || (!isLocal && !isDev)) && !forceBackend) {
+        if (cleanUrl.startsWith('/api/tooling/work-hours/aggregates')) {
+          // #region debug-point A:fetch-route-client-fallback
+          fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'tooling-work-hours-400', runId: 'pre-fix', hypothesisId: 'A', location: 'src/utils/api.ts:101', msg: '[DEBUG] work-hours aggregates routed to client fallback', data: { cleanUrl, host, isGhPages, isLocal, isDev, forceBackend }, ts: Date.now() }) }).catch(() => {})
+          // #endregion
+        }
         const handled = await handleClientSideApi(cleanUrl, init)
         if (handled) return handled
       }
@@ -3256,12 +3261,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           .replace(/\s+/g, '')
           .trim()
           .toLowerCase()
-        const normalizeProcessBaseKey = (v: any) => String(v || '')
-          .replace(/[\u200B-\u200D\uFEFF]/g, '')
-          .replace(/\s+/g, '')
-          .replace(/^[0-9]+[.\-、:：]*/g, '')
-          .trim()
-          .toLowerCase()
         const toTime = (row: any) => {
           const t = String(row?.created_at || row?.updated_at || row?.work_date || '')
           const ts = Date.parse(t)
@@ -3270,6 +3269,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const qs = getQuery(cleanUrl)
         const invsParam = (qs.get('invs') || '').trim()
         const invs = invsParam ? invsParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
+        // #region debug-point B:client-aggregate-entry
+        fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'tooling-work-hours-400', runId: 'pre-fix', hypothesisId: 'B', location: 'src/utils/api.ts:3273', msg: '[DEBUG] client aggregate handler entered', data: { invCount: invs.length, sampleInvs: invs.slice(0, 8), cleanUrl }, ts: Date.now() }) }).catch(() => {})
+        // #endregion
         if (invs.length === 0) return jsonResponse({ success: true, data: {}, completedQtyData: {}, processCompletedQtyData: {}, processHoursData: {}, processAmountData: {}, amountData: {}, processLatestMetaData: {} })
         try {
           const chunkArray = <T,>(items: T[], size: number): T[][] => {
@@ -3283,23 +3285,23 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const rows: any[] = []
           let lastQueryError: any = null
           for (const invChunk of chunkArray(invs, 120)) {
-            const [{ data: dataByInvNo, error: errByInvNo }, { data: dataByPartInvNo, error: errByPartInvNo }] = await Promise.all([
-              supabase
-                .from('work_hours')
-                .select('id,inventory_no,part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
-                .in('inventory_no', invChunk),
-              supabase
-                .from('work_hours')
-                .select('id,inventory_no,part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
-                .in('part_inventory_number', invChunk),
-            ])
-            if (errByInvNo && errByPartInvNo) {
-              lastQueryError = errByPartInvNo || errByInvNo
+            // #region debug-point C:client-aggregate-chunk
+            fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'tooling-work-hours-400', runId: 'pre-fix', hypothesisId: 'C', location: 'src/utils/api.ts:3286', msg: '[DEBUG] client aggregate querying supabase chunk', data: { chunkSize: invChunk.length, sampleInvs: invChunk.slice(0, 8) }, ts: Date.now() }) }).catch(() => {})
+            // #endregion
+            const { data: partRows, error: partRowsErr } = await supabase
+              .from('work_hours')
+              .select('id,part_inventory_number,process_name,completed_quantity,aux_hours,proc_hours,operator,shift,device_no,created_at,work_date')
+              .in('part_inventory_number', invChunk)
+            if (partRowsErr) {
+              // #region debug-point D:client-aggregate-query-error
+              fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'tooling-work-hours-400', runId: 'pre-fix', hypothesisId: 'D', location: 'src/utils/api.ts:3296', msg: '[DEBUG] client aggregate supabase query error', data: { partRowsErr: { message: partRowsErr.message, code: (partRowsErr as any).code, details: (partRowsErr as any).details, hint: (partRowsErr as any).hint }, chunkSize: invChunk.length, sampleInvs: invChunk.slice(0, 8) }, ts: Date.now() }) }).catch(() => {})
+              // #endregion
+              lastQueryError = partRowsErr
               continue
             }
             const mergeMap = new Map<string, any>()
-            ;([...((dataByInvNo || []) as any[]), ...((dataByPartInvNo || []) as any[])]).forEach((r: any, idx: number) => {
-              const key = String(r?.id || `${r?.inventory_no || ''}|${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
+            ;(((partRows || []) as any[])).forEach((r: any, idx: number) => {
+              const key = String(r?.id || `${r?.part_inventory_number || ''}|${r?.process_name || ''}|${r?.created_at || ''}|${idx}`)
               if (!mergeMap.has(key)) mergeMap.set(key, r)
             })
             rows.push(...Array.from(mergeMap.values()))
@@ -3313,7 +3315,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const processLatestMetaData: Record<string, Record<string, { process_name: string; operator: string; shift: string; team_name: string; device_no: string; device_name: string; process_unit_price: number; completed_quantity: number; at: number }>> = {}
           const deviceSet = new Set<string>()
           const normalizedRows = rows.map((r: any) => {
-            const inv = String(r.inventory_no || r.part_inventory_number || '').trim().toUpperCase()
+            const inv = String(r.part_inventory_number || '').trim().toUpperCase()
             const name = String(r.process_name || '').trim()
             const processKey = normalizeProcessKey(name)
             const completedQty = Number(r.completed_quantity || 0)
