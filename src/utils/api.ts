@@ -2937,6 +2937,82 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         return jsonResponse({ success: true, items })
       }
 
+      if (method === 'POST' && path === '/api/tooling/totals/summary') {
+        const body = await readBody()
+        const ids = Array.isArray(body?.ids) ? body.ids : []
+        const toolingIds = ids.map((x: any) => String(x || '').trim()).filter(Boolean)
+        if (toolingIds.length === 0) return jsonResponse({ success: true, items: [] })
+
+        const BATCH_SIZE = 1000
+        let offset = 0
+        const parts: any[] = []
+        while (true) {
+          const { data, error } = await supabase
+            .from('parts_info')
+            .select('id, tooling_id, part_quantity, weight, material_id, process_amount')
+            .in('tooling_id', toolingIds as any)
+            .range(offset, offset + BATCH_SIZE - 1)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const rows = Array.isArray(data) ? data : []
+          parts.push(...rows)
+          if (rows.length < BATCH_SIZE) break
+          offset += BATCH_SIZE
+        }
+
+        const validParts = parts.filter((part: any) => !String(part?.id || '').startsWith('blank-'))
+        const materialIds = Array.from(new Set(
+          validParts
+            .map((part: any) => String(part?.material_id || '').trim())
+            .filter(Boolean)
+        ))
+        const materialPriceMap = new Map<string, number>()
+        for (let i = 0; i < materialIds.length; i += 120) {
+          const slice = materialIds.slice(i, i + 120)
+          if (slice.length === 0) continue
+          const { data: materials, error } = await supabase
+            .from('materials')
+            .select('id,unit_price')
+            .in('id', slice as any)
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          ;(materials || []).forEach((material: any) => {
+            const materialId = String(material?.id || '').trim()
+            if (!materialId) return
+            const price = Number(material?.unit_price || 0)
+            materialPriceMap.set(materialId, Number.isFinite(price) ? price : 0)
+          })
+        }
+
+        const map = new Map<string, { hasParts: boolean; material_total: number; process_total: number }>()
+        toolingIds.forEach((toolingId: string) => {
+          map.set(toolingId, { hasParts: false, material_total: 0, process_total: 0 })
+        })
+        validParts.forEach((part: any) => {
+          const toolingId = String(part?.tooling_id || '')
+          if (!toolingId) return
+          const current = map.get(toolingId) || { hasParts: false, material_total: 0, process_total: 0 }
+          current.hasParts = true
+          const qty = Number(part?.part_quantity || 0)
+          const unitWeight = Number(part?.weight || 0)
+          const materialId = String(part?.material_id || '').trim()
+          const unitPrice = materialId ? Number(materialPriceMap.get(materialId) || 0) : 0
+          const materialAmount = qty > 0 && unitWeight > 0 && unitPrice > 0 ? qty * unitWeight * unitPrice : 0
+          if (Number.isFinite(materialAmount)) current.material_total += materialAmount
+          const processAmount = Number(part?.process_amount || 0)
+          if (Number.isFinite(processAmount)) current.process_total += processAmount
+          map.set(toolingId, current)
+        })
+
+        const items = toolingIds.map((toolingId: string) => {
+          const summary = map.get(toolingId) || { hasParts: false, material_total: 0, process_total: 0 }
+          return {
+            tooling_id: toolingId,
+            material_total: summary.hasParts ? Math.round(summary.material_total) : null,
+            process_total: summary.hasParts ? Math.round(summary.process_total) : null
+          }
+        })
+        return jsonResponse({ success: true, items })
+      }
+
       // Tooling parts by toolingId
       const partsMatch = path.match(/^\/api\/tooling\/([^\/]+)\/parts$/)
       if (method === 'GET' && partsMatch) {

@@ -55,3 +55,6 @@
 - R8: 回滚 R6 的过度限制，恢复静态环境下 `/api/tooling/work-hours/aggregates` 的客户端回退；本地后端环境仍优先走后端。
 - R9: 修复 `src/utils/api.ts` 中 `/refresh-totals` 客户端实现把新算出的 `material_total` 又覆盖回旧值的问题。
 - R10: `src/pages/ToolingInfo.tsx` 在本地校准父表总额后立即调用 `/save-totals-direct` 落库，避免刷新后又回到旧的 `0/null`。
+- R11: 新增 `POST /api/tooling/totals/summary`，按父表批量汇总 `parts_info.weight * part_quantity * materials.unit_price` 与 `parts_info.process_amount`，让父表总额不再依赖“先展开再校准”。
+- R12: `src/pages/ToolingInfo.tsx` 列表加载后批量刷新父表总额，统一父表 `材料总额 / 加工总额` 的来源和显示，不再混用旧库存值与展开后的临时值。
+- R13: `src/pages/ToolingInfo.tsx` 将子表 `状态 / 加工时长 / 工艺路线勾选` 统一到同一份“工序已有进展”的判定：只要该工序已录入或被手工勾选，状态不再留空；若已有进展但累计工时为 0，则 `加工时长` 显示 `0` 而不是 `-`。

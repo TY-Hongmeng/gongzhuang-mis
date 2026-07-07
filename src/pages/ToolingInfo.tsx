@@ -651,10 +651,12 @@ const normalizeProcessKeyForHours = (v: string) => String(v || '')
 
 const ProcessHoursCell = memo(({
   currentRoute,
-  processHoursMap
+  processHoursMap,
+  hasProgress
 }: {
   currentRoute: string
   processHoursMap: Record<string, number>
+  hasProgress: boolean
 }) => {
   const totalHours = useMemo(() => {
     if (Object.keys(processHoursMap).length === 0) return 0
@@ -671,7 +673,10 @@ const ProcessHoursCell = memo(({
     return Object.values(processHoursMap).reduce((sum, h) => sum + (Number.isFinite(h) ? h : 0), 0)
   }, [currentRoute, processHoursMap])
   
-  if (totalHours === 0) return <span style={{ color: '#999' }}>-</span>
+  if (totalHours === 0) {
+    if (hasProgress) return <span style={{ color: '#000000', fontWeight: 500 }}>0</span>
+    return <span style={{ color: '#999' }}>-</span>
+  }
   return <span style={{ color: '#000000', fontWeight: 500 }}>{totalHours.toFixed(1)}</span>
 })
 ProcessHoursCell.displayName = 'ProcessHoursCell'
@@ -870,6 +875,13 @@ const ToolingInfoPage: React.FC = () => {
         .filter((id) => id && !id.startsWith('blank-') && !id.startsWith('part-') && !id.startsWith('child-'))
     ))
   }, [expandedRowKeys, expandedChildKeys])
+  const toolingIdsKey = useMemo(() => {
+    return data
+      .map((item: any) => String(item?.id || '').trim())
+      .filter((id: string) => id && !id.startsWith('blank-'))
+      .sort()
+      .join('|')
+  }, [data])
   const saveStatusInput = useCallback(async (toolingId: string, type: 'part' | 'child', id: string, value: string) => {
     const normalized = String(normalizeDateInput(value || '') || '').trim()
     const nextValue = normalized ? normalized : null
@@ -1087,6 +1099,31 @@ const ToolingInfoPage: React.FC = () => {
     })
     void persistToolingTotals(normalizedId, roundedMaterialTotal, roundedProcessTotal)
   }, [applyToolingTotalsToRow, persistToolingTotals, resolvePartProcessAmount])
+  const fetchToolingTotalsSummary = useCallback(async (toolingIds: string[]) => {
+    const ids = Array.from(new Set((toolingIds || []).map((id) => String(id || '').trim()).filter(Boolean)))
+    if (ids.length === 0) return
+    try {
+      const response = await fetchWithFallback('/api/tooling/totals/summary', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      })
+      if (!response.ok) return
+      const result = await response.json()
+      if (!result || result.success !== true || !Array.isArray(result.items)) return
+      setData((prev: any[]) => prev.map((row: any) => {
+        const hit = result.items.find((item: any) => String(item?.tooling_id || '') === String(row?.id || ''))
+        if (!hit) return row
+        return {
+          ...row,
+          material_total: toNullableTotal(hit.material_total),
+          process_total: toNullableTotal(hit.process_total)
+        }
+      }))
+    } catch {
+    }
+  }, [setData, toNullableTotal])
   
   const ensureExpandedDataLoaded = useCallback(async (toolingId: string, force = false) => {
     // 防止重复加载同一工装的数据
@@ -2069,6 +2106,11 @@ const ToolingInfoPage: React.FC = () => {
       }
     }
   }, [])
+  useEffect(() => {
+    const ids = toolingIdsKey ? toolingIdsKey.split('|').filter(Boolean) : []
+    if (ids.length === 0) return
+    fetchToolingTotalsSummary(ids)
+  }, [fetchToolingTotalsSummary, toolingIdsKey])
   const handleRefresh = useCallback(async () => {
     await fetchAllMeta(true)
     await fetchToolingData()
@@ -3059,15 +3101,16 @@ const ToolingInfoPage: React.FC = () => {
         return stepsRaw.map((step, index) => {
           const key = normalizeProcessKey(step)
           const token = buildManualStepToken(step, index)
+          const workRecorded = workHoursCompleted.has(key)
           const qty = Number((processCompletedQtyMap as Record<string, number>)[key] || 0)
           const stepQty = Number.isFinite(qty) ? qty : 0
           const stepHours = Number((processHoursMap as Record<string, number>)[key] || 0)
           const doneByQty = Number.isFinite(requiredQty) && requiredQty > 0 && stepQty >= requiredQty
-          const inProgressByWork = stepQty > 0 || stepHours > 0
+          const inProgressByWork = workRecorded || stepQty > 0 || stepHours > 0
           const manualChecked = manualCompletedTokens.has(token)
           const inProgress = manualChecked || inProgressByWork
           const latestMeta = (processLatestMetaMap as Record<string, any>)[key] || null
-          return { step, key, token, stepQty, stepHours, doneByQty, inProgressByWork, inProgress, manualChecked, latestMeta }
+          return { step, key, token, stepQty, stepHours, doneByQty, inProgressByWork, inProgress, manualChecked, latestMeta, workRecorded }
         })
       }
       const states = statesFromRoute(steps)
@@ -3094,8 +3137,12 @@ const ToolingInfoPage: React.FC = () => {
           }
           return eligibleManualSteps[eligibleManualSteps.length - 1]
         })()
-        const operatorName = String(manualUpdate?.operator || user?.real_name || '当前用户').trim() || '当前用户'
-        return { text: `${operatorName}更新了${manualStep.step}工序完成`, color: '#28a745', hasRoute: true }
+        const operatorName = String(manualUpdate?.operator || '').trim()
+        return {
+          text: operatorName ? `${operatorName}更新了${manualStep.step}工序完成` : `${manualStep.step}工序已标记完成`,
+          color: '#28a745',
+          hasRoute: true
+        }
       }
       const allDone = states.length > 0 && states.every(s => s.doneByQty)
       const formatActorText = (state: any) => {
@@ -3122,6 +3169,13 @@ const ToolingInfoPage: React.FC = () => {
       const active = states.find(s => s.inProgress && !s.doneByQty)
       if (active) {
         const actorText = formatActorText(active)
+        if (Number(active.stepQty || 0) <= 0 && Number(active.stepHours || 0) <= 0) {
+          return {
+            text: actorText ? `${actorText}已开始${active.step}` : `已开始${active.step}`,
+            color: '#1890ff',
+            hasRoute: true
+          }
+        }
         return { text: actorText ? `${actorText}加工中 已完成${fmtPieces(active.stepQty)}件` : `加工中 已完成${fmtPieces(active.stepQty)}件`, color: '#1890ff', hasRoute: true }
       }
       const completed = [...states].reverse().find(s => s.doneByQty)
@@ -3398,10 +3452,21 @@ const ToolingInfoPage: React.FC = () => {
           const inventoryNo = String(rec.part_inventory_number || rec.inventory_number || '').trim().toUpperCase()
           const currentRoute = String((rec as any).process_route || (processRoutes[inventoryNo] || ''))
           const processHoursMap = workHoursProcessHoursData[inventoryNo] || {}
+          const steps = currentRoute.split(/\s*→\s*/).map(s => s.trim()).filter(Boolean)
+          const dbCompletedSteps = Array.isArray((rec as any).completed_steps) ? (rec as any).completed_steps : []
+          const manualCompletedTokens = resolveManualCompletedTokens(steps, dbCompletedSteps)
+          const workHoursForThisInv = workHoursData[inventoryNo] || []
+          const workHoursCompleted = new Set<string>(workHoursForThisInv.map(x => normalizeProcessKey(x)))
+          const hasProgress = steps.some((step, index) => {
+            const key = normalizeProcessKey(step)
+            const token = buildManualStepToken(step, index)
+            return workHoursCompleted.has(key) || manualCompletedTokens.has(token)
+          })
           return (
             <ProcessHoursCell
               currentRoute={currentRoute}
               processHoursMap={processHoursMap}
+              hasProgress={hasProgress}
             />
           )
         }
