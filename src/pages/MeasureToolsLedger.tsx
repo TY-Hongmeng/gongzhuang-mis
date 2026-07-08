@@ -630,7 +630,7 @@ const MeasureToolsLedger: React.FC = () => {
   }
 
   const summary = React.useMemo(() => {
-    const pending = items.filter((item) => ['待确认', '待转移确认'].includes(String(item.responsibility_status || ''))).length
+    const pending = items.filter((item) => item.responsibility_status === '待确认').length
     const expired = items.filter((item) => item.certificate_status === '过期').length
     const missing = items.filter((item) => item.certificate_status === '未维护').length
     return { pending, expired, missing }

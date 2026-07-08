@@ -1844,32 +1844,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           if (error) return jsonResponse({ success: false, error: error.message }, 500)
           const rows = data || []
           const allItems = rows.map(withCertificateMeta)
-          const mineOwnedItems = rows.filter((row: any) =>
+          const mineItems = rows.filter((row: any) =>
             (actor.userId && actor.userId === normTextSafe(row?.responsible_user_id))
             || (actor.actorName && actor.actorName === normTextSafe(row?.responsible_person))
-          ).map(withCertificateMeta)
-          const minePendingItems = rows.filter((row: any) =>
-            ['待确认', '待转移确认'].includes(normTextSafe(row?.responsibility_status))
-            && (
-              (actor.userId && actor.userId === normTextSafe(row?.pending_responsible_user_id))
-              || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
-            )
+            || (actor.userId && actor.userId === normTextSafe(row?.pending_responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
+            || (actor.userId && actor.userId === normTextSafe(row?.borrower_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.borrower_name))
           ).map(withCertificateMeta)
           const summarize = (items: any[]) => {
-            const pending = items.filter((item) => ['待确认', '待转移确认'].includes(normTextSafe(item?.responsibility_status))).length
+            const pending = items.filter((item) => normTextSafe(item?.responsibility_status) === '待确认').length
             const expired = items.filter((item) => item.certificate_status === '过期').length
             const missing = items.filter((item) => item.certificate_status === '未维护').length
             const total = pending + expired + missing
             return { total, pending, expired, missing }
           }
-          const summarizeMine = (ownedItems: any[], pendingItems: any[]) => {
-            const pending = pendingItems.length
-            const expired = ownedItems.filter((item) => item.certificate_status === '过期').length
-            const missing = ownedItems.filter((item) => item.certificate_status === '未维护').length
-            const total = pending + expired + missing
-            return { total, pending, expired, missing }
-          }
-          return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarizeMine(mineOwnedItems, minePendingItems) })
+          return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarize(mineItems) })
         }
 
         if (method === 'GET' && /^\/api\/material-assets\/[^/]+\/history$/.test(path)) {
