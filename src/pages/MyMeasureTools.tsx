@@ -370,7 +370,7 @@ const MyMeasureTools: React.FC = () => {
   // 统计数量
   const stats = React.useMemo(() => ({
     pendingReminder: pendingItems.length,
-    ownedReminder: ownedItems.filter((item) => ['过期', '临期', '未维护'].includes(String(item.certificate_status || ''))).length,
+    ownedReminder: ownedItems.filter((item) => ['过期', '未维护'].includes(String(item.certificate_status || ''))).length,
     borrowedReminder: 0
   }), [borrowedItems.length, ownedItems, pendingItems.length])
 

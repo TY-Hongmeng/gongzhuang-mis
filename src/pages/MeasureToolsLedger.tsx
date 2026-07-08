@@ -630,10 +630,10 @@ const MeasureToolsLedger: React.FC = () => {
   }
 
   const summary = React.useMemo(() => {
+    const pending = items.filter((item) => item.responsibility_status === '待确认').length
     const expired = items.filter((item) => item.certificate_status === '过期').length
-    const expiring = items.filter((item) => item.certificate_status === '临期').length
     const missing = items.filter((item) => item.certificate_status === '未维护').length
-    return { expired, expiring, missing }
+    return { pending, expired, missing }
   }, [items])
 
   return (
@@ -659,13 +659,13 @@ const MeasureToolsLedger: React.FC = () => {
           </Space>
         </div>
 
-        {(summary.expired > 0 || summary.expiring > 0 || summary.missing > 0) ? (
+        {(summary.pending > 0 || summary.expired > 0 || summary.missing > 0) ? (
           <Alert
             type={summary.expired > 0 || summary.missing > 0 ? 'error' : 'warning'}
             showIcon
             style={{ marginBottom: 16 }}
-            message={`合格证提醒：过期 ${summary.expired} 项，临期 ${summary.expiring} 项，未维护 ${summary.missing} 项`}
-            description="建议优先处理过期、未维护和临期项目，并补全未维护的有效日期。"
+            message={`量具提醒：待确认 ${summary.pending} 项，过期 ${summary.expired} 项，未维护 ${summary.missing} 项`}
+            description="提醒范围统一为待确认、过期和未维护，请优先确认归属并补全有效日期。"
           />
         ) : null}
 

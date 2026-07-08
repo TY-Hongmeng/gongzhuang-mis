@@ -1659,7 +1659,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const target = toDayStart(expireDate)!
           const remainingDays = Math.ceil((target.getTime() - today.getTime()) / 86400000)
           const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
-          const needReminder = normTextSafe(asset?.asset_status) !== '报废' && (status === '过期' || status === '临期' || status === '未维护')
+          const needReminder = normTextSafe(asset?.asset_status) !== '报废' && status === '过期'
           return {
             certificate_expire_date: expireDate,
             certificate_remind_days: remindDays,
@@ -1855,10 +1855,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const summarize = (items: any[]) => {
             const pending = items.filter((item) => normTextSafe(item?.responsibility_status) === '待确认').length
             const expired = items.filter((item) => item.certificate_status === '过期').length
-            const expiring = items.filter((item) => item.certificate_status === '临期').length
             const missing = items.filter((item) => item.certificate_status === '未维护').length
-            const total = pending + expired + expiring + missing
-            return { total, pending, expired, expiring, missing }
+            const total = pending + expired + missing
+            return { total, pending, expired, missing }
           }
           return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarize(mineItems) })
         }

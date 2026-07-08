@@ -23,8 +23,8 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const [reminderSummary, setReminderSummary] = React.useState({
-    ledger: { total: 0, pending: 0, expired: 0, expiring: 0, missing: 0 },
-    mine: { total: 0, pending: 0, expired: 0, expiring: 0, missing: 0 }
+    ledger: { total: 0, pending: 0, expired: 0, missing: 0 },
+    mine: { total: 0, pending: 0, expired: 0, missing: 0 }
   })
 
   const MODULE_ALIASES: Record<string, string> = {
@@ -87,14 +87,12 @@ const Dashboard: React.FC = () => {
             total: Number(json?.ledger?.total || 0),
             pending: Number(json?.ledger?.pending || 0),
             expired: Number(json?.ledger?.expired || 0),
-            expiring: Number(json?.ledger?.expiring || 0),
             missing: Number(json?.ledger?.missing || 0)
           },
           mine: {
             total: Number(json?.mine?.total || 0),
             pending: Number(json?.mine?.pending || 0),
             expired: Number(json?.mine?.expired || 0),
-            expiring: Number(json?.mine?.expiring || 0),
             missing: Number(json?.mine?.missing || 0)
           }
         })

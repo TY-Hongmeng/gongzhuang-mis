@@ -60,7 +60,7 @@ const getCertificateMeta = (asset: any) => {
   const target = toDayStart(expireDate)!
   const remainingDays = Math.ceil((target.getTime() - today.getTime()) / 86400000)
   const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
-  const needReminder = normText(asset?.asset_status) !== ASSET_STATUS.scrapped && (status === '过期' || status === '临期' || status === '未维护')
+  const needReminder = normText(asset?.asset_status) !== ASSET_STATUS.scrapped && status === '过期'
   return {
     certificate_expire_date: expireDate,
     certificate_remind_days: remindDays,
@@ -473,10 +473,9 @@ router.get('/reminder-summary', async (req, res) => {
     const summarize = (items: any[]) => {
       const pending = items.filter((item) => normText(item?.responsibility_status) === RESPONSIBILITY_STATUS.pending).length
       const expired = items.filter((item) => item.certificate_status === '过期').length
-      const expiring = items.filter((item) => item.certificate_status === '临期').length
       const missing = items.filter((item) => item.certificate_status === '未维护').length
-      const total = pending + expired + expiring + missing
-      return { total, pending, expired, expiring, missing }
+      const total = pending + expired + missing
+      return { total, pending, expired, missing }
     }
 
     res.json({
