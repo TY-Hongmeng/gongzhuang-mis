@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, Row, Col, Typography, Button } from 'antd'
+import { Card, Row, Col, Typography, Button, Badge } from 'antd'
 import {
   UserOutlined,
   BankOutlined,
@@ -15,12 +15,17 @@ import {
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import { useNavigate, Link } from 'react-router-dom'
+import { fetchWithFallback } from '../utils/api'
 
 const { Title, Text } = Typography
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const [reminderSummary, setReminderSummary] = React.useState({
+    ledger: { total: 0, expired: 0, expiring: 0, missing: 0 },
+    mine: { total: 0, expired: 0, expiring: 0, missing: 0 }
+  })
 
   const MODULE_ALIASES: Record<string, string> = {
     '工装信息': 'tooling', tooling: 'tooling',
@@ -54,6 +59,8 @@ const Dashboard: React.FC = () => {
       return String(rp?.permissions?.code || '') === `${module}:access` || (mod === module && String(rp?.permissions?.name || '') === '访问模块')
     })
   }
+  const canMeasureTools = isManager || can('measure_tools')
+  const canMyMeasureTools = isManager || can('my_measure_tools')
 
   const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768)
 
@@ -63,9 +70,50 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  React.useEffect(() => {
+    let active = true
+    const loadReminderSummary = async () => {
+      if (!(canMeasureTools || canMyMeasureTools)) return
+      try {
+        const params = new URLSearchParams({
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+        const res = await fetchWithFallback(`/api/material-assets/reminder-summary?${params.toString()}`)
+        const json = await res.json().catch(() => ({}))
+        if (!active || !res.ok || json?.success === false) return
+        setReminderSummary({
+          ledger: {
+            total: Number(json?.ledger?.total || 0),
+            expired: Number(json?.ledger?.expired || 0),
+            expiring: Number(json?.ledger?.expiring || 0),
+            missing: Number(json?.ledger?.missing || 0)
+          },
+          mine: {
+            total: Number(json?.mine?.total || 0),
+            expired: Number(json?.mine?.expired || 0),
+            expiring: Number(json?.mine?.expiring || 0),
+            missing: Number(json?.mine?.missing || 0)
+          }
+        })
+      } catch {}
+    }
+    loadReminderSummary()
+    return () => { active = false }
+  }, [canMeasureTools, canMyMeasureTools, user])
+
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const renderReminderText = (summary: { total: number, expired: number, expiring: number, missing: number }) => {
+    if (summary.total <= 0) return null
+    return (
+      <div style={{ marginTop: 8, fontSize: 12, color: '#cf1322', lineHeight: 1.5 }}>
+        过期 {summary.expired} / 临期 {summary.expiring} / 未维护 {summary.missing}
+      </div>
+    )
   }
 
   return (
@@ -242,23 +290,29 @@ const Dashboard: React.FC = () => {
               </Link>
             </Col>
           )}
-          {(isManager || can('measure_tools')) && (
+          {canMeasureTools && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/measure-tools" style={{ display: 'block' }}>
-                <Card hoverable className="text-center cursor-pointer">
-                  <BuildOutlined className="text-3xl text-amber-500 mb-2" />
-                  量具台账
-                </Card>
+                <Badge count={reminderSummary.ledger.total} offset={[-6, 6]} size="small">
+                  <Card hoverable className="text-center cursor-pointer">
+                    <BuildOutlined className="text-3xl text-amber-500 mb-2" />
+                    <div>量具台账</div>
+                    {renderReminderText(reminderSummary.ledger)}
+                  </Card>
+                </Badge>
               </Link>
             </Col>
           )}
-          {(isManager || can('my_measure_tools')) && (
+          {canMyMeasureTools && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/my-measure-tools" style={{ display: 'block' }}>
-                <Card hoverable className="text-center cursor-pointer">
-                  <UserOutlined className="text-3xl text-teal-500 mb-2" />
-                  我的量具
-                </Card>
+                <Badge count={reminderSummary.mine.total} offset={[-6, 6]} size="small">
+                  <Card hoverable className="text-center cursor-pointer">
+                    <UserOutlined className="text-3xl text-teal-500 mb-2" />
+                    <div>我的量具</div>
+                    {renderReminderText(reminderSummary.mine)}
+                  </Card>
+                </Badge>
               </Link>
             </Col>
           )}

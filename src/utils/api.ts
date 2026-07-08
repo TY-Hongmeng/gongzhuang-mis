@@ -1833,6 +1833,35 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return jsonResponse({ success: true, ownedItems, pendingConfirmItems, borrowedItems })
         }
 
+        if (method === 'GET' && path === '/api/material-assets/reminder-summary') {
+          const qs = getQuery(cleanUrl)
+          const actor = await getActor(qs.get('userId') || '', qs.get('operator') || '')
+          const { data, error } = await scopedClient
+            .from('measure_tool_assets')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          const rows = data || []
+          const allItems = rows.map(withCertificateMeta)
+          const mineItems = rows.filter((row: any) =>
+            (actor.userId && actor.userId === normTextSafe(row?.responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.responsible_person))
+            || (actor.userId && actor.userId === normTextSafe(row?.pending_responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
+            || (actor.userId && actor.userId === normTextSafe(row?.borrower_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(row?.borrower_name))
+          ).map(withCertificateMeta)
+          const summarize = (items: any[]) => {
+            const expired = items.filter((item) => item.certificate_status === '过期').length
+            const expiring = items.filter((item) => item.certificate_status === '临期').length
+            const missing = items.filter((item) => item.certificate_status === '未维护').length
+            const total = items.filter((item) => !!item.certificate_need_reminder).length
+            return { total, expired, expiring, missing }
+          }
+          return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarize(mineItems) })
+        }
+
         if (method === 'GET' && /^\/api\/material-assets\/[^/]+\/history$/.test(path)) {
           const matched = path.match(/^\/api\/material-assets\/([^/]+)\/history$/)
           const assetId = normTextSafe(matched?.[1] || '')
@@ -2048,8 +2077,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const body = await readBody()
           const actor = await getActor(body?.userId, body?.operator)
           const asset = await loadAsset(assetId)
-          const canEdit = actor.isManager || canMatchActor(asset, actor, 'responsible')
-          if (!canEdit) return jsonResponse({ success: false, error: '仅当前责任人或库管可以维护有效期' }, 403)
+          const canEdit = canMatchActor(asset, { ...actor, isManager: false }, 'responsible')
+          if (!canEdit) return jsonResponse({ success: false, error: '仅当前责任人可以维护有效期' }, 403)
           const payload = {
             certificate_expire_date: normalizeDateInput(body?.certificate_expire_date),
             certificate_remind_days: normalizeRemindDays(body?.certificate_remind_days),

@@ -454,6 +454,40 @@ router.get('/mine', async (req, res) => {
   }
 })
 
+router.get('/reminder-summary', async (req, res) => {
+  try {
+    await ensureSchema()
+    const actor = await resolveActor(req.query.userId, req.query.operator)
+    const rowsRs = await query(`SELECT * FROM measure_tool_assets ORDER BY updated_at DESC, created_at DESC`)
+    const rows = rowsRs.rows || []
+    const allItems = rows.map(withCertificateMeta)
+    const mineItems = rows.filter((row: any) => (
+      (actor.userId && normText(row?.responsible_user_id) === actor.userId)
+      || (actor.actorName && normText(row?.responsible_person) === actor.actorName)
+      || (actor.userId && normText(row?.pending_responsible_user_id) === actor.userId)
+      || (actor.actorName && normText(row?.pending_responsible_person) === actor.actorName)
+      || (actor.userId && normText(row?.borrower_user_id) === actor.userId)
+      || (actor.actorName && normText(row?.borrower_name) === actor.actorName)
+    )).map(withCertificateMeta)
+
+    const summarize = (items: any[]) => {
+      const expired = items.filter((item) => item.certificate_status === '过期').length
+      const expiring = items.filter((item) => item.certificate_status === '临期').length
+      const missing = items.filter((item) => item.certificate_status === '未维护').length
+      const total = items.filter((item) => !!item.certificate_need_reminder).length
+      return { total, expired, expiring, missing }
+    }
+
+    res.json({
+      success: true,
+      ledger: summarize(allItems),
+      mine: summarize(mineItems)
+    })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '加载量具提醒汇总失败' })
+  }
+})
+
 router.get('/:id/history', async (req, res) => {
   try {
     await ensureSchema()
@@ -803,8 +837,8 @@ router.put('/:id/certificate', async (req, res) => {
     const actor = await resolveActor(req.body?.userId, req.body?.operator)
     const asset = await loadAssetById(assetId)
     if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
-    if (!actor.isManager && !canMatchActor(asset, actor, 'responsible')) {
-      return res.status(403).json({ success: false, error: '仅当前责任人或库管可以维护有效期' })
+    if (!canMatchActor(asset, { ...actor, isManager: false }, 'responsible')) {
+      return res.status(403).json({ success: false, error: '仅当前责任人可以维护有效期' })
     }
 
     const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
