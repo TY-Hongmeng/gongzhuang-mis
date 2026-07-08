@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  Alert,
   AutoComplete,
   Button,
   Card,
@@ -49,13 +48,6 @@ const tagColorMap: Record<string, string> = {
   待归还确认: 'purple',
   待报废: 'volcano',
   已报废: 'red'
-}
-
-const certificateTagColorMap: Record<string, string> = {
-  未维护: 'orange',
-  有效: 'green',
-  临期: 'gold',
-  过期: 'red'
 }
 
 type MineRow = MaterialAssetItem & {
@@ -166,54 +158,18 @@ const MobileCard: React.FC<{
         {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.scrap_status}</Tag> : null}
       </div>
 
-      <div style={{
-        background: record.certificate_status === '过期'
-          ? '#fff2f0'
-          : (record.certificate_status === '临期' || record.certificate_status === '未维护')
-            ? '#fffbe6'
-            : '#fafafa',
-        borderRadius: 8,
-        padding: '10px 12px',
-        marginBottom: 12,
-        border: `1px solid ${record.certificate_status === '过期'
-          ? '#ffccc7'
-          : (record.certificate_status === '临期' || record.certificate_status === '未维护')
-            ? '#ffe58f'
-            : '#f0f0f0'}`
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ color: '#999', fontSize: 14 }}>合格证</span>
-          <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ margin: 0 }}>{record.certificate_status || '未维护'}</Tag>
-        </div>
-        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>
-          <div>有效日期：{record.certificate_expire_date || '-'}</div>
-          <div>
-            提醒：{
-              !record.certificate_expire_date
-                ? '请维护有效日期'
-                : record.certificate_status === '过期'
-                  ? `已过期 ${Math.abs(Number(record.certificate_remaining_days || 0))} 天`
-                  : record.certificate_status === '临期'
-                    ? `${record.certificate_remaining_days} 天后到期`
-                    : `剩余 ${record.certificate_remaining_days} 天`
-            }
+      {record.view_type === 'owned' && record.asset_status !== '报废' ? (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ color: '#999', fontSize: 14, marginBottom: 6 }}>有效日期</div>
+          <div style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
+            当前：{record.certificate_expire_date || '-'}
           </div>
-        </div>
-        {record.view_type === 'owned' && record.asset_status !== '报废' ? (
-          <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 88px auto', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
             <Input
               size="small"
               placeholder="手动填写 YYYY-MM-DD"
               value={certificateDraft.certificate_expire_date}
               onChange={(e) => onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
-            />
-            <Input
-              size="small"
-              type="number"
-              min={0}
-              placeholder="天数"
-              value={certificateDraft.certificate_remind_days}
-              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_remind_days', e.target.value)}
             />
             <Button
               size="small"
@@ -224,8 +180,8 @@ const MobileCard: React.FC<{
               保存
             </Button>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {/* 说明信息 */}
       {(record.remark || record.borrow_note || record.scrap_reason) && (
@@ -417,11 +373,8 @@ const MyMeasureTools: React.FC = () => {
   const stats = React.useMemo(() => ({
     pending: pendingItems.length,
     owned: ownedItems.length,
-    borrowed: borrowedItems.length,
-    expired: mergedItems.filter((item) => item.certificate_status === '过期').length,
-    expiring: mergedItems.filter((item) => item.certificate_status === '临期').length,
-    missing: mergedItems.filter((item) => item.certificate_status === '未维护').length
-  }), [borrowedItems.length, mergedItems, ownedItems.length, pendingItems.length])
+    borrowed: borrowedItems.length
+  }), [borrowedItems.length, ownedItems.length, pendingItems.length])
 
   const loadMine = React.useCallback(async () => {
     try {
@@ -740,15 +693,10 @@ const MyMeasureTools: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
-      title: '合格证', width: 360,
+      title: '有效日期', width: 220,
       render: (_: any, record: MineRow) => (
         <div>
-          <Space size={[4, 4]} wrap>
-            <Tag color={certificateTagColorMap[record.certificate_status] || 'default'}>{record.certificate_status}</Tag>
-            <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
-              {record.certificate_expire_date || '未维护'}
-            </Text>
-          </Space>
+          {record.view_type === 'pending' ? <Text type="secondary">-</Text> : <Text type="secondary">{record.certificate_expire_date || '-'}</Text>}
           {record.view_type === 'owned' && record.asset_status !== '报废' ? (
             <Space size={6} wrap style={{ marginTop: 8 }}>
               <Input
@@ -757,15 +705,6 @@ const MyMeasureTools: React.FC = () => {
                 style={{ width: 128 }}
                 value={certificateDrafts[record.id]?.certificate_expire_date || ''}
                 onChange={(e) => updateCertificateDraft(record.id, 'certificate_expire_date', e.target.value)}
-              />
-              <Input
-                size="small"
-                type="number"
-                min={0}
-                placeholder="提醒天数"
-                style={{ width: 96 }}
-                value={certificateDrafts[record.id]?.certificate_remind_days || '30'}
-                onChange={(e) => updateCertificateDraft(record.id, 'certificate_remind_days', e.target.value)}
               />
               <Button size="small" type="link" loading={certificateSavingId === record.id} onClick={() => saveCertificate(record)}>
                 保存
@@ -865,21 +804,11 @@ const MyMeasureTools: React.FC = () => {
           </div>
         </div>
 
-        {(stats.expired > 0 || stats.expiring > 0 || stats.missing > 0) ? (
-          <Alert
-            showIcon
-            type={stats.expired > 0 || stats.missing > 0 ? 'error' : 'warning'}
-            style={{ marginBottom: 12 }}
-            message={`合格证提醒：过期 ${stats.expired} 项，临期 ${stats.expiring} 项，未维护 ${stats.missing} 项`}
-            description={isMobile ? undefined : '请优先处理过期、未维护和临期合格证，并补全未维护的有效日期。'}
-          />
-        ) : null}
-
         {/* 手机端统计条 + Tab 切换 */}
         {isMobile && (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             gap: 8,
             marginBottom: 10,
             paddingBottom: 10,
@@ -935,20 +864,6 @@ const MyMeasureTools: React.FC = () => {
               <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
                 <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>我借用</span>
               </Badge>
-            </div>
-            <div style={{
-              padding: '6px 10px',
-              borderRadius: 6,
-              border: '1px solid #ffd6e7',
-              background: (stats.expired > 0 || stats.missing > 0) ? '#fff1f0' : '#fafafa',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 13,
-              color: (stats.expired > 0 || stats.missing > 0) ? '#cf1322' : '#666',
-              fontWeight: (stats.expired > 0 || stats.missing > 0) ? 600 : 400
-            }}>
-              待处理 {stats.expired + stats.missing}
             </div>
           </div>
         )}
