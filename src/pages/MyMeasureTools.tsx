@@ -92,7 +92,15 @@ const MobileCard: React.FC<{
   onConfirmReturn: () => void
   onOpenScrap: () => void
   onOpenReturn: () => void
-}> = ({ record, acting, ...actions }) => {
+}> = ({
+  record,
+  acting,
+  certificateSavingId,
+  certificateDraft,
+  onCertificateDraftChange,
+  onSaveCertificate,
+  ...actions
+}) => {
   // 类型标签颜色和文字
   const typeInfo = (() => {
     if (record.view_type === 'pending') return { color: 'gold', text: '待我确认' }
@@ -197,7 +205,7 @@ const MobileCard: React.FC<{
               size="small"
               placeholder="手动填写 YYYY-MM-DD"
               value={certificateDraft.certificate_expire_date}
-              onChange={(e) => actions.onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
+              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
             />
             <Input
               size="small"
@@ -205,13 +213,13 @@ const MobileCard: React.FC<{
               min={0}
               placeholder="天数"
               value={certificateDraft.certificate_remind_days}
-              onChange={(e) => actions.onCertificateDraftChange(record.id, 'certificate_remind_days', e.target.value)}
+              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_remind_days', e.target.value)}
             />
             <Button
               size="small"
               type="primary"
               loading={certificateSavingId === record.id}
-              onClick={actions.onSaveCertificate}
+              onClick={onSaveCertificate}
             >
               保存
             </Button>
