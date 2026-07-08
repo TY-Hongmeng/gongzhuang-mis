@@ -13,7 +13,6 @@ import {
   Typography,
   message,
   List,
-  Badge,
   Divider,
   Spin
 } from 'antd'
@@ -160,11 +159,8 @@ const MobileCard: React.FC<{
 
       {record.view_type === 'owned' && record.asset_status !== '报废' ? (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: '#999', fontSize: 14, marginBottom: 6 }}>有效日期</div>
-          <div style={{ fontSize: 14, color: '#333', marginBottom: 8 }}>
-            当前：{record.certificate_expire_date || '-'}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr auto', gap: 8, alignItems: 'center' }}>
+            <span style={{ color: '#666', fontSize: 14 }}>有效日期</span>
             <DatePicker
               size="small"
               style={{ width: '100%' }}
@@ -547,7 +543,7 @@ const MyMeasureTools: React.FC = () => {
     }
     const expireDate = String(draft.certificate_expire_date || '').trim()
     if (expireDate && !/^\d{4}-\d{2}-\d{2}$/.test(expireDate)) {
-      message.warning('有效日期请按 YYYY-MM-DD 手动填写')
+      message.warning('有效日期格式无效')
       return
     }
     try {
@@ -698,9 +694,10 @@ const MyMeasureTools: React.FC = () => {
       title: '有效日期', width: 220,
       render: (_: any, record: MineRow) => (
         <div>
-          {record.view_type === 'pending' ? <Text type="secondary">-</Text> : <Text type="secondary">{record.certificate_expire_date || '-'}</Text>}
+          {record.view_type === 'pending' ? <Text type="secondary">-</Text> : null}
           {record.view_type === 'owned' && record.asset_status !== '报废' ? (
-            <Space size={6} wrap style={{ marginTop: 8 }}>
+            <Space size={6} wrap>
+              <Text type="secondary">有效日期</Text>
               <DatePicker
                 size="small"
                 format="YYYY-MM-DD"
@@ -713,6 +710,8 @@ const MyMeasureTools: React.FC = () => {
                 保存
               </Button>
             </Space>
+          ) : record.view_type !== 'pending' ? (
+            <Text type="secondary">{record.certificate_expire_date || '-'}</Text>
           ) : null}
         </div>
       )
@@ -830,9 +829,9 @@ const MyMeasureTools: React.FC = () => {
                 justifyContent: 'center'
               }}
             >
-              <Badge count={stats.pending} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
-                <span style={{ fontSize: 14, color: mobileTab === 'pending' ? '#d46b08' : '#666', fontWeight: mobileTab === 'pending' ? 600 : 400 }}>待确认</span>
-              </Badge>
+              <span style={{ fontSize: 14, color: mobileTab === 'pending' ? '#d46b08' : '#666', fontWeight: mobileTab === 'pending' ? 600 : 400 }}>
+                待确认 {stats.pending}
+              </span>
             </div>
             <div
               onClick={() => setMobileTab('owned')}
@@ -847,9 +846,9 @@ const MyMeasureTools: React.FC = () => {
                 justifyContent: 'center'
               }}
             >
-              <Badge count={stats.owned} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
-                <span style={{ fontSize: 14, color: mobileTab === 'owned' ? '#1890ff' : '#666', fontWeight: mobileTab === 'owned' ? 600 : 400 }}>我负责</span>
-              </Badge>
+              <span style={{ fontSize: 14, color: mobileTab === 'owned' ? '#1890ff' : '#666', fontWeight: mobileTab === 'owned' ? 600 : 400 }}>
+                我负责 {stats.owned}
+              </span>
             </div>
             <div
               onClick={() => setMobileTab('borrowed')}
@@ -864,9 +863,9 @@ const MyMeasureTools: React.FC = () => {
                 justifyContent: 'center'
               }}
             >
-              <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
-                <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>我借用</span>
-              </Badge>
+              <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>
+                我借用 {stats.borrowed}
+              </span>
             </div>
           </div>
         )}
