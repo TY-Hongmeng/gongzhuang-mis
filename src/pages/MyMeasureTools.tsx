@@ -165,11 +165,13 @@ const MobileCard: React.FC<{
             当前：{record.certificate_expire_date || '-'}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-            <Input
+            <DatePicker
               size="small"
-              placeholder="手动填写 YYYY-MM-DD"
-              value={certificateDraft.certificate_expire_date}
-              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
+              style={{ width: '100%' }}
+              format="YYYY-MM-DD"
+              placeholder="选择有效日期"
+              value={certificateDraft.certificate_expire_date ? dayjs(certificateDraft.certificate_expire_date) : null}
+              onChange={(value) => onCertificateDraftChange(record.id, 'certificate_expire_date', value ? value.format('YYYY-MM-DD') : '')}
             />
             <Button
               size="small"
@@ -699,12 +701,13 @@ const MyMeasureTools: React.FC = () => {
           {record.view_type === 'pending' ? <Text type="secondary">-</Text> : <Text type="secondary">{record.certificate_expire_date || '-'}</Text>}
           {record.view_type === 'owned' && record.asset_status !== '报废' ? (
             <Space size={6} wrap style={{ marginTop: 8 }}>
-              <Input
+              <DatePicker
                 size="small"
-                placeholder="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                placeholder="选择日期"
                 style={{ width: 128 }}
-                value={certificateDrafts[record.id]?.certificate_expire_date || ''}
-                onChange={(e) => updateCertificateDraft(record.id, 'certificate_expire_date', e.target.value)}
+                value={certificateDrafts[record.id]?.certificate_expire_date ? dayjs(certificateDrafts[record.id]?.certificate_expire_date) : null}
+                onChange={(value) => updateCertificateDraft(record.id, 'certificate_expire_date', value ? value.format('YYYY-MM-DD') : '')}
               />
               <Button size="small" type="link" loading={certificateSavingId === record.id} onClick={() => saveCertificate(record)}>
                 保存
