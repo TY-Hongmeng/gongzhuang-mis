@@ -163,7 +163,6 @@ const MobileCard: React.FC<{
           <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ margin: 0 }}>{record.certificate_status || '未维护'}</Tag>
         </div>
         <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>
-          <div>证书编号：{record.certificate_no || '-'}</div>
           <div>有效日期：{record.certificate_expire_date || '-'}</div>
           <div>
             提醒：{
@@ -483,8 +482,6 @@ const MyMeasureTools: React.FC = () => {
           name: String(values.name || '').trim(),
           code: String(values.code || '').trim(),
           model_spec: String(values.model_spec || '').trim(),
-          certificate_no: String(values.certificate_no || '').trim(),
-          certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
           certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
           certificate_remind_days: Number(values.certificate_remind_days ?? 30),
           remark: String(values.remark || '').trim(),
@@ -630,7 +627,6 @@ const MyMeasureTools: React.FC = () => {
       title: '合格证', width: 240,
       render: (_: any, record: MineRow) => (
         <div>
-          <div>{record.certificate_no || '-'}</div>
           <Space size={[4, 4]} wrap>
             <Tag color={certificateTagColorMap[record.certificate_status] || 'default'}>{record.certificate_status}</Tag>
             <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
@@ -880,12 +876,6 @@ const MyMeasureTools: React.FC = () => {
           </Form.Item>
           <Form.Item label="型号规格" name="model_spec">
             <Input placeholder="请输入型号规格" />
-          </Form.Item>
-          <Form.Item label="合格证编号" name="certificate_no">
-            <Input placeholder="请输入合格证编号" />
-          </Form.Item>
-          <Form.Item label="发证日期" name="certificate_issue_date">
-            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="有效日期" name="certificate_expire_date">
             <DatePicker style={{ width: '100%' }} />

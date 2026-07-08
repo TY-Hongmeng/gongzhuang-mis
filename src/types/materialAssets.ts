@@ -3,8 +3,6 @@ export interface MaterialAssetItem {
   name: string
   code: string
   model_spec: string
-  certificate_no: string
-  certificate_issue_date: string | null
   certificate_expire_date: string | null
   certificate_remind_days: number
   last_certificate_reminded_at: string | null

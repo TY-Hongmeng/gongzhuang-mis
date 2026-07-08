@@ -48,8 +48,6 @@ const getCertificateMeta = (asset: any) => {
   const remindDays = normalizeRemindDays(asset?.certificate_remind_days)
   if (!expireDate) {
     return {
-      certificate_no: normText(asset?.certificate_no),
-      certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
       certificate_expire_date: null,
       certificate_remind_days: remindDays,
       last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
@@ -64,8 +62,6 @@ const getCertificateMeta = (asset: any) => {
   const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
   const needReminder = normText(asset?.asset_status) !== ASSET_STATUS.scrapped && (status === '过期' || status === '临期')
   return {
-    certificate_no: normText(asset?.certificate_no),
-    certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
     certificate_expire_date: expireDate,
     certificate_remind_days: remindDays,
     last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
@@ -482,8 +478,6 @@ router.post('/', async (req, res) => {
     const name = normText(req.body?.name)
     const code = normText(req.body?.code)
     const modelSpec = normText(req.body?.model_spec)
-    const certificateNo = normText(req.body?.certificate_no)
-    const certificateIssueDate = normalizeDateInput(req.body?.certificate_issue_date)
     const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
     const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
     const remark = normText(req.body?.remark)
@@ -517,15 +511,13 @@ router.post('/', async (req, res) => {
           asset_status,
           scrap_status,
           scrap_reason,
-          certificate_no,
-          certificate_issue_date,
           certificate_expire_date,
           certificate_remind_days,
           remark,
           created_by,
           created_by_user_id
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
         RETURNING *
       `, [
         name,
@@ -539,8 +531,6 @@ router.post('/', async (req, res) => {
         assetStatus,
         assetStatus === ASSET_STATUS.scrapped ? SCRAP_STATUS.done : SCRAP_STATUS.none,
         assetStatus === ASSET_STATUS.scrapped ? normText(req.body?.scrap_reason || req.body?.remark) : '',
-        certificateNo,
-        certificateIssueDate,
         certificateExpireDate,
         certificateRemindDays,
         remark,
@@ -609,8 +599,6 @@ router.post('/batch-import', async (req, res) => {
         const code = normText(raw?.code)
         const modelSpec = normText(raw?.model_spec)
         const responsibleInput = normText(raw?.responsible_person)
-        const certificateNo = normText(raw?.certificate_no)
-        const certificateIssueDate = normalizeDateInput(raw?.certificate_issue_date)
         const certificateExpireDate = normalizeDateInput(raw?.certificate_expire_date)
         const certificateRemindDays = normalizeRemindDays(raw?.certificate_remind_days)
         const remark = normText(raw?.remark)
@@ -634,15 +622,13 @@ router.post('/batch-import', async (req, res) => {
             asset_status,
             scrap_status,
             scrap_reason,
-            certificate_no,
-            certificate_issue_date,
             certificate_expire_date,
             certificate_remind_days,
             remark,
             created_by,
             created_by_user_id
           )
-          VALUES ($1,$2,$3,'','',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          VALUES ($1,$2,$3,'','',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
           RETURNING *
         `, [
           name,
@@ -654,8 +640,6 @@ router.post('/batch-import', async (req, res) => {
           assetStatus,
           assetStatus === ASSET_STATUS.scrapped ? SCRAP_STATUS.done : SCRAP_STATUS.none,
           assetStatus === ASSET_STATUS.scrapped ? normText(raw?.scrap_reason || raw?.remark) : '',
-          certificateNo,
-          certificateIssueDate,
           certificateExpireDate,
           certificateRemindDays,
           remark,
@@ -709,8 +693,6 @@ router.put('/:id', async (req, res) => {
     const name = normText(req.body?.name)
     const code = normText(req.body?.code)
     const modelSpec = normText(req.body?.model_spec)
-    const certificateNo = normText(req.body?.certificate_no)
-    const certificateIssueDate = normalizeDateInput(req.body?.certificate_issue_date)
     const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
     const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
     const remark = normText(req.body?.remark)
@@ -726,15 +708,13 @@ router.put('/:id', async (req, res) => {
           name = $2,
           code = $3,
           model_spec = $4,
-          certificate_no = $5,
-          certificate_issue_date = $6,
-          certificate_expire_date = $7,
-          certificate_remind_days = $8,
-          remark = $9,
+          certificate_expire_date = $5,
+          certificate_remind_days = $6,
+          remark = $7,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
-      `, [assetId, name, code, modelSpec, certificateNo, certificateIssueDate, certificateExpireDate, certificateRemindDays, remark])
+      `, [assetId, name, code, modelSpec, certificateExpireDate, certificateRemindDays, remark])
       const row = rs.rows[0]
       await insertHistory(client, assetId, {
         actionType: 'edit_basic_info',
@@ -747,8 +727,6 @@ router.put('/:id', async (req, res) => {
             name: normText(asset.name),
             code: normText(asset.code),
             model_spec: normText(asset.model_spec),
-            certificate_no: normText(asset.certificate_no),
-            certificate_issue_date: normalizeDateInput(asset.certificate_issue_date),
             certificate_expire_date: normalizeDateInput(asset.certificate_expire_date),
             certificate_remind_days: normalizeRemindDays(asset.certificate_remind_days),
             remark: normText(asset.remark)
@@ -757,8 +735,6 @@ router.put('/:id', async (req, res) => {
             name,
             code,
             model_spec: modelSpec,
-            certificate_no: certificateNo,
-            certificate_issue_date: certificateIssueDate,
             certificate_expire_date: certificateExpireDate,
             certificate_remind_days: certificateRemindDays,
             remark

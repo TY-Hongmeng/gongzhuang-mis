@@ -1647,8 +1647,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const remindDays = normalizeRemindDays(asset?.certificate_remind_days)
           if (!expireDate) {
             return {
-              certificate_no: normTextSafe(asset?.certificate_no),
-              certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
               certificate_expire_date: null,
               certificate_remind_days: remindDays,
               last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
@@ -1663,8 +1661,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
           const needReminder = normTextSafe(asset?.asset_status) !== '报废' && (status === '过期' || status === '临期')
           return {
-            certificate_no: normTextSafe(asset?.certificate_no),
-            certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
             certificate_expire_date: expireDate,
             certificate_remind_days: remindDays,
             last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
@@ -1783,7 +1779,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               row?.responsible_person,
               row?.pending_responsible_person,
               row?.borrower_name,
-              row?.certificate_no,
               row?.remark,
               row?.scrap_reason,
               row?.borrow_note,
@@ -1856,8 +1851,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const name = normTextSafe(body?.name)
           const code = normTextSafe(body?.code)
           const modelSpec = normTextSafe(body?.model_spec)
-          const certificateNo = normTextSafe(body?.certificate_no)
-          const certificateIssueDate = normalizeDateInput(body?.certificate_issue_date)
           const certificateExpireDate = normalizeDateInput(body?.certificate_expire_date)
           const certificateRemindDays = normalizeRemindDays(body?.certificate_remind_days)
           const isManagerCreate = actor.isManager
@@ -1883,8 +1876,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             asset_status: assetStatus,
             scrap_status: assetStatus === '报废' ? '已报废' : '无',
             scrap_reason: assetStatus === '报废' ? normTextSafe(body?.scrap_reason || body?.remark) : '',
-            certificate_no: certificateNo,
-            certificate_issue_date: certificateIssueDate,
             certificate_expire_date: certificateExpireDate,
             certificate_remind_days: certificateRemindDays,
             remark,
@@ -1926,8 +1917,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const code = normTextSafe(raw?.code)
             const modelSpec = normTextSafe(raw?.model_spec)
             const responsibleInput = normTextSafe(raw?.responsible_person)
-            const certificateNo = normTextSafe(raw?.certificate_no)
-            const certificateIssueDate = normalizeDateInput(raw?.certificate_issue_date)
             const certificateExpireDate = normalizeDateInput(raw?.certificate_expire_date)
             const certificateRemindDays = normalizeRemindDays(raw?.certificate_remind_days)
             const remark = normTextSafe(raw?.remark)
@@ -1948,8 +1937,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               asset_status: assetStatus,
               scrap_status: assetStatus === '报废' ? '已报废' : '无',
               scrap_reason: assetStatus === '报废' ? normTextSafe(raw?.scrap_reason || raw?.remark) : '',
-              certificate_no: certificateNo,
-              certificate_issue_date: certificateIssueDate,
               certificate_expire_date: certificateExpireDate,
               certificate_remind_days: certificateRemindDays,
               remark,
@@ -1992,8 +1979,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             name: normTextSafe(body?.name),
             code: normTextSafe(body?.code),
             model_spec: normTextSafe(body?.model_spec),
-            certificate_no: normTextSafe(body?.certificate_no),
-            certificate_issue_date: normalizeDateInput(body?.certificate_issue_date),
             certificate_expire_date: normalizeDateInput(body?.certificate_expire_date),
             certificate_remind_days: normalizeRemindDays(body?.certificate_remind_days),
             remark: normTextSafe(body?.remark),
@@ -2014,8 +1999,6 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 name: normTextSafe(existing?.name),
                 code: normTextSafe(existing?.code),
                 model_spec: normTextSafe(existing?.model_spec),
-                certificate_no: normTextSafe(existing?.certificate_no),
-                certificate_issue_date: normalizeDateInput(existing?.certificate_issue_date),
                 certificate_expire_date: normalizeDateInput(existing?.certificate_expire_date),
                 certificate_remind_days: normalizeRemindDays(existing?.certificate_remind_days),
                 remark: normTextSafe(existing?.remark)

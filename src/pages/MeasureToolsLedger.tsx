@@ -270,8 +270,6 @@ const MeasureToolsLedger: React.FC = () => {
         name: String(values.name || '').trim(),
         code: String(values.code || '').trim(),
         model_spec: String(values.model_spec || '').trim(),
-        certificate_no: String(values.certificate_no || '').trim(),
-        certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
         certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
         certificate_remind_days: Number(values.certificate_remind_days ?? 30),
         responsible_person: String(selectedUser?.real_name || responsiblePerson).trim(),
@@ -309,8 +307,8 @@ const MeasureToolsLedger: React.FC = () => {
   }
 
   const downloadTemplate = () => {
-    const header = ['名称', '编号', '型号规格', '合格证编号', '发证日期', '有效日期', '提醒天数', '责任人', '状态', '备注']
-    const sample = ['游标卡尺', 'LJ-001', '0-150mm', 'HGZ-2026-001', '2026-07-01', '2027-07-01', '30', '张三', '在用', '初始导入需责任人本人确认']
+    const header = ['名称', '编号', '型号规格', '有效日期', '提醒天数', '责任人', '状态', '备注']
+    const sample = ['游标卡尺', 'LJ-001', '0-150mm', '2027-07-01', '30', '张三', '在用', '初始导入需责任人本人确认']
     const ws = XLSX.utils.aoa_to_sheet([header, sample])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '量具台账导入模板')
@@ -331,8 +329,6 @@ const MeasureToolsLedger: React.FC = () => {
           name: String(row['名称'] || row['name'] || '').trim(),
           code: String(row['编号'] || row['code'] || '').trim(),
           model_spec: String(row['型号规格'] || row['model_spec'] || '').trim(),
-          certificate_no: String(row['合格证编号'] || row['certificate_no'] || '').trim(),
-          certificate_issue_date: String(row['发证日期'] || row['certificate_issue_date'] || '').trim(),
           certificate_expire_date: String(row['有效日期'] || row['certificate_expire_date'] || '').trim(),
           certificate_remind_days: String(row['提醒天数'] || row['certificate_remind_days'] || '30').trim(),
           responsible_person: String(row['责任人'] || row['responsible_person'] || '').trim(),
@@ -398,8 +394,6 @@ const MeasureToolsLedger: React.FC = () => {
           name: String(values.name || '').trim(),
           code: String(values.code || '').trim(),
           model_spec: String(values.model_spec || '').trim(),
-          certificate_no: String(values.certificate_no || '').trim(),
-          certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
           certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
           certificate_remind_days: Number(values.certificate_remind_days ?? 30),
           remark: String(values.remark || '').trim(),
@@ -501,18 +495,15 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '合格证',
-      width: 260,
+      width: 220,
       render: (_: any, record: MaterialAssetItem) => (
         <div>
-          <div>{record.certificate_no || '-'}</div>
-          <div style={{ marginTop: 4 }}>
-            <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ marginRight: 6 }}>
-              {record.certificate_status || '未维护'}
-            </Tag>
-            <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
-              {record.certificate_expire_date || '未维护有效期'}
-            </Text>
-          </div>
+          <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ marginRight: 6 }}>
+            {record.certificate_status || '未维护'}
+          </Tag>
+          <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
+            {record.certificate_expire_date || '未维护有效期'}
+          </Text>
         </div>
       )
     },
@@ -590,8 +581,6 @@ const MeasureToolsLedger: React.FC = () => {
                 name: record.name,
                 code: record.code,
                 model_spec: record.model_spec,
-                certificate_no: record.certificate_no,
-                certificate_issue_date: record.certificate_issue_date ? dayjs(record.certificate_issue_date) : null,
                 certificate_expire_date: record.certificate_expire_date ? dayjs(record.certificate_expire_date) : null,
                 certificate_remind_days: record.certificate_remind_days ?? 30,
                 remark: record.remark
@@ -775,12 +764,6 @@ const MeasureToolsLedger: React.FC = () => {
           <Form.Item label="型号规格" name="model_spec">
             <Input />
           </Form.Item>
-          <Form.Item label="合格证编号" name="certificate_no">
-            <Input />
-          </Form.Item>
-          <Form.Item label="发证日期" name="certificate_issue_date">
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
           <Form.Item label="有效日期" name="certificate_expire_date">
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
@@ -871,12 +854,6 @@ const MeasureToolsLedger: React.FC = () => {
           </Form.Item>
           <Form.Item label="型号规格" name="model_spec">
             <Input />
-          </Form.Item>
-          <Form.Item label="合格证编号" name="certificate_no">
-            <Input />
-          </Form.Item>
-          <Form.Item label="发证日期" name="certificate_issue_date">
-            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="有效日期" name="certificate_expire_date">
             <DatePicker style={{ width: '100%' }} />
