@@ -471,11 +471,12 @@ router.get('/reminder-summary', async (req, res) => {
     )).map(withCertificateMeta)
 
     const summarize = (items: any[]) => {
+      const pending = items.filter((item) => normText(item?.responsibility_status) === RESPONSIBILITY_STATUS.pending).length
       const expired = items.filter((item) => item.certificate_status === '过期').length
       const expiring = items.filter((item) => item.certificate_status === '临期').length
       const missing = items.filter((item) => item.certificate_status === '未维护').length
-      const total = expired + expiring + missing
-      return { total, expired, expiring, missing }
+      const total = pending + expired + expiring + missing
+      return { total, pending, expired, expiring, missing }
     }
 
     res.json({

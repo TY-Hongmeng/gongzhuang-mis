@@ -1853,11 +1853,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             || (actor.actorName && actor.actorName === normTextSafe(row?.borrower_name))
           ).map(withCertificateMeta)
           const summarize = (items: any[]) => {
+            const pending = items.filter((item) => normTextSafe(item?.responsibility_status) === '待确认').length
             const expired = items.filter((item) => item.certificate_status === '过期').length
             const expiring = items.filter((item) => item.certificate_status === '临期').length
             const missing = items.filter((item) => item.certificate_status === '未维护').length
-            const total = expired + expiring + missing
-            return { total, expired, expiring, missing }
+            const total = pending + expired + expiring + missing
+            return { total, pending, expired, expiring, missing }
           }
           return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarize(mineItems) })
         }
