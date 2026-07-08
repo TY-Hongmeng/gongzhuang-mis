@@ -1,5 +1,5 @@
 import React from 'react'
-import { Badge, Card, Row, Col, Typography, Button } from 'antd'
+import { Card, Row, Col, Typography, Button } from 'antd'
 import {
   UserOutlined,
   BankOutlined,
@@ -284,40 +284,62 @@ const Dashboard: React.FC = () => {
           {canMeasureTools && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/measure-tools" style={{ display: 'block' }}>
-                <Badge
-                  count={reminderSummary.ledger.total}
-                  color="#ff4d4f"
-                  overflowCount={99}
-                  offset={[-10, 10]}
-                  styles={{ indicator: { fontWeight: 600, boxShadow: '0 0 0 1px #fff' } }}
-                >
-                  <Card hoverable className="text-center cursor-pointer">
-                    <BuildOutlined className="text-3xl text-amber-500 mb-2" />
-                    <div style={{ color: reminderSummary.ledger.total > 0 ? '#cf1322' : undefined, fontWeight: reminderSummary.ledger.total > 0 ? 600 : undefined }}>
-                      量具台账
-                    </div>
-                  </Card>
-                </Badge>
+                <Card hoverable className="text-center cursor-pointer" bodyStyle={{ position: 'relative' }}>
+                  {reminderSummary.ledger.total > 0 ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        minWidth: 20,
+                        height: 20,
+                        padding: '0 6px',
+                        borderRadius: 10,
+                        background: '#ff4d4f',
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: '20px',
+                        fontWeight: 600,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {reminderSummary.ledger.total}
+                    </span>
+                  ) : null}
+                  <BuildOutlined className="text-3xl text-amber-500 mb-2" />
+                  量具台账
+                </Card>
               </Link>
             </Col>
           )}
           {canMyMeasureTools && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/my-measure-tools" style={{ display: 'block' }}>
-                <Badge
-                  count={reminderSummary.mine.total}
-                  color="#ff4d4f"
-                  overflowCount={99}
-                  offset={[-10, 10]}
-                  styles={{ indicator: { fontWeight: 600, boxShadow: '0 0 0 1px #fff' } }}
-                >
-                  <Card hoverable className="text-center cursor-pointer">
-                    <UserOutlined className="text-3xl text-teal-500 mb-2" />
-                    <div style={{ color: reminderSummary.mine.total > 0 ? '#cf1322' : undefined, fontWeight: reminderSummary.mine.total > 0 ? 600 : undefined }}>
-                      我的量具
-                    </div>
-                  </Card>
-                </Badge>
+                <Card hoverable className="text-center cursor-pointer" bodyStyle={{ position: 'relative' }}>
+                  {reminderSummary.mine.total > 0 ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        minWidth: 20,
+                        height: 20,
+                        padding: '0 6px',
+                        borderRadius: 10,
+                        background: '#ff4d4f',
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: '20px',
+                        fontWeight: 600,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {reminderSummary.mine.total}
+                    </span>
+                  ) : null}
+                  <UserOutlined className="text-3xl text-teal-500 mb-2" />
+                  我的量具
+                </Card>
               </Link>
             </Col>
           )}
