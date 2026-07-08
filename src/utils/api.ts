@@ -1799,24 +1799,29 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (method === 'POST' && path === '/api/material-assets') {
           const body = await readBody()
           const actor = await getActor(body?.userId, body?.operator)
-          if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以新增量具' }, 403)
           const name = normTextSafe(body?.name)
           const code = normTextSafe(body?.code)
           const modelSpec = normTextSafe(body?.model_spec)
-          const responsibleInput = normTextSafe(body?.responsible_person)
+          const isManagerCreate = actor.isManager
+          const responsibleInput = isManagerCreate ? normTextSafe(body?.responsible_person) : normTextSafe(actor.actorName)
           const remark = normTextSafe(body?.remark)
-          const assetStatus = normTextSafe(body?.asset_status) === '报废' ? '报废' : '在用'
+          const assetStatus = isManagerCreate && normTextSafe(body?.asset_status) === '报废' ? '报废' : '在用'
           if (!name || !code || !responsibleInput) return jsonResponse({ success: false, error: '名称、编号、责任人不能为空' }, 400)
-          const resolvedUser = await resolveUser(body?.responsible_user_id, responsibleInput)
+          if (!isManagerCreate && !actor.userId && !actor.actorName) {
+            return jsonResponse({ success: false, error: '缺少当前用户信息，无法新增量具' }, 400)
+          }
+          const resolvedUser = isManagerCreate
+            ? await resolveUser(body?.responsible_user_id, responsibleInput)
+            : { userId: actor.userId, realName: actor.actorName }
           const payload = {
             name,
             code,
             model_spec: modelSpec,
-            responsible_person: '',
-            responsible_user_id: '',
-            pending_responsible_person: resolvedUser.realName || responsibleInput,
-            pending_responsible_user_id: resolvedUser.userId,
-            responsibility_status: '待确认',
+            responsible_person: isManagerCreate ? '' : (resolvedUser.realName || responsibleInput),
+            responsible_user_id: isManagerCreate ? '' : resolvedUser.userId,
+            pending_responsible_person: isManagerCreate ? (resolvedUser.realName || responsibleInput) : '',
+            pending_responsible_user_id: isManagerCreate ? resolvedUser.userId : '',
+            responsibility_status: isManagerCreate ? '待确认' : '已确认',
             asset_status: assetStatus,
             scrap_status: assetStatus === '报废' ? '已报废' : '无',
             scrap_reason: assetStatus === '报废' ? normTextSafe(body?.scrap_reason || body?.remark) : '',
@@ -1829,7 +1834,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           await insertHistory({
             asset_id: data.id,
             action_type: 'create',
-            action_label: '新增量具',
+            action_label: isManagerCreate ? '新增量具' : '员工新增量具',
             operator_name: actor.actorName,
             operator_user_id: actor.userId,
             target_name: resolvedUser.realName || responsibleInput,
@@ -1839,7 +1844,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               name,
               code,
               model_spec: modelSpec,
-              asset_status: assetStatus
+              asset_status: assetStatus,
+              create_mode: isManagerCreate ? 'manager_assign' : 'self_create'
             }
           })
           return jsonResponse({ success: true, item: data })

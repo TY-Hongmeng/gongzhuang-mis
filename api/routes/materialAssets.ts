@@ -420,20 +420,24 @@ router.post('/', async (req, res) => {
   try {
     await ensureSchema()
     const actor = await resolveActor(req.body?.userId, req.body?.operator)
-    if (!actor.isManager) {
-      return res.status(403).json({ success: false, error: '仅库管或超级管理员可以新增量具' })
-    }
-
     const name = normText(req.body?.name)
     const code = normText(req.body?.code)
     const modelSpec = normText(req.body?.model_spec)
-    const responsibleInput = normText(req.body?.responsible_person)
     const remark = normText(req.body?.remark)
-    const assetStatus = normText(req.body?.asset_status) === ASSET_STATUS.scrapped ? ASSET_STATUS.scrapped : ASSET_STATUS.active
-    const resolvedPendingUser = await resolveUserByIdentity(req.body?.responsible_user_id, responsibleInput)
+    const isManagerCreate = actor.isManager
+    const responsibleInput = isManagerCreate ? normText(req.body?.responsible_person) : actor.actorName
+    const assetStatus = isManagerCreate && normText(req.body?.asset_status) === ASSET_STATUS.scrapped
+      ? ASSET_STATUS.scrapped
+      : ASSET_STATUS.active
+    const resolvedResponsibleUser = isManagerCreate
+      ? await resolveUserByIdentity(req.body?.responsible_user_id, responsibleInput)
+      : { userId: actor.userId, realName: actor.actorName }
 
     if (!name || !code || !responsibleInput) {
       return res.status(400).json({ success: false, error: '名称、编号、责任人不能为空' })
+    }
+    if (!isManagerCreate && !actor.userId && !actor.actorName) {
+      return res.status(400).json({ success: false, error: '缺少当前用户信息，无法新增量具' })
     }
 
     const inserted = await transaction(async (client) => {
@@ -454,15 +458,17 @@ router.post('/', async (req, res) => {
           created_by,
           created_by_user_id
         )
-        VALUES ($1,$2,$3,'','',$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
         RETURNING *
       `, [
         name,
         code,
         modelSpec,
-        resolvedPendingUser.realName || responsibleInput,
-        resolvedPendingUser.userId,
-        RESPONSIBILITY_STATUS.pending,
+        isManagerCreate ? '' : (resolvedResponsibleUser.realName || responsibleInput),
+        isManagerCreate ? '' : resolvedResponsibleUser.userId,
+        isManagerCreate ? (resolvedResponsibleUser.realName || responsibleInput) : '',
+        isManagerCreate ? resolvedResponsibleUser.userId : '',
+        isManagerCreate ? RESPONSIBILITY_STATUS.pending : RESPONSIBILITY_STATUS.confirmed,
         assetStatus,
         assetStatus === ASSET_STATUS.scrapped ? SCRAP_STATUS.done : SCRAP_STATUS.none,
         assetStatus === ASSET_STATUS.scrapped ? normText(req.body?.scrap_reason || req.body?.remark) : '',
@@ -474,17 +480,18 @@ router.post('/', async (req, res) => {
       const asset = rs.rows[0]
       await insertHistory(client, asset.id, {
         actionType: 'create',
-        actionLabel: '新增量具',
+        actionLabel: isManagerCreate ? '新增量具' : '员工新增量具',
         operatorName: actor.actorName,
         operatorUserId: actor.userId,
-        targetName: resolvedPendingUser.realName || responsibleInput,
-        targetUserId: resolvedPendingUser.userId,
+        targetName: resolvedResponsibleUser.realName || responsibleInput,
+        targetUserId: resolvedResponsibleUser.userId,
         remark,
         detail: {
           name,
           code,
           model_spec: modelSpec,
-          asset_status: assetStatus
+          asset_status: assetStatus,
+          create_mode: isManagerCreate ? 'manager_assign' : 'self_create'
         }
       })
       return asset

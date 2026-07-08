@@ -18,6 +18,7 @@ import {
 } from 'antd'
 import {
   LeftOutlined,
+  PlusOutlined,
   ReloadOutlined,
   SwapOutlined,
   UserAddOutlined,
@@ -290,6 +291,7 @@ const MyMeasureTools: React.FC = () => {
   const [transferForm] = Form.useForm()
   const [scrapForm] = Form.useForm()
   const [rejectTransferForm] = Form.useForm()
+  const [createForm] = Form.useForm()
   const [ownedItems, setOwnedItems] = React.useState<MaterialAssetItem[]>([])
   const [pendingItems, setPendingItems] = React.useState<MaterialAssetItem[]>([])
   const [borrowedItems, setBorrowedItems] = React.useState<MaterialAssetItem[]>([])
@@ -301,6 +303,7 @@ const MyMeasureTools: React.FC = () => {
   const [rejectTransferOpen, setRejectTransferOpen] = React.useState(false)
   const [borrowOpen, setBorrowOpen] = React.useState(false)
   const [returnOpen, setReturnOpen] = React.useState(false)
+  const [createOpen, setCreateOpen] = React.useState(false)
   const [acting, setActing] = React.useState(false)
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [borrowForm] = Form.useForm()
@@ -424,6 +427,36 @@ const MyMeasureTools: React.FC = () => {
       loadMine()
     } catch (error: any) {
       message.error(error?.message || '转移责任人失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const submitCreate = async (values: any) => {
+    try {
+      setActing(true)
+      const res = await fetchWithFallback('/api/material-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: String(values.name || '').trim(),
+          code: String(values.code || '').trim(),
+          model_spec: String(values.model_spec || '').trim(),
+          remark: String(values.remark || '').trim(),
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '新增量具失败'))
+      }
+      message.success('量具已新增到我的量具')
+      setCreateOpen(false)
+      createForm.resetFields()
+      loadMine()
+    } catch (error: any) {
+      message.error(error?.message || '新增量具失败')
     } finally {
       setActing(false)
     }
@@ -632,6 +665,7 @@ const MyMeasureTools: React.FC = () => {
             {!isMobile && <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>}
           </div>
           <Space wrap size={isMobile ? 4 : 8}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} size="small">新增量具</Button>
             <Button icon={<ReloadOutlined />} onClick={loadMine} size="small">刷新</Button>
             <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size="small">返回</Button>
           </Space>
@@ -742,6 +776,38 @@ const MyMeasureTools: React.FC = () => {
       </Card>
 
       {/* ====== 弹窗（桌面/手机共用） ====== */}
+      <Modal
+        title="新增量具"
+        open={createOpen}
+        onCancel={() => { setCreateOpen(false); createForm.resetFields() }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={createForm} layout="vertical" onFinish={submitCreate}>
+          <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
+            <Input placeholder="请输入量具名称" />
+          </Form.Item>
+          <Form.Item label="编号" name="code" rules={[{ required: true, message: '请输入编号' }]}>
+            <Input placeholder="请输入量具编号" />
+          </Form.Item>
+          <Form.Item label="型号规格" name="model_spec">
+            <Input placeholder="请输入型号规格" />
+          </Form.Item>
+          <Form.Item label="备注" name="remark">
+            <Input.TextArea rows={3} placeholder="可选，填写来源、用途、存放位置等" />
+          </Form.Item>
+          <div style={{ marginBottom: 12 }}>
+            <Text type="secondary">新增后将直接归属到你本人名下，并同步进入量具台账。</Text>
+          </div>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => { setCreateOpen(false); createForm.resetFields() }}>取消</Button>
+              <Button type="primary" htmlType="submit" loading={acting}>保存</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
       <Modal
         title={`拒绝接收责任人${currentItem ? ` - ${currentItem.name}` : ''}`}
         open={rejectTransferOpen}
