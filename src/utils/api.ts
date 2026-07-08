@@ -1856,7 +1856,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const expired = items.filter((item) => item.certificate_status === '过期').length
             const expiring = items.filter((item) => item.certificate_status === '临期').length
             const missing = items.filter((item) => item.certificate_status === '未维护').length
-            const total = items.filter((item) => !!item.certificate_need_reminder).length
+            const total = expired + expiring + missing
             return { total, expired, expiring, missing }
           }
           return jsonResponse({ success: true, ledger: summarize(allItems), mine: summarize(mineItems) })
