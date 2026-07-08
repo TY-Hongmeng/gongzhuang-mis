@@ -796,6 +796,57 @@ router.put('/:id/remark', async (req, res) => {
   }
 })
 
+router.put('/:id/certificate', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    if (!actor.isManager && !canMatchActor(asset, actor, 'responsible')) {
+      return res.status(403).json({ success: false, error: '仅当前责任人或库管可以维护有效期' })
+    }
+
+    const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
+    const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
+
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET
+          certificate_expire_date = $2,
+          certificate_remind_days = $3,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, certificateExpireDate, certificateRemindDays])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'edit_certificate',
+        actionLabel: '维护有效期',
+        operatorName: actor.actorName,
+        operatorUserId: actor.userId,
+        targetName: normText(asset.responsible_person),
+        targetUserId: normText(asset.responsible_user_id),
+        detail: {
+          before: {
+            certificate_expire_date: normalizeDateInput(asset.certificate_expire_date),
+            certificate_remind_days: normalizeRemindDays(asset.certificate_remind_days)
+          },
+          after: {
+            certificate_expire_date: certificateExpireDate,
+            certificate_remind_days: certificateRemindDays
+          }
+        }
+      })
+      return row
+    })
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '维护有效期失败' })
+  }
+})
+
 router.delete('/:id', async (req, res) => {
   try {
     await ensureSchema()

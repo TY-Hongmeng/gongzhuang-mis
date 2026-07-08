@@ -2042,6 +2042,43 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           return jsonResponse({ success: true, item: data })
         }
 
+        if (method === 'PUT' && /^\/api\/material-assets\/[^/]+\/certificate$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/certificate$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          const canEdit = actor.isManager || canMatchActor(asset, actor, 'responsible')
+          if (!canEdit) return jsonResponse({ success: false, error: '仅当前责任人或库管可以维护有效期' }, 403)
+          const payload = {
+            certificate_expire_date: normalizeDateInput(body?.certificate_expire_date),
+            certificate_remind_days: normalizeRemindDays(body?.certificate_remind_days),
+            updated_at: nowIso()
+          }
+          const { data, error } = await scopedClient.from('measure_tool_assets').update(payload).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'edit_certificate',
+            action_label: '维护有效期',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            target_name: normTextSafe(asset?.responsible_person),
+            target_user_id: normTextSafe(asset?.responsible_user_id),
+            detail_json: {
+              before: {
+                certificate_expire_date: normalizeDateInput(asset?.certificate_expire_date),
+                certificate_remind_days: normalizeRemindDays(asset?.certificate_remind_days)
+              },
+              after: {
+                certificate_expire_date: payload.certificate_expire_date,
+                certificate_remind_days: payload.certificate_remind_days
+              }
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
         if (method === 'DELETE' && /^\/api\/material-assets\/[^/]+$/.test(path)) {
           const matched = path.match(/^\/api\/material-assets\/([^/]+)$/)
           const assetId = normTextSafe(matched?.[1] || '')

@@ -79,6 +79,7 @@ const MobileCard: React.FC<{
   record: MineRow
   acting: boolean
   onConfirmResponsible: () => void
+  onOpenCertificate: () => void
   onCancelTransfer: () => void
   onOpenTransfer: () => void
   onOpenBorrow: () => void
@@ -223,6 +224,7 @@ function renderMobileActions(
   acting: boolean,
   actions: {
     onConfirmResponsible: () => void
+    onOpenCertificate: () => void
     onCancelTransfer: () => void
     onOpenTransfer: () => void
     onOpenBorrow: () => void
@@ -250,6 +252,18 @@ function renderMobileActions(
 
   if (record.view_type === 'owned') {
     const btns = []
+    btns.push(
+      <Button
+        key="certificate"
+        block
+        onClick={actions.onOpenCertificate}
+        disabled={record.asset_status === '报废'}
+        size="large"
+        style={btnStyle}
+      >
+        维护有效期
+      </Button>
+    )
     btns.push(
       <Button key="transfer" block icon={<SwapOutlined />} onClick={actions.onOpenTransfer}
         disabled={record.asset_status === '报废'} size="large" style={btnStyle}>
@@ -329,6 +343,7 @@ const MyMeasureTools: React.FC = () => {
   const [scrapForm] = Form.useForm()
   const [rejectTransferForm] = Form.useForm()
   const [createForm] = Form.useForm()
+  const [certificateForm] = Form.useForm()
   const [ownedItems, setOwnedItems] = React.useState<MaterialAssetItem[]>([])
   const [pendingItems, setPendingItems] = React.useState<MaterialAssetItem[]>([])
   const [borrowedItems, setBorrowedItems] = React.useState<MaterialAssetItem[]>([])
@@ -341,6 +356,7 @@ const MyMeasureTools: React.FC = () => {
   const [borrowOpen, setBorrowOpen] = React.useState(false)
   const [returnOpen, setReturnOpen] = React.useState(false)
   const [createOpen, setCreateOpen] = React.useState(false)
+  const [certificateOpen, setCertificateOpen] = React.useState(false)
   const [acting, setActing] = React.useState(false)
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [borrowForm] = Form.useForm()
@@ -499,6 +515,45 @@ const MyMeasureTools: React.FC = () => {
       loadMine()
     } catch (error: any) {
       message.error(error?.message || '新增量具失败')
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const openCertificateEditor = (item: MaterialAssetItem) => {
+    setCurrentItem(item)
+    certificateForm.setFieldsValue({
+      certificate_expire_date: item.certificate_expire_date ? dayjs(item.certificate_expire_date) : null,
+      certificate_remind_days: item.certificate_remind_days ?? 30
+    })
+    setCertificateOpen(true)
+  }
+
+  const submitCertificate = async (values: any) => {
+    if (!currentItem) return
+    try {
+      setActing(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(currentItem.id)}/certificate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
+          certificate_remind_days: Number(values.certificate_remind_days ?? 30),
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '维护有效期失败'))
+      }
+      message.success('有效日期已更新')
+      setCertificateOpen(false)
+      certificateForm.resetFields()
+      setCurrentItem(null)
+      loadMine()
+    } catch (error: any) {
+      message.error(error?.message || '维护有效期失败')
     } finally {
       setActing(false)
     }
@@ -670,7 +725,7 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '操作', width: 340, align: 'center' as const,
+      title: '操作', width: 420, align: 'center' as const,
       render: (_: any, record: MineRow) => (
         <Space wrap>
           {record.view_type === 'pending' ? (
@@ -678,6 +733,7 @@ const MyMeasureTools: React.FC = () => {
           ) : null}
           {record.view_type === 'owned' ? (
             <>
+              <Button type="link" disabled={record.asset_status === '报废'} onClick={() => openCertificateEditor(record)}>维护有效期</Button>
               <Button type="link" disabled={record.asset_status === '报废'} onClick={() => { setCurrentItem(record); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}>转移责任人</Button>
               <Button type="link" disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'} onClick={() => { setCurrentItem(record); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}>借出登记</Button>
               {record.responsibility_status === '待转移确认' && record.pending_responsible_person ? (
@@ -832,6 +888,7 @@ const MyMeasureTools: React.FC = () => {
                   record={item}
                   acting={acting}
                   onConfirmResponsible={() => confirmResponsible(item)}
+                  onOpenCertificate={() => openCertificateEditor(item)}
                   onCancelTransfer={() => cancelTransfer(item)}
                   onOpenTransfer={() => { setCurrentItem(item); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}
                   onOpenBorrow={() => { setCurrentItem(item); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}
@@ -892,6 +949,33 @@ const MyMeasureTools: React.FC = () => {
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => { setCreateOpen(false); createForm.resetFields() }}>取消</Button>
+              <Button type="primary" htmlType="submit" loading={acting}>保存</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`维护有效期${currentItem ? ` - ${currentItem.name}` : ''}`}
+        open={certificateOpen}
+        onCancel={() => { setCertificateOpen(false); setCurrentItem(null); certificateForm.resetFields() }}
+        footer={null}
+        destroyOnClose
+        width={isMobile ? '100%' : 520}
+      >
+        <Form form={certificateForm} layout="vertical" onFinish={submitCertificate}>
+          <Form.Item label="有效日期" name="certificate_expire_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="提醒提前天数" name="certificate_remind_days" initialValue={30}>
+            <Input type="number" min={0} />
+          </Form.Item>
+          <div style={{ marginBottom: 12 }}>
+            <Text type="secondary">清空有效日期可恢复为“未维护”状态。</Text>
+          </div>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => { setCertificateOpen(false); setCurrentItem(null); certificateForm.resetFields() }}>取消</Button>
               <Button type="primary" htmlType="submit" loading={acting}>保存</Button>
             </Space>
           </Form.Item>
