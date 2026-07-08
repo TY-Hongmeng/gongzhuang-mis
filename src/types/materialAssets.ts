@@ -3,6 +3,14 @@ export interface MaterialAssetItem {
   name: string
   code: string
   model_spec: string
+  certificate_no: string
+  certificate_issue_date: string | null
+  certificate_expire_date: string | null
+  certificate_remind_days: number
+  last_certificate_reminded_at: string | null
+  certificate_status: '未维护' | '有效' | '临期' | '过期'
+  certificate_remaining_days: number | null
+  certificate_need_reminder: boolean
   responsible_person: string
   responsible_user_id: string
   pending_responsible_person: string

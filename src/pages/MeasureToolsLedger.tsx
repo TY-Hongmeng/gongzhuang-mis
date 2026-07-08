@@ -1,8 +1,10 @@
 import React from 'react'
 import {
+  Alert,
   AutoComplete,
   Button,
   Card,
+  DatePicker,
   Descriptions,
   Form,
   Input,
@@ -25,6 +27,24 @@ import { useAuthStore } from '../stores/authStore'
 import type { MaterialAssetHistoryItem, MaterialAssetItem, MaterialAssetUserOption } from '../types/materialAssets'
 
 const { Title, Text } = Typography
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = React.useState(false)
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
+
+const certificateTagColorMap: Record<string, string> = {
+  未维护: 'default',
+  有效: 'green',
+  临期: 'gold',
+  过期: 'red'
+}
 
 const isManagerRole = (roleName: string) => {
   const normalized = String(roleName || '').trim()
@@ -142,6 +162,7 @@ const statusColorMap: Record<string, string> = {
 const MeasureToolsLedger: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const isMobile = useIsMobile()
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
   const [rejectScrapForm] = Form.useForm()
@@ -161,6 +182,7 @@ const MeasureToolsLedger: React.FC = () => {
   const [assetStatusFilter, setAssetStatusFilter] = React.useState('')
   const [responsibilityStatusFilter, setResponsibilityStatusFilter] = React.useState('')
   const [scrapStatusFilter, setScrapStatusFilter] = React.useState('')
+  const [certificateStatusFilter, setCertificateStatusFilter] = React.useState('')
 
   const roleName = String((user as any)?.roles?.name || '')
   const isManager = isManagerRole(roleName)
@@ -176,6 +198,7 @@ const MeasureToolsLedger: React.FC = () => {
       if (assetStatusFilter) params.set('assetStatus', assetStatusFilter)
       if (responsibilityStatusFilter) params.set('responsibilityStatus', responsibilityStatusFilter)
       if (scrapStatusFilter) params.set('scrapStatus', scrapStatusFilter)
+      if (certificateStatusFilter) params.set('certificateStatus', certificateStatusFilter)
       const res = await fetchWithFallback(`/api/material-assets/ledger?${params.toString()}`)
       const json = await res.json().catch(() => ({}))
       if (!res.ok || json?.success === false) {
@@ -187,7 +210,7 @@ const MeasureToolsLedger: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [assetStatusFilter, responsibilityStatusFilter, scrapStatusFilter, search])
+  }, [assetStatusFilter, certificateStatusFilter, responsibilityStatusFilter, scrapStatusFilter, search])
 
   const loadUsers = React.useCallback(async () => {
     try {
@@ -247,6 +270,10 @@ const MeasureToolsLedger: React.FC = () => {
         name: String(values.name || '').trim(),
         code: String(values.code || '').trim(),
         model_spec: String(values.model_spec || '').trim(),
+        certificate_no: String(values.certificate_no || '').trim(),
+        certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
+        certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
+        certificate_remind_days: Number(values.certificate_remind_days ?? 30),
         responsible_person: String(selectedUser?.real_name || responsiblePerson).trim(),
         responsible_user_id: String(selectedUser?.id || values.responsible_user_id || ''),
         asset_status: String(values.asset_status || '在用'),
@@ -282,8 +309,8 @@ const MeasureToolsLedger: React.FC = () => {
   }
 
   const downloadTemplate = () => {
-    const header = ['名称', '编号', '型号规格', '责任人', '状态', '备注']
-    const sample = ['游标卡尺', 'LJ-001', '0-150mm', '张三', '在用', '初始导入需责任人本人确认']
+    const header = ['名称', '编号', '型号规格', '合格证编号', '发证日期', '有效日期', '提醒天数', '责任人', '状态', '备注']
+    const sample = ['游标卡尺', 'LJ-001', '0-150mm', 'HGZ-2026-001', '2026-07-01', '2027-07-01', '30', '张三', '在用', '初始导入需责任人本人确认']
     const ws = XLSX.utils.aoa_to_sheet([header, sample])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '量具台账导入模板')
@@ -304,6 +331,10 @@ const MeasureToolsLedger: React.FC = () => {
           name: String(row['名称'] || row['name'] || '').trim(),
           code: String(row['编号'] || row['code'] || '').trim(),
           model_spec: String(row['型号规格'] || row['model_spec'] || '').trim(),
+          certificate_no: String(row['合格证编号'] || row['certificate_no'] || '').trim(),
+          certificate_issue_date: String(row['发证日期'] || row['certificate_issue_date'] || '').trim(),
+          certificate_expire_date: String(row['有效日期'] || row['certificate_expire_date'] || '').trim(),
+          certificate_remind_days: String(row['提醒天数'] || row['certificate_remind_days'] || '30').trim(),
           responsible_person: String(row['责任人'] || row['responsible_person'] || '').trim(),
           asset_status: String(row['状态'] || row['asset_status'] || '在用').trim() || '在用',
           remark: String(row['备注'] || row['remark'] || '').trim()
@@ -367,6 +398,10 @@ const MeasureToolsLedger: React.FC = () => {
           name: String(values.name || '').trim(),
           code: String(values.code || '').trim(),
           model_spec: String(values.model_spec || '').trim(),
+          certificate_no: String(values.certificate_no || '').trim(),
+          certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
+          certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
+          certificate_remind_days: Number(values.certificate_remind_days ?? 30),
           remark: String(values.remark || '').trim(),
           userId: String((user as any)?.id || ''),
           operator: String(user?.real_name || '')
@@ -465,6 +500,37 @@ const MeasureToolsLedger: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
+      title: '合格证',
+      width: 260,
+      render: (_: any, record: MaterialAssetItem) => (
+        <div>
+          <div>{record.certificate_no || '-'}</div>
+          <div style={{ marginTop: 4 }}>
+            <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ marginRight: 6 }}>
+              {record.certificate_status || '未维护'}
+            </Tag>
+            <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
+              {record.certificate_expire_date || '未维护有效期'}
+            </Text>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: '到期提醒',
+      width: 160,
+      render: (_: any, record: MaterialAssetItem) => {
+        if (!record.certificate_expire_date) return <Text type="secondary">请维护</Text>
+        if (record.certificate_status === '过期') {
+          return <Text type="danger">已过期 {Math.abs(Number(record.certificate_remaining_days || 0))} 天</Text>
+        }
+        if (record.certificate_status === '临期') {
+          return <Text type="warning">{record.certificate_remaining_days} 天后到期</Text>
+        }
+        return <Text type="secondary">剩余 {record.certificate_remaining_days} 天</Text>
+      }
+    },
+    {
       title: '责任人',
       width: 260,
       render: (_: any, record: MaterialAssetItem) => (
@@ -524,6 +590,10 @@ const MeasureToolsLedger: React.FC = () => {
                 name: record.name,
                 code: record.code,
                 model_spec: record.model_spec,
+                certificate_no: record.certificate_no,
+                certificate_issue_date: record.certificate_issue_date ? dayjs(record.certificate_issue_date) : null,
+                certificate_expire_date: record.certificate_expire_date ? dayjs(record.certificate_expire_date) : null,
+                certificate_remind_days: record.certificate_remind_days ?? 30,
                 remark: record.remark
               })
               setEditOpen(true)
@@ -570,6 +640,13 @@ const MeasureToolsLedger: React.FC = () => {
     } as never)
   }
 
+  const summary = React.useMemo(() => {
+    const expired = items.filter((item) => item.certificate_status === '过期').length
+    const expiring = items.filter((item) => item.certificate_status === '临期').length
+    const missing = items.filter((item) => item.certificate_status === '未维护').length
+    return { expired, expiring, missing }
+  }, [items])
+
   return (
     <div style={{ padding: 16 }}>
       <Card bordered={false}>
@@ -592,6 +669,16 @@ const MeasureToolsLedger: React.FC = () => {
             <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')}>返回</Button>
           </Space>
         </div>
+
+        {(summary.expired > 0 || summary.expiring > 0 || summary.missing > 0) ? (
+          <Alert
+            type={summary.expired > 0 ? 'error' : 'warning'}
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={`合格证提醒：过期 ${summary.expired} 项，临期 ${summary.expiring} 项，未维护 ${summary.missing} 项`}
+            description="建议优先筛选“过期/临期”处理，并补全未维护的有效日期。"
+          />
+        ) : null}
 
         <Space wrap style={{ marginBottom: 16 }}>
           <Input
@@ -636,6 +723,19 @@ const MeasureToolsLedger: React.FC = () => {
               { value: '已报废', label: '已报废' }
             ]}
           />
+          <Select
+            allowClear
+            placeholder="合格证状态"
+            value={certificateStatusFilter || undefined}
+            onChange={(value) => setCertificateStatusFilter(String(value || ''))}
+            style={{ width: 160 }}
+            options={[
+              { value: '未维护', label: '未维护' },
+              { value: '有效', label: '有效' },
+              { value: '临期', label: '临期' },
+              { value: '过期', label: '过期' }
+            ]}
+          />
           <Button type="primary" onClick={loadItems}>查询</Button>
         </Space>
 
@@ -674,6 +774,18 @@ const MeasureToolsLedger: React.FC = () => {
           </Form.Item>
           <Form.Item label="型号规格" name="model_spec">
             <Input />
+          </Form.Item>
+          <Form.Item label="合格证编号" name="certificate_no">
+            <Input />
+          </Form.Item>
+          <Form.Item label="发证日期" name="certificate_issue_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="有效日期" name="certificate_expire_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="提醒提前天数" name="certificate_remind_days" initialValue={30}>
+            <Input type="number" min={0} />
           </Form.Item>
           <Form.Item label="责任人" name="responsible_person" rules={[{ required: true, message: '请输入或选择责任人' }]}>
             <AutoComplete
@@ -760,6 +872,18 @@ const MeasureToolsLedger: React.FC = () => {
           <Form.Item label="型号规格" name="model_spec">
             <Input />
           </Form.Item>
+          <Form.Item label="合格证编号" name="certificate_no">
+            <Input />
+          </Form.Item>
+          <Form.Item label="发证日期" name="certificate_issue_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="有效日期" name="certificate_expire_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="提醒提前天数" name="certificate_remind_days">
+            <Input type="number" min={0} />
+          </Form.Item>
           <Form.Item label="备注" name="remark">
             <Input.TextArea rows={3} />
           </Form.Item>
@@ -786,7 +910,7 @@ const MeasureToolsLedger: React.FC = () => {
         open={historyOpen}
         onCancel={() => setHistoryOpen(false)}
         footer={null}
-        width={900}
+        width={isMobile ? '100%' : 900}
       >
         <Table
           rowKey="id"

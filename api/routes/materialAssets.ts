@@ -29,6 +29,55 @@ const BORROW_STATUS = {
 } as const
 
 const normText = (value: any) => String(value || '').trim()
+const normalizeDateInput = (value: any) => {
+  const text = normText(value)
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+}
+const normalizeRemindDays = (value: any) => {
+  const num = Math.floor(Number(value))
+  return Number.isFinite(num) && num >= 0 ? num : 30
+}
+const toDayStart = (value: Date | string) => {
+  const date = value instanceof Date ? new Date(value) : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+const getCertificateMeta = (asset: any) => {
+  const expireDate = normalizeDateInput(asset?.certificate_expire_date)
+  const remindDays = normalizeRemindDays(asset?.certificate_remind_days)
+  if (!expireDate) {
+    return {
+      certificate_no: normText(asset?.certificate_no),
+      certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
+      certificate_expire_date: null,
+      certificate_remind_days: remindDays,
+      last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
+      certificate_status: '未维护',
+      certificate_remaining_days: null,
+      certificate_need_reminder: false
+    }
+  }
+  const today = toDayStart(new Date())!
+  const target = toDayStart(expireDate)!
+  const remainingDays = Math.ceil((target.getTime() - today.getTime()) / 86400000)
+  const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
+  const needReminder = normText(asset?.asset_status) !== ASSET_STATUS.scrapped && (status === '过期' || status === '临期')
+  return {
+    certificate_no: normText(asset?.certificate_no),
+    certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
+    certificate_expire_date: expireDate,
+    certificate_remind_days: remindDays,
+    last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
+    certificate_status: status,
+    certificate_remaining_days: remainingDays,
+    certificate_need_reminder: needReminder
+  }
+}
+const withCertificateMeta = (asset: any) => ({
+  ...asset,
+  ...getCertificateMeta(asset)
+})
 
 const isManagerRole = (roleName: string) => {
   const normalized = normText(roleName)
@@ -85,6 +134,12 @@ const ensureSchema = async () => {
   await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS borrowed_at TIMESTAMPTZ NULL`)
   await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMPTZ NULL`)
   await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS returned_at TIMESTAMPTZ NULL`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS certificate_no TEXT NOT NULL DEFAULT ''`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS certificate_issue_date DATE NULL`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS certificate_expire_date DATE NULL`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS certificate_remind_days INTEGER NOT NULL DEFAULT 30`)
+  await query(`ALTER TABLE measure_tool_assets ADD COLUMN IF NOT EXISTS last_certificate_reminded_at TIMESTAMPTZ NULL`)
+  await query(`CREATE INDEX IF NOT EXISTS idx_measure_tool_assets_certificate_expire_date ON measure_tool_assets(certificate_expire_date)`)
   await query(`
     CREATE TABLE IF NOT EXISTS measure_tool_asset_histories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -287,6 +342,7 @@ router.get('/ledger', async (req, res) => {
     const assetStatus = normText(req.query.assetStatus)
     const responsibilityStatus = normText(req.query.responsibilityStatus)
     const scrapStatus = normText(req.query.scrapStatus)
+    const certificateStatus = normText(req.query.certificateStatus)
 
     const whereClauses: string[] = ['1=1']
     const params: any[] = []
@@ -319,8 +375,6 @@ router.get('/ledger', async (req, res) => {
     }
 
     const whereSql = whereClauses.join(' AND ')
-    const countRs = await query(`SELECT COUNT(*)::int AS total FROM measure_tool_assets WHERE ${whereSql}`, params)
-    const listParams = [...params, pageSize, offset]
     const rowsRs = await query(`
       SELECT
         a.*,
@@ -333,13 +387,18 @@ router.get('/ledger', async (req, res) => {
       ) h ON h.asset_id = a.id
       WHERE ${whereSql}
       ORDER BY a.updated_at DESC, a.created_at DESC
-      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
-    `, listParams)
+    `, params)
+    let items = (rowsRs.rows || []).map(withCertificateMeta)
+    if (certificateStatus) {
+      items = items.filter((item: any) => normText(item?.certificate_status) === certificateStatus)
+    }
+    const total = items.length
+    const pagedItems = items.slice(offset, offset + pageSize)
 
     res.json({
       success: true,
-      items: rowsRs.rows || [],
-      total: Number(countRs.rows?.[0]?.total || 0),
+      items: pagedItems,
+      total,
       page,
       pageSize
     })
@@ -390,9 +449,9 @@ router.get('/mine', async (req, res) => {
 
     res.json({
       success: true,
-      ownedItems: ownedRs.rows || [],
-      pendingConfirmItems: pendingRs.rows || [],
-      borrowedItems: borrowedRs.rows || []
+      ownedItems: (ownedRs.rows || []).map(withCertificateMeta),
+      pendingConfirmItems: (pendingRs.rows || []).map(withCertificateMeta),
+      borrowedItems: (borrowedRs.rows || []).map(withCertificateMeta)
     })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载我的量具失败' })
@@ -423,6 +482,10 @@ router.post('/', async (req, res) => {
     const name = normText(req.body?.name)
     const code = normText(req.body?.code)
     const modelSpec = normText(req.body?.model_spec)
+    const certificateNo = normText(req.body?.certificate_no)
+    const certificateIssueDate = normalizeDateInput(req.body?.certificate_issue_date)
+    const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
+    const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
     const remark = normText(req.body?.remark)
     const isManagerCreate = actor.isManager
     const responsibleInput = isManagerCreate ? normText(req.body?.responsible_person) : actor.actorName
@@ -454,11 +517,15 @@ router.post('/', async (req, res) => {
           asset_status,
           scrap_status,
           scrap_reason,
+          certificate_no,
+          certificate_issue_date,
+          certificate_expire_date,
+          certificate_remind_days,
           remark,
           created_by,
           created_by_user_id
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
         RETURNING *
       `, [
         name,
@@ -472,6 +539,10 @@ router.post('/', async (req, res) => {
         assetStatus,
         assetStatus === ASSET_STATUS.scrapped ? SCRAP_STATUS.done : SCRAP_STATUS.none,
         assetStatus === ASSET_STATUS.scrapped ? normText(req.body?.scrap_reason || req.body?.remark) : '',
+        certificateNo,
+        certificateIssueDate,
+        certificateExpireDate,
+        certificateRemindDays,
         remark,
         actor.actorName,
         actor.userId
@@ -491,6 +562,7 @@ router.post('/', async (req, res) => {
           code,
           model_spec: modelSpec,
           asset_status: assetStatus,
+          certificate_expire_date: certificateExpireDate,
           create_mode: isManagerCreate ? 'manager_assign' : 'self_create'
         }
       })
@@ -537,6 +609,10 @@ router.post('/batch-import', async (req, res) => {
         const code = normText(raw?.code)
         const modelSpec = normText(raw?.model_spec)
         const responsibleInput = normText(raw?.responsible_person)
+        const certificateNo = normText(raw?.certificate_no)
+        const certificateIssueDate = normalizeDateInput(raw?.certificate_issue_date)
+        const certificateExpireDate = normalizeDateInput(raw?.certificate_expire_date)
+        const certificateRemindDays = normalizeRemindDays(raw?.certificate_remind_days)
         const remark = normText(raw?.remark)
         const assetStatus = normText(raw?.asset_status) === ASSET_STATUS.scrapped ? ASSET_STATUS.scrapped : ASSET_STATUS.active
         const resolvedPendingUser = await resolveUserByIdentity(raw?.responsible_user_id, responsibleInput)
@@ -558,11 +634,15 @@ router.post('/batch-import', async (req, res) => {
             asset_status,
             scrap_status,
             scrap_reason,
+            certificate_no,
+            certificate_issue_date,
+            certificate_expire_date,
+            certificate_remind_days,
             remark,
             created_by,
             created_by_user_id
           )
-          VALUES ($1,$2,$3,'','',$4,$5,$6,$7,$8,$9,$10,$11,$12)
+          VALUES ($1,$2,$3,'','',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
           RETURNING *
         `, [
           name,
@@ -574,6 +654,10 @@ router.post('/batch-import', async (req, res) => {
           assetStatus,
           assetStatus === ASSET_STATUS.scrapped ? SCRAP_STATUS.done : SCRAP_STATUS.none,
           assetStatus === ASSET_STATUS.scrapped ? normText(raw?.scrap_reason || raw?.remark) : '',
+          certificateNo,
+          certificateIssueDate,
+          certificateExpireDate,
+          certificateRemindDays,
           remark,
           actor.actorName,
           actor.userId
@@ -593,7 +677,8 @@ router.post('/batch-import', async (req, res) => {
             name,
             code,
             model_spec: modelSpec,
-            asset_status: assetStatus
+            asset_status: assetStatus,
+            certificate_expire_date: certificateExpireDate
           }
         })
       }
@@ -624,6 +709,10 @@ router.put('/:id', async (req, res) => {
     const name = normText(req.body?.name)
     const code = normText(req.body?.code)
     const modelSpec = normText(req.body?.model_spec)
+    const certificateNo = normText(req.body?.certificate_no)
+    const certificateIssueDate = normalizeDateInput(req.body?.certificate_issue_date)
+    const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
+    const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
     const remark = normText(req.body?.remark)
 
     if (!name || !code) {
@@ -637,11 +726,15 @@ router.put('/:id', async (req, res) => {
           name = $2,
           code = $3,
           model_spec = $4,
-          remark = $5,
+          certificate_no = $5,
+          certificate_issue_date = $6,
+          certificate_expire_date = $7,
+          certificate_remind_days = $8,
+          remark = $9,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
-      `, [assetId, name, code, modelSpec, remark])
+      `, [assetId, name, code, modelSpec, certificateNo, certificateIssueDate, certificateExpireDate, certificateRemindDays, remark])
       const row = rs.rows[0]
       await insertHistory(client, assetId, {
         actionType: 'edit_basic_info',
@@ -654,12 +747,20 @@ router.put('/:id', async (req, res) => {
             name: normText(asset.name),
             code: normText(asset.code),
             model_spec: normText(asset.model_spec),
+            certificate_no: normText(asset.certificate_no),
+            certificate_issue_date: normalizeDateInput(asset.certificate_issue_date),
+            certificate_expire_date: normalizeDateInput(asset.certificate_expire_date),
+            certificate_remind_days: normalizeRemindDays(asset.certificate_remind_days),
             remark: normText(asset.remark)
           },
           after: {
             name,
             code,
             model_spec: modelSpec,
+            certificate_no: certificateNo,
+            certificate_issue_date: certificateIssueDate,
+            certificate_expire_date: certificateExpireDate,
+            certificate_remind_days: certificateRemindDays,
             remark
           }
         }
@@ -675,6 +776,47 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: duplicateMessage })
     }
     res.status(500).json({ success: false, error: message || '编辑量具基础信息失败' })
+  }
+})
+
+router.put('/:id/remark', async (req, res) => {
+  try {
+    await ensureSchema()
+    const assetId = normText(req.params.id)
+    const actor = await resolveActor(req.body?.userId, req.body?.operator)
+    const asset = await loadAssetById(assetId)
+    if (!asset) return res.status(404).json({ success: false, error: '量具不存在' })
+    const canEdit = actor.isManager
+      || (actor.userId && actor.userId === normText(asset.responsible_user_id))
+      || (actor.actorName && actor.actorName === normText(asset.responsible_person))
+      || (actor.userId && actor.userId === normText(asset.pending_responsible_user_id))
+      || (actor.actorName && actor.actorName === normText(asset.pending_responsible_person))
+    if (!canEdit) return res.status(403).json({ success: false, error: '仅责任人或库管可以修改备注' })
+    const remark = normText(req.body?.remark)
+    const updated = await transaction(async (client) => {
+      const rs = await client.query(`
+        UPDATE measure_tool_assets
+        SET remark = $2, updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [assetId, remark])
+      const row = rs.rows[0]
+      await insertHistory(client, assetId, {
+        actionType: 'edit_remark',
+        actionLabel: '修改备注',
+        operatorName: actor.actorName,
+        operatorUserId: actor.userId,
+        remark,
+        detail: {
+          before: normText(asset.remark),
+          after: remark
+        }
+      })
+      return row
+    })
+    res.json({ success: true, item: updated })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || '保存备注失败' })
   }
 })
 

@@ -1628,6 +1628,55 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
       if (path.startsWith('/api/material-assets')) {
         const normTextSafe = (v: any) => String(v || '').trim()
         const nowIso = () => new Date().toISOString()
+        const normalizeDateInput = (value: any) => {
+          const text = normTextSafe(value)
+          return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+        }
+        const normalizeRemindDays = (value: any) => {
+          const num = Math.floor(Number(value))
+          return Number.isFinite(num) && num >= 0 ? num : 30
+        }
+        const toDayStart = (value: Date | string) => {
+          const date = value instanceof Date ? new Date(value) : new Date(value)
+          if (Number.isNaN(date.getTime())) return null
+          date.setHours(0, 0, 0, 0)
+          return date
+        }
+        const getCertificateMeta = (asset: any) => {
+          const expireDate = normalizeDateInput(asset?.certificate_expire_date)
+          const remindDays = normalizeRemindDays(asset?.certificate_remind_days)
+          if (!expireDate) {
+            return {
+              certificate_no: normTextSafe(asset?.certificate_no),
+              certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
+              certificate_expire_date: null,
+              certificate_remind_days: remindDays,
+              last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
+              certificate_status: '未维护',
+              certificate_remaining_days: null,
+              certificate_need_reminder: false
+            }
+          }
+          const today = toDayStart(new Date())!
+          const target = toDayStart(expireDate)!
+          const remainingDays = Math.ceil((target.getTime() - today.getTime()) / 86400000)
+          const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
+          const needReminder = normTextSafe(asset?.asset_status) !== '报废' && (status === '过期' || status === '临期')
+          return {
+            certificate_no: normTextSafe(asset?.certificate_no),
+            certificate_issue_date: normalizeDateInput(asset?.certificate_issue_date),
+            certificate_expire_date: expireDate,
+            certificate_remind_days: remindDays,
+            last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
+            certificate_status: status,
+            certificate_remaining_days: remainingDays,
+            certificate_need_reminder: needReminder
+          }
+        }
+        const withCertificateMeta = (asset: any) => ({
+          ...asset,
+          ...getCertificateMeta(asset)
+        })
         const isManagerRole = (roleName: string) => {
           const normalized = normTextSafe(roleName)
           return normalized.includes('超级管理员')
@@ -1712,6 +1761,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const assetStatus = normTextSafe(qs.get('assetStatus') || '')
           const responsibilityStatus = normTextSafe(qs.get('responsibilityStatus') || '')
           const scrapStatus = normTextSafe(qs.get('scrapStatus') || '')
+          const certificateStatus = normTextSafe(qs.get('certificateStatus') || '')
           const page = Math.max(Number(qs.get('page') || '1') || 1, 1)
           const pageSize = Math.max(Number(qs.get('pageSize') || '200') || 200, 1)
           const [assetsRes, historiesRes] = await Promise.all([
@@ -1733,6 +1783,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               row?.responsible_person,
               row?.pending_responsible_person,
               row?.borrower_name,
+              row?.certificate_no,
               row?.remark,
               row?.scrap_reason,
               row?.borrow_note,
@@ -1741,9 +1792,12 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const assetHit = !assetStatus || normTextSafe(row?.asset_status) === assetStatus
             const responsibilityHit = !responsibilityStatus || normTextSafe(row?.responsibility_status) === responsibilityStatus
             const scrapHit = !scrapStatus || normTextSafe(row?.scrap_status) === scrapStatus
-            return textHit && assetHit && responsibilityHit && scrapHit
+            const certMeta = getCertificateMeta(row)
+            const certificateHit = !certificateStatus || normTextSafe(certMeta.certificate_status) === certificateStatus
+            return textHit && assetHit && responsibilityHit && scrapHit && certificateHit
           }).map((row: any) => ({
             ...row,
+            ...getCertificateMeta(row),
             history_count: Number(historyCountMap.get(normTextSafe(row?.id)) || 0)
           }))
           const total = items.length
@@ -1766,21 +1820,21 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const ownedItems = rows.filter((row: any) =>
             (actor.userId && actor.userId === normTextSafe(row?.responsible_user_id))
             || (actor.actorName && actor.actorName === normTextSafe(row?.responsible_person))
-          )
+          ).map(withCertificateMeta)
           const pendingConfirmItems = rows.filter((row: any) =>
             ['待确认', '待转移确认'].includes(normTextSafe(row?.responsibility_status))
             && (
               (actor.userId && actor.userId === normTextSafe(row?.pending_responsible_user_id))
               || (actor.actorName && actor.actorName === normTextSafe(row?.pending_responsible_person))
             )
-          )
+          ).map(withCertificateMeta)
           const borrowedItems = rows.filter((row: any) =>
             ['借用中', '待归还确认'].includes(normTextSafe(row?.borrow_status))
             && (
               (actor.userId && actor.userId === normTextSafe(row?.borrower_user_id))
               || (actor.actorName && actor.actorName === normTextSafe(row?.borrower_name))
             )
-          )
+          ).map(withCertificateMeta)
           return jsonResponse({ success: true, ownedItems, pendingConfirmItems, borrowedItems })
         }
 
@@ -1802,6 +1856,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const name = normTextSafe(body?.name)
           const code = normTextSafe(body?.code)
           const modelSpec = normTextSafe(body?.model_spec)
+          const certificateNo = normTextSafe(body?.certificate_no)
+          const certificateIssueDate = normalizeDateInput(body?.certificate_issue_date)
+          const certificateExpireDate = normalizeDateInput(body?.certificate_expire_date)
+          const certificateRemindDays = normalizeRemindDays(body?.certificate_remind_days)
           const isManagerCreate = actor.isManager
           const responsibleInput = isManagerCreate ? normTextSafe(body?.responsible_person) : normTextSafe(actor.actorName)
           const remark = normTextSafe(body?.remark)
@@ -1825,6 +1883,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             asset_status: assetStatus,
             scrap_status: assetStatus === '报废' ? '已报废' : '无',
             scrap_reason: assetStatus === '报废' ? normTextSafe(body?.scrap_reason || body?.remark) : '',
+            certificate_no: certificateNo,
+            certificate_issue_date: certificateIssueDate,
+            certificate_expire_date: certificateExpireDate,
+            certificate_remind_days: certificateRemindDays,
             remark,
             created_by: actor.actorName,
             created_by_user_id: actor.userId
@@ -1845,6 +1907,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               code,
               model_spec: modelSpec,
               asset_status: assetStatus,
+              certificate_expire_date: certificateExpireDate,
               create_mode: isManagerCreate ? 'manager_assign' : 'self_create'
             }
           })
@@ -1863,6 +1926,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             const code = normTextSafe(raw?.code)
             const modelSpec = normTextSafe(raw?.model_spec)
             const responsibleInput = normTextSafe(raw?.responsible_person)
+            const certificateNo = normTextSafe(raw?.certificate_no)
+            const certificateIssueDate = normalizeDateInput(raw?.certificate_issue_date)
+            const certificateExpireDate = normalizeDateInput(raw?.certificate_expire_date)
+            const certificateRemindDays = normalizeRemindDays(raw?.certificate_remind_days)
             const remark = normTextSafe(raw?.remark)
             const assetStatus = normTextSafe(raw?.asset_status) === '报废' ? '报废' : '在用'
             if (!name || !code || !responsibleInput) {
@@ -1881,6 +1948,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               asset_status: assetStatus,
               scrap_status: assetStatus === '报废' ? '已报废' : '无',
               scrap_reason: assetStatus === '报废' ? normTextSafe(raw?.scrap_reason || raw?.remark) : '',
+              certificate_no: certificateNo,
+              certificate_issue_date: certificateIssueDate,
+              certificate_expire_date: certificateExpireDate,
+              certificate_remind_days: certificateRemindDays,
               remark,
               created_by: actor.actorName,
               created_by_user_id: actor.userId
@@ -1902,7 +1973,8 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 name: normTextSafe(row.name),
                 code: normTextSafe(row.code),
                 model_spec: normTextSafe(row.model_spec),
-                asset_status: normTextSafe(row.asset_status)
+                asset_status: normTextSafe(row.asset_status),
+                certificate_expire_date: normalizeDateInput(row.certificate_expire_date)
               }
             })
           }
@@ -1920,6 +1992,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             name: normTextSafe(body?.name),
             code: normTextSafe(body?.code),
             model_spec: normTextSafe(body?.model_spec),
+            certificate_no: normTextSafe(body?.certificate_no),
+            certificate_issue_date: normalizeDateInput(body?.certificate_issue_date),
+            certificate_expire_date: normalizeDateInput(body?.certificate_expire_date),
+            certificate_remind_days: normalizeRemindDays(body?.certificate_remind_days),
             remark: normTextSafe(body?.remark),
             updated_at: nowIso()
           }
@@ -1938,9 +2014,46 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 name: normTextSafe(existing?.name),
                 code: normTextSafe(existing?.code),
                 model_spec: normTextSafe(existing?.model_spec),
+                certificate_no: normTextSafe(existing?.certificate_no),
+                certificate_issue_date: normalizeDateInput(existing?.certificate_issue_date),
+                certificate_expire_date: normalizeDateInput(existing?.certificate_expire_date),
+                certificate_remind_days: normalizeRemindDays(existing?.certificate_remind_days),
                 remark: normTextSafe(existing?.remark)
               },
               after: payload
+            }
+          })
+          return jsonResponse({ success: true, item: data })
+        }
+
+        if (method === 'PUT' && /^\/api\/material-assets\/[^/]+\/remark$/.test(path)) {
+          const matched = path.match(/^\/api\/material-assets\/([^/]+)\/remark$/)
+          const assetId = normTextSafe(matched?.[1] || '')
+          const body = await readBody()
+          const actor = await getActor(body?.userId, body?.operator)
+          const asset = await loadAsset(assetId)
+          const canEdit = actor.isManager
+            || (actor.userId && actor.userId === normTextSafe(asset?.responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(asset?.responsible_person))
+            || (actor.userId && actor.userId === normTextSafe(asset?.pending_responsible_user_id))
+            || (actor.actorName && actor.actorName === normTextSafe(asset?.pending_responsible_person))
+          if (!canEdit) return jsonResponse({ success: false, error: '仅责任人或库管可以修改备注' }, 403)
+          const remark = normTextSafe(body?.remark)
+          const { data, error } = await scopedClient.from('measure_tool_assets').update({
+            remark,
+            updated_at: nowIso()
+          }).eq('id', assetId).select('*').single()
+          if (error) return jsonResponse({ success: false, error: error.message }, 500)
+          await insertHistory({
+            asset_id: assetId,
+            action_type: 'edit_remark',
+            action_label: '修改备注',
+            operator_name: actor.actorName,
+            operator_user_id: actor.userId,
+            remark,
+            detail_json: {
+              before: normTextSafe(asset?.remark),
+              after: remark
             }
           })
           return jsonResponse({ success: true, item: data })

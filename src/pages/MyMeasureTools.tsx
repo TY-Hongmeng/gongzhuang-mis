@@ -1,8 +1,10 @@
 import React from 'react'
 import {
+  Alert,
   AutoComplete,
   Button,
   Card,
+  DatePicker,
   Form,
   Input,
   Modal,
@@ -29,6 +31,7 @@ import {
   ExclamationCircleOutlined,
   WarningOutlined
 } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { useNavigate } from 'react-router-dom'
 import { fetchWithFallback } from '../utils/api'
 import { useAuthStore } from '../stores/authStore'
@@ -46,6 +49,13 @@ const tagColorMap: Record<string, string> = {
   待归还确认: 'purple',
   待报废: 'volcano',
   已报废: 'red'
+}
+
+const certificateTagColorMap: Record<string, string> = {
+  未维护: 'default',
+  有效: 'green',
+  临期: 'gold',
+  过期: 'red'
 }
 
 type MineRow = MaterialAssetItem & {
@@ -139,6 +149,34 @@ const MobileCard: React.FC<{
         <Tag color={tagColorMap[record.responsibility_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.responsibility_status}</Tag>
         {record.borrow_status !== '无' ? <Tag color={tagColorMap[record.borrow_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.borrow_status}</Tag> : null}
         {record.scrap_status !== '无' ? <Tag color={tagColorMap[record.scrap_status] || 'default'} style={{ margin: 0, fontSize: 13, padding: '3px 10px' }}>{record.scrap_status}</Tag> : null}
+      </div>
+
+      <div style={{
+        background: record.certificate_status === '过期' ? '#fff2f0' : record.certificate_status === '临期' ? '#fffbe6' : '#fafafa',
+        borderRadius: 8,
+        padding: '10px 12px',
+        marginBottom: 12,
+        border: `1px solid ${record.certificate_status === '过期' ? '#ffccc7' : record.certificate_status === '临期' ? '#ffe58f' : '#f0f0f0'}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ color: '#999', fontSize: 14 }}>合格证</span>
+          <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ margin: 0 }}>{record.certificate_status || '未维护'}</Tag>
+        </div>
+        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>
+          <div>证书编号：{record.certificate_no || '-'}</div>
+          <div>有效日期：{record.certificate_expire_date || '-'}</div>
+          <div>
+            提醒：{
+              !record.certificate_expire_date
+                ? '请维护有效日期'
+                : record.certificate_status === '过期'
+                  ? `已过期 ${Math.abs(Number(record.certificate_remaining_days || 0))} 天`
+                  : record.certificate_status === '临期'
+                    ? `${record.certificate_remaining_days} 天后到期`
+                    : `剩余 ${record.certificate_remaining_days} 天`
+            }
+          </div>
+        </div>
       </div>
 
       {/* 说明信息 */}
@@ -324,8 +362,11 @@ const MyMeasureTools: React.FC = () => {
   const stats = React.useMemo(() => ({
     pending: pendingItems.length,
     owned: ownedItems.length,
-    borrowed: borrowedItems.length
-  }), [pendingItems, ownedItems, borrowedItems])
+    borrowed: borrowedItems.length,
+    expired: mergedItems.filter((item) => item.certificate_status === '过期').length,
+    expiring: mergedItems.filter((item) => item.certificate_status === '临期').length,
+    missing: mergedItems.filter((item) => item.certificate_status === '未维护').length
+  }), [borrowedItems.length, mergedItems, ownedItems.length, pendingItems.length])
 
   const loadMine = React.useCallback(async () => {
     try {
@@ -442,6 +483,10 @@ const MyMeasureTools: React.FC = () => {
           name: String(values.name || '').trim(),
           code: String(values.code || '').trim(),
           model_spec: String(values.model_spec || '').trim(),
+          certificate_no: String(values.certificate_no || '').trim(),
+          certificate_issue_date: values.certificate_issue_date ? dayjs(values.certificate_issue_date).format('YYYY-MM-DD') : '',
+          certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
+          certificate_remind_days: Number(values.certificate_remind_days ?? 30),
           remark: String(values.remark || '').trim(),
           userId: String((user as any)?.id || ''),
           operator: String(user?.real_name || '')
@@ -582,6 +627,20 @@ const MyMeasureTools: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
+      title: '合格证', width: 240,
+      render: (_: any, record: MineRow) => (
+        <div>
+          <div>{record.certificate_no || '-'}</div>
+          <Space size={[4, 4]} wrap>
+            <Tag color={certificateTagColorMap[record.certificate_status] || 'default'}>{record.certificate_status}</Tag>
+            <Text type={record.certificate_status === '过期' ? 'danger' : 'secondary'}>
+              {record.certificate_expire_date || '未维护'}
+            </Text>
+          </Space>
+        </div>
+      )
+    },
+    {
       title: '责任关系', width: 220,
       render: (_: any, record: MineRow) => (
         <div>
@@ -655,7 +714,7 @@ const MyMeasureTools: React.FC = () => {
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: isMobile ? 'flex-start' : 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
           gap: 8,
           flexWrap: 'wrap',
           marginBottom: isMobile ? 10 : 16
@@ -664,18 +723,29 @@ const MyMeasureTools: React.FC = () => {
             <Title level={isMobile ? 5 : 4} style={{ margin: 0, fontSize: isMobile ? 17 : undefined }}>我的量具</Title>
             {!isMobile && <Text type="secondary">这里统一显示待你确认、你负责以及你借用的量具。</Text>}
           </div>
-          <Space wrap size={isMobile ? 4 : 8}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} size="small">新增量具</Button>
-            <Button icon={<ReloadOutlined />} onClick={loadMine} size="small">刷新</Button>
-            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size="small">返回</Button>
-          </Space>
+          <div style={{ display: 'flex', gap: isMobile ? 6 : 8, width: isMobile ? '100%' : 'auto' }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} size="small" style={isMobile ? { flex: 1 } : undefined}>新增量具</Button>
+            <Button icon={<ReloadOutlined />} onClick={loadMine} size="small" style={isMobile ? { flex: 1 } : undefined}>刷新</Button>
+            <Button icon={<LeftOutlined />} onClick={() => navigate('/dashboard')} size="small" style={isMobile ? { flex: 1 } : undefined}>返回</Button>
+          </div>
         </div>
+
+        {(stats.expired > 0 || stats.expiring > 0 || stats.missing > 0) ? (
+          <Alert
+            showIcon
+            type={stats.expired > 0 ? 'error' : 'warning'}
+            style={{ marginBottom: 12 }}
+            message={`合格证提醒：过期 ${stats.expired} 项，临期 ${stats.expiring} 项，未维护 ${stats.missing} 项`}
+            description={isMobile ? undefined : '请优先处理过期/临期合格证，并补全未维护的有效日期。'}
+          />
+        ) : null}
 
         {/* 手机端统计条 + Tab 切换 */}
         {isMobile && (
           <div style={{
-            display: 'flex',
-            gap: 6,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
             marginBottom: 10,
             paddingBottom: 10,
             borderBottom: '1px solid #f0f0f0'
@@ -689,7 +759,8 @@ const MyMeasureTools: React.FC = () => {
                 background: mobileTab === 'pending' ? '#fff7e6' : 'transparent',
                 border: mobileTab === 'pending' ? '1px solid #ffd591' : '1px solid transparent',
                 display: 'inline-flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               <Badge count={stats.pending} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
@@ -705,7 +776,8 @@ const MyMeasureTools: React.FC = () => {
                 background: mobileTab === 'owned' ? '#e6f7ff' : 'transparent',
                 border: mobileTab === 'owned' ? '1px solid #91d5ff' : '1px solid transparent',
                 display: 'inline-flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               <Badge count={stats.owned} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
@@ -721,12 +793,27 @@ const MyMeasureTools: React.FC = () => {
                 background: mobileTab === 'borrowed' ? '#e6fffb' : 'transparent',
                 border: mobileTab === 'borrowed' ? '1px solid #87e8de' : '1px solid transparent',
                 display: 'inline-flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               <Badge count={stats.borrowed} offset={[0, 0]} size="small" style={{ marginRight: 4 }}>
                 <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>我借用</span>
               </Badge>
+            </div>
+            <div style={{
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid #ffd6e7',
+              background: stats.expired > 0 ? '#fff1f0' : '#fafafa',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 13,
+              color: stats.expired > 0 ? '#cf1322' : '#666',
+              fontWeight: stats.expired > 0 ? 600 : 400
+            }}>
+              合格证过期 {stats.expired}
             </div>
           </div>
         )}
@@ -782,6 +869,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setCreateOpen(false); createForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={createForm} layout="vertical" onFinish={submitCreate}>
           <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
@@ -792,6 +880,18 @@ const MyMeasureTools: React.FC = () => {
           </Form.Item>
           <Form.Item label="型号规格" name="model_spec">
             <Input placeholder="请输入型号规格" />
+          </Form.Item>
+          <Form.Item label="合格证编号" name="certificate_no">
+            <Input placeholder="请输入合格证编号" />
+          </Form.Item>
+          <Form.Item label="发证日期" name="certificate_issue_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="有效日期" name="certificate_expire_date">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="提醒提前天数" name="certificate_remind_days" initialValue={30}>
+            <Input type="number" min={0} />
           </Form.Item>
           <Form.Item label="备注" name="remark">
             <Input.TextArea rows={3} placeholder="可选，填写来源、用途、存放位置等" />
@@ -814,6 +914,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setRejectTransferOpen(false); setCurrentItem(null); rejectTransferForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={rejectTransferForm} layout="vertical" onFinish={submitRejectTransfer}>
           <Form.Item label="拒绝原因" name="reason" rules={[{ required: true, message: '请填写拒绝原因' }]}>
@@ -834,6 +935,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setTransferOpen(false); setCurrentItem(null); transferForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={transferForm} layout="vertical" onFinish={submitTransfer}>
           <Form.Item label="接收责任人" name="target_name" rules={[{ required: true, message: '请输入或选择接收责任人' }]}>
@@ -870,6 +972,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setBorrowOpen(false); setCurrentItem(null); borrowForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={borrowForm} layout="vertical" onFinish={submitBorrow}>
           <Form.Item label="借用人" name="borrower_name" rules={[{ required: true, message: '请输入或选择借用人' }]}>
@@ -906,6 +1009,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setScrapOpen(false); setCurrentItem(null); scrapForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={scrapForm} layout="vertical" onFinish={submitScrapRequest}>
           <Form.Item label="报废原因" name="reason" rules={[{ required: true, message: '请填写报废原因' }]}>
@@ -926,6 +1030,7 @@ const MyMeasureTools: React.FC = () => {
         onCancel={() => { setReturnOpen(false); setCurrentItem(null); returnForm.resetFields() }}
         footer={null}
         destroyOnClose
+        width={isMobile ? '100%' : 520}
       >
         <Form form={returnForm} layout="vertical" onFinish={submitReturnRequest}>
           <Form.Item label="归还说明" name="return_note" rules={[{ required: true, message: '请填写归还说明' }]}>
