@@ -461,19 +461,32 @@ router.get('/reminder-summary', async (req, res) => {
     const rowsRs = await query(`SELECT * FROM measure_tool_assets ORDER BY updated_at DESC, created_at DESC`)
     const rows = rowsRs.rows || []
     const allItems = rows.map(withCertificateMeta)
-    const mineItems = rows.filter((row: any) => (
+    const mineOwnedItems = rows.filter((row: any) => (
       (actor.userId && normText(row?.responsible_user_id) === actor.userId)
       || (actor.actorName && normText(row?.responsible_person) === actor.actorName)
-      || (actor.userId && normText(row?.pending_responsible_user_id) === actor.userId)
-      || (actor.actorName && normText(row?.pending_responsible_person) === actor.actorName)
-      || (actor.userId && normText(row?.borrower_user_id) === actor.userId)
-      || (actor.actorName && normText(row?.borrower_name) === actor.actorName)
+    )).map(withCertificateMeta)
+    const minePendingItems = rows.filter((row: any) => (
+      [RESPONSIBILITY_STATUS.pending, RESPONSIBILITY_STATUS.transferPending].includes(normText(row?.responsibility_status) as any)
+      && (
+        (actor.userId && normText(row?.pending_responsible_user_id) === actor.userId)
+        || (actor.actorName && normText(row?.pending_responsible_person) === actor.actorName)
+      )
     )).map(withCertificateMeta)
 
     const summarize = (items: any[]) => {
-      const pending = items.filter((item) => normText(item?.responsibility_status) === RESPONSIBILITY_STATUS.pending).length
+      const pending = items.filter((item) =>
+        [RESPONSIBILITY_STATUS.pending, RESPONSIBILITY_STATUS.transferPending].includes(normText(item?.responsibility_status) as any)
+      ).length
       const expired = items.filter((item) => item.certificate_status === '过期').length
       const missing = items.filter((item) => item.certificate_status === '未维护').length
+      const total = pending + expired + missing
+      return { total, pending, expired, missing }
+    }
+
+    const summarizeMine = (ownedItems: any[], pendingItems: any[]) => {
+      const pending = pendingItems.length
+      const expired = ownedItems.filter((item) => item.certificate_status === '过期').length
+      const missing = ownedItems.filter((item) => item.certificate_status === '未维护').length
       const total = pending + expired + missing
       return { total, pending, expired, missing }
     }
@@ -481,7 +494,7 @@ router.get('/reminder-summary', async (req, res) => {
     res.json({
       success: true,
       ledger: summarize(allItems),
-      mine: summarize(mineItems)
+      mine: summarizeMine(mineOwnedItems, minePendingItems)
     })
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || '加载量具提醒汇总失败' })
