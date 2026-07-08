@@ -40,7 +40,7 @@ function useIsMobile(): boolean {
 }
 
 const certificateTagColorMap: Record<string, string> = {
-  未维护: 'default',
+  未维护: 'orange',
   有效: 'green',
   临期: 'gold',
   过期: 'red'
@@ -661,11 +661,11 @@ const MeasureToolsLedger: React.FC = () => {
 
         {(summary.expired > 0 || summary.expiring > 0 || summary.missing > 0) ? (
           <Alert
-            type={summary.expired > 0 ? 'error' : 'warning'}
+            type={summary.expired > 0 || summary.missing > 0 ? 'error' : 'warning'}
             showIcon
             style={{ marginBottom: 16 }}
             message={`合格证提醒：过期 ${summary.expired} 项，临期 ${summary.expiring} 项，未维护 ${summary.missing} 项`}
-            description="建议优先筛选“过期/临期”处理，并补全未维护的有效日期。"
+            description="建议优先处理过期、未维护和临期项目，并补全未维护的有效日期。"
           />
         ) : null}
 

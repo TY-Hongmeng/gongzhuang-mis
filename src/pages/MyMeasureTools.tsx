@@ -52,7 +52,7 @@ const tagColorMap: Record<string, string> = {
 }
 
 const certificateTagColorMap: Record<string, string> = {
-  未维护: 'default',
+  未维护: 'orange',
   有效: 'green',
   临期: 'gold',
   过期: 'red'
@@ -78,8 +78,14 @@ function useIsMobile(): boolean {
 const MobileCard: React.FC<{
   record: MineRow
   acting: boolean
+  certificateSavingId: string
+  certificateDraft: {
+    certificate_expire_date: string
+    certificate_remind_days: string
+  }
+  onCertificateDraftChange: (itemId: string, field: 'certificate_expire_date' | 'certificate_remind_days', value: string) => void
+  onSaveCertificate: () => void
   onConfirmResponsible: () => void
-  onOpenCertificate: () => void
   onCancelTransfer: () => void
   onOpenTransfer: () => void
   onOpenBorrow: () => void
@@ -153,11 +159,19 @@ const MobileCard: React.FC<{
       </div>
 
       <div style={{
-        background: record.certificate_status === '过期' ? '#fff2f0' : record.certificate_status === '临期' ? '#fffbe6' : '#fafafa',
+        background: record.certificate_status === '过期'
+          ? '#fff2f0'
+          : (record.certificate_status === '临期' || record.certificate_status === '未维护')
+            ? '#fffbe6'
+            : '#fafafa',
         borderRadius: 8,
         padding: '10px 12px',
         marginBottom: 12,
-        border: `1px solid ${record.certificate_status === '过期' ? '#ffccc7' : record.certificate_status === '临期' ? '#ffe58f' : '#f0f0f0'}`
+        border: `1px solid ${record.certificate_status === '过期'
+          ? '#ffccc7'
+          : (record.certificate_status === '临期' || record.certificate_status === '未维护')
+            ? '#ffe58f'
+            : '#f0f0f0'}`
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 6 }}>
           <span style={{ color: '#999', fontSize: 14 }}>合格证</span>
@@ -177,6 +191,32 @@ const MobileCard: React.FC<{
             }
           </div>
         </div>
+        {record.view_type === 'owned' && record.asset_status !== '报废' ? (
+          <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 88px auto', gap: 8 }}>
+            <Input
+              size="small"
+              placeholder="手动填写 YYYY-MM-DD"
+              value={certificateDraft.certificate_expire_date}
+              onChange={(e) => actions.onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
+            />
+            <Input
+              size="small"
+              type="number"
+              min={0}
+              placeholder="天数"
+              value={certificateDraft.certificate_remind_days}
+              onChange={(e) => actions.onCertificateDraftChange(record.id, 'certificate_remind_days', e.target.value)}
+            />
+            <Button
+              size="small"
+              type="primary"
+              loading={certificateSavingId === record.id}
+              onClick={actions.onSaveCertificate}
+            >
+              保存
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* 说明信息 */}
@@ -224,7 +264,8 @@ function renderMobileActions(
   acting: boolean,
   actions: {
     onConfirmResponsible: () => void
-    onOpenCertificate: () => void
+    onCertificateDraftChange: (itemId: string, field: 'certificate_expire_date' | 'certificate_remind_days', value: string) => void
+    onSaveCertificate: () => void
     onCancelTransfer: () => void
     onOpenTransfer: () => void
     onOpenBorrow: () => void
@@ -252,18 +293,6 @@ function renderMobileActions(
 
   if (record.view_type === 'owned') {
     const btns = []
-    btns.push(
-      <Button
-        key="certificate"
-        block
-        onClick={actions.onOpenCertificate}
-        disabled={record.asset_status === '报废'}
-        size="large"
-        style={btnStyle}
-      >
-        维护有效期
-      </Button>
-    )
     btns.push(
       <Button key="transfer" block icon={<SwapOutlined />} onClick={actions.onOpenTransfer}
         disabled={record.asset_status === '报废'} size="large" style={btnStyle}>
@@ -343,7 +372,6 @@ const MyMeasureTools: React.FC = () => {
   const [scrapForm] = Form.useForm()
   const [rejectTransferForm] = Form.useForm()
   const [createForm] = Form.useForm()
-  const [certificateForm] = Form.useForm()
   const [ownedItems, setOwnedItems] = React.useState<MaterialAssetItem[]>([])
   const [pendingItems, setPendingItems] = React.useState<MaterialAssetItem[]>([])
   const [borrowedItems, setBorrowedItems] = React.useState<MaterialAssetItem[]>([])
@@ -356,8 +384,12 @@ const MyMeasureTools: React.FC = () => {
   const [borrowOpen, setBorrowOpen] = React.useState(false)
   const [returnOpen, setReturnOpen] = React.useState(false)
   const [createOpen, setCreateOpen] = React.useState(false)
-  const [certificateOpen, setCertificateOpen] = React.useState(false)
   const [acting, setActing] = React.useState(false)
+  const [certificateSavingId, setCertificateSavingId] = React.useState('')
+  const [certificateDrafts, setCertificateDrafts] = React.useState<Record<string, {
+    certificate_expire_date: string
+    certificate_remind_days: string
+  }>>({})
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [borrowForm] = Form.useForm()
   const [returnForm] = Form.useForm()
@@ -424,6 +456,16 @@ const MyMeasureTools: React.FC = () => {
 
   React.useEffect(() => { loadMine() }, [loadMine])
   React.useEffect(() => { loadUsers() }, [loadUsers])
+  React.useEffect(() => {
+    const nextDrafts: Record<string, { certificate_expire_date: string, certificate_remind_days: string }> = {}
+    ownedItems.forEach((item) => {
+      nextDrafts[item.id] = {
+        certificate_expire_date: String(item.certificate_expire_date || ''),
+        certificate_remind_days: String(item.certificate_remind_days ?? 30)
+      }
+    })
+    setCertificateDrafts(nextDrafts)
+  }, [ownedItems])
 
   const postAction = async (url: string, body: Record<string, any>) => {
     const res = await fetchWithFallback(url, {
@@ -520,25 +562,39 @@ const MyMeasureTools: React.FC = () => {
     }
   }
 
-  const openCertificateEditor = (item: MaterialAssetItem) => {
-    setCurrentItem(item)
-    certificateForm.setFieldsValue({
-      certificate_expire_date: item.certificate_expire_date ? dayjs(item.certificate_expire_date) : null,
-      certificate_remind_days: item.certificate_remind_days ?? 30
-    })
-    setCertificateOpen(true)
+  const updateCertificateDraft = (
+    itemId: string,
+    field: 'certificate_expire_date' | 'certificate_remind_days',
+    value: string
+  ) => {
+    setCertificateDrafts((prev) => ({
+      ...prev,
+      [itemId]: {
+        certificate_expire_date: String(prev[itemId]?.certificate_expire_date || ''),
+        certificate_remind_days: String(prev[itemId]?.certificate_remind_days || '30'),
+        [field]: value
+      }
+    }))
   }
 
-  const submitCertificate = async (values: any) => {
-    if (!currentItem) return
+  const saveCertificate = async (item: MaterialAssetItem) => {
+    const draft = certificateDrafts[item.id] || {
+      certificate_expire_date: String(item.certificate_expire_date || ''),
+      certificate_remind_days: String(item.certificate_remind_days ?? 30)
+    }
+    const expireDate = String(draft.certificate_expire_date || '').trim()
+    if (expireDate && !/^\d{4}-\d{2}-\d{2}$/.test(expireDate)) {
+      message.warning('有效日期请按 YYYY-MM-DD 手动填写')
+      return
+    }
     try {
-      setActing(true)
-      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(currentItem.id)}/certificate`, {
+      setCertificateSavingId(item.id)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(item.id)}/certificate`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
-          certificate_remind_days: Number(values.certificate_remind_days ?? 30),
+          certificate_expire_date: expireDate,
+          certificate_remind_days: Number(draft.certificate_remind_days || 30),
           userId: String((user as any)?.id || ''),
           operator: String(user?.real_name || '')
         })
@@ -548,14 +604,11 @@ const MyMeasureTools: React.FC = () => {
         throw new Error(String(json?.error || '维护有效期失败'))
       }
       message.success('有效日期已更新')
-      setCertificateOpen(false)
-      certificateForm.resetFields()
-      setCurrentItem(null)
       loadMine()
     } catch (error: any) {
       message.error(error?.message || '维护有效期失败')
     } finally {
-      setActing(false)
+      setCertificateSavingId('')
     }
   }
 
@@ -679,7 +732,7 @@ const MyMeasureTools: React.FC = () => {
       render: (value: string) => value || '-'
     },
     {
-      title: '合格证', width: 240,
+      title: '合格证', width: 360,
       render: (_: any, record: MineRow) => (
         <div>
           <Space size={[4, 4]} wrap>
@@ -688,6 +741,29 @@ const MyMeasureTools: React.FC = () => {
               {record.certificate_expire_date || '未维护'}
             </Text>
           </Space>
+          {record.view_type === 'owned' && record.asset_status !== '报废' ? (
+            <Space size={6} wrap style={{ marginTop: 8 }}>
+              <Input
+                size="small"
+                placeholder="YYYY-MM-DD"
+                style={{ width: 128 }}
+                value={certificateDrafts[record.id]?.certificate_expire_date || ''}
+                onChange={(e) => updateCertificateDraft(record.id, 'certificate_expire_date', e.target.value)}
+              />
+              <Input
+                size="small"
+                type="number"
+                min={0}
+                placeholder="提醒天数"
+                style={{ width: 96 }}
+                value={certificateDrafts[record.id]?.certificate_remind_days || '30'}
+                onChange={(e) => updateCertificateDraft(record.id, 'certificate_remind_days', e.target.value)}
+              />
+              <Button size="small" type="link" loading={certificateSavingId === record.id} onClick={() => saveCertificate(record)}>
+                保存
+              </Button>
+            </Space>
+          ) : null}
         </div>
       )
     },
@@ -725,7 +801,7 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '操作', width: 420, align: 'center' as const,
+      title: '操作', width: 340, align: 'center' as const,
       render: (_: any, record: MineRow) => (
         <Space wrap>
           {record.view_type === 'pending' ? (
@@ -733,7 +809,6 @@ const MyMeasureTools: React.FC = () => {
           ) : null}
           {record.view_type === 'owned' ? (
             <>
-              <Button type="link" disabled={record.asset_status === '报废'} onClick={() => openCertificateEditor(record)}>维护有效期</Button>
               <Button type="link" disabled={record.asset_status === '报废'} onClick={() => { setCurrentItem(record); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}>转移责任人</Button>
               <Button type="link" disabled={record.asset_status === '报废' || record.responsibility_status !== '已确认' || record.borrow_status !== '无'} onClick={() => { setCurrentItem(record); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}>借出登记</Button>
               {record.responsibility_status === '待转移确认' && record.pending_responsible_person ? (
@@ -785,10 +860,10 @@ const MyMeasureTools: React.FC = () => {
         {(stats.expired > 0 || stats.expiring > 0 || stats.missing > 0) ? (
           <Alert
             showIcon
-            type={stats.expired > 0 ? 'error' : 'warning'}
+            type={stats.expired > 0 || stats.missing > 0 ? 'error' : 'warning'}
             style={{ marginBottom: 12 }}
             message={`合格证提醒：过期 ${stats.expired} 项，临期 ${stats.expiring} 项，未维护 ${stats.missing} 项`}
-            description={isMobile ? undefined : '请优先处理过期/临期合格证，并补全未维护的有效日期。'}
+            description={isMobile ? undefined : '请优先处理过期、未维护和临期合格证，并补全未维护的有效日期。'}
           />
         ) : null}
 
@@ -857,15 +932,15 @@ const MyMeasureTools: React.FC = () => {
               padding: '6px 10px',
               borderRadius: 6,
               border: '1px solid #ffd6e7',
-              background: stats.expired > 0 ? '#fff1f0' : '#fafafa',
+              background: (stats.expired > 0 || stats.missing > 0) ? '#fff1f0' : '#fafafa',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 13,
-              color: stats.expired > 0 ? '#cf1322' : '#666',
-              fontWeight: stats.expired > 0 ? 600 : 400
+              color: (stats.expired > 0 || stats.missing > 0) ? '#cf1322' : '#666',
+              fontWeight: (stats.expired > 0 || stats.missing > 0) ? 600 : 400
             }}>
-              合格证过期 {stats.expired}
+              待处理 {stats.expired + stats.missing}
             </div>
           </div>
         )}
@@ -887,8 +962,14 @@ const MyMeasureTools: React.FC = () => {
                   key={`${item.view_type}-${item.id}`}
                   record={item}
                   acting={acting}
+                  certificateSavingId={certificateSavingId}
+                  certificateDraft={certificateDrafts[item.id] || {
+                    certificate_expire_date: String(item.certificate_expire_date || ''),
+                    certificate_remind_days: String(item.certificate_remind_days ?? 30)
+                  }}
+                  onCertificateDraftChange={updateCertificateDraft}
+                  onSaveCertificate={() => saveCertificate(item)}
                   onConfirmResponsible={() => confirmResponsible(item)}
-                  onOpenCertificate={() => openCertificateEditor(item)}
                   onCancelTransfer={() => cancelTransfer(item)}
                   onOpenTransfer={() => { setCurrentItem(item); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}
                   onOpenBorrow={() => { setCurrentItem(item); borrowForm.setFieldsValue({ borrower_name: '', borrower_user_id: '', borrow_note: '' }); setBorrowOpen(true) }}
@@ -949,33 +1030,6 @@ const MyMeasureTools: React.FC = () => {
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => { setCreateOpen(false); createForm.resetFields() }}>取消</Button>
-              <Button type="primary" htmlType="submit" loading={acting}>保存</Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title={`维护有效期${currentItem ? ` - ${currentItem.name}` : ''}`}
-        open={certificateOpen}
-        onCancel={() => { setCertificateOpen(false); setCurrentItem(null); certificateForm.resetFields() }}
-        footer={null}
-        destroyOnClose
-        width={isMobile ? '100%' : 520}
-      >
-        <Form form={certificateForm} layout="vertical" onFinish={submitCertificate}>
-          <Form.Item label="有效日期" name="certificate_expire_date">
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item label="提醒提前天数" name="certificate_remind_days" initialValue={30}>
-            <Input type="number" min={0} />
-          </Form.Item>
-          <div style={{ marginBottom: 12 }}>
-            <Text type="secondary">清空有效日期可恢复为“未维护”状态。</Text>
-          </div>
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => { setCertificateOpen(false); setCurrentItem(null); certificateForm.resetFields() }}>取消</Button>
               <Button type="primary" htmlType="submit" loading={acting}>保存</Button>
             </Space>
           </Form.Item>

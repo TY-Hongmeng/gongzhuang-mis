@@ -1652,14 +1652,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               last_certificate_reminded_at: asset?.last_certificate_reminded_at || null,
               certificate_status: '未维护',
               certificate_remaining_days: null,
-              certificate_need_reminder: false
+              certificate_need_reminder: normTextSafe(asset?.asset_status) !== '报废'
             }
           }
           const today = toDayStart(new Date())!
           const target = toDayStart(expireDate)!
           const remainingDays = Math.ceil((target.getTime() - today.getTime()) / 86400000)
           const status = remainingDays < 0 ? '过期' : remainingDays <= remindDays ? '临期' : '有效'
-          const needReminder = normTextSafe(asset?.asset_status) !== '报废' && (status === '过期' || status === '临期')
+          const needReminder = normTextSafe(asset?.asset_status) !== '报废' && (status === '过期' || status === '临期' || status === '未维护')
           return {
             certificate_expire_date: expireDate,
             certificate_remind_days: remindDays,
