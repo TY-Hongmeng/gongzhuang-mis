@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -911,9 +911,8 @@ ${tablesHtml}
       return spans
     }
 
-    // ============= 单一表格，浏览器自然分页 =============
-    // 不再做 JS 端手动分页，让浏览器根据实际内容长度自然分页
-    // 表头和审批区用 CSS display: table-header-group / table-footer-group 让每页自动重复
+    // 固定为 A4 竖版打印，交给浏览器按页面高度自然铺满后分页
+    // 表头和审批区通过 table-header-group / table-footer-group 在每页自动重复
 
     let serialNo = 1
     const projectSpans = calcRowSpans(printRows.map(r => String(r.item.project_name || '').trim()))
@@ -941,17 +940,18 @@ ${tablesHtml}
     }).join('')
 
     const tableHtml = `
+      <div class="print-wrap">
       <table class="sheet">
         <colgroup>
-          <col style="width:4%">
-          <col style="width:10%">
-          <col style="width:18%">
-          <col style="width:7%">
+          <col style="width:6%">
           <col style="width:14%">
+          <col style="width:18%">
           <col style="width:9%">
-          <col style="width:12%">
-          <col style="width:11%">
+          <col style="width:16%">
           <col style="width:9%">
+          <col style="width:10%">
+          <col style="width:10%">
+          <col style="width:8%">
         </colgroup>
         <thead>
           <tr>
@@ -983,6 +983,7 @@ ${tablesHtml}
           </tr>
         </tfoot>
       </table>
+      </div>
     `
 
     const html = `
@@ -991,21 +992,24 @@ ${tablesHtml}
           <meta charset="UTF-8">
           <style>
             @page {
-              size: A4 landscape;
-              margin: 6mm 6mm 4mm 6mm;
+              size: A4 portrait;
+              margin: 8mm 7mm 6mm 7mm;
             }
             * { box-sizing: border-box; }
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              width: 285mm;
+              width: auto;
             }
             body {
               font-family: "Microsoft YaHei", "PingFang SC", SimSun, sans-serif;
-              font-size: 9pt;
-              line-height: 1.3;
+              font-size: 8.5pt;
+              line-height: 1.25;
               color: #000;
               background: #fff;
+            }
+            .print-wrap {
+              width: 100%;
             }
             table.sheet {
               width: 100%;
@@ -1015,57 +1019,53 @@ ${tablesHtml}
             }
             th, td {
               border: 1px solid #333;
-              padding: 2px 4px;
+              padding: 3px 4px;
               text-align: center;
               vertical-align: middle;
-              line-height: 1.3;
-              font-size: 9pt;
+              line-height: 1.25;
+              font-size: 8.5pt;
             }
             .header-line {
-              font-size: 13pt;
+              font-size: 12pt;
               font-weight: bold;
               text-align: center;
-              padding: 3px 4px;
-              letter-spacing: 1px;
+              padding: 4px 4px;
+              letter-spacing: 0.5px;
             }
-            /* 关键：让表头/表尾在每页自动重复 */
             thead { display: table-header-group; }
             tfoot { display: table-footer-group; }
-            /* 单行不切 */
             tbody tr { page-break-inside: avoid; }
             th {
               background: #f0f0f0;
               font-weight: bold;
-              padding: 3px 3px;
+              padding: 4px 3px;
             }
-            /* 横向打印列宽：12列更宽，型号列可显示更长的型号 */
-            td.cell-no { width: 4%; font-size: 8.5pt; }
+            td.cell-no {
+              font-size: 8pt;
+              text-align: center;
+            }
             td.cell-name {
-              width: 10%;
               text-align: left;
               word-break: break-all;
             }
             td.cell-model {
-              width: 18%;
               text-align: left;
               word-break: break-all;
             }
-            td.cell-qty { width: 7%; white-space: nowrap; }
+            td.cell-qty { white-space: nowrap; }
             td.cell-project {
-              width: 14%;
               text-align: left;
               word-break: break-all;
             }
-            td.cell-unit { width: 9%; word-break: break-all; }
-            td.cell-date { width: 12%; white-space: nowrap; }
-            td.cell-applicant { width: 9%; }
+            td.cell-unit { word-break: break-all; }
+            td.cell-date { white-space: nowrap; }
             tfoot td {
-              height: 30px;
+              height: 34px;
               vertical-align: middle;
               font-weight: normal;
               text-align: left;
               padding-left: 6px;
-              font-size: 9pt;
+              font-size: 8.5pt;
             }
             @media print {
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -1187,7 +1187,7 @@ ${tablesHtml}
               }
             }}>回退</Button>
             <Space size={6}>
-              <span style={{ color: '#555' }}>打印密度</span>
+              <span style={{ color: '#555' }}>导出密度</span>
               <Select
                 size="small"
                 style={{ width: 140 }}
