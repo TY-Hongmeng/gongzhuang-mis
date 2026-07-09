@@ -72,7 +72,8 @@ interface PurchaseOrder {
 }
 
 const PRINT_DENSITY_LEVEL = 6 as const;
-const PRINT_PORTRAIT_ROWS_PER_PAGE = 24
+const PRINT_PORTRAIT_PAGE_UNIT_BUDGET = 34
+const PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS = 12
 const PRINT_DENSITY_PROFILES = {
   1: { pageUnitBudget: 30, minLastPageUnits: 10 },
   2: { pageUnitBudget: 31, minLastPageUnits: 11 },
@@ -912,10 +913,57 @@ ${tablesHtml}
       return spans
     }
 
-    // 固定为 A4 竖版打印，并在前端手动分页，避免合并单元格跨页导致缺项
+    const estimateWrappedLines = (value: string, charsPerLine: number) => {
+      const text = String(value || '').trim()
+      if (!text) return 1
+      const logicalLines = text.split(/\r?\n/)
+      return logicalLines.reduce((sum, line) => {
+        const length = Array.from(line).length
+        return sum + Math.max(1, Math.ceil(length / charsPerLine))
+      }, 0)
+    }
+
+    const estimateRowUnits = (row: typeof printRows[number]) => {
+      const item = row.item
+      const lineCount = Math.max(
+        estimateWrappedLines(String(item.part_name || ''), 9),
+        estimateWrappedLines(String(item.model || ''), 16),
+        estimateWrappedLines(String(item.project_name || ''), 10),
+        estimateWrappedLines(String(item.production_unit || ''), 6),
+        1
+      )
+      if (lineCount >= 4) return 2.8
+      if (lineCount === 3) return 2.2
+      if (lineCount === 2) return 1.6
+      return 1
+    }
+
+    // 固定为 A4 竖版打印，优先把当前页尽量铺满，再在页内做合并，避免大面积留白
     const pages: Array<typeof printRows> = []
-    for (let index = 0; index < printRows.length; index += PRINT_PORTRAIT_ROWS_PER_PAGE) {
-      pages.push(printRows.slice(index, index + PRINT_PORTRAIT_ROWS_PER_PAGE))
+    let cursor = 0
+    while (cursor < printRows.length) {
+      let usedUnits = 0
+      let nextCursor = cursor
+
+      while (nextCursor < printRows.length) {
+        const rowUnits = estimateRowUnits(printRows[nextCursor])
+        if (nextCursor > cursor && usedUnits + rowUnits > PRINT_PORTRAIT_PAGE_UNIT_BUDGET) break
+        usedUnits += rowUnits
+        nextCursor += 1
+      }
+
+      const remainingRows = printRows.length - nextCursor
+      if (remainingRows > 0) {
+        const remainingUnits = printRows
+          .slice(nextCursor)
+          .reduce((sum, row) => sum + estimateRowUnits(row), 0)
+        if (remainingUnits < PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS && nextCursor - cursor > 1) {
+          nextCursor -= 1
+        }
+      }
+
+      pages.push(printRows.slice(cursor, nextCursor))
+      cursor = nextCursor
     }
 
     const buildPageTableHtml = (
