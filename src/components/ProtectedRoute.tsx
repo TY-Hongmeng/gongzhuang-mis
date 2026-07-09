@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { Spin } from 'antd'
@@ -33,12 +33,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredModule 
 }) => {
-  const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore()
+  const { user, isAuthenticated, isLoading } = useAuthStore()
   const location = useLocation()
-
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
 
   // 显示加载状态
   if (isLoading) {
