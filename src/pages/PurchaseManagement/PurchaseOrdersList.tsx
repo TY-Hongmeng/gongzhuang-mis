@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -573,6 +573,110 @@ export default function PurchaseOrdersList() {
     return () => {};
   }, []);
 
+  type ApprovalPrintRow = {
+    item: PurchaseOrder
+    cdate: string
+    ddate: string
+  }
+
+  const buildApprovalQtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
+
+  const compareApprovalRows = (a: ApprovalPrintRow, b: ApprovalPrintRow) => {
+    const compare = (x: string, y: string) => x.localeCompare(y, 'zh-CN')
+    const keysA = [
+      String(a.item.project_name || '').trim(),
+      String(a.item.production_unit || '').trim(),
+      String(a.cdate || '').trim(),
+      String(a.ddate || '').trim(),
+      String(a.item.applicant || '').trim(),
+      String(a.item.part_name || '').trim(),
+      String(a.item.model || '').trim(),
+      String(buildApprovalQtyText(a.item)).trim()
+    ]
+    const keysB = [
+      String(b.item.project_name || '').trim(),
+      String(b.item.production_unit || '').trim(),
+      String(b.cdate || '').trim(),
+      String(b.ddate || '').trim(),
+      String(b.item.applicant || '').trim(),
+      String(b.item.part_name || '').trim(),
+      String(b.item.model || '').trim(),
+      String(buildApprovalQtyText(b.item)).trim()
+    ]
+    for (let i = 0; i < keysA.length; i += 1) {
+      const diff = compare(keysA[i], keysB[i])
+      if (diff !== 0) return diff
+    }
+    return 0
+  }
+
+  const buildApprovalPrintRows = (rows: PurchaseOrder[]) => rows
+    .map((item) => ({
+      item,
+      cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
+      ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
+    }))
+    .sort(compareApprovalRows)
+    .reduce<ApprovalPrintRow[]>((acc, row, index) => {
+      if (index === 0) {
+        acc.push(row)
+        return acc
+      }
+      const prev = acc[index - 1]
+      const currentItem = row.item
+      const prevItem = prev.item
+      acc.push({
+        ...row,
+        item: {
+          ...currentItem,
+          project_name: String(currentItem.project_name || '').trim() || String(prevItem.project_name || '').trim(),
+          production_unit: String(currentItem.production_unit || '').trim() || String(prevItem.production_unit || '').trim(),
+          applicant: String(currentItem.applicant || '').trim() || String(prevItem.applicant || '').trim()
+        },
+        cdate: String(row.cdate || '').trim() || String(prev.cdate || '').trim(),
+        ddate: String(row.ddate || '').trim() || String(prev.ddate || '').trim()
+      })
+      return acc
+    }, [])
+
+  const getApprovalGroupValues = (row: ApprovalPrintRow) => ([
+    String(row.item.project_name || '').trim(),
+    String(row.item.production_unit || '').trim(),
+    String(row.cdate || '').trim(),
+    String(row.ddate || '').trim(),
+    String(row.item.applicant || '').trim()
+  ])
+
+  const calcApprovalGroupSpans = (rows: ApprovalPrintRow[]) => {
+    const spans = Array(rows.length).fill(1)
+    let i = 0
+    while (i < rows.length) {
+      const currentValues = getApprovalGroupValues(rows[i])
+      if (!currentValues.some(Boolean)) {
+        i += 1
+        continue
+      }
+      let j = i + 1
+      while (
+        j < rows.length &&
+        getApprovalGroupValues(rows[j]).every((value, idx) => value === currentValues[idx])
+      ) {
+        j += 1
+      }
+      spans[i] = j - i
+      for (let k = i + 1; k < j; k += 1) spans[k] = 0
+      i = j
+    }
+    return spans
+  }
+
+  const isSameApprovalGroup = (prevRow: ApprovalPrintRow | undefined, nextRow: ApprovalPrintRow | undefined) => {
+    if (!prevRow || !nextRow) return false
+    const prevValues = getApprovalGroupValues(prevRow)
+    const nextValues = getApprovalGroupValues(nextRow)
+    return prevValues.every((value, idx) => value === nextValues[idx])
+  }
+
   // 导出审批清单电子版Excel（与打印格式完全一致，通过HTML表格+Excel XML命名空间实现样式）
   const exportApprovalExcel = () => {
     if (selectedRowKeys.length === 0) { message.warning('请选择需要导出的审批清单'); return; }
@@ -583,47 +687,7 @@ export default function PurchaseOrdersList() {
       const text = String(value ?? '')
       return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
     }
-    const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
-    const exportRows = rows.map((item) => ({
-      item,
-      cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
-      ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
-    })).sort((a, b) => {
-      const compare = (x: string, y: string) => x.localeCompare(y, 'zh-CN')
-      const keysA = [
-        String(a.item.project_name || '').trim(), String(a.item.production_unit || '').trim(),
-        String(a.cdate || '').trim(), String(a.ddate || '').trim(),
-        String(a.item.applicant || '').trim(), String(a.item.part_name || '').trim(),
-        String(a.item.model || '').trim(), String(qtyText(a.item)).trim()
-      ]
-      const keysB = [
-        String(b.item.project_name || '').trim(), String(b.item.production_unit || '').trim(),
-        String(b.cdate || '').trim(), String(b.ddate || '').trim(),
-        String(b.item.applicant || '').trim(), String(b.item.part_name || '').trim(),
-        String(b.item.model || '').trim(), String(qtyText(b.item)).trim()
-      ]
-      for (let i = 0; i < keysA.length; i += 1) {
-        const diff = compare(keysA[i], keysB[i])
-        if (diff !== 0) return diff
-      }
-      return 0
-    })
-
-    // 计算rowspan合并：相同值的连续单元格合并（与print完全一致）
-    const calcRowSpans = (values: string[]) => {
-      const spans = Array(values.length).fill(1)
-      let i = 0
-      while (i < values.length) {
-        const current = values[i]
-        if (!current) { i += 1; continue }
-        let j = i + 1
-        while (j < values.length && values[j] === current) j += 1
-        spans[i] = j - i
-        for (let k = i + 1; k < j; k += 1) spans[k] = 0
-        i = j
-      }
-      return spans
-    }
+    const exportRows = buildApprovalPrintRows(rows)
 
     // 打印密度映射：与print完全一致
     const DENSITY_ROWS_MAP: Record<number, number> = {
@@ -638,16 +702,10 @@ export default function PurchaseOrdersList() {
     while (pageStart < exportRows.length) {
       let pageEnd = Math.min(pageStart + rowsPerPage, exportRows.length)
       if (pageEnd < exportRows.length) {
-        const pageSlice = exportRows.slice(pageStart, pageEnd)
-        const lastIdx = pageSlice.length - 1
-        const projectSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.project_name || '').trim()))
-        const productionSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.production_unit || '').trim()))
-        const createdDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.cdate || '').trim()))
-        const demandDateSpansCheck = calcRowSpans(pageSlice.map(r => String(r.ddate || '').trim()))
-        const applicantSpansCheck = calcRowSpans(pageSlice.map(r => String(r.item.applicant || '').trim()))
-        const spans = [projectSpansCheck, productionSpansCheck, createdDateSpansCheck, demandDateSpansCheck, applicantSpansCheck]
-        const hasCrossPageSpan = spans.some(s => s[lastIdx] > 1)
-        if (hasCrossPageSpan) {
+        while (
+          pageEnd > pageStart + 1 &&
+          isSameApprovalGroup(exportRows[pageEnd - 1], exportRows[pageEnd])
+        ) {
           pageEnd = Math.max(pageStart + 1, pageEnd - 1)
         }
       }
@@ -657,11 +715,7 @@ export default function PurchaseOrdersList() {
 
     // 构建单页HTML表格（与printApprovalList的HTML/CSS 100%一致）
     const buildPageHtml = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): string => {
-      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
-      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
-      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
-      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
-      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
+      const groupSpans = calcApprovalGroupSpans(pageRows)
 
       let serialNo = startSerialNo
       const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
@@ -670,12 +724,12 @@ export default function PurchaseOrdersList() {
           <td class="cell-no">${serialNo}</td>
           <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
           <td class="cell-model">${escapeHtml(item.model || '')}</td>
-          <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
-          ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-          ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-          ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-          ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-          ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          <td class="cell-qty">${escapeHtml(buildApprovalQtyText(item))}</td>
+          ${groupSpans[idx] > 0 ? `<td class="cell-project" rowspan="${groupSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+          ${groupSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${groupSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+          ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+          ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+          ${groupSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${groupSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>`
         serialNo += 1
         return rowHtml
@@ -730,9 +784,11 @@ export default function PurchaseOrdersList() {
 
     // 构建所有页的HTML
     let serialNo = 1
-    const tablesHtml = pages.map((pageRows, pageIndex) =>
-      buildPageHtml(pageRows, pageIndex, pages.length, serialNo)
-    ).join('')
+    const tablesHtml = pages.map((pageRows, pageIndex) => {
+      const html = buildPageHtml(pageRows, pageIndex, pages.length, serialNo)
+      serialNo += pageRows.length
+      return html
+    }).join('')
 
     // 与printApprovalList完全一致的CSS样式（针对Excel渲染优化）
     const cssStyles = `
@@ -854,7 +910,6 @@ ${tablesHtml}
     if (selectedRowKeys.length === 0) { message.warning('请选择需要打印的审批清单'); return; }
     const rows = filteredData.filter(item => selectedRowKeys.includes(item.id))
     if (rows.length === 0) { message.warning('没有可打印的审批清单'); return }
-
     const escapeHtml = (value: any) => {
       const text = String(value ?? '')
       return text
@@ -864,82 +919,7 @@ ${tablesHtml}
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;')
     }
-    const qtyText = (item: PurchaseOrder) => `${item.part_quantity || 0}${item.unit ? ' ' + item.unit : ''}`
-    const printRows = rows.map((item) => ({
-      item,
-      cdate: dayjs(item.created_date).format('YYYY-MM-DD'),
-      ddate: item.demand_date ? dayjs(item.demand_date).format('YYYY-MM-DD') : ''
-    })).sort((a, b) => {
-      const compare = (x: string, y: string) => x.localeCompare(y, 'zh-CN')
-      const keysA = [
-        String(a.item.project_name || '').trim(),
-        String(a.item.production_unit || '').trim(),
-        String(a.cdate || '').trim(),
-        String(a.ddate || '').trim(),
-        String(a.item.applicant || '').trim(),
-        String(a.item.part_name || '').trim(),
-        String(a.item.model || '').trim(),
-        String(qtyText(a.item)).trim()
-      ]
-      const keysB = [
-        String(b.item.project_name || '').trim(),
-        String(b.item.production_unit || '').trim(),
-        String(b.cdate || '').trim(),
-        String(b.ddate || '').trim(),
-        String(b.item.applicant || '').trim(),
-        String(b.item.part_name || '').trim(),
-        String(b.item.model || '').trim(),
-        String(qtyText(b.item)).trim()
-      ]
-      for (let i = 0; i < keysA.length; i += 1) {
-        const diff = compare(keysA[i], keysB[i])
-        if (diff !== 0) return diff
-      }
-      return 0
-    })
-
-    const normalizedPrintRows = printRows.reduce<typeof printRows>((acc, row, index) => {
-      if (index === 0) {
-        acc.push(row)
-        return acc
-      }
-      const prev = acc[index - 1]
-      const currentItem = row.item
-      const prevItem = prev.item
-      const normalizedProjectName = String(currentItem.project_name || '').trim() || String(prevItem.project_name || '').trim()
-      const normalizedProductionUnit = String(currentItem.production_unit || '').trim() || String(prevItem.production_unit || '').trim()
-      const normalizedApplicant = String(currentItem.applicant || '').trim() || String(prevItem.applicant || '').trim()
-      const normalizedCreatedDate = String(row.cdate || '').trim() || String(prev.cdate || '').trim()
-      const normalizedDemandDate = String(row.ddate || '').trim() || String(prev.ddate || '').trim()
-
-      acc.push({
-        ...row,
-        item: {
-          ...currentItem,
-          project_name: normalizedProjectName,
-          production_unit: normalizedProductionUnit,
-          applicant: normalizedApplicant
-        },
-        cdate: normalizedCreatedDate,
-        ddate: normalizedDemandDate
-      })
-      return acc
-    }, [])
-    // 计算rowspan合并：相同值的连续单元格合并
-    const calcRowSpans = (values: string[]) => {
-      const spans = Array(values.length).fill(1)
-      let i = 0
-      while (i < values.length) {
-        const current = values[i]
-        if (!current) { i += 1; continue }
-        let j = i + 1
-        while (j < values.length && values[j] === current) j += 1
-        spans[i] = j - i
-        for (let k = i + 1; k < j; k += 1) spans[k] = 0
-        i = j
-      }
-      return spans
-    }
+    const printRows = buildApprovalPrintRows(rows)
 
     const estimateWrappedLines = (value: string, charsPerLine: number) => {
       const text = String(value || '').trim()
@@ -974,7 +954,7 @@ ${tablesHtml}
       let nextCursor = cursor
 
       while (nextCursor < printRows.length) {
-        const rowUnits = estimateRowUnits(normalizedPrintRows[nextCursor])
+        const rowUnits = estimateRowUnits(printRows[nextCursor])
         if (nextCursor > cursor && usedUnits + rowUnits > PRINT_PORTRAIT_PAGE_UNIT_BUDGET) break
         usedUnits += rowUnits
         nextCursor += 1
@@ -982,7 +962,7 @@ ${tablesHtml}
 
       const remainingRows = printRows.length - nextCursor
       if (remainingRows > 0) {
-        const remainingUnits = normalizedPrintRows
+        const remainingUnits = printRows
           .slice(nextCursor)
           .reduce((sum, row) => sum + estimateRowUnits(row), 0)
         if (remainingUnits < PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS && nextCursor - cursor > 1) {
@@ -990,7 +970,14 @@ ${tablesHtml}
         }
       }
 
-      pages.push(normalizedPrintRows.slice(cursor, nextCursor))
+      while (
+        nextCursor < printRows.length &&
+        nextCursor > cursor + 1 &&
+        isSameApprovalGroup(printRows[nextCursor - 1], printRows[nextCursor])
+      ) {
+        nextCursor -= 1
+      }
+      pages.push(printRows.slice(cursor, nextCursor))
       cursor = nextCursor
     }
 
@@ -1001,11 +988,7 @@ ${tablesHtml}
       startSerialNo: number
     ) => {
       let serialNo = startSerialNo
-      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
-      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
-      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
-      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
-      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
+      const groupSpans = calcApprovalGroupSpans(pageRows)
 
       const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
         const rowHtml = `
@@ -1013,12 +996,12 @@ ${tablesHtml}
             <td class="cell-no">${serialNo}</td>
             <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
             <td class="cell-model">${escapeHtml(item.model || '')}</td>
-            <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
-            ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-            ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-            ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-            ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-            ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+            <td class="cell-qty">${escapeHtml(buildApprovalQtyText(item))}</td>
+            ${groupSpans[idx] > 0 ? `<td class="cell-project" rowspan="${groupSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+            ${groupSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${groupSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+            ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+            ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+            ${groupSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${groupSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>
         `
         serialNo += 1
