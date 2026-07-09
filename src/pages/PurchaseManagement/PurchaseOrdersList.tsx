@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -898,9 +898,12 @@ ${tablesHtml}
       return 0
     })
 
-    const normalizedPrintRows = printRows.map((row, index, arr) => {
-      if (index === 0) return row
-      const prev = arr[index - 1]
+    const normalizedPrintRows = printRows.reduce<typeof printRows>((acc, row, index) => {
+      if (index === 0) {
+        acc.push(row)
+        return acc
+      }
+      const prev = acc[index - 1]
       const currentItem = row.item
       const prevItem = prev.item
       const normalizedProjectName = String(currentItem.project_name || '').trim() || String(prevItem.project_name || '').trim()
@@ -909,7 +912,7 @@ ${tablesHtml}
       const normalizedCreatedDate = String(row.cdate || '').trim() || String(prev.cdate || '').trim()
       const normalizedDemandDate = String(row.ddate || '').trim() || String(prev.ddate || '').trim()
 
-      return {
+      acc.push({
         ...row,
         item: {
           ...currentItem,
@@ -919,8 +922,9 @@ ${tablesHtml}
         },
         cdate: normalizedCreatedDate,
         ddate: normalizedDemandDate
-      }
-    })
+      })
+      return acc
+    }, [])
     // 计算rowspan合并：相同值的连续单元格合并
     const calcRowSpans = (values: string[]) => {
       const spans = Array(values.length).fill(1)
