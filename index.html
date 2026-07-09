@@ -4,7 +4,80 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>My Trae Project</title>
+    <script>
+      (function(){
+        try {
+          var buildVersion = 'v26.07.09.4'
+          window.__APP_HTML_VERSION__ = buildVersion
+          var ua = navigator.userAgent || ''
+          var isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
+          if (!isMobile) return
+
+          var withBust = function(url, extraKey, extraVal){
+            try {
+              var hashIdx = url.indexOf('#')
+              var hash = hashIdx >= 0 ? url.slice(hashIdx) : ''
+              var base = hashIdx >= 0 ? url.slice(0, hashIdx) : url
+              var queryIdx = base.indexOf('?')
+              var path = queryIdx >= 0 ? base.slice(0, queryIdx) : base
+              var query = queryIdx >= 0 ? base.slice(queryIdx + 1) : ''
+              if (extraKey) {
+                query += (query ? '&' : '') + encodeURIComponent(extraKey) + '=' + encodeURIComponent(String(extraVal || '1'))
+              }
+              query += (query ? '&' : '') + 'mobile_reload_ts=' + Date.now()
+              return path + '?' + query + hash
+            } catch (e0) {
+              return url
+            }
+          }
+
+          var clearClientCache = function(){
+            try {
+              if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+                navigator.serviceWorker.getRegistrations().then(function(regs){
+                  regs.forEach(function(reg){ try { reg.unregister() } catch(_) {} })
+                }).catch(function(){})
+              }
+            } catch (e1) {}
+            try {
+              if (window.caches && caches.keys) {
+                caches.keys().then(function(names){
+                  return Promise.all(names.map(function(name){ return caches.delete(name) }))
+                }).catch(function(){})
+              }
+            } catch (e2) {}
+          }
+
+          var versionKey = '__app_mobile_boot_version__'
+          var seenVersion = ''
+          try {
+            seenVersion = sessionStorage.getItem(versionKey) || ''
+          } catch (e3) {}
+
+          if (seenVersion !== buildVersion && location.search.indexOf('mobile_boot_bust=') === -1) {
+            try { sessionStorage.setItem(versionKey, buildVersion) } catch (e4) {}
+            clearClientCache()
+            location.replace(withBust(location.href, 'mobile_boot_bust', buildVersion))
+            return
+          }
+
+          window.addEventListener('pageshow', function(event){
+            try {
+              var navEntries = performance.getEntriesByType ? performance.getEntriesByType('navigation') : []
+              var isBackForward = !!(event && event.persisted) || !!(navEntries && navEntries[0] && navEntries[0].type === 'back_forward')
+              if (!isBackForward) return
+              if (location.search.indexOf('mobile_pageshow_reload=') !== -1) return
+              clearClientCache()
+              location.replace(withBust(location.href, 'mobile_pageshow_reload', buildVersion))
+            } catch (e5) {}
+          })
+        } catch (e6) {}
+      })();
+    </script>
     <script>
       (function(){
         try {
