@@ -61,6 +61,15 @@ interface AuthState {
   refreshUser: () => Promise<void>
 }
 
+const fetchCurrentUser = async (userId: string) => {
+  const res = await fetchWithFallback(`/api/auth/me?userId=${encodeURIComponent(userId)}`)
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || data?.success !== true || !data?.user) {
+    throw new Error(String(data?.error || '获取当前用户信息失败'))
+  }
+  return data.user as User
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -225,24 +234,37 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
-        // 检查本地存储的用户信息是否有效
         const { user } = get();
-        if (user) {
-          set({ isAuthenticated: true, isLoading: false });
+        if (!user?.id) {
+          set({ isAuthenticated: false, isLoading: false })
           return
         }
-        set({ isAuthenticated: false, isLoading: false })
+        set({ isLoading: true })
+        try {
+          const latestUser = await fetchCurrentUser(String(user.id))
+          set({
+            user: latestUser,
+            isAuthenticated: true,
+            isLoading: false
+          })
+          return
+        } catch {
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false
+          })
+          return
+        }
       },
 
       refreshUser: async () => {
         const { user } = get();
         if (!user?.id) return;
         try {
-          let res = await fetchWithFallback(`/api/auth/me?userId=${user.id}`);
-          const data = await res.json();
-          if (data?.success && data?.user) {
-            set({ user: data.user });
-          }
+          const latestUser = await fetchCurrentUser(String(user.id))
+          set({ user: latestUser })
         } catch {}
       }
     }),
