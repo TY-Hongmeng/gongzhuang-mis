@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -696,40 +696,32 @@ export default function PurchaseOrdersList() {
     }
     const rowsPerPage = DENSITY_ROWS_MAP[printDensityLevel] || 28
 
-    // 分页逻辑：rowspan组不跨页（与print完全一致）
     const pages: Array<typeof exportRows> = []
     let pageStart = 0
     while (pageStart < exportRows.length) {
-      let pageEnd = Math.min(pageStart + rowsPerPage, exportRows.length)
-      if (pageEnd < exportRows.length) {
-        while (
-          pageEnd > pageStart + 1 &&
-          isSameApprovalGroup(exportRows[pageEnd - 1], exportRows[pageEnd])
-        ) {
-          pageEnd = Math.max(pageStart + 1, pageEnd - 1)
-        }
-      }
+      const pageEnd = Math.min(pageStart + rowsPerPage, exportRows.length)
       pages.push(exportRows.slice(pageStart, pageEnd))
       pageStart = pageEnd
     }
 
-    // 构建单页HTML表格（与printApprovalList的HTML/CSS 100%一致）
     const buildPageHtml = (pageRows: typeof exportRows, pageIndex: number, totalPages: number, startSerialNo: number): string => {
       const groupSpans = calcApprovalGroupSpans(pageRows)
 
       let serialNo = startSerialNo
       const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
+        const shouldShowGroup = groupSpans[idx] > 0 || idx === 0
+        const rowSpan = shouldShowGroup ? groupSpans[idx] || 1 : 0
         const rowHtml = `
           <tr>
           <td class="cell-no">${serialNo}</td>
           <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
           <td class="cell-model">${escapeHtml(item.model || '')}</td>
           <td class="cell-qty">${escapeHtml(buildApprovalQtyText(item))}</td>
-          ${groupSpans[idx] > 0 ? `<td class="cell-project" rowspan="${groupSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-          ${groupSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${groupSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-          ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-          ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-          ${groupSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${groupSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          ${shouldShowGroup ? `<td class="cell-project" rowspan="${rowSpan}">${escapeHtml(item.project_name || '')}</td>` : ''}
+          ${shouldShowGroup ? `<td class="cell-unit" rowspan="${rowSpan}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+          ${shouldShowGroup ? `<td class="cell-date" rowspan="${rowSpan}">${escapeHtml(cdate)}</td>` : ''}
+          ${shouldShowGroup ? `<td class="cell-date" rowspan="${rowSpan}">${escapeHtml(ddate)}</td>` : ''}
+          ${shouldShowGroup ? `<td class="cell-applicant" rowspan="${rowSpan}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>`
         serialNo += 1
         return rowHtml
@@ -970,13 +962,6 @@ ${tablesHtml}
         }
       }
 
-      while (
-        nextCursor < printRows.length &&
-        nextCursor > cursor + 1 &&
-        isSameApprovalGroup(printRows[nextCursor - 1], printRows[nextCursor])
-      ) {
-        nextCursor -= 1
-      }
       pages.push(printRows.slice(cursor, nextCursor))
       cursor = nextCursor
     }
@@ -991,17 +976,19 @@ ${tablesHtml}
       const groupSpans = calcApprovalGroupSpans(pageRows)
 
       const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
+        const shouldShowGroup = groupSpans[idx] > 0 || idx === 0
+        const rowSpan = shouldShowGroup ? groupSpans[idx] || 1 : 0
         const rowHtml = `
           <tr>
             <td class="cell-no">${serialNo}</td>
             <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
             <td class="cell-model">${escapeHtml(item.model || '')}</td>
             <td class="cell-qty">${escapeHtml(buildApprovalQtyText(item))}</td>
-            ${groupSpans[idx] > 0 ? `<td class="cell-project" rowspan="${groupSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-            ${groupSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${groupSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-            ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-            ${groupSpans[idx] > 0 ? `<td class="cell-date" rowspan="${groupSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-            ${groupSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${groupSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+            ${shouldShowGroup ? `<td class="cell-project" rowspan="${rowSpan}">${escapeHtml(item.project_name || '')}</td>` : ''}
+            ${shouldShowGroup ? `<td class="cell-unit" rowspan="${rowSpan}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+            ${shouldShowGroup ? `<td class="cell-date" rowspan="${rowSpan}">${escapeHtml(cdate)}</td>` : ''}
+            ${shouldShowGroup ? `<td class="cell-date" rowspan="${rowSpan}">${escapeHtml(ddate)}</td>` : ''}
+            ${shouldShowGroup ? `<td class="cell-applicant" rowspan="${rowSpan}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>
         `
         serialNo += 1
