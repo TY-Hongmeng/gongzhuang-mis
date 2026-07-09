@@ -72,8 +72,8 @@ interface PurchaseOrder {
 }
 
 const PRINT_DENSITY_LEVEL = 6 as const;
-const PRINT_PORTRAIT_PAGE_UNIT_BUDGET = 34
-const PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS = 12
+const PRINT_PORTRAIT_PAGE_UNIT_BUDGET = 40
+const PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS = 8
 const PRINT_DENSITY_PROFILES = {
   1: { pageUnitBudget: 30, minLastPageUnits: 10 },
   2: { pageUnitBudget: 31, minLastPageUnits: 11 },
@@ -932,9 +932,9 @@ ${tablesHtml}
         estimateWrappedLines(String(item.production_unit || ''), 6),
         1
       )
-      if (lineCount >= 4) return 2.8
-      if (lineCount === 3) return 2.2
-      if (lineCount === 2) return 1.6
+      if (lineCount >= 4) return 2.2
+      if (lineCount === 3) return 1.6
+      if (lineCount === 2) return 1.25
       return 1
     }
 
