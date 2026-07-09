@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -88,6 +89,7 @@ const Permissions: React.FC = () => {
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [form] = Form.useForm()
   const navigate = useNavigate()
+  const { user, refreshUser } = useAuthStore()
 
   // 加载角色列表
   const loadRoles = async () => {
@@ -208,7 +210,12 @@ const Permissions: React.FC = () => {
         }
       }
 
-      message.success('模块权限配置成功')
+      // 如果当前登录人正属于这个角色，立即刷新其权限缓存，避免必须重新登录才生效
+      if (String(user?.role_id || '') === String(roleId)) {
+        await refreshUser()
+      }
+
+      message.success(String(user?.role_id || '') === String(roleId) ? '模块权限配置成功，当前账号权限已立即生效' : '模块权限配置成功')
       setModalVisible(false)
       loadRoles()
     } catch (error) {
