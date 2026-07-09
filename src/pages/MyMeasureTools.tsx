@@ -99,6 +99,12 @@ const MobileCard: React.FC<{
     return { color: 'blue', text: '我负责的' }
   })()
 
+  const mobileCertificateValue = String(certificateDraft.certificate_expire_date || record.certificate_expire_date || '')
+  const mobileCertificateHint = mobileCertificateValue
+    ? `当前有效日期：${mobileCertificateValue}`
+    : '当前未填写有效日期，系统会提醒'
+  const mobileCertificateHintColor = mobileCertificateValue ? '#cf1322' : '#ff4d4f'
+
   return (
     <Card
       size="small"
@@ -159,23 +165,42 @@ const MobileCard: React.FC<{
 
       {record.view_type === 'owned' && record.asset_status !== '报废' ? (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr auto', gap: 8, alignItems: 'center' }}>
-            <span style={{ color: '#666', fontSize: 14 }}>有效日期</span>
-            <DatePicker
-              size="small"
-              style={{ width: '100%' }}
-              format="YYYY-MM-DD"
-              placeholder="选择有效日期"
-              value={certificateDraft.certificate_expire_date ? dayjs(certificateDraft.certificate_expire_date) : null}
-              onChange={(value) => onCertificateDraftChange(record.id, 'certificate_expire_date', value ? value.format('YYYY-MM-DD') : '')}
+          <div style={{ borderRadius: 8, background: '#fff7f6', border: '1px solid #ffccc7', padding: '10px 12px' }}>
+            <div style={{ color: mobileCertificateHintColor, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+              {mobileCertificateHint}
+            </div>
+            <div style={{ color: '#666', fontSize: 13, marginBottom: 8 }}>
+              请选择新的有效日期
+            </div>
+            <input
+              type="date"
+              value={mobileCertificateValue}
+              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
+              style={{
+                width: '100%',
+                height: 40,
+                borderRadius: 8,
+                border: '1px solid #d9d9d9',
+                padding: '0 12px',
+                fontSize: 16,
+                color: '#cf1322',
+                background: '#fff',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
+            <div style={{ color: '#ff4d4f', fontSize: 12, marginTop: 8 }}>
+              未填写或已过期都会进入提醒
+            </div>
             <Button
-              size="small"
+              size="middle"
               type="primary"
+              block
+              style={{ marginTop: 10 }}
               loading={certificateSavingId === record.id}
               onClick={onSaveCertificate}
             >
-              保存
+              保存有效日期
             </Button>
           </div>
         </div>
