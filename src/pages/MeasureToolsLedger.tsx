@@ -548,7 +548,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '备注',
-      width: 280,
+      width: 190,
       render: (_: any, record: MaterialAssetItem) => (
         <EditableRemarkCell record={record} onSaved={loadItems} />
       )
@@ -568,7 +568,7 @@ const MeasureToolsLedger: React.FC = () => {
   if (isManager) {
     columns.push({
       title: '操作',
-      width: 150,
+      width: 240,
       align: 'center' as const,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap>
