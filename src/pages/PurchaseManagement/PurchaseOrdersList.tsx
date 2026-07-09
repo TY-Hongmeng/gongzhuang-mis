@@ -897,6 +897,46 @@ ${tablesHtml}
       }
       return 0
     })
+
+    const normalizedPrintRows = printRows.map((row, index, arr) => {
+      if (index === 0) return row
+      const prev = arr[index - 1]
+      const currentItem = row.item
+      const prevItem = prev.item
+      const normalizedProjectName = String(currentItem.project_name || '').trim() || String(prevItem.project_name || '').trim()
+      const normalizedProductionUnit = String(currentItem.production_unit || '').trim() || String(prevItem.production_unit || '').trim()
+      const normalizedApplicant = String(currentItem.applicant || '').trim() || String(prevItem.applicant || '').trim()
+      const normalizedCreatedDate = String(row.cdate || '').trim() || String(prev.cdate || '').trim()
+      const normalizedDemandDate = String(row.ddate || '').trim() || String(prev.ddate || '').trim()
+
+      return {
+        ...row,
+        item: {
+          ...currentItem,
+          project_name: normalizedProjectName,
+          production_unit: normalizedProductionUnit,
+          applicant: normalizedApplicant
+        },
+        cdate: normalizedCreatedDate,
+        ddate: normalizedDemandDate
+      }
+    })
+    // 计算rowspan合并：相同值的连续单元格合并
+    const calcRowSpans = (values: string[]) => {
+      const spans = Array(values.length).fill(1)
+      let i = 0
+      while (i < values.length) {
+        const current = values[i]
+        if (!current) { i += 1; continue }
+        let j = i + 1
+        while (j < values.length && values[j] === current) j += 1
+        spans[i] = j - i
+        for (let k = i + 1; k < j; k += 1) spans[k] = 0
+        i = j
+      }
+      return spans
+    }
+
     const estimateWrappedLines = (value: string, charsPerLine: number) => {
       const text = String(value || '').trim()
       if (!text) return 1
@@ -922,7 +962,7 @@ ${tablesHtml}
       return 1
     }
 
-    // 固定为 A4 竖版打印，优先把页面铺满，并保证每行数据完整打印
+    // 固定为 A4 竖版打印，优先把当前页尽量铺满，再在页内做合并，避免大面积留白
     const pages: Array<typeof printRows> = []
     let cursor = 0
     while (cursor < printRows.length) {
@@ -930,7 +970,7 @@ ${tablesHtml}
       let nextCursor = cursor
 
       while (nextCursor < printRows.length) {
-        const rowUnits = estimateRowUnits(printRows[nextCursor])
+        const rowUnits = estimateRowUnits(normalizedPrintRows[nextCursor])
         if (nextCursor > cursor && usedUnits + rowUnits > PRINT_PORTRAIT_PAGE_UNIT_BUDGET) break
         usedUnits += rowUnits
         nextCursor += 1
@@ -938,7 +978,7 @@ ${tablesHtml}
 
       const remainingRows = printRows.length - nextCursor
       if (remainingRows > 0) {
-        const remainingUnits = printRows
+        const remainingUnits = normalizedPrintRows
           .slice(nextCursor)
           .reduce((sum, row) => sum + estimateRowUnits(row), 0)
         if (remainingUnits < PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS && nextCursor - cursor > 1) {
@@ -946,7 +986,7 @@ ${tablesHtml}
         }
       }
 
-      pages.push(printRows.slice(cursor, nextCursor))
+      pages.push(normalizedPrintRows.slice(cursor, nextCursor))
       cursor = nextCursor
     }
 
@@ -957,18 +997,24 @@ ${tablesHtml}
       startSerialNo: number
     ) => {
       let serialNo = startSerialNo
-      const rowsHtml = pageRows.map(({ item, cdate, ddate }) => {
+      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
+      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
+      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
+      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
+      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
+
+      const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
         const rowHtml = `
           <tr>
             <td class="cell-no">${serialNo}</td>
             <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
             <td class="cell-model">${escapeHtml(item.model || '')}</td>
             <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
-            <td class="cell-project">${escapeHtml(item.project_name || '')}</td>
-            <td class="cell-unit">${escapeHtml(item.production_unit || '')}</td>
-            <td class="cell-date">${escapeHtml(cdate)}</td>
-            <td class="cell-date">${escapeHtml(ddate)}</td>
-            <td class="cell-applicant">${escapeHtml(item.applicant || '')}</td>
+            ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+            ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+            ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+            ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+            ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
           </tr>
         `
         serialNo += 1
