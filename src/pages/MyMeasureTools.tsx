@@ -75,7 +75,7 @@ const MobileCard: React.FC<{
     certificate_remind_days: string
   }
   onCertificateDraftChange: (itemId: string, field: 'certificate_expire_date' | 'certificate_remind_days', value: string) => void
-  onSaveCertificate: () => void
+  onSaveCertificate: (nextDate: string) => void
   onConfirmResponsible: () => void
   onCancelTransfer: () => void
   onOpenTransfer: () => void
@@ -100,10 +100,15 @@ const MobileCard: React.FC<{
   })()
 
   const mobileCertificateValue = String(certificateDraft.certificate_expire_date || record.certificate_expire_date || '')
-  const mobileCertificateHint = mobileCertificateValue
-    ? `当前有效日期：${mobileCertificateValue}`
-    : '当前未填写有效日期，系统会提醒'
-  const mobileCertificateHintColor = mobileCertificateValue ? '#cf1322' : '#ff4d4f'
+  const todayText = dayjs().format('YYYY-MM-DD')
+  const isCertificateMissing = !mobileCertificateValue
+  const isCertificateExpired = !!mobileCertificateValue && mobileCertificateValue < todayText
+  const mobileCertificateHintColor = (isCertificateMissing || isCertificateExpired) ? '#ff4d4f' : '#52c41a'
+  const mobileCertificateHint = isCertificateMissing
+    ? '当前未填写有效日期，系统会提醒'
+    : isCertificateExpired
+      ? `当前有效日期：${mobileCertificateValue}（已过期）`
+      : `当前有效日期：${mobileCertificateValue}（在期）`
 
   return (
     <Card
@@ -175,15 +180,20 @@ const MobileCard: React.FC<{
             <input
               type="date"
               value={mobileCertificateValue}
-              onChange={(e) => onCertificateDraftChange(record.id, 'certificate_expire_date', e.target.value)}
+              disabled={certificateSavingId === record.id}
+              onChange={(e) => {
+                const nextDate = e.target.value
+                onCertificateDraftChange(record.id, 'certificate_expire_date', nextDate)
+                onSaveCertificate(nextDate)
+              }}
               style={{
                 width: '100%',
                 height: 40,
                 borderRadius: 8,
-                border: '1px solid #d9d9d9',
+                border: `1px solid ${mobileCertificateHintColor}`,
                 padding: '0 12px',
                 fontSize: 16,
-                color: '#cf1322',
+                color: mobileCertificateHintColor,
                 background: '#fff',
                 outline: 'none',
                 boxSizing: 'border-box'
@@ -192,16 +202,11 @@ const MobileCard: React.FC<{
             <div style={{ color: '#ff4d4f', fontSize: 12, marginTop: 8 }}>
               未填写或已过期都会进入提醒
             </div>
-            <Button
-              size="middle"
-              type="primary"
-              block
-              style={{ marginTop: 10 }}
-              loading={certificateSavingId === record.id}
-              onClick={onSaveCertificate}
-            >
-              保存有效日期
-            </Button>
+            {certificateSavingId === record.id ? (
+              <div style={{ color: '#1677ff', fontSize: 12, marginTop: 8 }}>
+                正在保存...
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -561,12 +566,12 @@ const MyMeasureTools: React.FC = () => {
     }))
   }
 
-  const saveCertificate = async (item: MaterialAssetItem) => {
+  const saveCertificate = async (item: MaterialAssetItem, nextExpireDate?: string) => {
     const draft = certificateDrafts[item.id] || {
       certificate_expire_date: String(item.certificate_expire_date || ''),
       certificate_remind_days: String(item.certificate_remind_days ?? 30)
     }
-    const expireDate = String(draft.certificate_expire_date || '').trim()
+    const expireDate = String(nextExpireDate ?? draft.certificate_expire_date || '').trim()
     if (expireDate && !/^\d{4}-\d{2}-\d{2}$/.test(expireDate)) {
       message.warning('有效日期格式无效')
       return
@@ -918,7 +923,7 @@ const MyMeasureTools: React.FC = () => {
                     certificate_remind_days: String(item.certificate_remind_days ?? 30)
                   }}
                   onCertificateDraftChange={updateCertificateDraft}
-                  onSaveCertificate={() => saveCertificate(item)}
+                  onSaveCertificate={(nextDate) => saveCertificate(item, nextDate)}
                   onConfirmResponsible={() => confirmResponsible(item)}
                   onCancelTransfer={() => cancelTransfer(item)}
                   onOpenTransfer={() => { setCurrentItem(item); transferForm.setFieldsValue({ target_name: '', target_user_id: '', remark: '' }); setTransferOpen(true) }}
