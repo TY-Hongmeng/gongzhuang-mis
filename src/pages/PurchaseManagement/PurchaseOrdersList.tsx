@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -953,6 +953,7 @@ ${tablesHtml}
       let usedUnits = 0
       let nextCursor = cursor
 
+      // 第一步：按页面容量预算填充行（确保内容先布满页面）
       while (nextCursor < printRows.length) {
         const rowUnits = estimateRowUnits(printRows[nextCursor])
         if (nextCursor > cursor && usedUnits + rowUnits > PRINT_PORTRAIT_PAGE_UNIT_BUDGET) break
@@ -960,6 +961,7 @@ ${tablesHtml}
         nextCursor += 1
       }
 
+      // 第二步：如果剩余内容太少，尝试拉回一行以避免最后一页过小
       const remainingRows = printRows.length - nextCursor
       if (remainingRows > 0) {
         const remainingUnits = printRows
@@ -970,29 +972,31 @@ ${tablesHtml}
         }
       }
 
-      // 避免将同一 rowspan 组拆分到两页
-      while (
-        nextCursor < printRows.length &&
-        nextCursor > cursor + 1 &&
-        isSameApprovalGroup(printRows[nextCursor - 1], printRows[nextCursor])
-      ) {
-        nextCursor -= 1
-      }
-
-      // 【关键修复】检查下一页首行是否属于当前页开始的组合
-      // 如果是，必须将其拉回当前页，否则下一页首行的 rowspan=0 会导致单元格为空
+      // 第三步：【关键修复】检查下一页首行是否属于当前页开始的组合
+      // 如果是，必须将整个组合保留在当前页，否则下一页首行的 rowspan=0 会导致单元格为空
       if (nextCursor < printRows.length && nextCursor > cursor) {
-        const currentPageLastRow = printRows[nextCursor - 1]
         const nextPageFirstRow = printRows[nextCursor]
+        const currentPageLastRow = printRows[nextCursor - 1]
+
+        // 检查下一页首行是否与当前页最后一行同组
         if (isSameApprovalGroup(currentPageLastRow, nextPageFirstRow)) {
           // 找到当前页该组合的起始位置
           let groupStart = nextCursor - 1
           while (groupStart > cursor && isSameApprovalGroup(printRows[groupStart - 1], printRows[groupStart])) {
             groupStart -= 1
           }
-          // 将整个组合保留在当前页
+          // 将整个组合保留在当前页（从组合起始位置截断）
           nextCursor = groupStart
         }
+      }
+
+      // 第四步：兜底检查 - 避免将同一 rowspan 组拆分到两页
+      while (
+        nextCursor < printRows.length &&
+        nextCursor > cursor + 1 &&
+        isSameApprovalGroup(printRows[nextCursor - 1], printRows[nextCursor])
+      ) {
+        nextCursor -= 1
       }
 
       pages.push(printRows.slice(cursor, nextCursor))
