@@ -72,6 +72,7 @@ interface PurchaseOrder {
 }
 
 const PRINT_DENSITY_LEVEL = 6 as const;
+const PRINT_PORTRAIT_ROWS_PER_PAGE = 24
 const PRINT_DENSITY_PROFILES = {
   1: { pageUnitBudget: 30, minLastPageUnits: 10 },
   2: { pageUnitBudget: 31, minLastPageUnits: 11 },
@@ -911,37 +912,47 @@ ${tablesHtml}
       return spans
     }
 
-    // 固定为 A4 竖版打印，交给浏览器按页面高度自然铺满后分页
-    // 表头和审批区通过 table-header-group / table-footer-group 在每页自动重复
+    // 固定为 A4 竖版打印，并在前端手动分页，避免合并单元格跨页导致缺项
+    const pages: Array<typeof printRows> = []
+    for (let index = 0; index < printRows.length; index += PRINT_PORTRAIT_ROWS_PER_PAGE) {
+      pages.push(printRows.slice(index, index + PRINT_PORTRAIT_ROWS_PER_PAGE))
+    }
 
-    let serialNo = 1
-    const projectSpans = calcRowSpans(printRows.map(r => String(r.item.project_name || '').trim()))
-    const productionSpans = calcRowSpans(printRows.map(r => String(r.item.production_unit || '').trim()))
-    const createdDateSpans = calcRowSpans(printRows.map(r => String(r.cdate || '').trim()))
-    const demandDateSpans = calcRowSpans(printRows.map(r => String(r.ddate || '').trim()))
-    const applicantSpans = calcRowSpans(printRows.map(r => String(r.item.applicant || '').trim()))
+    const buildPageTableHtml = (
+      pageRows: typeof printRows,
+      pageIndex: number,
+      totalPages: number,
+      startSerialNo: number
+    ) => {
+      let serialNo = startSerialNo
+      const projectSpans = calcRowSpans(pageRows.map(r => String(r.item.project_name || '').trim()))
+      const productionSpans = calcRowSpans(pageRows.map(r => String(r.item.production_unit || '').trim()))
+      const createdDateSpans = calcRowSpans(pageRows.map(r => String(r.cdate || '').trim()))
+      const demandDateSpans = calcRowSpans(pageRows.map(r => String(r.ddate || '').trim()))
+      const applicantSpans = calcRowSpans(pageRows.map(r => String(r.item.applicant || '').trim()))
 
-    const rowsHtml = printRows.map(({ item, cdate, ddate }, idx) => {
-      const rowHtml = `
-        <tr>
-          <td class="cell-no">${serialNo}</td>
-          <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
-          <td class="cell-model">${escapeHtml(item.model || '')}</td>
-          <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
-          ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
-          ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
-          ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
-          ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
-          ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
-        </tr>
-      `
-      serialNo += 1
-      return rowHtml
-    }).join('')
+      const rowsHtml = pageRows.map(({ item, cdate, ddate }, idx) => {
+        const rowHtml = `
+          <tr>
+            <td class="cell-no">${serialNo}</td>
+            <td class="cell-name">${escapeHtml(item.part_name || '')}</td>
+            <td class="cell-model">${escapeHtml(item.model || '')}</td>
+            <td class="cell-qty">${escapeHtml(qtyText(item))}</td>
+            ${projectSpans[idx] > 0 ? `<td class="cell-project" rowspan="${projectSpans[idx]}">${escapeHtml(item.project_name || '')}</td>` : ''}
+            ${productionSpans[idx] > 0 ? `<td class="cell-unit" rowspan="${productionSpans[idx]}">${escapeHtml(item.production_unit || '')}</td>` : ''}
+            ${createdDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${createdDateSpans[idx]}">${escapeHtml(cdate)}</td>` : ''}
+            ${demandDateSpans[idx] > 0 ? `<td class="cell-date" rowspan="${demandDateSpans[idx]}">${escapeHtml(ddate)}</td>` : ''}
+            ${applicantSpans[idx] > 0 ? `<td class="cell-applicant" rowspan="${applicantSpans[idx]}">${escapeHtml(item.applicant || '')}</td>` : ''}
+          </tr>
+        `
+        serialNo += 1
+        return rowHtml
+      }).join('')
 
-    const tableHtml = `
-      <div class="print-wrap">
-      <table class="sheet">
+      return `
+      <section class="print-page">
+        <div class="print-wrap">
+        <table class="sheet">
         <colgroup>
           <col style="width:6%">
           <col style="width:14%">
@@ -983,8 +994,18 @@ ${tablesHtml}
           </tr>
         </tfoot>
       </table>
-      </div>
-    `
+        </div>
+        <div class="page-number">第 ${pageIndex + 1} 页 / 共 ${totalPages} 页</div>
+      </section>
+      ${pageIndex < totalPages - 1 ? '<div class="page-break"></div>' : ''}`
+    }
+
+    let nextSerialNo = 1
+    const tableHtml = pages.map((pageRows, pageIndex) => {
+      const html = buildPageTableHtml(pageRows, pageIndex, pages.length, nextSerialNo)
+      nextSerialNo += pageRows.length
+      return html
+    }).join('')
 
     const html = `
       <html>
@@ -1010,6 +1031,13 @@ ${tablesHtml}
             }
             .print-wrap {
               width: 100%;
+            }
+            .print-page {
+              width: 100%;
+            }
+            .page-break {
+              break-after: page;
+              page-break-after: always;
             }
             table.sheet {
               width: 100%;
@@ -1066,6 +1094,12 @@ ${tablesHtml}
               text-align: left;
               padding-left: 6px;
               font-size: 8.5pt;
+            }
+            .page-number {
+              margin-top: 4px;
+              text-align: right;
+              font-size: 8pt;
+              color: #666;
             }
             @media print {
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
