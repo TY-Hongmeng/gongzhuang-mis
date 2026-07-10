@@ -165,9 +165,9 @@ export const generatePartInventoryNumber = (
   }
   
   const num = partIndex + 1;
-  // 根据序号长度动态调整宽度：1-99使用两位（01-99），100+使用三位（100+）
-  const width = Math.max(2, String(num).length);
-  return `${parentInventoryNumber}${String(num).padStart(width, '0')}`;
+  // 超过99时取后两位编码（如100→00，101→01），保持两位编码格式不变
+  const suffix = num > 99 ? num % 100 : num;
+  return `${parentInventoryNumber}${String(suffix).padStart(2, '0')}`;
 };
 
 // 确保有足够的空白行
