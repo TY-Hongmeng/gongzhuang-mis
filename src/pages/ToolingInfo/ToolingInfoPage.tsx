@@ -678,6 +678,38 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       const errorMessages: string[] = []
       const createdToolingMap = new Map<string, string>() // 盘存编号 -> tooling id
 
+      // 先批量查询数据库中已存在的工装
+      const existingInvNumbers = new Set<string>()
+      for (const row of jsonData) {
+        const inv = String(row.盘存编号 || '').trim()
+        if (inv) existingInvNumbers.add(inv)
+      }
+
+      if (existingInvNumbers.size > 0) {
+        try {
+          const invList = Array.from(existingInvNumbers)
+          for (const inv of invList) {
+            const params = new URLSearchParams()
+            params.append('search', inv)
+            params.append('pageSize', '0')
+            const response = await fetchWithFallback(`/api/tooling?${params.toString()}`)
+            if (response.ok) {
+              const result = await response.json().catch(() => ({}))
+              if (result?.success && Array.isArray(result?.items)) {
+                for (const item of result.items) {
+                  const invNum = String(item.inventory_number || '').trim()
+                  if (invNum === inv) {
+                    createdToolingMap.set(inv, String(item.id || ''))
+                  }
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('查询已有工装失败:', err)
+        }
+      }
+
       for (const [index, row] of jsonData.entries()) {
         const validation = validateImportData(row)
         if (!validation.valid) {
@@ -686,11 +718,18 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           continue
         }
 
+        const inv = String(row.盘存编号 || '').trim()
+
+        // 如果已存在，跳过创建
+        if (inv && createdToolingMap.has(inv)) {
+          successCount++
+          continue
+        }
+
         const cleanedParams = RequestCleaner.cleanToolingParams(row)
         const result = await createTooling(cleanedParams)
         if (result?.data) {
           successCount++
-          const inv = String(row.盘存编号 || '').trim()
           if (inv) {
             createdToolingMap.set(inv, String(result.data.id || ''))
           }
