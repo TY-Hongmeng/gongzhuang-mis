@@ -872,9 +872,14 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       let childErrorCount = 0
       const childErrorMessages: string[] = []
       const childSheetName = workbook.SheetNames.find(name => name.includes('标准件'))
+      console.log('[导入] 查找标准件sheet，所有sheet名称:', workbook.SheetNames)
+      console.log('[导入] 找到的标准件sheet名称:', childSheetName)
+      
       if (childSheetName) {
         const childWorksheet = workbook.Sheets[childSheetName]
         const childJsonData = XLSX.utils.sheet_to_json(childWorksheet)
+        console.log('[导入] 标准件sheet数据:', childJsonData)
+        
         if (Array.isArray(childJsonData) && childJsonData.length > 0) {
           // 收集所有需要的盘存编号
           const neededInvNumbers = new Set<string>()
@@ -882,6 +887,8 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             const inv = String(childRow.盘存编号 || '').trim()
             if (inv) neededInvNumbers.add(inv)
           }
+          console.log('[导入] 标准件需要的盘存编号:', Array.from(neededInvNumbers))
+          console.log('[导入] 当前已映射的工装:', Object.fromEntries(createdToolingMap))
 
           // 从数据库查询已存在的工装，补充到映射中
           if (neededInvNumbers.size > 0) {
@@ -889,35 +896,48 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
               const invList = Array.from(neededInvNumbers)
               // 逐个查询工装信息
               for (const inv of invList) {
-                if (createdToolingMap.has(inv)) continue
+                if (createdToolingMap.has(inv)) {
+                  console.log(`[导入] 标准件盘存编号 ${inv} 已存在映射，跳过查询`)
+                  continue
+                }
+                console.log(`[导入] 查询标准件盘存编号 ${inv} 对应的工装`)
                 const params = new URLSearchParams()
                 params.append('search', inv)
                 params.append('pageSize', '0')
                 const response = await fetchWithFallback(`/api/tooling?${params.toString()}`)
                 if (response.ok) {
                   const result = await response.json().catch(() => ({}))
+                  console.log(`[导入] 查询工装 ${inv} 返回:`, result)
                   if (result?.success && Array.isArray(result?.items)) {
                     for (const item of result.items) {
                       const invNum = String(item.inventory_number || '').trim()
                       if (invNum === inv && !createdToolingMap.has(invNum)) {
                         createdToolingMap.set(invNum, String(item.id || ''))
+                        console.log(`[导入] ✅ 标准件找到工装映射: ${inv} -> ${item.id}`)
                       }
                     }
                   }
                 }
               }
             } catch (err) {
-              console.error('查询已有工装失败:', err)
+              console.error('[导入] 查询已有工装失败:', err)
             }
           }
+          
+          console.log('[导入] 标准件导入前最终映射:', Object.fromEntries(createdToolingMap))
 
           // 导入标准件
           for (const [childIndex, childRow] of childJsonData.entries()) {
             const inv = String(childRow.盘存编号 || '').trim()
+            console.log(`[导入] 标准件第 ${childIndex + 2} 行，盘存编号: ${inv}`)
+            
             const toolingId = createdToolingMap.get(inv)
+            console.log(`[导入] 标准件第 ${childIndex + 2} 行，toolingId: ${toolingId}`)
+            
             if (!toolingId) {
               childErrorCount++
               childErrorMessages.push(`标准件第 ${childIndex + 2} 行: 未找到对应的工装（盘存编号：${inv}）`)
+              console.error(`[导入] 标准件第 ${childIndex + 2} 行失败: 未找到工装映射`)
               continue
             }
 
@@ -939,31 +959,49 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             const purchaseStatus = String(childRow.采购状态 || '').trim()
             if (purchaseStatus) childData.purchase_status = purchaseStatus
 
+            console.log(`[导入] 标准件第 ${childIndex + 2} 行数据:`, childData)
+
             try {
-              const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`, {
+              const apiUrl = `/api/tooling/${toolingId}/child-items`
+              console.log(`[导入] 标准件第 ${childIndex + 2} 行请求URL: ${apiUrl}`)
+              
+              const response = await fetchWithFallback(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(childData)
               })
+              
+              console.log(`[导入] 标准件第 ${childIndex + 2} 行响应状态: ${response.status}`)
+              
               if (response.ok) {
                 const result = await response.json().catch(() => ({}))
+                console.log(`[导入] 标准件第 ${childIndex + 2} 行响应数据:`, result)
+                
                 if (result?.success === false) {
                   childErrorCount++
                   childErrorMessages.push(`标准件第 ${childIndex + 2} 行: ${result?.message || '创建失败'}`)
+                  console.error(`[导入] 标准件第 ${childIndex + 2} 行失败:`, result)
                 } else {
                   childSuccessCount++
+                  console.log(`[导入] ✅ 标准件第 ${childIndex + 2} 行导入成功`)
                 }
               } else {
                 const errorText = await response.text().catch(() => '')
                 childErrorCount++
                 childErrorMessages.push(`标准件第 ${childIndex + 2} 行: HTTP ${response.status} - ${errorText}`)
+                console.error(`[导入] 标准件第 ${childIndex + 2} 行HTTP错误:`, response.status, errorText)
               }
             } catch (err) {
               childErrorCount++
               childErrorMessages.push(`标准件第 ${childIndex + 2} 行: ${err instanceof Error ? err.message : String(err)}`)
+              console.error(`[导入] 标准件第 ${childIndex + 2} 行异常:`, err)
             }
           }
+        } else {
+          console.warn('[导入] 标准件sheet数据为空')
         }
+      } else {
+        console.warn('[导入] 未找到标准件sheet')
       }
 
       if (errorMessages.length > 0) {
