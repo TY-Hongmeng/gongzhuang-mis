@@ -1458,7 +1458,9 @@ router.post('/:id/parts', async (req, res) => {
             })
             let s = 1
             while (used.has(s)) s++
-            cleanedPayload.part_inventory_number = `${prefix}${String(s).padStart(2, '0')}`
+            // 根据序号长度动态调整宽度：1-99使用两位（00-99），100+使用三位（100+）
+            const width = Math.max(2, String(s).length)
+            cleanedPayload.part_inventory_number = `${prefix}${String(s).padStart(width, '0')}`
             console.log('更新时自动生成盘存编号:', cleanedPayload.part_inventory_number)
           }
         }

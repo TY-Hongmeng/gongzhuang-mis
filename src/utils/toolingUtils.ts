@@ -164,7 +164,10 @@ export const generatePartInventoryNumber = (
     return '';
   }
   
-  return `${parentInventoryNumber}${String(partIndex + 1).padStart(2, '0')}`;
+  const num = partIndex + 1;
+  // 根据序号长度动态调整宽度：1-99使用两位（01-99），100+使用三位（100+）
+  const width = Math.max(2, String(num).length);
+  return `${parentInventoryNumber}${String(num).padStart(width, '0')}`;
 };
 
 // 确保有足够的空白行
