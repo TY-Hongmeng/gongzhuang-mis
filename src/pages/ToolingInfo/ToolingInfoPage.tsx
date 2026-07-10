@@ -702,25 +702,69 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       // 读取标准件sheet（如果有）
       let childSuccessCount = 0
       let childErrorCount = 0
+      const childErrorMessages: string[] = []
       const childSheetName = workbook.SheetNames.find(name => name.includes('标准件'))
       if (childSheetName) {
         const childWorksheet = workbook.Sheets[childSheetName]
         const childJsonData = XLSX.utils.sheet_to_json(childWorksheet)
         if (Array.isArray(childJsonData) && childJsonData.length > 0) {
+          // 收集所有需要的盘存编号
+          const neededInvNumbers = new Set<string>()
           for (const childRow of childJsonData) {
             const inv = String(childRow.盘存编号 || '').trim()
-            const toolingId = createdToolingMap.get(inv)
-            if (!toolingId) continue
+            if (inv) neededInvNumbers.add(inv)
+          }
 
-            const childData = {
-              name: String(childRow.名称 || '').trim(),
-              model: String(childRow.型号 || '').trim(),
-              quantity: childRow.数量 !== undefined ? Number(childRow.数量) : null,
-              unit: String(childRow.单位 || '').trim(),
-              required_date: String(childRow.需求日期 || '').trim(),
-              remark: String(childRow.备注 || '').trim(),
-              purchase_status: String(childRow.采购状态 || '').trim()
+          // 从数据库查询已存在的工装，补充到映射中
+          if (neededInvNumbers.size > 0) {
+            try {
+              const invList = Array.from(neededInvNumbers)
+              const params = new URLSearchParams()
+              invList.forEach(inv => params.append('inventory_number', inv))
+              const response = await fetchWithFallback(`/api/tooling/list?${params.toString()}`)
+              if (response.ok) {
+                const result = await response.json().catch(() => ({}))
+                if (result?.success && Array.isArray(result?.items)) {
+                  for (const item of result.items) {
+                    const invNum = String(item.inventory_number || '').trim()
+                    if (invNum && !createdToolingMap.has(invNum)) {
+                      createdToolingMap.set(invNum, String(item.id || ''))
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('查询已有工装失败:', err)
             }
+          }
+
+          // 导入标准件
+          for (const [childIndex, childRow] of childJsonData.entries()) {
+            const inv = String(childRow.盘存编号 || '').trim()
+            const toolingId = createdToolingMap.get(inv)
+            if (!toolingId) {
+              childErrorCount++
+              childErrorMessages.push(`标准件第 ${childIndex + 2} 行: 未找到对应的工装（盘存编号：${inv}）`)
+              continue
+            }
+
+            const childData: any = {}
+            const name = String(childRow.名称 || '').trim()
+            const model = String(childRow.型号 || '').trim()
+            if (name) childData.name = name
+            if (model) childData.model = model
+            if (childRow.数量 !== undefined && childRow.数量 !== null && childRow.数量 !== '') {
+              const qty = Number(childRow.数量)
+              if (!isNaN(qty)) childData.quantity = qty
+            }
+            const unit = String(childRow.单位 || '').trim()
+            if (unit) childData.unit = unit
+            const reqDate = String(childRow.需求日期 || '').trim()
+            if (reqDate) childData.required_date = reqDate
+            const remark = String(childRow.备注 || '').trim()
+            if (remark) childData.remark = remark
+            const purchaseStatus = String(childRow.采购状态 || '').trim()
+            if (purchaseStatus) childData.purchase_status = purchaseStatus
 
             try {
               const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`, {
@@ -729,12 +773,21 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
                 body: JSON.stringify(childData)
               })
               if (response.ok) {
-                childSuccessCount++
+                const result = await response.json().catch(() => ({}))
+                if (result?.success === false) {
+                  childErrorCount++
+                  childErrorMessages.push(`标准件第 ${childIndex + 2} 行: ${result?.message || '创建失败'}`)
+                } else {
+                  childSuccessCount++
+                }
               } else {
+                const errorText = await response.text().catch(() => '')
                 childErrorCount++
+                childErrorMessages.push(`标准件第 ${childIndex + 2} 行: HTTP ${response.status} - ${errorText}`)
               }
-            } catch {
+            } catch (err) {
               childErrorCount++
+              childErrorMessages.push(`标准件第 ${childIndex + 2} 行: ${err instanceof Error ? err.message : String(err)}`)
             }
           }
         }
