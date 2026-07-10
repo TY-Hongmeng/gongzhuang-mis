@@ -659,21 +659,91 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
     return { valid: errors.length === 0, errors }
   }, [])
 
+  // 辅助函数：将 Excel 日期数字转换为 YYYY-MM-DD 格式
+  const excelDateToString = useCallback((value: any): string => {
+    if (!value) return ''
+    
+    // 如果已经是字符串格式（YYYY-MM-DD），直接返回
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+      return value.trim()
+    }
+    
+    // 如果是数字（Excel 日期序列号）
+    if (typeof value === 'number') {
+      try {
+        // Excel 日期序列号转换为 JS Date
+        const date = XLSX.SSF.parse_date_code(value)
+        if (date && date.y && date.m && date.d) {
+          const year = date.y
+          const month = String(date.m).padStart(2, '0')
+          const day = String(date.d).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
+      } catch (e) {
+        console.error('日期转换失败:', value, e)
+      }
+    }
+    
+    // 尝试解析为 Date 对象
+    if (value instanceof Date) {
+      const year = value.getFullYear()
+      const month = String(value.getMonth() + 1).padStart(2, '0')
+      const day = String(value.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    // 尝试解析字符串
+    const str = String(value).trim()
+    if (str) {
+      const date = new Date(str)
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+    }
+    
+    return str
+  }, [])
+
   // 中文字段名到英文字段名的映射
   const mapChineseToEnglishFields = useCallback((row: any): any => {
-    return {
+    const mapped: any = {
       inventory_number: String(row.盘存编号 || '').trim(),
       production_unit: String(row.投产单位 || '').trim(),
       category: String(row.类别 || '').trim(),
-      received_date: String(row.接收日期 || '').trim(),
-      demand_date: String(row.需求日期 || '').trim(),
-      completed_date: String(row.完成日期 || '').trim(),
       project_name: String(row.项目名称 || '').trim(),
-      production_date: String(row.投产日期 || '').trim(),
-      sets_count: row.套数 !== undefined ? Number(row.套数) : 1,
       recorder: String(row.录入人 || '').trim()
     }
-  }, [])
+    
+    // 处理日期字段
+    const receivedDate = excelDateToString(row.接收日期)
+    if (receivedDate) mapped.received_date = receivedDate
+    
+    const demandDate = excelDateToString(row.需求日期)
+    if (demandDate) mapped.demand_date = demandDate
+    
+    const completedDate = excelDateToString(row.完成日期)
+    if (completedDate) mapped.completed_date = completedDate
+    
+    const productionDate = excelDateToString(row.投产日期)
+    if (productionDate) mapped.production_date = productionDate
+    
+    // 处理套数
+    if (row.套数 !== undefined && row.套数 !== null && row.套数 !== '') {
+      const setsCount = Number(row.套数)
+      if (!isNaN(setsCount) && setsCount > 0) {
+        mapped.sets_count = setsCount
+      } else {
+        mapped.sets_count = 1
+      }
+    } else {
+      mapped.sets_count = 1
+    }
+    
+    return mapped
+  }, [excelDateToString])
 
   const handleFileImport = useCallback(async (file: File) => {
     try {
@@ -736,27 +806,33 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       console.log('[导入] 预查询完成，找到', createdToolingMap.size, '个已有工装')
 
       for (const [index, row] of jsonData.entries()) {
-        const validation = validateImportData(row)
+        console.log(`[导入] 第 ${index + 2} 行原始数据:`, row)
+        
+        // 先转换字段（包括日期格式转换）
+        const englishRow = mapChineseToEnglishFields(row)
+        console.log(`[导入] 第 ${index + 2} 行映射后:`, englishRow)
+        
+        // 验证转换后的数据
+        const validation = validateImportData(englishRow)
         if (!validation.valid) {
           errorCount++
           errorMessages.push(`第 ${index + 2} 行: ${validation.errors.join(', ')}`)
           continue
         }
 
-        const inv = String(row.盘存编号 || '').trim()
+        const inv = String(englishRow.inventory_number || '').trim()
 
         // 如果已存在，跳过创建
         if (inv && createdToolingMap.has(inv)) {
           successCount++
           continue
         }
-
-        // 将中文字段名映射为英文字段名
-        const englishRow = mapChineseToEnglishFields(row)
-        console.log(`[导入] 第 ${index + 2} 行映射后:`, englishRow)
         
         const cleanedParams = RequestCleaner.cleanToolingParams(englishRow)
+        console.log(`[导入] 第 ${index + 2} 行清理后参数:`, cleanedParams)
+        
         const result = await createTooling(cleanedParams)
+        console.log(`[导入] 第 ${index + 2} 行创建结果:`, result)
         if (result?.data) {
           successCount++
           if (inv) {
