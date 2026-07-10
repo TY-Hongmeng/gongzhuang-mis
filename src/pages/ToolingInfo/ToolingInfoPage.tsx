@@ -678,37 +678,46 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       const errorMessages: string[] = []
       const createdToolingMap = new Map<string, string>() // 盘存编号 -> tooling id
 
-      // 先批量查询数据库中已存在的工装
+      // 先批量查询数据库中已存在的工装（使用精确匹配）
       const existingInvNumbers = new Set<string>()
       for (const row of jsonData) {
         const inv = String(row.盘存编号 || '').trim()
         if (inv) existingInvNumbers.add(inv)
       }
 
+      console.log('[导入] 开始查询已有工装，共', existingInvNumbers.size, '个盘存编号:', Array.from(existingInvNumbers))
+
       if (existingInvNumbers.size > 0) {
         try {
           const invList = Array.from(existingInvNumbers)
           for (const inv of invList) {
+            // 加时间戳避免缓存
             const params = new URLSearchParams()
             params.append('search', inv)
             params.append('pageSize', '0')
+            params.append('_t', String(Date.now()))
             const response = await fetchWithFallback(`/api/tooling?${params.toString()}`)
             if (response.ok) {
               const result = await response.json().catch(() => ({}))
+              console.log(`[导入] 查询工装 "${inv}" 返回:`, JSON.stringify(result).substring(0, 500))
               if (result?.success && Array.isArray(result?.items)) {
                 for (const item of result.items) {
                   const invNum = String(item.inventory_number || '').trim()
-                  if (invNum === inv) {
+                  if (invNum === inv || invNum.toLowerCase() === inv.toLowerCase()) {
                     createdToolingMap.set(inv, String(item.id || ''))
+                    console.log(`[导入] ✅ 找到已有工装: "${inv}" -> ${item.id}`)
+                    break
                   }
                 }
               }
             }
           }
         } catch (err) {
-          console.error('查询已有工装失败:', err)
+          console.error('[导入]  查询已有工装失败:', err)
         }
       }
+
+      console.log('[导入] 预查询完成，找到', createdToolingMap.size, '个已有工装')
 
       for (const [index, row] of jsonData.entries()) {
         const validation = validateImportData(row)
@@ -734,7 +743,31 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
             createdToolingMap.set(inv, String(result.data.id || ''))
           }
         } else {
+          // 创建失败时，再次尝试查询（可能是并发冲突）
+          if (inv) {
+            try {
+              const params = new URLSearchParams()
+              params.append('search', inv)
+              params.append('pageSize', '0')
+              const response = await fetchWithFallback(`/api/tooling?${params.toString()}`)
+              if (response.ok) {
+                const queryResult = await response.json().catch(() => ({}))
+                if (queryResult?.success && Array.isArray(queryResult?.items)) {
+                  const found = queryResult.items.find((item: any) => String(item.inventory_number || '').trim() === inv)
+                  if (found) {
+                    createdToolingMap.set(inv, String(found.id || ''))
+                    successCount++
+                    console.log(`[导入] 创建失败后找到已有工装: ${inv}`)
+                    continue
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`[导入] 二次查询工装 ${inv} 失败:`, e)
+            }
+          }
           errorCount++
+          errorMessages.push(`第 ${index + 2} 行: 工装创建失败，盘存编号 ${inv} 可能已存在`)
         }
       }
 
