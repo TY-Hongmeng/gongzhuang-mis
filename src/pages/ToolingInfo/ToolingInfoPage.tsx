@@ -12,6 +12,7 @@ import { PartTable } from './components/PartTable'
 import { ChildItemTable } from './components/ChildItemTable'
 import { PartInfoPage } from './components/PartInfoPage'
 import { RequestCleaner } from '../utils/dataSerializer'
+import { fetchWithFallback } from '../utils/api'
 import * as XLSX from 'xlsx'
 
 interface ToolingInfoPageProps {
@@ -486,14 +487,37 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       const ws = XLSX.utils.json_to_sheet(exportData)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '工装信息')
+
+      // 导出标准件到第二个sheet
+      const childExportData: any[] = []
+      for (const row of selectedData) {
+        const childItems = childItemsMap[row.id] || []
+        for (const child of childItems) {
+          childExportData.push({
+            盘存编号: row.inventory_number || '',
+            名称: child.name || '',
+            型号: child.model || '',
+            数量: child.quantity ?? '',
+            单位: child.unit || '',
+            需求日期: child.required_date || '',
+            备注: child.remark || '',
+            采购状态: child.purchase_status || ''
+          })
+        }
+      }
+      if (childExportData.length > 0) {
+        const childWs = XLSX.utils.json_to_sheet(childExportData)
+        XLSX.utils.book_append_sheet(wb, childWs, '标准件')
+      }
+
       XLSX.writeFile(wb, `工装信息_${new Date().toISOString().slice(0, 10)}.xlsx`)
-      message.success('导出成功')
+      message.success(`导出成功（工装 ${selectedData.length} 条，标准件 ${childExportData.length} 条）`)
       setExportModalVisible(false)
     } catch (error) {
       setError(error instanceof Error ? error.message : '导出失败')
       message.error('导出失败')
     }
-  }, [data, selectedRowKeys])
+  }, [data, selectedRowKeys, childItemsMap])
 
   const handleDownloadTemplate = useCallback(() => {
     try {
@@ -512,9 +536,24 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
       const ws = XLSX.utils.json_to_sheet(templateData)
       const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, '工装信息模板')
+      XLSX.utils.book_append_sheet(wb, ws, '工装信息')
+
+      // 添加标准件模板sheet
+      const childTemplateData = [{
+        盘存编号: '示例：AB123456',
+        名称: '示例：内六角螺栓',
+        型号: '示例：M8*20',
+        数量: 10,
+        单位: '件',
+        需求日期: '示例：2024-01-15',
+        备注: '',
+        采购状态: ''
+      }]
+      const childWs = XLSX.utils.json_to_sheet(childTemplateData)
+      XLSX.utils.book_append_sheet(wb, childWs, '标准件')
+
       XLSX.writeFile(wb, '工装信息导入模板.xlsx')
-      message.success('模板下载成功')
+      message.success('模板下载成功（包含工装信息和标准件两个sheet）')
     } catch (error) {
       setError(error instanceof Error ? error.message : '模板下载失败')
       message.error('模板下载失败')
@@ -624,6 +663,8 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
     try {
       const arrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(arrayBuffer)
+
+      // 读取工装信息sheet
       const worksheet = workbook.Sheets[0]
       const jsonData = XLSX.utils.sheet_to_json(worksheet)
 
@@ -635,6 +676,7 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       let successCount = 0
       let errorCount = 0
       const errorMessages: string[] = []
+      const createdToolingMap = new Map<string, string>() // 盘存编号 -> tooling id
 
       for (const [index, row] of jsonData.entries()) {
         const validation = validateImportData(row)
@@ -646,10 +688,55 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
 
         const cleanedParams = RequestCleaner.cleanToolingParams(row)
         const result = await createTooling(cleanedParams)
-        if (result) {
+        if (result?.data) {
           successCount++
+          const inv = String(row.盘存编号 || '').trim()
+          if (inv) {
+            createdToolingMap.set(inv, String(result.data.id || ''))
+          }
         } else {
           errorCount++
+        }
+      }
+
+      // 读取标准件sheet（如果有）
+      let childSuccessCount = 0
+      let childErrorCount = 0
+      const childSheetName = workbook.SheetNames.find(name => name.includes('标准件'))
+      if (childSheetName) {
+        const childWorksheet = workbook.Sheets[childSheetName]
+        const childJsonData = XLSX.utils.sheet_to_json(childWorksheet)
+        if (Array.isArray(childJsonData) && childJsonData.length > 0) {
+          for (const childRow of childJsonData) {
+            const inv = String(childRow.盘存编号 || '').trim()
+            const toolingId = createdToolingMap.get(inv)
+            if (!toolingId) continue
+
+            const childData = {
+              name: String(childRow.名称 || '').trim(),
+              model: String(childRow.型号 || '').trim(),
+              quantity: childRow.数量 !== undefined ? Number(childRow.数量) : null,
+              unit: String(childRow.单位 || '').trim(),
+              required_date: String(childRow.需求日期 || '').trim(),
+              remark: String(childRow.备注 || '').trim(),
+              purchase_status: String(childRow.采购状态 || '').trim()
+            }
+
+            try {
+              const response = await fetchWithFallback(`/api/tooling/${toolingId}/child-items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(childData)
+              })
+              if (response.ok) {
+                childSuccessCount++
+              } else {
+                childErrorCount++
+              }
+            } catch {
+              childErrorCount++
+            }
+          }
         }
       }
 
@@ -658,7 +745,8 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           title: '导入完成，但有错误',
           content: (
             <div>
-              <p>成功导入 {successCount} 条数据，失败 {errorCount} 条</p>
+              <p>成功导入 {successCount} 条工装信息，失败 {errorCount} 条</p>
+              {childSuccessCount > 0 && <p>成功导入 {childSuccessCount} 条标准件，失败 {childErrorCount} 条</p>}
               <details>
                 <summary style={{ cursor: 'pointer', color: '#1890ff' }}>查看错误详情</summary>
                 <ul style={{ maxHeight: 300, overflowY: 'auto', marginTop: 10 }}>
@@ -672,7 +760,11 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           )
         })
       } else {
-        message.success(`成功导入 ${successCount} 条工装信息`)
+        let msg = `成功导入 ${successCount} 条工装信息`
+        if (childSuccessCount > 0) {
+          msg += `，${childSuccessCount} 条标准件`
+        }
+        message.success(msg)
       }
       
       setImportModalVisible(false)
