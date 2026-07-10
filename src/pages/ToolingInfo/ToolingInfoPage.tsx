@@ -640,15 +640,15 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
       errors.push('类别不能为空')
     }
     
-    if (row.接收日期 && !/^\d{4}-\d{2}-\d{2}$/.test(row.接收日期)) {
+    if (row.接收日期 && !/^\d{4}-\d{2}-\d{2}$/.test(String(row.接收日期))) {
       errors.push('接收日期格式不正确，应为YYYY-MM-DD')
     }
     
-    if (row.需求日期 && !/^\d{4}-\d{2}-\d{2}$/.test(row.需求日期)) {
+    if (row.需求日期 && !/^\d{4}-\d{2}-\d{2}$/.test(String(row.需求日期))) {
       errors.push('需求日期格式不正确，应为YYYY-MM-DD')
     }
     
-    if (row.投产日期 && !/^\d{4}-\d{2}-\d{2}$/.test(row.投产日期)) {
+    if (row.投产日期 && !/^\d{4}-\d{2}-\d{2}$/.test(String(row.投产日期))) {
       errors.push('投产日期格式不正确，应为YYYY-MM-DD')
     }
     
@@ -657,6 +657,22 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
     }
     
     return { valid: errors.length === 0, errors }
+  }, [])
+
+  // 中文字段名到英文字段名的映射
+  const mapChineseToEnglishFields = useCallback((row: any): any => {
+    return {
+      inventory_number: String(row.盘存编号 || '').trim(),
+      production_unit: String(row.投产单位 || '').trim(),
+      category: String(row.类别 || '').trim(),
+      received_date: String(row.接收日期 || '').trim(),
+      demand_date: String(row.需求日期 || '').trim(),
+      completed_date: String(row.完成日期 || '').trim(),
+      project_name: String(row.项目名称 || '').trim(),
+      production_date: String(row.投产日期 || '').trim(),
+      sets_count: row.套数 !== undefined ? Number(row.套数) : 1,
+      recorder: String(row.录入人 || '').trim()
+    }
   }, [])
 
   const handleFileImport = useCallback(async (file: File) => {
@@ -735,7 +751,11 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           continue
         }
 
-        const cleanedParams = RequestCleaner.cleanToolingParams(row)
+        // 将中文字段名映射为英文字段名
+        const englishRow = mapChineseToEnglishFields(row)
+        console.log(`[导入] 第 ${index + 2} 行映射后:`, englishRow)
+        
+        const cleanedParams = RequestCleaner.cleanToolingParams(englishRow)
         const result = await createTooling(cleanedParams)
         if (result?.data) {
           successCount++
