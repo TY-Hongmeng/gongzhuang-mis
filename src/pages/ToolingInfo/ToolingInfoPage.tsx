@@ -719,16 +719,21 @@ export const ToolingInfoPage: React.FC<ToolingInfoPageProps> = ({ onBack }) => {
           if (neededInvNumbers.size > 0) {
             try {
               const invList = Array.from(neededInvNumbers)
-              const params = new URLSearchParams()
-              invList.forEach(inv => params.append('inventory_number', inv))
-              const response = await fetchWithFallback(`/api/tooling/list?${params.toString()}`)
-              if (response.ok) {
-                const result = await response.json().catch(() => ({}))
-                if (result?.success && Array.isArray(result?.items)) {
-                  for (const item of result.items) {
-                    const invNum = String(item.inventory_number || '').trim()
-                    if (invNum && !createdToolingMap.has(invNum)) {
-                      createdToolingMap.set(invNum, String(item.id || ''))
+              // 逐个查询工装信息
+              for (const inv of invList) {
+                if (createdToolingMap.has(inv)) continue
+                const params = new URLSearchParams()
+                params.append('search', inv)
+                params.append('pageSize', '0')
+                const response = await fetchWithFallback(`/api/tooling?${params.toString()}`)
+                if (response.ok) {
+                  const result = await response.json().catch(() => ({}))
+                  if (result?.success && Array.isArray(result?.items)) {
+                    for (const item of result.items) {
+                      const invNum = String(item.inventory_number || '').trim()
+                      if (invNum === inv && !createdToolingMap.has(invNum)) {
+                        createdToolingMap.set(invNum, String(item.id || ''))
+                      }
                     }
                   }
                 }
