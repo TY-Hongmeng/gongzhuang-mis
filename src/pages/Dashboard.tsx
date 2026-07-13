@@ -108,14 +108,46 @@ const Dashboard: React.FC = () => {
     const loadPurchasePendingCount = async () => {
       if (!can('purchase')) return
       try {
-        const params = new URLSearchParams({
-          status: 'pending_approval'
-        })
+        // 1. 获取所有采购单
+        const params = new URLSearchParams({ page: '1', pageSize: '10000' })
         const res = await fetchWithFallback(`/api/purchase-orders?${params.toString()}`)
         const json = await res.json().catch(() => ({}))
-        if (!active || !res.ok || json?.success === false) return
-        const count = Number(json?.total || json?.data?.length || 0)
-        setPurchasePendingCount(count)
+        if (!active || !res.ok) return
+
+        let allItems: any[] = []
+        if (json?.items && Array.isArray(json.items)) {
+          allItems = json.items
+        } else if (json?.data && Array.isArray(json.data)) {
+          allItems = json.data
+        }
+
+        // 2. 获取已生成临时计划的采购单ID
+        let tempPlanOrderIds: string[] = []
+        try {
+          const resp = await fetchWithFallback('/api/temporary-plan-groups', { method: 'GET' })
+          const groupsJson = await resp.json().catch(() => ({}))
+          const groups = Array.isArray(groupsJson?.data) ? groupsJson.data : []
+          const ids = groups.flatMap((group: any) =>
+            Array.isArray(group?.items) ? group.items.map((item: any) => String(item?.id || '').trim()).filter(Boolean) : []
+          )
+          tempPlanOrderIds = Array.from(new Set(ids))
+        } catch {}
+
+        // 3. 获取已隐藏的采购单ID
+        let approvalHiddenIds: string[] = []
+        try {
+          const arr = JSON.parse(localStorage.getItem('approval_hidden_ids') || '[]')
+          approvalHiddenIds = Array.isArray(arr) ? arr : []
+        } catch {}
+
+        // 4. 计算与采购审批页面一致的待处理数量
+        const tempSet = new Set(tempPlanOrderIds)
+        const hiddenSet = new Set(approvalHiddenIds)
+        const pendingCount = allItems.filter(
+          item => !tempSet.has(String(item.id)) && !hiddenSet.has(String(item.id))
+        ).length
+
+        if (active) setPurchasePendingCount(pendingCount)
       } catch {}
     }
     loadPurchasePendingCount()
