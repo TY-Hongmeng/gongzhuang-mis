@@ -18,7 +18,7 @@ import {
   message
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import { DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
@@ -473,34 +473,112 @@ const MeasureToolsLedger: React.FC = () => {
       title: '名称',
       dataIndex: 'name',
       width: 150,
-      filters: Array.from(new Set(items.map(item => item.name))).map(name => ({ text: name, value: name })),
-      onFilter: (value: any, record: MaterialAssetItem) => record.name === value
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索名称"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => record.name?.toString().toLowerCase().includes((value as string).toLowerCase())
     },
     {
       title: '编号',
       dataIndex: 'code',
       width: 150,
-      filters: Array.from(new Set(items.map(item => item.code))).map(code => ({ text: code, value: code })),
-      onFilter: (value: any, record: MaterialAssetItem) => record.code === value
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索编号"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => record.code?.toString().toLowerCase().includes((value as string).toLowerCase())
     },
     {
       title: '型号规格',
       dataIndex: 'model_spec',
       width: 180,
-      filters: Array.from(new Set(items.map(item => item.model_spec).filter(Boolean))).map(spec => ({ text: spec, value: spec })),
-      onFilter: (value: any, record: MaterialAssetItem) => record.model_spec === value,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索型号规格"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => record.model_spec?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (value: string) => value || '-'
     },
     {
       title: '合格证',
       width: 220,
-      filters: [
-        { text: '未维护', value: '未维护' },
-        { text: '有效', value: '有效' },
-        { text: '临期', value: '临期' },
-        { text: '过期', value: '过期' }
-      ],
-      onFilter: (value: any, record: MaterialAssetItem) => (record.certificate_status || '未维护') === value,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索合格证状态"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => (record.certificate_status || '未维护')?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
         <div>
           <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ marginRight: 6 }}>
@@ -529,8 +607,28 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '责任人',
       width: 260,
-      filters: Array.from(new Set(items.map(item => item.responsible_person || '未确认'))).map(person => ({ text: person, value: person })),
-      onFilter: (value: any, record: MaterialAssetItem) => (record.responsible_person || '未确认') === value,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索责任人"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => (record.responsible_person || '')?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           {record.responsible_person
@@ -550,7 +648,7 @@ const MeasureToolsLedger: React.FC = () => {
         { text: '在用', value: '在用' },
         { text: '报废', value: '报废' }
       ],
-      onFilter: (value: any, record: MaterialAssetItem) => record.asset_status === value,
+      onFilter: (value, record) => record.asset_status === value,
       render: (value: string) => (
         <Tag color={statusColorMap[value] || 'default'}>{value}</Tag>
       )
@@ -564,7 +662,7 @@ const MeasureToolsLedger: React.FC = () => {
         { text: '借用中', value: '借用中' },
         { text: '待归还确认', value: '待归还确认' }
       ],
-      onFilter: (value: any, record: MaterialAssetItem) => record.borrow_status === value,
+      onFilter: (value, record) => record.borrow_status === value,
       render: (value: string) => (
         value !== '无' ? <Tag color={statusColorMap[value] || 'default'}>{value}</Tag> : null
       )
@@ -578,7 +676,7 @@ const MeasureToolsLedger: React.FC = () => {
         { text: '待报废', value: '待报废' },
         { text: '已报废', value: '已报废' }
       ],
-      onFilter: (value: any, record: MaterialAssetItem) => record.scrap_status === value,
+      onFilter: (value, record) => record.scrap_status === value,
       render: (value: string) => (
         value !== '无' ? <Tag color={statusColorMap[value] || 'default'}>{value}</Tag> : null
       )
@@ -586,8 +684,28 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '备注',
       width: 190,
-      filters: Array.from(new Set(items.map(item => item.remark).filter(Boolean))).map(remark => ({ text: remark, value: remark })),
-      onFilter: (value: any, record: MaterialAssetItem) => record.remark === value,
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <Input
+            placeholder="搜索备注"
+            value={selectedKeys[0] || ''}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
+            onClick={(e) => e.stopPropagation()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
+      onFilter: (value, record) => record.remark?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
         <EditableRemarkCell record={record} onSaved={loadItems} />
       )
