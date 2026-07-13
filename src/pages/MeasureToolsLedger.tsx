@@ -473,26 +473,34 @@ const MeasureToolsLedger: React.FC = () => {
       title: '名称',
       dataIndex: 'name',
       width: 150,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索名称"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索名称"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => record.name?.toString().toLowerCase().includes((value as string).toLowerCase())
     },
@@ -500,26 +508,34 @@ const MeasureToolsLedger: React.FC = () => {
       title: '编号',
       dataIndex: 'code',
       width: 150,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索编号"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索编号"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => record.code?.toString().toLowerCase().includes((value as string).toLowerCase())
     },
@@ -527,26 +543,34 @@ const MeasureToolsLedger: React.FC = () => {
       title: '型号规格',
       dataIndex: 'model_spec',
       width: 180,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索型号规格"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索型号规格"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => record.model_spec?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (value: string) => value || '-'
@@ -554,26 +578,34 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '合格证',
       width: 220,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索合格证状态"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索合格证状态"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => (record.certificate_status || '未维护')?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
@@ -604,26 +636,34 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '责任人',
       width: 260,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索责任人"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索责任人"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => (record.responsible_person || '')?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
@@ -681,26 +721,34 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '备注',
       width: 190,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索备注"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => {
+        const debounceTimer = React.useRef<NodeJS.Timeout>()
+        return (
+          <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <Input
+              placeholder="搜索备注"
+              defaultValue={selectedKeys[0] || ''}
+              onChange={e => {
+                const value = e.target.value
+                setSelectedKeys(value ? [value] : [])
+                if (debounceTimer.current) clearTimeout(debounceTimer.current)
+                debounceTimer.current = setTimeout(() => confirm(), 300)
+              }}
+              onPressEnter={confirm}
+              onClick={(e) => e.stopPropagation()}
+              style={{ marginBottom: 8, display: 'block' }}
+            />
+            <Space>
+              <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+                搜索
+              </Button>
+              <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+                重置
+              </Button>
+            </Space>
+          </div>
+        )
+      },
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => record.remark?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
