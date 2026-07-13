@@ -26,6 +26,7 @@ const Dashboard: React.FC = () => {
     ledger: { total: 0, pending: 0, expired: 0, missing: 0 },
     mine: { total: 0, pending: 0, expired: 0, missing: 0 }
   })
+  const [purchasePendingCount, setPurchasePendingCount] = React.useState(0)
 
   const MODULE_ALIASES: Record<string, string> = {
     '工装信息': 'tooling', tooling: 'tooling',
@@ -101,6 +102,25 @@ const Dashboard: React.FC = () => {
     loadReminderSummary()
     return () => { active = false }
   }, [canMeasureTools, canMyMeasureTools, user])
+
+  React.useEffect(() => {
+    let active = true
+    const loadPurchasePendingCount = async () => {
+      if (!can('purchase')) return
+      try {
+        const params = new URLSearchParams({
+          status: 'pending_approval'
+        })
+        const res = await fetchWithFallback(`/api/purchase-orders?${params.toString()}`)
+        const json = await res.json().catch(() => ({}))
+        if (!active || !res.ok || json?.success === false) return
+        const count = Number(json?.total || json?.data?.length || 0)
+        setPurchasePendingCount(count)
+      } catch {}
+    }
+    loadPurchasePendingCount()
+    return () => { active = false }
+  }, [can])
 
   const handleLogout = () => {
     logout()
@@ -202,7 +222,28 @@ const Dashboard: React.FC = () => {
           {can('purchase') && (
             <Col xs={24} sm={12} md={8} lg={6}>
               <Link to="/purchase-management" style={{ display: 'block' }}>
-                <Card hoverable className="text-center cursor-pointer">
+                <Card hoverable className="text-center cursor-pointer" bodyStyle={{ position: 'relative' }}>
+                  {purchasePendingCount > 0 ? (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        minWidth: 20,
+                        height: 20,
+                        padding: '0 6px',
+                        borderRadius: 10,
+                        background: '#ff4d4f',
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: '20px',
+                        fontWeight: 600,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {purchasePendingCount}
+                    </span>
+                  ) : null}
                   <ShoppingOutlined className="text-3xl text-green-500 mb-2" />
                   采购管理
                 </Card>
