@@ -281,6 +281,7 @@ const MobileCard: React.FC<{
   onConfirmReturn: () => void
   onOpenScrap: () => void
   onOpenReturn: () => void
+  onSaved?: () => void
 }> = ({
   record,
   acting,
@@ -288,6 +289,7 @@ const MobileCard: React.FC<{
   certificateDraft,
   onCertificateDraftChange,
   onSaveCertificate,
+  onSaved,
   ...actions
 }) => {
   // 类型标签颜色和文字
@@ -382,9 +384,11 @@ const MobileCard: React.FC<{
           lineHeight: 1.7
         }}>
           {record.remark ? (
-            <div>
+            <div style={{ marginBottom: 8 }}>
               <span style={{ color: '#999' }}>备注：</span>
-              <span>{record.remark}</span>
+              <div style={{ marginTop: 4 }}>
+                <EditableRemarkCell record={record} onSaved={onSaved} />
+              </div>
             </div>
           ) : null}
           {record.borrow_note ? (
