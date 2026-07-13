@@ -37,6 +37,97 @@ import type { MaterialAssetItem, MaterialAssetUserOption } from '../types/materi
 
 const { Title, Text } = Typography
 
+// 可编辑备注单元格
+const EditableRemarkCell: React.FC<{
+  record: MaterialAssetItem
+  onSaved?: () => void
+}> = ({ record, onSaved }) => {
+  const { user } = useAuthStore()
+  const [editing, setEditing] = React.useState(false)
+  const [value, setValue] = React.useState<string>(String(record.remark || ''))
+  const [saving, setSaving] = React.useState(false)
+  const inputRef = React.useRef<any>(null)
+
+  React.useEffect(() => {
+    if (!editing) setValue(String(record.remark || ''))
+  }, [record.remark, editing])
+
+  React.useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus?.()
+      inputRef.current.select?.()
+    }
+  }, [editing])
+
+  const save = async () => {
+    const next = String(value || '').trim()
+    const prev = String(record.remark || '').trim()
+    if (next === prev) {
+      setEditing(false)
+      return
+    }
+    try {
+      setSaving(true)
+      const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(record.id)}/remark`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          remark: next,
+          userId: String((user as any)?.id || ''),
+          operator: String(user?.real_name || '')
+        })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json?.success === false) {
+        throw new Error(String(json?.error || '保存备注失败'))
+      }
+      message.success('备注已保存')
+      setEditing(false)
+      onSaved?.()
+    } catch (err: any) {
+      message.error(err?.message || '保存备注失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <Input.TextArea
+        ref={inputRef as any}
+        value={value}
+        autoSize={{ minRows: 1, maxRows: 4 }}
+        disabled={saving}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault()
+            ;(e.target as any).blur()
+          }
+        }}
+        placeholder="请输入备注"
+      />
+    )
+  }
+
+  const display = String(record.remark || '').trim()
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      style={{
+        cursor: 'text',
+        minHeight: 22,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word'
+      }}
+      title="点击修改备注"
+    >
+      {display || '-'}
+    </div>
+  )
+}
+
 const tagColorMap: Record<string, string> = {
   在用: 'green',
   报废: 'red',
@@ -830,14 +921,20 @@ const MyMeasureTools: React.FC = () => {
       )
     },
     {
-      title: '说明', width: 300,
+      title: '备注', width: 190,
+      render: (_: any, record: MineRow) => (
+        <EditableRemarkCell record={record} onSaved={loadMine} />
+      )
+    },
+    {
+      title: '说明', width: 260,
       render: (_: any, record: MineRow) => (
         <div>
-          <div>{record.remark || '-'}</div>
           {record.pending_responsible_person ? <Text type="secondary">转移状态: 待 {record.pending_responsible_person} 确认</Text> : null}
           {record.borrow_note ? <Text type="secondary">借用说明: {record.borrow_note}</Text> : null}
           {record.borrow_return_note ? <Text type="secondary">归还说明: {record.borrow_return_note}</Text> : null}
           {record.scrap_reason ? <Text type="secondary">报废原因: {record.scrap_reason}</Text> : null}
+          {!record.pending_responsible_person && !record.borrow_note && !record.borrow_return_note && !record.scrap_reason ? '-' : null}
         </div>
       )
     },
