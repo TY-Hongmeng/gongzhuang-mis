@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker } from 'antd';
 import * as XLSX from 'xlsx'
@@ -72,8 +72,8 @@ interface PurchaseOrder {
 }
 
 const PRINT_DENSITY_LEVEL = 6 as const;
-const PRINT_PORTRAIT_PAGE_UNIT_BUDGET = 28
-const PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS = 6
+const PRINT_PORTRAIT_PAGE_UNIT_BUDGET = 40
+const PRINT_PORTRAIT_MIN_LAST_PAGE_UNITS = 8
 const PRINT_DENSITY_PROFILES = {
   1: { pageUnitBudget: 30, minLastPageUnits: 10 },
   2: { pageUnitBudget: 31, minLastPageUnits: 11 },

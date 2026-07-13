@@ -179,10 +179,6 @@ const MeasureToolsLedger: React.FC = () => {
   const [historyAssetTitle, setHistoryAssetTitle] = React.useState('')
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [search, setSearch] = React.useState('')
-  const [assetStatusFilter, setAssetStatusFilter] = React.useState('')
-  const [responsibilityStatusFilter, setResponsibilityStatusFilter] = React.useState('')
-  const [scrapStatusFilter, setScrapStatusFilter] = React.useState('')
-  const [certificateStatusFilter, setCertificateStatusFilter] = React.useState('')
 
   const roleName = String((user as any)?.roles?.name || '')
   const isManager = isManagerRole(roleName)
@@ -195,10 +191,6 @@ const MeasureToolsLedger: React.FC = () => {
         pageSize: '500'
       })
       if (search.trim()) params.set('search', search.trim())
-      if (assetStatusFilter) params.set('assetStatus', assetStatusFilter)
-      if (responsibilityStatusFilter) params.set('responsibilityStatus', responsibilityStatusFilter)
-      if (scrapStatusFilter) params.set('scrapStatus', scrapStatusFilter)
-      if (certificateStatusFilter) params.set('certificateStatus', certificateStatusFilter)
       const res = await fetchWithFallback(`/api/material-assets/ledger?${params.toString()}`)
       const json = await res.json().catch(() => ({}))
       if (!res.ok || json?.success === false) {
@@ -210,7 +202,7 @@ const MeasureToolsLedger: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [assetStatusFilter, certificateStatusFilter, responsibilityStatusFilter, scrapStatusFilter, search])
+  }, [search])
 
   const loadUsers = React.useCallback(async () => {
     try {
@@ -480,22 +472,35 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '名称',
       dataIndex: 'name',
-      width: 150
+      width: 150,
+      filters: Array.from(new Set(items.map(item => item.name))).map(name => ({ text: name, value: name })),
+      onFilter: (value: any, record: MaterialAssetItem) => record.name === value
     },
     {
       title: '编号',
       dataIndex: 'code',
-      width: 150
+      width: 150,
+      filters: Array.from(new Set(items.map(item => item.code))).map(code => ({ text: code, value: code })),
+      onFilter: (value: any, record: MaterialAssetItem) => record.code === value
     },
     {
       title: '型号规格',
       dataIndex: 'model_spec',
       width: 180,
+      filters: Array.from(new Set(items.map(item => item.model_spec).filter(Boolean))).map(spec => ({ text: spec, value: spec })),
+      onFilter: (value: any, record: MaterialAssetItem) => record.model_spec === value,
       render: (value: string) => value || '-'
     },
     {
       title: '合格证',
       width: 220,
+      filters: [
+        { text: '未维护', value: '未维护' },
+        { text: '有效', value: '有效' },
+        { text: '临期', value: '临期' },
+        { text: '过期', value: '过期' }
+      ],
+      onFilter: (value: any, record: MaterialAssetItem) => (record.certificate_status || '未维护') === value,
       render: (_: any, record: MaterialAssetItem) => (
         <div>
           <Tag color={certificateTagColorMap[record.certificate_status] || 'default'} style={{ marginRight: 6 }}>
@@ -524,6 +529,8 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '责任人',
       width: 260,
+      filters: Array.from(new Set(items.map(item => item.responsible_person || '未确认'))).map(person => ({ text: person, value: person })),
+      onFilter: (value: any, record: MaterialAssetItem) => (record.responsible_person || '未确认') === value,
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
           {record.responsible_person
@@ -536,19 +543,51 @@ const MeasureToolsLedger: React.FC = () => {
       )
     },
     {
-      title: '状态',
-      width: 140,
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap size={[4, 4]}>
-          <Tag color={statusColorMap[record.asset_status] || 'default'}>{record.asset_status}</Tag>
-          {record.borrow_status !== '无' ? <Tag color={statusColorMap[record.borrow_status] || 'default'}>{record.borrow_status}</Tag> : null}
-          {record.scrap_status !== '无' ? <Tag color={statusColorMap[record.scrap_status] || 'default'}>{record.scrap_status}</Tag> : null}
-        </Space>
+      title: '资产状态',
+      dataIndex: 'asset_status',
+      width: 100,
+      filters: [
+        { text: '在用', value: '在用' },
+        { text: '报废', value: '报废' }
+      ],
+      onFilter: (value: any, record: MaterialAssetItem) => record.asset_status === value,
+      render: (value: string) => (
+        <Tag color={statusColorMap[value] || 'default'}>{value}</Tag>
+      )
+    },
+    {
+      title: '借用状态',
+      dataIndex: 'borrow_status',
+      width: 100,
+      filters: [
+        { text: '无', value: '无' },
+        { text: '借用中', value: '借用中' },
+        { text: '待归还确认', value: '待归还确认' }
+      ],
+      onFilter: (value: any, record: MaterialAssetItem) => record.borrow_status === value,
+      render: (value: string) => (
+        value !== '无' ? <Tag color={statusColorMap[value] || 'default'}>{value}</Tag> : null
+      )
+    },
+    {
+      title: '报废状态',
+      dataIndex: 'scrap_status',
+      width: 100,
+      filters: [
+        { text: '无', value: '无' },
+        { text: '待报废', value: '待报废' },
+        { text: '已报废', value: '已报废' }
+      ],
+      onFilter: (value: any, record: MaterialAssetItem) => record.scrap_status === value,
+      render: (value: string) => (
+        value !== '无' ? <Tag color={statusColorMap[value] || 'default'}>{value}</Tag> : null
       )
     },
     {
       title: '备注',
       width: 190,
+      filters: Array.from(new Set(items.map(item => item.remark).filter(Boolean))).map(remark => ({ text: remark, value: remark })),
+      onFilter: (value: any, record: MaterialAssetItem) => record.remark === value,
       render: (_: any, record: MaterialAssetItem) => (
         <EditableRemarkCell record={record} onSaved={loadItems} />
       )
@@ -669,64 +708,13 @@ const MeasureToolsLedger: React.FC = () => {
           />
         ) : null}
 
-        <Space wrap style={{ marginBottom: 16 }}>
-          <Input
-            allowClear
-            placeholder="搜索名称/编号/责任人/借用人/备注"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 260 }}
-          />
-          <Select
-            allowClear
-            placeholder="状态"
-            value={assetStatusFilter || undefined}
-            onChange={(value) => setAssetStatusFilter(String(value || ''))}
-            style={{ width: 140 }}
-            options={[
-              { value: '在用', label: '在用' },
-              { value: '报废', label: '报废' }
-            ]}
-          />
-          <Select
-            allowClear
-            placeholder="责任确认"
-            value={responsibilityStatusFilter || undefined}
-            onChange={(value) => setResponsibilityStatusFilter(String(value || ''))}
-            style={{ width: 160 }}
-            options={[
-              { value: '待确认', label: '待确认' },
-              { value: '已确认', label: '已确认' },
-              { value: '待转移确认', label: '待转移确认' }
-            ]}
-          />
-          <Select
-            allowClear
-            placeholder="报废流程"
-            value={scrapStatusFilter || undefined}
-            onChange={(value) => setScrapStatusFilter(String(value || ''))}
-            style={{ width: 160 }}
-            options={[
-              { value: '无', label: '无' },
-              { value: '待报废', label: '待报废' },
-              { value: '已报废', label: '已报废' }
-            ]}
-          />
-          <Select
-            allowClear
-            placeholder="合格证状态"
-            value={certificateStatusFilter || undefined}
-            onChange={(value) => setCertificateStatusFilter(String(value || ''))}
-            style={{ width: 160 }}
-            options={[
-              { value: '未维护', label: '未维护' },
-              { value: '有效', label: '有效' },
-              { value: '临期', label: '临期' },
-              { value: '过期', label: '过期' }
-            ]}
-          />
-          <Button type="primary" onClick={loadItems}>查询</Button>
-        </Space>
+        <Input
+          allowClear
+          placeholder="搜索名称/编号/责任人/借用人/备注"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 260, marginBottom: 16 }}
+        />
 
         <Table
           rowKey="id"

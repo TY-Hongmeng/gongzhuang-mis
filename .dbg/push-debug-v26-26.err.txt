@@ -1,0 +1,6 @@
+Pushing to github.com:TY-Hongmeng/gongzhuang-mis.git
+remote: 
+remote: Create a pull request for 'debug-v26-26' on GitHub by visiting:        
+remote:      https://github.com/TY-Hongmeng/gongzhuang-mis/pull/new/debug-v26-26        
+remote: 
+updating local tracking ref 'refs/remotes/origin/debug-v26-26'

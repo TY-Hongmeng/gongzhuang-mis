@@ -1,0 +1,19 @@
+git : fatal: the requested upstream branch 'origin/main' does not exist
+所在位置 行:1 字符: 54
++ ... in 0a8c52e; git branch --set-upstream-to=origin/main main 2>&1 | Out- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (fatal: the requ... does not exist 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+hint:
+hint: If you are planning on basing your work on an upstream
+hint: branch that already exists at the remote, you may need to
+hint: run "git fetch" to retrieve it.
+hint:
+hint: If you are planning to push out a new local branch that
+hint: will track its remote counterpart, you may want to use
+hint: "git push -u" to set the upstream config as you push.
+hint: Disable this message with "git config set advice.setUpstreamFailure false
+"
+* main 0a8c52e [origin/main: gone] feat: 瀵煎嚭Excel瀹屽叏澶嶅埢鎵撳嵃鏍煎紡-鍒嗛〉/姣忛〉鐙珛sheet/rowspan鍚堝苟/椤电爜
