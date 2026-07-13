@@ -1094,6 +1094,7 @@ const MyMeasureTools: React.FC = () => {
                   onConfirmReturn={() => confirmReturn(item)}
                   onOpenScrap={() => { setCurrentItem(item); setScrapOpen(true) }}
                   onOpenReturn={() => { setCurrentItem(item); returnForm.setFieldsValue({ return_note: '' }); setReturnOpen(true) }}
+                  onSaved={loadMine}
                 />
               ))
             })()}
