@@ -476,18 +476,21 @@ const MeasureToolsLedger: React.FC = () => {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
-            placeholder="输入即搜索名称"
+            placeholder="搜索名称"
             value={selectedKeys[0] || ''}
-            onChange={e => {
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-              confirm()
-            }}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
-            allowClear
-            onClear={() => { clearFilters?.() }}
             style={{ marginBottom: 8, display: 'block' }}
           />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
         </div>
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
@@ -500,18 +503,21 @@ const MeasureToolsLedger: React.FC = () => {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
-            placeholder="输入即搜索编号"
+            placeholder="搜索编号"
             value={selectedKeys[0] || ''}
-            onChange={e => {
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-              confirm()
-            }}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
-            allowClear
-            onClear={() => { clearFilters?.() }}
             style={{ marginBottom: 8, display: 'block' }}
           />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
         </div>
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
@@ -524,18 +530,21 @@ const MeasureToolsLedger: React.FC = () => {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
-            placeholder="输入即搜索型号规格"
+            placeholder="搜索型号规格"
             value={selectedKeys[0] || ''}
-            onChange={e => {
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-              confirm()
-            }}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
-            allowClear
-            onClear={() => { clearFilters?.() }}
             style={{ marginBottom: 8, display: 'block' }}
           />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
         </div>
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
@@ -548,18 +557,21 @@ const MeasureToolsLedger: React.FC = () => {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
-            placeholder="输入即搜索合格证状态"
+            placeholder="搜索合格证状态"
             value={selectedKeys[0] || ''}
-            onChange={e => {
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-              confirm()
-            }}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
-            allowClear
-            onClear={() => { clearFilters?.() }}
             style={{ marginBottom: 8, display: 'block' }}
           />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
         </div>
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
@@ -595,18 +607,21 @@ const MeasureToolsLedger: React.FC = () => {
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
-            placeholder="输入即搜索责任人"
+            placeholder="搜索责任人"
             value={selectedKeys[0] || ''}
-            onChange={e => {
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-              confirm()
-            }}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={confirm}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
-            allowClear
-            onClear={() => { clearFilters?.() }}
             style={{ marginBottom: 8, display: 'block' }}
           />
+          <Space>
+            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
+              搜索
+            </Button>
+            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
         </div>
       ),
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
