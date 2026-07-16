@@ -2004,13 +2004,17 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
           const actor = await getActor(body?.userId, body?.operator)
           if (!actor.isManager) return jsonResponse({ success: false, error: '仅库管或超级管理员可以编辑量具基础信息' }, 403)
           const existing = await loadAsset(assetId)
-          const payload = {
+          const payload: any = {
             name: normTextSafe(body?.name),
             code: normTextSafe(body?.code),
             model_spec: normTextSafe(body?.model_spec),
             certificate_expire_date: normalizeDateInput(body?.certificate_expire_date),
             certificate_remind_days: normalizeRemindDays(body?.certificate_remind_days),
             remark: normTextSafe(body?.remark),
+            responsible_person: normTextSafe(body?.responsible_person),
+            responsible_user_id: normTextSafe(body?.responsible_user_id),
+            pending_responsible_person: normTextSafe(body?.pending_responsible_person),
+            responsibility_status: normTextSafe(body?.responsibility_status),
             updated_at: nowIso()
           }
           if (!payload.name || !payload.code) return jsonResponse({ success: false, error: '名称、编号不能为空' }, 400)
@@ -2030,9 +2034,22 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 model_spec: normTextSafe(existing?.model_spec),
                 certificate_expire_date: normalizeDateInput(existing?.certificate_expire_date),
                 certificate_remind_days: normalizeRemindDays(existing?.certificate_remind_days),
-                remark: normTextSafe(existing?.remark)
+                remark: normTextSafe(existing?.remark),
+                responsible_person: normTextSafe(existing?.responsible_person),
+                pending_responsible_person: normTextSafe(existing?.pending_responsible_person),
+                responsibility_status: normTextSafe(existing?.responsibility_status)
               },
-              after: payload
+              after: {
+                name: payload.name,
+                code: payload.code,
+                model_spec: payload.model_spec,
+                certificate_expire_date: payload.certificate_expire_date,
+                certificate_remind_days: payload.certificate_remind_days,
+                remark: payload.remark,
+                responsible_person: payload.responsible_person,
+                pending_responsible_person: payload.pending_responsible_person,
+                responsibility_status: payload.responsibility_status
+              }
             }
           })
           return jsonResponse({ success: true, item: data })
