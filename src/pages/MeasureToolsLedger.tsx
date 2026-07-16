@@ -655,12 +655,12 @@ const MeasureToolsLedger: React.FC = () => {
       onFilter: (value, record) => (record.responsible_person || '')?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (_: any, record: MaterialAssetItem) => (
         <Space wrap size={[4, 4]}>
-          {record.responsible_person
-            ? <Tag color="blue">{record.responsible_person}</Tag>
-            : <Tag color="default">未确认</Tag>}
           {record.pending_responsible_person
             ? <Tag color="gold">{record.pending_responsible_person}</Tag>
             : null}
+          {record.responsible_person
+            ? <Tag color="blue">{record.responsible_person}</Tag>
+            : <Tag color="default">未确认</Tag>}
         </Space>
       )
     },
