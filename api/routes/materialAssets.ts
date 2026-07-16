@@ -757,7 +757,7 @@ router.put('/:id', async (req, res) => {
         WHERE id = $1
         RETURNING *
       `, [assetId, name, code, modelSpec, certificateExpireDate, certificateRemindDays, remark,
-        responsiblePerson || null, responsibleUserId || null, pendingResponsiblePerson || null, responsibilityStatus || null])
+        responsiblePerson, responsibleUserId, pendingResponsiblePerson, responsibilityStatus])
       const row = rs.rows[0]
       await insertHistory(client, assetId, {
         actionType: 'edit_basic_info',
