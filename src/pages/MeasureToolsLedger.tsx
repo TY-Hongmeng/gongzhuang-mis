@@ -395,7 +395,7 @@ const MeasureToolsLedger: React.FC = () => {
           responsible_person: responsiblePerson,
           responsible_user_id: String(selectedUser?.id || ''),
           pending_responsible_person: String(values.pending_responsible_person || '').trim(),
-          responsibility_status: String(values.responsibility_status || ''),
+          ...(values.responsibility_status ? { responsibility_status: String(values.responsibility_status) } : {}),
           remark: String(values.remark || '').trim(),
           userId: String((user as any)?.id || ''),
           operator: String(user?.real_name || '')
@@ -1015,8 +1015,6 @@ const MeasureToolsLedger: React.FC = () => {
               <Select.Option value="待确认">待确认</Select.Option>
               <Select.Option value="已确认">已确认</Select.Option>
               <Select.Option value="待转移确认">待转移确认</Select.Option>
-              <Select.Option value="在用">在用</Select.Option>
-              <Select.Option value="报废">报废</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item label="备注" name="remark">
