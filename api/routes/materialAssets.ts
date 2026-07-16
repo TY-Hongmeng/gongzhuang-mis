@@ -730,6 +730,10 @@ router.put('/:id', async (req, res) => {
     const certificateExpireDate = normalizeDateInput(req.body?.certificate_expire_date)
     const certificateRemindDays = normalizeRemindDays(req.body?.certificate_remind_days)
     const remark = normText(req.body?.remark)
+    const responsiblePerson = normText(req.body?.responsible_person)
+    const responsibleUserId = normText(req.body?.responsible_user_id)
+    const pendingResponsiblePerson = normText(req.body?.pending_responsible_person)
+    const responsibilityStatus = normText(req.body?.responsibility_status)
 
     if (!name || !code) {
       return res.status(400).json({ success: false, error: '名称、编号不能为空' })
@@ -745,10 +749,15 @@ router.put('/:id', async (req, res) => {
           certificate_expire_date = $5,
           certificate_remind_days = $6,
           remark = $7,
+          responsible_person = $8,
+          responsible_user_id = $9,
+          pending_responsible_person = $10,
+          responsibility_status = $11,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
-      `, [assetId, name, code, modelSpec, certificateExpireDate, certificateRemindDays, remark])
+      `, [assetId, name, code, modelSpec, certificateExpireDate, certificateRemindDays, remark,
+        responsiblePerson || null, responsibleUserId || null, pendingResponsiblePerson || null, responsibilityStatus || null])
       const row = rs.rows[0]
       await insertHistory(client, assetId, {
         actionType: 'edit_basic_info',
@@ -763,7 +772,10 @@ router.put('/:id', async (req, res) => {
             model_spec: normText(asset.model_spec),
             certificate_expire_date: normalizeDateInput(asset.certificate_expire_date),
             certificate_remind_days: normalizeRemindDays(asset.certificate_remind_days),
-            remark: normText(asset.remark)
+            remark: normText(asset.remark),
+            responsible_person: normText(asset.responsible_person),
+            pending_responsible_person: normText(asset.pending_responsible_person),
+            responsibility_status: normText(asset.responsibility_status)
           },
           after: {
             name,
@@ -771,7 +783,10 @@ router.put('/:id', async (req, res) => {
             model_spec: modelSpec,
             certificate_expire_date: certificateExpireDate,
             certificate_remind_days: certificateRemindDays,
-            remark
+            remark,
+            responsible_person: responsiblePerson,
+            pending_responsible_person: pendingResponsiblePerson,
+            responsibility_status: responsibilityStatus
           }
         }
       })
