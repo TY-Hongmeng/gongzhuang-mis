@@ -497,15 +497,6 @@ const MeasureToolsLedger: React.FC = () => {
       render: (_: any, __: MaterialAssetItem, index: number) => index + 1
     },
     {
-      title: '数量',
-      width: 80,
-      align: 'center' as const,
-      render: (_: any, record: MaterialAssetItem) => {
-        const name = String(record.responsible_person || '').trim()
-        return personCountMap[name] || 0
-      }
-    },
-    {
       title: '名称',
       dataIndex: 'name',
       width: 150,
@@ -672,6 +663,15 @@ const MeasureToolsLedger: React.FC = () => {
             : null}
         </Space>
       )
+    },
+    {
+      title: '数量',
+      width: 80,
+      align: 'center' as const,
+      render: (_: any, record: MaterialAssetItem) => {
+        const name = String(record.responsible_person || '').trim()
+        return personCountMap[name] || 0
+      }
     },
     {
       title: '资产状态',
