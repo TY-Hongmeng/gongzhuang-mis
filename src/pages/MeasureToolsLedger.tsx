@@ -379,6 +379,10 @@ const MeasureToolsLedger: React.FC = () => {
     if (!currentItem) return
     try {
       setSubmitLoading(true)
+      const responsiblePerson = String(values.responsible_person || '').trim()
+      const selectedUser = users.find((item) =>
+        item.real_name === responsiblePerson
+      )
       const res = await fetchWithFallback(`/api/material-assets/${encodeURIComponent(currentItem.id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -388,6 +392,10 @@ const MeasureToolsLedger: React.FC = () => {
           model_spec: String(values.model_spec || '').trim(),
           certificate_expire_date: values.certificate_expire_date ? dayjs(values.certificate_expire_date).format('YYYY-MM-DD') : '',
           certificate_remind_days: Number(values.certificate_remind_days ?? 30),
+          responsible_person: responsiblePerson,
+          responsible_user_id: String(selectedUser?.id || ''),
+          pending_responsible_person: String(values.pending_responsible_person || '').trim(),
+          responsibility_status: String(values.responsibility_status || ''),
           remark: String(values.remark || '').trim(),
           userId: String((user as any)?.id || ''),
           operator: String(user?.real_name || '')
@@ -737,6 +745,9 @@ const MeasureToolsLedger: React.FC = () => {
                 model_spec: record.model_spec,
                 certificate_expire_date: record.certificate_expire_date ? dayjs(record.certificate_expire_date) : null,
                 certificate_remind_days: record.certificate_remind_days ?? 30,
+                responsible_person: record.responsible_person,
+                pending_responsible_person: record.pending_responsible_person,
+                responsibility_status: record.responsibility_status,
                 remark: record.remark
               })
               setEditOpen(true)
@@ -943,11 +954,6 @@ const MeasureToolsLedger: React.FC = () => {
         footer={null}
         destroyOnClose
       >
-        <Descriptions size="small" column={1} style={{ marginBottom: 12 }}>
-          <Descriptions.Item label="责任人">{currentItem?.responsible_person || '未确认'}</Descriptions.Item>
-          <Descriptions.Item label="待确认责任人">{currentItem?.pending_responsible_person || '-'}</Descriptions.Item>
-          <Descriptions.Item label="责任状态">{currentItem?.responsibility_status || '-'}</Descriptions.Item>
-        </Descriptions>
         <Form form={editForm} layout="vertical" onFinish={submitEdit}>
           <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入名称' }]}>
             <Input />
@@ -964,10 +970,30 @@ const MeasureToolsLedger: React.FC = () => {
           <Form.Item label="提醒提前天数" name="certificate_remind_days">
             <Input type="number" min={0} />
           </Form.Item>
+          <Form.Item label="责任人" name="responsible_person">
+            <AutoComplete
+              options={users.map(u => ({ label: u.real_name, value: u.real_name }))}
+              placeholder="请输入或选择责任人"
+            />
+          </Form.Item>
+          <Form.Item label="待确认责任人" name="pending_responsible_person">
+            <AutoComplete
+              options={users.map(u => ({ label: u.real_name, value: u.real_name }))}
+              placeholder="请输入或选择待确认责任人"
+            />
+          </Form.Item>
+          <Form.Item label="责任状态" name="responsibility_status">
+            <Select allowClear placeholder="请选择责任状态">
+              <Select.Option value="待确认">待确认</Select.Option>
+              <Select.Option value="已确认">已确认</Select.Option>
+              <Select.Option value="待转移确认">待转移确认</Select.Option>
+              <Select.Option value="在用">在用</Select.Option>
+              <Select.Option value="报废">报废</Select.Option>
+            </Select>
+          </Form.Item>
           <Form.Item label="备注" name="remark">
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Text type="secondary">责任人相关变更请在“我的量具”中走确认/转移流程。</Text>
           <Form.Item style={{ marginBottom: 0, marginTop: 12 }}>
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Button onClick={() => {
