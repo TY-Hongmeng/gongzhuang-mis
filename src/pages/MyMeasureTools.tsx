@@ -1185,14 +1185,13 @@ const MyMeasureTools: React.FC = () => {
         width={isMobile ? '100%' : 520}
       >
         <Form form={transferForm} layout="vertical" onFinish={submitTransfer}>
-          <Form.Item label="接收责任人" name="target_name" rules={[{ required: true, message: '请输入或选择接收责任人' }]}>
-            <AutoComplete
+          <Form.Item label="接收责任人" name="target_name" rules={[{ required: true, message: '请选择接收责任人' }]}>
+            <Select
+              showSearch
               allowClear
-              placeholder="可输入姓名，或从联想列表中选择"
+              placeholder="请选择接收责任人"
+              optionFilterProp="label"
               options={users.map((item) => ({ value: item.real_name, label: item.real_name, userId: item.id }))}
-              filterOption={(inputValue, option) =>
-                String(option?.value || '').toLowerCase().includes(String(inputValue || '').toLowerCase())
-              }
               onSelect={(_value, option: any) => transferForm.setFieldValue('target_user_id', String(option?.userId || ''))}
               onChange={(value) => {
                 const matchedUser = users.find((item) => item.real_name === String(value || '').trim())
