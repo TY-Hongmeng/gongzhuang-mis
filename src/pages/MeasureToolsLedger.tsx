@@ -470,12 +470,40 @@ const MeasureToolsLedger: React.FC = () => {
     }
   }
 
+  // 按责任人姓名排序
+  const sortedItems = React.useMemo(() => {
+    return [...items].sort((a, b) => {
+      const nameA = String(a.responsible_person || '').trim()
+      const nameB = String(b.responsible_person || '').trim()
+      return nameA.localeCompare(nameB, 'zh-CN')
+    })
+  }, [items])
+
+  // 统计每个责任人的量具数量
+  const personCountMap = React.useMemo(() => {
+    const map: Record<string, number> = {}
+    sortedItems.forEach(item => {
+      const name = String(item.responsible_person || '').trim()
+      map[name] = (map[name] || 0) + 1
+    })
+    return map
+  }, [sortedItems])
+
   const columns = [
     {
       title: '序号',
       width: 80,
       align: 'center' as const,
       render: (_: any, __: MaterialAssetItem, index: number) => index + 1
+    },
+    {
+      title: '数量',
+      width: 80,
+      align: 'center' as const,
+      render: (_: any, record: MaterialAssetItem) => {
+        const name = String(record.responsible_person || '').trim()
+        return personCountMap[name] || 0
+      }
     },
     {
       title: '名称',
@@ -845,7 +873,7 @@ const MeasureToolsLedger: React.FC = () => {
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={items}
+          dataSource={sortedItems}
           columns={columns as any}
           scroll={{ x: 'max-content' }}
           pagination={false}
