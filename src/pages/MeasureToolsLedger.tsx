@@ -18,7 +18,7 @@ import {
   message
 } from 'antd'
 import type { UploadProps } from 'antd'
-import { DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import { DownloadOutlined, EditOutlined, HistoryOutlined, LeftOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SortAscendingOutlined, UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
 import { useNavigate } from 'react-router-dom'
@@ -179,6 +179,7 @@ const MeasureToolsLedger: React.FC = () => {
   const [historyAssetTitle, setHistoryAssetTitle] = React.useState('')
   const [currentItem, setCurrentItem] = React.useState<MaterialAssetItem | null>(null)
   const [search, setSearch] = React.useState('')
+  const [sortMode, setSortMode] = React.useState<'person' | 'name'>('person')
 
   const roleName = String((user as any)?.roles?.name || '')
   const isManager = isManagerRole(roleName)
@@ -470,8 +471,17 @@ const MeasureToolsLedger: React.FC = () => {
     }
   }
 
+  // 按责任人姓名排序（默认）
+  const sortedByPerson = React.useMemo(() => {
+    return [...items].sort((a, b) => {
+      const nameA = String(a.responsible_person || '').trim()
+      const nameB = String(b.responsible_person || '').trim()
+      return nameA.localeCompare(nameB, 'zh-CN')
+    })
+  }, [items])
+
   // 按名称、型号规格排序
-  const sortedItems = React.useMemo(() => {
+  const sortedByName = React.useMemo(() => {
     return [...items].sort((a, b) => {
       const nameA = String(a.name || '').trim()
       const nameB = String(b.name || '').trim()
@@ -482,6 +492,8 @@ const MeasureToolsLedger: React.FC = () => {
       return modelA.localeCompare(modelB, 'zh-CN')
     })
   }, [items])
+
+  const sortedItems = sortMode === 'person' ? sortedByPerson : sortedByName
 
   // 统计相同名称+型号规格的量具数量
   const nameModelCountMap = React.useMemo(() => {
@@ -496,12 +508,12 @@ const MeasureToolsLedger: React.FC = () => {
   // 统计每个责任人的量具数量
   const personCountMap = React.useMemo(() => {
     const map: Record<string, number> = {}
-    sortedItems.forEach(item => {
+    sortedByPerson.forEach(item => {
       const name = String(item.responsible_person || '').trim()
       map[name] = (map[name] || 0) + 1
     })
     return map
-  }, [sortedItems])
+  }, [sortedByPerson])
 
   const columns = [
     {
@@ -861,6 +873,13 @@ const MeasureToolsLedger: React.FC = () => {
             <Text type="secondary">初始导入数据默认进入待责任人确认状态，转移后由接收人确认才生效。</Text>
           </div>
           <Space wrap>
+            <Button
+              icon={<SortAscendingOutlined />}
+              onClick={() => setSortMode(sortMode === 'person' ? 'name' : 'person')}
+              type={sortMode === 'name' ? 'primary' : 'default'}
+            >
+              {sortMode === 'person' ? '按责任人排序' : '按名称型号排序'}
+            </Button>
             <Button icon={<ReloadOutlined />} onClick={loadItems}>刷新</Button>
             {isManager ? (
               <>
