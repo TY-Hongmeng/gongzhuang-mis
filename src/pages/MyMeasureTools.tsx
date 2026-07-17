@@ -571,10 +571,15 @@ const MyMeasureTools: React.FC = () => {
 
   // 统计数量
   const stats = React.useMemo(() => ({
+    // 桌面端：任务数量
     pendingReminder: pendingItems.length,
     ownedReminder: ownedItems.filter((item) => ['过期', '未维护'].includes(String(item.certificate_status || ''))).length,
-    borrowedReminder: 0
-  }), [borrowedItems.length, ownedItems, pendingItems.length])
+    borrowedReminder: 0,
+    // 手机端：量具总数
+    pendingCount: pendingItems.length,
+    ownedCount: ownedItems.length,
+    borrowedCount: borrowedItems.length
+  }), [borrowedItems, ownedItems, pendingItems])
 
   const loadMine = React.useCallback(async () => {
     try {
@@ -1041,7 +1046,7 @@ const MyMeasureTools: React.FC = () => {
               }}
             >
               <span style={{ fontSize: 14, color: mobileTab === 'pending' ? '#d46b08' : '#666', fontWeight: mobileTab === 'pending' ? 600 : 400 }}>
-                待确认 {stats.pendingReminder}
+                待确认 {stats.pendingCount}
               </span>
             </div>
             <div
@@ -1058,7 +1063,7 @@ const MyMeasureTools: React.FC = () => {
               }}
             >
               <span style={{ fontSize: 14, color: mobileTab === 'owned' ? '#1890ff' : '#666', fontWeight: mobileTab === 'owned' ? 600 : 400 }}>
-                我负责 {stats.ownedReminder}
+                我负责 {stats.ownedCount}
               </span>
             </div>
             <div
@@ -1075,7 +1080,7 @@ const MyMeasureTools: React.FC = () => {
               }}
             >
               <span style={{ fontSize: 14, color: mobileTab === 'borrowed' ? '#13c2c2' : '#666', fontWeight: mobileTab === 'borrowed' ? 600 : 400 }}>
-                我借用 {stats.borrowedReminder}
+                我借用 {stats.borrowedCount}
               </span>
             </div>
           </div>
