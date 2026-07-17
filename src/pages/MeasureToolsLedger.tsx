@@ -579,7 +579,7 @@ const MeasureToolsLedger: React.FC = () => {
     {
       title: '型号规格',
       dataIndex: 'model_spec',
-      width: 180,
+      width: 90,
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
@@ -665,7 +665,7 @@ const MeasureToolsLedger: React.FC = () => {
     },
     {
       title: '责任人',
-      width: 260,
+      width: 170,
       filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
         <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
           <Input
