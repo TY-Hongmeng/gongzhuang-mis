@@ -470,13 +470,27 @@ const MeasureToolsLedger: React.FC = () => {
     }
   }
 
-  // 按责任人姓名排序
+  // 按名称、型号规格排序
   const sortedItems = React.useMemo(() => {
     return [...items].sort((a, b) => {
-      const nameA = String(a.responsible_person || '').trim()
-      const nameB = String(b.responsible_person || '').trim()
-      return nameA.localeCompare(nameB, 'zh-CN')
+      const nameA = String(a.name || '').trim()
+      const nameB = String(b.name || '').trim()
+      const cmp = nameA.localeCompare(nameB, 'zh-CN')
+      if (cmp !== 0) return cmp
+      const modelA = String(a.model_spec || '').trim()
+      const modelB = String(b.model_spec || '').trim()
+      return modelA.localeCompare(modelB, 'zh-CN')
     })
+  }, [items])
+
+  // 统计相同名称+型号规格的量具数量
+  const nameModelCountMap = React.useMemo(() => {
+    const map: Record<string, number> = {}
+    items.forEach(item => {
+      const key = `${String(item.name || '').trim()}|${String(item.model_spec || '').trim()}`
+      map[key] = (map[key] || 0) + 1
+    })
+    return map
   }, [items])
 
   // 统计每个责任人的量具数量
@@ -577,6 +591,15 @@ const MeasureToolsLedger: React.FC = () => {
       filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
       onFilter: (value, record) => record.model_spec?.toString().toLowerCase().includes((value as string).toLowerCase()),
       render: (value: string) => value || '-'
+    },
+    {
+      title: '数量',
+      width: 80,
+      align: 'center' as const,
+      render: (_: any, record: MaterialAssetItem) => {
+        const key = `${String(record.name || '').trim()}|${String(record.model_spec || '').trim()}`
+        return nameModelCountMap[key] || 1
+      }
     },
     {
       title: '合格证',
