@@ -103,7 +103,10 @@ export default function TemporaryPlans() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
   const [arrivalFilter, setArrivalFilter] = useState<'全部' | '已到' | '未到'>('未到')
-  const [searchText, setSearchText] = useState('')
+  const [filterName, setFilterName] = useState('')
+  const [filterModel, setFilterModel] = useState('')
+  const [filterProject, setFilterProject] = useState('')
+  const [filterApplicant, setFilterApplicant] = useState('')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -141,17 +144,24 @@ export default function TemporaryPlans() {
     } else {
       filtered = allData.filter(r => !r.arrival_date)
     }
-    if (searchText.trim()) {
-      const keyword = searchText.trim().toLowerCase()
-      filtered = filtered.filter(r =>
-        (r.part_name || '').toLowerCase().includes(keyword) ||
-        (r.model || '').toLowerCase().includes(keyword) ||
-        (r.project_name || '').toLowerCase().includes(keyword) ||
-        (r.applicant || '').toLowerCase().includes(keyword)
-      )
+    if (filterName.trim()) {
+      const keyword = filterName.trim().toLowerCase()
+      filtered = filtered.filter(r => (r.part_name || '').toLowerCase().includes(keyword))
+    }
+    if (filterModel.trim()) {
+      const keyword = filterModel.trim().toLowerCase()
+      filtered = filtered.filter(r => (r.model || '').toLowerCase().includes(keyword))
+    }
+    if (filterProject.trim()) {
+      const keyword = filterProject.trim().toLowerCase()
+      filtered = filtered.filter(r => (r.project_name || '').toLowerCase().includes(keyword))
+    }
+    if (filterApplicant.trim()) {
+      const keyword = filterApplicant.trim().toLowerCase()
+      filtered = filtered.filter(r => (r.applicant || '').toLowerCase().includes(keyword))
     }
     return filtered
-  }, [groups, arrivalFilter, searchText])
+  }, [groups, arrivalFilter, filterName, filterModel, filterProject, filterApplicant])
 
   const handleSavePurchaser = (rowId: string, _key: string, value: string) => {
     const [code, origId] = String(rowId).split(':')
@@ -345,13 +355,36 @@ export default function TemporaryPlans() {
             options={['全部', '已到', '未到']}
           />
           <Input
-            placeholder="搜索名称、型号、项目名称、提交人"
+            placeholder="名称"
             prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onPressEnter={() => setSearchText(searchText)}
+            value={filterName}
+            onChange={(e) => setFilterName(e.target.value)}
             allowClear
-            style={{ width: 280 }}
+            style={{ width: 140 }}
+          />
+          <Input
+            placeholder="型号"
+            prefix={<SearchOutlined />}
+            value={filterModel}
+            onChange={(e) => setFilterModel(e.target.value)}
+            allowClear
+            style={{ width: 140 }}
+          />
+          <Input
+            placeholder="项目名称"
+            prefix={<SearchOutlined />}
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            allowClear
+            style={{ width: 140 }}
+          />
+          <Input
+            placeholder="提交人"
+            prefix={<SearchOutlined />}
+            value={filterApplicant}
+            onChange={(e) => setFilterApplicant(e.target.value)}
+            allowClear
+            style={{ width: 140 }}
           />
         </div>
         <Space>
