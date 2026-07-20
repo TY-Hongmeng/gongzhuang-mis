@@ -364,6 +364,7 @@ export default function TemporaryPlans() {
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onPressEnter={() => setFilterName(draftName)}
+            onClear={() => { setDraftName(''); setFilterName('') }}
             allowClear
             style={{ width: 140 }}
           />
@@ -373,6 +374,7 @@ export default function TemporaryPlans() {
             value={draftModel}
             onChange={(e) => setDraftModel(e.target.value)}
             onPressEnter={() => setFilterModel(draftModel)}
+            onClear={() => { setDraftModel(''); setFilterModel('') }}
             allowClear
             style={{ width: 140 }}
           />
@@ -382,6 +384,7 @@ export default function TemporaryPlans() {
             value={draftProject}
             onChange={(e) => setDraftProject(e.target.value)}
             onPressEnter={() => setFilterProject(draftProject)}
+            onClear={() => { setDraftProject(''); setFilterProject('') }}
             allowClear
             style={{ width: 140 }}
           />
@@ -391,6 +394,7 @@ export default function TemporaryPlans() {
             value={draftApplicant}
             onChange={(e) => setDraftApplicant(e.target.value)}
             onPressEnter={() => setFilterApplicant(draftApplicant)}
+            onClear={() => { setDraftApplicant(''); setFilterApplicant('') }}
             allowClear
             style={{ width: 140 }}
           />
