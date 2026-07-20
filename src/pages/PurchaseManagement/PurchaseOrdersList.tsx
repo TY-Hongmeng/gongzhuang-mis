@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, message, Row, Col, Space, Segmented, Select, DatePicker, Input } from 'antd';
 import * as XLSX from 'xlsx'
@@ -112,10 +112,10 @@ export default function PurchaseOrdersList() {
   
   const inFlightRef = useRef(false);
   const [sourceFilter, setSourceFilter] = useState<'全部' | '工装信息' | '临时计划'>('全部');
-  const [filterName, setFilterName] = useState('');
-  const [filterModel, setFilterModel] = useState('');
-  const [filterProject, setFilterProject] = useState('');
-  const [filterApplicant, setFilterApplicant] = useState('');
+  const [filterName, setFilterName] = useState('')
+  const [filterModel, setFilterModel] = useState('')
+  const [filterProject, setFilterProject] = useState('')
+  const [filterApplicant, setFilterApplicant] = useState('')
   const [printDensityLevel, setPrintDensityLevel] = useState<PrintDensityLevel>(PRINT_DENSITY_LEVEL)
   // 日期编辑状态: { id_field: boolean } 如 "123_created_date": true
   const [editingDate, setEditingDate] = useState<Record<string, boolean>>({})
@@ -436,16 +436,17 @@ export default function PurchaseOrdersList() {
 
   const filteredData = useMemo(() => {
     if (isTechnician && !teamsLoaded) return []
+    const kwName = filterName.trim().toLowerCase()
+    const kwModel = filterModel.trim().toLowerCase()
+    const kwProject = filterProject.trim().toLowerCase()
+    const kwApplicant = filterApplicant.trim().toLowerCase()
     let arr = data
       .filter(item => !tempPlanOrderIds.includes(String(item.id)) && !approvalHiddenIds.includes(item.id))
       .filter(item => sourceFilter === '全部' ? true : item.source === sourceFilter)
-      .filter(item => {
-        const nameMatch = !filterName || String(item.part_name || '').toLowerCase().includes(filterName.toLowerCase())
-        const modelMatch = !filterModel || String(item.model || '').toLowerCase().includes(filterModel.toLowerCase())
-        const projectMatch = !filterProject || String(item.project_name || '').toLowerCase().includes(filterProject.toLowerCase())
-        const applicantMatch = !filterApplicant || String(item.applicant || '').toLowerCase().includes(filterApplicant.toLowerCase())
-        return nameMatch && modelMatch && projectMatch && applicantMatch
-      })
+    if (kwName) arr = arr.filter(item => String(item.part_name || '').toLowerCase().includes(kwName))
+    if (kwModel) arr = arr.filter(item => String(item.model || '').toLowerCase().includes(kwModel))
+    if (kwProject) arr = arr.filter(item => String(item.project_name || '').toLowerCase().includes(kwProject))
+    if (kwApplicant) arr = arr.filter(item => String(item.applicant || '').toLowerCase().includes(kwApplicant))
     if (isTechnician && myTeamName) {
       arr = arr.filter((item: any) => {
         const applicant = String(item.applicant || '')
@@ -1229,32 +1230,32 @@ ${tablesHtml}
               onChange={(val) => setSourceFilter(val as any)}
             />
             <Input
-              placeholder="筛选名称"
+              placeholder="名称"
               value={filterName}
               onChange={(e) => setFilterName(e.target.value)}
-              style={{ width: 120 }}
               allowClear
+              style={{ width: 140 }}
             />
             <Input
-              placeholder="筛选型号"
+              placeholder="型号"
               value={filterModel}
               onChange={(e) => setFilterModel(e.target.value)}
-              style={{ width: 120 }}
               allowClear
+              style={{ width: 140 }}
             />
             <Input
-              placeholder="筛选项目名称"
+              placeholder="项目名称"
               value={filterProject}
               onChange={(e) => setFilterProject(e.target.value)}
-              style={{ width: 140 }}
               allowClear
+              style={{ width: 160 }}
             />
             <Input
-              placeholder="筛选提交人"
+              placeholder="提交人"
               value={filterApplicant}
               onChange={(e) => setFilterApplicant(e.target.value)}
-              style={{ width: 120 }}
               allowClear
+              style={{ width: 120 }}
             />
           </Space>
           <Space>
