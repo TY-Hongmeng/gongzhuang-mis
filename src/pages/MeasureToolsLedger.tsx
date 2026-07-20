@@ -664,51 +664,6 @@ const MeasureToolsLedger: React.FC = () => {
       }
     },
     {
-      title: '责任人',
-      width: 170,
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          <Input
-            placeholder="搜索责任人"
-            value={selectedKeys[0] || ''}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={confirm}
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginBottom: 8, display: 'block' }}
-          />
-          <Space>
-            <Button type="primary" onClick={confirm} icon={<SearchOutlined />} size="small" style={{ width: 90 }}>
-              搜索
-            </Button>
-            <Button onClick={clearFilters} size="small" style={{ width: 90 }}>
-              重置
-            </Button>
-          </Space>
-        </div>
-      ),
-      filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
-      onFilter: (value, record) => (record.responsible_person || '')?.toString().toLowerCase().includes((value as string).toLowerCase()),
-      render: (_: any, record: MaterialAssetItem) => (
-        <Space wrap size={[4, 4]}>
-          {record.pending_responsible_person
-            ? <Tag color="gold">{record.pending_responsible_person}</Tag>
-            : null}
-          {record.responsible_person
-            ? <Tag color="blue">{record.responsible_person}</Tag>
-            : <Tag color="default">未确认</Tag>}
-        </Space>
-      )
-    },
-    {
-      title: '数量',
-      width: 80,
-      align: 'center' as const,
-      render: (_: any, record: MaterialAssetItem) => {
-        const name = String(record.responsible_person || '').trim()
-        return personCountMap[name] || 0
-      }
-    },
-    {
       title: '资产状态',
       dataIndex: 'asset_status',
       width: 100,
@@ -719,6 +674,55 @@ const MeasureToolsLedger: React.FC = () => {
       onFilter: (value, record) => record.asset_status === value,
       render: (value: string) => (
         <Tag color={statusColorMap[value] || 'default'}>{value}</Tag>
+      )
+    },
+    {
+      title: '责任人',
+      width: 170,
+      sorter: (a: MaterialAssetItem, b: MaterialAssetItem) => {
+        const aName = a.responsible_person || ''
+        const bName = b.responsible_person || ''
+        return aName.localeCompare(bName, 'zh-CN')
+      },
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="搜索责任人"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ marginBottom: 8, display: 'block' }}
+          />
+          <Space>
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              icon={<SearchOutlined />}
+              size="small"
+              style={{ width: 90 }}
+            >
+              搜索
+            </Button>
+            <Button onClick={() => clearFilters?.()} size="small" style={{ width: 90 }}>
+              重置
+            </Button>
+          </Space>
+        </div>
+      ),
+      filterIcon: (filtered: boolean) => (
+        <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+      ),
+      onFilter: (value, record) =>
+        (record.responsible_person || '').toLowerCase().includes((value as string).toLowerCase()),
+      render: (_: any, record: MaterialAssetItem) => (
+        <Space wrap size={[4, 4]}>
+          {record.pending_responsible_person
+            ? <Tag color="gold">{record.pending_responsible_person}</Tag>
+            : null}
+          {record.responsible_person
+            ? <Tag color="blue">{record.responsible_person}</Tag>
+            : <Tag color="default">未确认</Tag>}
+        </Space>
       )
     },
     {
