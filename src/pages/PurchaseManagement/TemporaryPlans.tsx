@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Table, Space, Button, Checkbox, DatePicker, message, Segmented } from 'antd'
+import { Table, Space, Button, Checkbox, DatePicker, message, Segmented, Input } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import EditableCell from '../../components/EditableCell'
 import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService'
@@ -102,6 +103,7 @@ export default function TemporaryPlans() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
   const [arrivalFilter, setArrivalFilter] = useState<'全部' | '已到' | '未到'>('未到')
+  const [searchText, setSearchText] = useState('')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -131,10 +133,25 @@ export default function TemporaryPlans() {
 
   const flatData = useMemo(() => {
     const allData = groups.flatMap(g => g.items.map(it => ({ ...it, group_code: g.code, id: `${g.code}:${it.id}` })))
-    if (arrivalFilter === '全部') return allData
-    if (arrivalFilter === '已到') return allData.filter(r => !!r.arrival_date)
-    return allData.filter(r => !r.arrival_date)
-  }, [groups, arrivalFilter])
+    let filtered = allData
+    if (arrivalFilter === '全部') {
+      filtered = allData
+    } else if (arrivalFilter === '已到') {
+      filtered = allData.filter(r => !!r.arrival_date)
+    } else {
+      filtered = allData.filter(r => !r.arrival_date)
+    }
+    if (searchText.trim()) {
+      const keyword = searchText.trim().toLowerCase()
+      filtered = filtered.filter(r =>
+        (r.part_name || '').toLowerCase().includes(keyword) ||
+        (r.model || '').toLowerCase().includes(keyword) ||
+        (r.project_name || '').toLowerCase().includes(keyword) ||
+        (r.applicant || '').toLowerCase().includes(keyword)
+      )
+    }
+    return filtered
+  }, [groups, arrivalFilter, searchText])
 
   const handleSavePurchaser = (rowId: string, _key: string, value: string) => {
     const [code, origId] = String(rowId).split(':')
@@ -326,6 +343,15 @@ export default function TemporaryPlans() {
             value={arrivalFilter}
             onChange={(v) => setArrivalFilter(v as any)}
             options={['全部', '已到', '未到']}
+          />
+          <Input
+            placeholder="搜索名称、型号、项目名称、提交人"
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onPressEnter={() => setSearchText(searchText)}
+            allowClear
+            style={{ width: 280 }}
           />
         </div>
         <Space>
