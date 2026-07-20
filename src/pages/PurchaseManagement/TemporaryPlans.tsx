@@ -365,13 +365,13 @@ export default function TemporaryPlans() {
 
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Card style={{ marginBottom: 12, flexShrink: 0 }} styles={{ body: { padding: '8px 12px' } }}>
-        <Space size="small" wrap>
+      <div style={{ marginBottom: 12, flexShrink: 0, padding: '6px 10px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+        <Space size={6} wrap>
           <Input
             placeholder="名称"
             value={filterName}
             onChange={(e) => setFilterName(e.target.value ?? '')}
-            style={{ width: 120 }}
+            style={{ width: 90 }}
             allowClear
             size="small"
           />
@@ -379,7 +379,7 @@ export default function TemporaryPlans() {
             placeholder="型号"
             value={filterModel}
             onChange={(e) => setFilterModel(e.target.value ?? '')}
-            style={{ width: 120 }}
+            style={{ width: 90 }}
             allowClear
             size="small"
           />
@@ -388,7 +388,7 @@ export default function TemporaryPlans() {
             value={filterProject || undefined}
             onChange={(v) => setFilterProject(v ?? '')}
             options={projectNameOptions}
-            style={{ width: 150 }}
+            style={{ width: 120 }}
             allowClear
             showSearch
             size="small"
@@ -398,7 +398,7 @@ export default function TemporaryPlans() {
             value={filterApplicant || undefined}
             onChange={(v) => setFilterApplicant(v ?? '')}
             options={applicantOptions}
-            style={{ width: 100 }}
+            style={{ width: 80 }}
             allowClear
             showSearch
             size="small"
@@ -419,7 +419,7 @@ export default function TemporaryPlans() {
             size="small"
           />
         </Space>
-      </Card>
+      </div>
       <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
         <Space>
