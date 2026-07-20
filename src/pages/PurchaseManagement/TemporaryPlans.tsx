@@ -103,14 +103,8 @@ export default function TemporaryPlans() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [inboundSubmittingKeys, setInboundSubmittingKeys] = useState<string[]>([])
   const [arrivalFilter, setArrivalFilter] = useState<'全部' | '已到' | '未到'>('未到')
-  const [filterName, setFilterName] = useState('')
-  const [filterModel, setFilterModel] = useState('')
-  const [filterProject, setFilterProject] = useState('')
-  const [filterApplicant, setFilterApplicant] = useState('')
-  const [draftName, setDraftName] = useState('')
-  const [draftModel, setDraftModel] = useState('')
-  const [draftProject, setDraftProject] = useState('')
-  const [draftApplicant, setDraftApplicant] = useState('')
+  const [filterKeyword, setFilterKeyword] = useState('')
+  const [draftKeyword, setDraftKeyword] = useState('')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -148,24 +142,17 @@ export default function TemporaryPlans() {
     } else {
       filtered = allData.filter(r => !r.arrival_date)
     }
-    if (filterName.trim()) {
-      const keyword = filterName.trim().toLowerCase()
-      filtered = filtered.filter(r => (r.part_name || '').toLowerCase().includes(keyword))
-    }
-    if (filterModel.trim()) {
-      const keyword = filterModel.trim().toLowerCase()
-      filtered = filtered.filter(r => (r.model || '').toLowerCase().includes(keyword))
-    }
-    if (filterProject.trim()) {
-      const keyword = filterProject.trim().toLowerCase()
-      filtered = filtered.filter(r => (r.project_name || '').toLowerCase().includes(keyword))
-    }
-    if (filterApplicant.trim()) {
-      const keyword = filterApplicant.trim().toLowerCase()
-      filtered = filtered.filter(r => (r.applicant || '').toLowerCase().includes(keyword))
+    if (filterKeyword.trim()) {
+      const keyword = filterKeyword.trim().toLowerCase()
+      filtered = filtered.filter(r =>
+        (r.part_name || '').toLowerCase().includes(keyword) ||
+        (r.model || '').toLowerCase().includes(keyword) ||
+        (r.project_name || '').toLowerCase().includes(keyword) ||
+        (r.applicant || '').toLowerCase().includes(keyword)
+      )
     }
     return filtered
-  }, [groups, arrivalFilter, filterName, filterModel, filterProject, filterApplicant])
+  }, [groups, arrivalFilter, filterKeyword])
 
   const handleSavePurchaser = (rowId: string, _key: string, value: string) => {
     const [code, origId] = String(rowId).split(':')
@@ -359,50 +346,20 @@ export default function TemporaryPlans() {
             options={['全部', '已到', '未到']}
           />
           <Input
-            placeholder="名称"
+            placeholder="名称/型号/项目/提交人"
             prefix={<SearchOutlined />}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onPressEnter={() => setFilterName(draftName)}
-            onClear={() => { setDraftName(''); setFilterName('') }}
+            value={draftKeyword}
+            onChange={(e) => setDraftKeyword(e.target.value ?? '')}
+            onPressEnter={() => setFilterKeyword(draftKeyword)}
             allowClear
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="型号"
-            prefix={<SearchOutlined />}
-            value={draftModel}
-            onChange={(e) => setDraftModel(e.target.value)}
-            onPressEnter={() => setFilterModel(draftModel)}
-            onClear={() => { setDraftModel(''); setFilterModel('') }}
-            allowClear
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="项目名称"
-            prefix={<SearchOutlined />}
-            value={draftProject}
-            onChange={(e) => setDraftProject(e.target.value)}
-            onPressEnter={() => setFilterProject(draftProject)}
-            onClear={() => { setDraftProject(''); setFilterProject('') }}
-            allowClear
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="提交人"
-            prefix={<SearchOutlined />}
-            value={draftApplicant}
-            onChange={(e) => setDraftApplicant(e.target.value)}
-            onPressEnter={() => setFilterApplicant(draftApplicant)}
-            onClear={() => { setDraftApplicant(''); setFilterApplicant('') }}
-            allowClear
-            style={{ width: 140 }}
+            onClear={() => {
+              setDraftKeyword('')
+              setFilterKeyword('')
+            }}
+            style={{ width: 200 }}
           />
           <Button type="primary" icon={<SearchOutlined />} onClick={() => {
-            setFilterName(draftName)
-            setFilterModel(draftModel)
-            setFilterProject(draftProject)
-            setFilterApplicant(draftApplicant)
+            setFilterKeyword(draftKeyword)
           }}>搜索</Button>
         </div>
         <Space>
