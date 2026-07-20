@@ -365,8 +365,8 @@ export default function TemporaryPlans() {
 
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Card style={{ marginBottom: 16, flexShrink: 0 }}>
-        <Space size="middle" wrap>
+      <Card style={{ marginBottom: 12, flexShrink: 0, padding: '8px 16px' }} bodyStyle={{ padding: '8px 16px' }}>
+        <Space size="small" wrap>
           <Input
             placeholder="名称"
             value={filterName}
