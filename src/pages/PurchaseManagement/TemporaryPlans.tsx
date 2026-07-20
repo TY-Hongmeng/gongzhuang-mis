@@ -365,44 +365,49 @@ export default function TemporaryPlans() {
 
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Card style={{ marginBottom: 12, flexShrink: 0, padding: '8px 16px' }} bodyStyle={{ padding: '8px 16px' }}>
+      <Card style={{ marginBottom: 12, flexShrink: 0 }} styles={{ body: { padding: '8px 12px' } }}>
         <Space size="small" wrap>
           <Input
             placeholder="名称"
             value={filterName}
             onChange={(e) => setFilterName(e.target.value ?? '')}
-            style={{ width: 140 }}
+            style={{ width: 120 }}
             allowClear
+            size="small"
           />
           <Input
             placeholder="型号"
             value={filterModel}
             onChange={(e) => setFilterModel(e.target.value ?? '')}
-            style={{ width: 140 }}
+            style={{ width: 120 }}
             allowClear
+            size="small"
           />
           <Select
             placeholder="项目名称"
             value={filterProject || undefined}
             onChange={(v) => setFilterProject(v ?? '')}
             options={projectNameOptions}
-            style={{ width: 180 }}
+            style={{ width: 150 }}
             allowClear
             showSearch
+            size="small"
           />
           <Select
             placeholder="提交人"
             value={filterApplicant || undefined}
             onChange={(v) => setFilterApplicant(v ?? '')}
             options={applicantOptions}
-            style={{ width: 120 }}
+            style={{ width: 100 }}
             allowClear
             showSearch
+            size="small"
           />
           <Segmented
             value={arrivalFilter}
             onChange={(v) => setArrivalFilter(v as any)}
             options={['全部', '已到', '未到']}
+            size="small"
           />
           <Button
             type="primary"
@@ -411,9 +416,8 @@ export default function TemporaryPlans() {
               fetchPlansFromDB().then(data => setGroups(data))
               message.success('刷新成功')
             }}
-          >
-            刷新
-          </Button>
+            size="small"
+          />
         </Space>
       </Card>
       <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
