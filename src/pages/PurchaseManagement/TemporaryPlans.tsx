@@ -365,49 +365,44 @@ export default function TemporaryPlans() {
 
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 12, flexShrink: 0, padding: '6px 10px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
-        <Space size={6} wrap>
+      <Card style={{ marginBottom: 16, flexShrink: 0 }}>
+        <Space size="middle" wrap>
           <Input
             placeholder="名称"
             value={filterName}
             onChange={(e) => setFilterName(e.target.value ?? '')}
-            style={{ width: 90 }}
+            style={{ width: 140 }}
             allowClear
-            size="small"
           />
           <Input
             placeholder="型号"
             value={filterModel}
             onChange={(e) => setFilterModel(e.target.value ?? '')}
-            style={{ width: 90 }}
+            style={{ width: 140 }}
             allowClear
-            size="small"
           />
           <Select
             placeholder="项目名称"
             value={filterProject || undefined}
             onChange={(v) => setFilterProject(v ?? '')}
             options={projectNameOptions}
-            style={{ width: 120 }}
+            style={{ width: 150 }}
             allowClear
             showSearch
-            size="small"
           />
           <Select
             placeholder="提交人"
             value={filterApplicant || undefined}
             onChange={(v) => setFilterApplicant(v ?? '')}
             options={applicantOptions}
-            style={{ width: 80 }}
+            style={{ width: 120 }}
             allowClear
             showSearch
-            size="small"
           />
           <Segmented
             value={arrivalFilter}
             onChange={(v) => setArrivalFilter(v as any)}
             options={['全部', '已到', '未到']}
-            size="small"
           />
           <Button
             type="primary"
@@ -416,10 +411,11 @@ export default function TemporaryPlans() {
               fetchPlansFromDB().then(data => setGroups(data))
               message.success('刷新成功')
             }}
-            size="small"
-          />
+          >
+            刷新
+          </Button>
         </Space>
-      </div>
+      </Card>
       <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
         <Space>
