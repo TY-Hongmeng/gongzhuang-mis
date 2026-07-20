@@ -107,6 +107,10 @@ export default function TemporaryPlans() {
   const [filterModel, setFilterModel] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [filterApplicant, setFilterApplicant] = useState('')
+  const [draftName, setDraftName] = useState('')
+  const [draftModel, setDraftModel] = useState('')
+  const [draftProject, setDraftProject] = useState('')
+  const [draftApplicant, setDraftApplicant] = useState('')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -357,35 +361,45 @@ export default function TemporaryPlans() {
           <Input
             placeholder="名称"
             prefix={<SearchOutlined />}
-            value={filterName}
-            onChange={(e) => setFilterName(e.target.value)}
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onPressEnter={() => setFilterName(draftName)}
             allowClear
             style={{ width: 140 }}
           />
           <Input
             placeholder="型号"
             prefix={<SearchOutlined />}
-            value={filterModel}
-            onChange={(e) => setFilterModel(e.target.value)}
+            value={draftModel}
+            onChange={(e) => setDraftModel(e.target.value)}
+            onPressEnter={() => setFilterModel(draftModel)}
             allowClear
             style={{ width: 140 }}
           />
           <Input
             placeholder="项目名称"
             prefix={<SearchOutlined />}
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
+            value={draftProject}
+            onChange={(e) => setDraftProject(e.target.value)}
+            onPressEnter={() => setFilterProject(draftProject)}
             allowClear
             style={{ width: 140 }}
           />
           <Input
             placeholder="提交人"
             prefix={<SearchOutlined />}
-            value={filterApplicant}
-            onChange={(e) => setFilterApplicant(e.target.value)}
+            value={draftApplicant}
+            onChange={(e) => setDraftApplicant(e.target.value)}
+            onPressEnter={() => setFilterApplicant(draftApplicant)}
             allowClear
             style={{ width: 140 }}
           />
+          <Button type="primary" icon={<SearchOutlined />} onClick={() => {
+            setFilterName(draftName)
+            setFilterModel(draftModel)
+            setFilterProject(draftProject)
+            setFilterApplicant(draftApplicant)
+          }}>搜索</Button>
         </div>
         <Space>
           <Button onClick={async () => {
