@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Table, Space, Button, Checkbox, DatePicker, message, Segmented, Input } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Table, Space, Button, Checkbox, DatePicker, message, Segmented, Input, Card } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import EditableCell from '../../components/EditableCell'
 import { updateChildPurchaseStatus, updatePartPurchaseStatus } from '../../services/toolingService'
@@ -107,10 +107,6 @@ export default function TemporaryPlans() {
   const [filterModel, setFilterModel] = useState('')
   const [filterProject, setFilterProject] = useState('')
   const [filterApplicant, setFilterApplicant] = useState('')
-  const [draftName, setDraftName] = useState('')
-  const [draftModel, setDraftModel] = useState('')
-  const [draftProject, setDraftProject] = useState('')
-  const [draftApplicant, setDraftApplicant] = useState('')
 
   const syncGroupItems = async (groupId: string | undefined, items: TempItem[]) => {
     if (!groupId) return
@@ -348,75 +344,80 @@ export default function TemporaryPlans() {
     }
   }
 
+  // 动态生成项目名称和提交人选项
+  const projectNameOptions = useMemo(() => {
+    const set = new Set<string>()
+    groups.forEach(g => g.items.forEach(it => {
+      const v = String(it.project_name || '').trim()
+      if (v) set.add(v)
+    }))
+    return Array.from(set).map(v => ({ value: v, label: v }))
+  }, [groups])
+
+  const applicantOptions = useMemo(() => {
+    const set = new Set<string>()
+    groups.forEach(g => g.items.forEach(it => {
+      const v = String(it.applicant || '').trim()
+      if (v) set.add(v)
+    }))
+    return Array.from(set).map(v => ({ value: v, label: v }))
+  }, [groups])
+
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
+      <Card style={{ marginBottom: 16, flexShrink: 0 }}>
+        <Space size="middle" wrap>
+          <Input
+            placeholder="名称"
+            value={filterName}
+            onChange={(e) => setFilterName(e.target.value ?? '')}
+            style={{ width: 140 }}
+            allowClear
+          />
+          <Input
+            placeholder="型号"
+            value={filterModel}
+            onChange={(e) => setFilterModel(e.target.value ?? '')}
+            style={{ width: 140 }}
+            allowClear
+          />
+          <Select
+            placeholder="项目名称"
+            value={filterProject || undefined}
+            onChange={(v) => setFilterProject(v ?? '')}
+            options={projectNameOptions}
+            style={{ width: 180 }}
+            allowClear
+            showSearch
+          />
+          <Select
+            placeholder="提交人"
+            value={filterApplicant || undefined}
+            onChange={(v) => setFilterApplicant(v ?? '')}
+            options={applicantOptions}
+            style={{ width: 120 }}
+            allowClear
+            showSearch
+          />
           <Segmented
             value={arrivalFilter}
             onChange={(v) => setArrivalFilter(v as any)}
             options={['全部', '已到', '未到']}
           />
-          <Input
-            placeholder="名称"
-            prefix={<SearchOutlined />}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value ?? '')}
-            onPressEnter={() => setFilterName(draftName)}
-            allowClear
-            onClear={() => {
-              setDraftName('')
-              setFilterName('')
+          <Button
+            type="primary"
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              fetchPlansFromDB().then(data => setGroups(data))
+              message.success('刷新成功')
             }}
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="型号"
-            prefix={<SearchOutlined />}
-            value={draftModel}
-            onChange={(e) => setDraftModel(e.target.value ?? '')}
-            onPressEnter={() => setFilterModel(draftModel)}
-            allowClear
-            onClear={() => {
-              setDraftModel('')
-              setFilterModel('')
-            }}
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="项目名称"
-            prefix={<SearchOutlined />}
-            value={draftProject}
-            onChange={(e) => setDraftProject(e.target.value ?? '')}
-            onPressEnter={() => setFilterProject(draftProject)}
-            allowClear
-            onClear={() => {
-              setDraftProject('')
-              setFilterProject('')
-            }}
-            style={{ width: 140 }}
-          />
-          <Input
-            placeholder="提交人"
-            prefix={<SearchOutlined />}
-            value={draftApplicant}
-            onChange={(e) => setDraftApplicant(e.target.value ?? '')}
-            onPressEnter={() => setFilterApplicant(draftApplicant)}
-            allowClear
-            onClear={() => {
-              setDraftApplicant('')
-              setFilterApplicant('')
-            }}
-            style={{ width: 140 }}
-          />
-          <Button type="primary" icon={<SearchOutlined />} onClick={() => {
-            setFilterName(draftName)
-            setFilterModel(draftModel)
-            setFilterProject(draftProject)
-            setFilterApplicant(draftApplicant)
-          }}>搜索</Button>
-        </div>
+          >
+            刷新
+          </Button>
+        </Space>
+      </Card>
+      <div className="flex items-center justify-between mb-4" style={{ flexShrink: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 16 }}>临时计划</div>
         <Space>
           <Button onClick={async () => {
             if (selectedRowKeys.length === 0) { message.warning('请选择需要回退的项'); return }
