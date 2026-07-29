@@ -215,6 +215,7 @@ const ensureToolingTotalsColumns = async () => {
     await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS material_total NUMERIC`);
     await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS process_total NUMERIC`);
     await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS totals_updated_at TIMESTAMPTZ`);
+    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
     toolingTotalsColumnsReady = true;
   } catch (e) {}
 };
@@ -578,6 +579,7 @@ router.get('/', async (req, res) => {
       .select('*', { count: 'exact' });
 
     // 搜索（支持父表字段与子表盘存编号）
+    let searchToolingIds: string[] | null = null;
     if (search && search.trim()) {
       const raw = String(search).trim();
       const keyword = `%${raw}%`;
@@ -603,16 +605,10 @@ router.get('/', async (req, res) => {
         partsToolingIds = Array.from(ids)
       } catch {}
 
+      // Use two separate queries and merge results to avoid id.in.() parsing issues in .or()
+      searchToolingIds = partsToolingIds;
       const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`;
-      if (partsToolingIds.length > 0) {
-        // UUID values must NOT be quoted in id.in.() for PostgREST
-        const inList = partsToolingIds
-          .map((id) => String(id || '').replace(/"/g, ''))
-          .join(',');
-        query = query.or(`${baseExpr},id.in.(${inList})`);
-      } else {
-        query = query.or(baseExpr);
-      }
+      query = query.or(baseExpr);
     }
 
     // 筛选
