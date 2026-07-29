@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react'
 import { message } from 'antd'
-import { useToolingData } from '../../hooks/useToolingData'
+import { useToolingData } from './useToolingData'
 
 export const useToolingFilters = () => {
   const { data } = useToolingData()
