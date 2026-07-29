@@ -605,10 +605,10 @@ router.get('/', async (req, res) => {
 
       const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`;
       if (partsToolingIds.length > 0) {
+        // UUID values must NOT be quoted in id.in.() for PostgREST
         const inList = partsToolingIds
-          .map((id) => `"${String(id || '').replace(/"/g, '')}"`)
+          .map((id) => String(id || '').replace(/"/g, ''))
           .join(',');
-        // 将子表命中的父ID也纳入OR条件
         query = query.or(`${baseExpr},id.in.(${inList})`);
       } else {
         query = query.or(baseExpr);
