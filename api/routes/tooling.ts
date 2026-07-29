@@ -206,18 +206,26 @@ const formatProgramManageQuantity = (value: number) => {
   if (Math.abs(num - Math.round(num)) < 0.000001) return String(Math.round(num))
   return num.toFixed(2)
 }
-let toolingTotalsColumnsReady = false;
 const ensureToolingTotalsColumns = async () => {
-  if (toolingTotalsColumnsReady) return;
   const dbUrl = process.env.SUPABASE_DB_URL || '';
   if (!dbUrl) return;
+  // Always check - no caching, so PK is guaranteed to exist
   try {
-    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS material_total NUMERIC`);
-    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS process_total NUMERIC`);
-    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS totals_updated_at TIMESTAMPTZ`);
-    await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
-    toolingTotalsColumnsReady = true;
-  } catch (e) {}
+    const { rows } = await query(
+      `SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'tooling_info' AND constraint_type = 'PRIMARY KEY'`
+    );
+    if (!rows || rows.length === 0) {
+      await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS material_total NUMERIC`);
+      await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS process_total NUMERIC`);
+      await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS totals_updated_at TIMESTAMPTZ`);
+      await query(`ALTER TABLE tooling_info ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
+      await query(`UPDATE tooling_info SET id = gen_random_uuid() WHERE id IS NULL`);
+      await query(`DELETE FROM tooling_info a USING tooling_info b WHERE a.ctid > b.ctid AND a.id = b.id`);
+      await query(`ALTER TABLE tooling_info ALTER COLUMN id SET NOT NULL`);
+      await query(`ALTER TABLE tooling_info ADD PRIMARY KEY (id)`);
+      console.log('[ensureToolingTotalsColumns] Primary key added to tooling_info');
+    }
+  } catch (e) { console.error('[ensureToolingTotalsColumns] error:', e); }
 };
 let partAmountColumnsReady = false;
 const ensurePartAmountColumns = async () => {
@@ -552,7 +560,7 @@ const resolveWorkHoursActor = async (userIdInput?: string, operatorInput?: strin
 }
 
 // GET /api/tooling
-// 支持分页、搜索、筛选与排序
+// 支持分页、搜索、筛选与排序 - 使用直接 SQL 查询绕过 PostgREST schema 缓存问题
 router.get('/', async (req, res) => {
   try {
     await ensureToolingTotalsColumns()
@@ -571,104 +579,89 @@ router.get('/', async (req, res) => {
 
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const sizeNum = Math.max(parseInt(pageSize, 10) || 20, 1);
-    const from = (pageNum - 1) * sizeNum;
-    const to = from + sizeNum - 1;
 
-    let query = supabase
-      .from('tooling_info')
-      .select('*', { count: 'exact' });
+    // Build WHERE clause
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 1;
 
-    // 搜索（支持父表字段与子表盘存编号）
-    let searchToolingIds: string[] | null = null;
     if (search && search.trim()) {
-      const raw = String(search).trim();
-      const keyword = `%${raw}%`;
+      const keyword = `%${String(search).trim()}%`;
+      // First find matching tooling_ids from parts_info
       let partsToolingIds: string[] = [];
       try {
-        const ids = new Set<string>()
-        const BATCH_SIZE = 1000
-        let offset = 0
-        while (true) {
-          const { data: parts, error: perr } = await supabase
-            .from('parts_info')
-            .select('tooling_id, part_inventory_number, inventory_number')
-            .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`)
-            .range(offset, offset + BATCH_SIZE - 1)
-          if (perr || !Array.isArray(parts) || parts.length === 0) break
-          parts.forEach((p: any) => {
-            const tid = String(p.tooling_id || '')
-            if (tid) ids.add(tid)
-          })
-          if (parts.length < BATCH_SIZE) break
-          offset += BATCH_SIZE
+        const { data: parts } = await supabase
+          .from('parts_info')
+          .select('tooling_id')
+          .or(`part_inventory_number.ilike.${keyword},inventory_number.ilike.${keyword}`);
+        if (Array.isArray(parts)) {
+          partsToolingIds = [...new Set(parts.map((p: any) => String(p.tooling_id || '')).filter(Boolean))];
         }
-        partsToolingIds = Array.from(ids)
       } catch {}
-
-      // Use two separate queries and merge results to avoid id.in.() parsing issues in .or()
-      searchToolingIds = partsToolingIds;
-      const baseExpr = `inventory_number.ilike.${keyword},project_name.ilike.${keyword},recorder.ilike.${keyword}`;
-      query = query.or(baseExpr);
+      const baseCond = `(inventory_number ILIKE $${paramIdx} OR project_name ILIKE $${paramIdx} OR recorder ILIKE $${paramIdx})`;
+      params.push(keyword);
+      paramIdx++;
+      if (partsToolingIds.length > 0) {
+        conditions.push(`(${baseCond} OR id::text = ANY($${paramIdx}::text[]))`);
+        params.push(partsToolingIds);
+        paramIdx++;
+      } else {
+        conditions.push(baseCond);
+      }
     }
-
-    // 筛选
     if (production_unit) {
-      query = query.ilike('production_unit', `%${production_unit}%`);
+      conditions.push(`production_unit ILIKE $${paramIdx}`);
+      params.push(`%${production_unit}%`);
+      paramIdx++;
     }
     if (category) {
-      query = query.ilike('category', `%${category}%`);
+      conditions.push(`category ILIKE $${paramIdx}`);
+      params.push(`%${category}%`);
+      paramIdx++;
     }
     if (priority_level) {
-      const pv = Number(priority_level)
+      const pv = Number(priority_level);
       if (!Number.isNaN(pv)) {
-        query = query.eq('priority_level', pv)
+        conditions.push(`priority_level = $${paramIdx}`);
+        params.push(pv);
+        paramIdx++;
       }
     }
     if (start_date) {
-      query = query.gte('production_date', start_date);
+      conditions.push(`production_date >= $${paramIdx}`);
+      params.push(start_date);
+      paramIdx++;
     }
     if (end_date) {
-      query = query.lte('production_date', end_date);
+      conditions.push(`production_date <= $${paramIdx}`);
+      params.push(end_date);
+      paramIdx++;
     }
 
-    // 排序
-    const ascending = String(sortOrder).toLowerCase() === 'asc';
-    query = query.order(sortField, { ascending });
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const validSortFields = ['created_at', 'inventory_number', 'project_name', 'production_unit', 'priority_level', 'production_date'];
+    const safeSortField = validSortFields.includes(sortField) ? sortField : 'created_at';
+    const safeSortOrder = String(sortOrder).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    // 分页：当 pageSize 为 0 或负数时，获取所有数据
+    // Get count
+    const countSql = `SELECT COUNT(*) as total FROM tooling_info ${whereClause}`;
+    const { rows: countRows } = await query(countSql, params);
+    const count = parseInt(countRows[0]?.total || '0', 10);
+
+    // Get data
     const noPagination = parseInt(pageSize, 10) <= 0;
     let data: any[] = [];
-    let count: number | null = null;
-    
+
     if (noPagination) {
-      // 使用循环获取所有数据，绕过 Supabase 的 1000 条限制
-      const BATCH_SIZE = 1000;
-      let offset = 0;
-      let totalCount: number | null = null;
-      
-      // 先获取总数
-      const { count: c } = await supabase
-        .from('tooling_info')
-        .select('*', { count: 'exact', head: true });
-      totalCount = c;
-      
-      // 循环获取所有数据
-      while (true) {
-        const { data: batch, error: batchErr } = await query.range(offset, offset + BATCH_SIZE - 1);
-        if (batchErr) {
-          console.error('Fetch tooling_info batch error:', batchErr);
-          return res.status(500).json({ success: false, error: '查询失败' });
-        }
-        if (!batch || batch.length === 0) break;
-        data.push(...batch);
-        if (batch.length < BATCH_SIZE) break;
-        offset += BATCH_SIZE;
-      }
-      count = totalCount;
+      const dataSql = `SELECT * FROM tooling_info ${whereClause} ORDER BY ${safeSortField} ${safeSortOrder}`;
+      const { rows } = await query(dataSql, params);
+      data = rows || [];
     } else {
-      const result = await query;
-      data = result.data || [];
-      count = result.count;
+      const offset = (pageNum - 1) * sizeNum;
+      params.push(sizeNum, offset);
+      const dataSql = `SELECT * FROM tooling_info ${whereClause} ORDER BY ${safeSortField} ${safeSortOrder} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+      const { rows } = await query(dataSql, params);
+      data = rows || [];
     }
 
     if (!data || data.length === 0) {
