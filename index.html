@@ -11,10 +11,11 @@
     <script>
       (function(){
         try {
-          var buildVersion = 'v26.07.21.23';
+          var buildVersion = 'v26.08.03.1';
           window.__APP_HTML_VERSION__ = buildVersion
           var ua = navigator.userAgent || ''
           var isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
+          var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
           if (!isMobile) return
 
           var withBust = function(url, extraKey, extraVal){
@@ -58,24 +59,17 @@
             seenVersion = sessionStorage.getItem(versionKey) || ''
           } catch (e3) {}
 
-          if (seenVersion !== buildVersion && location.search.indexOf('mobile_boot_bust=') === -1) {
+          if (seenVersion !== buildVersion) {
             try { sessionStorage.setItem(versionKey, buildVersion) } catch (e4) {}
-            clearClientCache()
-            location.replace(withBust(location.href, 'mobile_boot_bust', buildVersion))
-            return
+            if (!isIOSSafari) {
+              setTimeout(function(){
+                clearClientCache()
+              }, 0)
+            }
           }
 
-          window.addEventListener('pageshow', function(event){
-            try {
-              var navEntries = performance.getEntriesByType ? performance.getEntriesByType('navigation') : []
-              var isBackForward = !!(event && event.persisted) || !!(navEntries && navEntries[0] && navEntries[0].type === 'back_forward')
-              if (!isBackForward) return
-              if (location.search.indexOf('mobile_pageshow_reload=') !== -1) return
-              clearClientCache()
-              location.replace(withBust(location.href, 'mobile_pageshow_reload', buildVersion))
-            } catch (e5) {}
-          })
-        } catch (e6) {}
+          // iPhone Safari 的 BFCache 恢复很常见，自动 reload 容易造成白屏或循环重进。
+        } catch (e5) {}
       })();
     </script>
     <script>
@@ -154,8 +148,11 @@
               if (window.__APP_BOOT_DONE__) return
               var root = document.getElementById('root')
               if (root && root.children && root.children.length > 0) return
+              var ua = navigator.userAgent || ''
+              var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
+              var allowAutoRecovery = !isIOSSafari
               var cacheReset = location.search.indexOf('boot_cache_reset=1') !== -1
-              if (!cacheReset) {
+              if (allowAutoRecovery && !cacheReset) {
                 try {
                   var clearTasks = []
                   if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
@@ -179,7 +176,7 @@
                 } catch (_) {}
               }
               var once = location.search.indexOf('boot_retry_once=1') !== -1
-              if (!once) {
+              if (allowAutoRecovery && !once) {
                 location.replace(withBust(location.href, 'boot_retry_once', '1'))
                 return
               }
@@ -212,7 +209,6 @@
               }
               var wrap = document.createElement('div')
               wrap.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;padding:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;line-height:1.6;color:#111;'
-              var ua = navigator.userAgent || ''
               var title = document.createElement('div')
               title.textContent = '页面启动失败，请点击下方按钮重试'
               title.style.cssText = 'font-size:16px;font-weight:600;margin-bottom:8px;'

@@ -31,7 +31,7 @@ export default defineConfig(({ command }) => {
       }),
       tsconfigPaths(),
       legacy({
-        targets: ['defaults', 'iOS >= 11', 'Safari >= 11'],
+        targets: ['defaults', 'iOS >= 10', 'Safari >= 10'],
       }),
     ],
     build: {
