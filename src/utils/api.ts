@@ -1,9 +1,11 @@
+const isStaticFrontendHost = (host: string): boolean => /github\.io|vercel\.app/i.test(host)
+
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
   
   const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-  const isGhPages = /github\.io/i.test(host)
+  const isGhPages = isStaticFrontendHost(host)
   // 统一的本地环境检测
   const isLocal = (
     /localhost|127\.0\.0\.1|::1/i.test(host) ||
@@ -192,7 +194,7 @@ export function installApiInterceptor() {
         }
       })()
       const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-      const isGhPages = /github\.io/i.test(host)
+      const isGhPages = isStaticFrontendHost(host)
       
       const isLocal = (
         /localhost|127\.0\.0\.1|::1/i.test(host) ||
@@ -389,7 +391,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     
     // 统一的本地环境检测
     const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-    const isGhPages = /github\.io/i.test(host)
+    const isGhPages = isStaticFrontendHost(host)
     const isLocal = (
       /localhost|127\.0\.0\.1|::1/i.test(host) ||
       /^192\.168\./.test(host) ||
