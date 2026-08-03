@@ -11,11 +11,13 @@
     <script>
       (function(){
         try {
-          var buildVersion = 'v26.08.03.1';
+          var buildVersion = 'v26.08.03.2';
           window.__APP_HTML_VERSION__ = buildVersion
           var ua = navigator.userAgent || ''
           var isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
           var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
+          var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
+          var isIOSEmbedded = /iP(hone|ad|od)/i.test(ua) && isEmbedded
           if (!isMobile) return
 
           var withBust = function(url, extraKey, extraVal){
@@ -61,7 +63,7 @@
 
           if (seenVersion !== buildVersion) {
             try { sessionStorage.setItem(versionKey, buildVersion) } catch (e4) {}
-            if (!isIOSSafari) {
+            if (!isIOSSafari && !isEmbedded && !isIOSEmbedded) {
               setTimeout(function(){
                 clearClientCache()
               }, 0)
@@ -103,22 +105,34 @@
         try {
           var ua = navigator.userAgent || ''
           var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
+          var isIOSEmbedded = /iP(hone|ad|od)/i.test(ua) && isEmbedded
           if (!isEmbedded) return
+          if (isIOSEmbedded) return
+          var embeddedCacheKey = '__app_embedded_cache_version__'
+          var buildVersion = String(window.__APP_HTML_VERSION__ || 'unknown')
+          var seenVersion = ''
+          try {
+            seenVersion = localStorage.getItem(embeddedCacheKey) || ''
+          } catch (e0) {}
+          if (seenVersion === buildVersion) return
+          try {
+            localStorage.setItem(embeddedCacheKey, buildVersion)
+          } catch (e1) {}
           try {
             if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
               navigator.serviceWorker.getRegistrations().then(function(regs){
                 regs.forEach(function(reg){ reg.unregister() })
               }).catch(function(){})
             }
-          } catch (e1) {}
+          } catch (e2) {}
           try {
             if (window.caches && caches.keys) {
               caches.keys().then(function(names){
                 return Promise.all(names.map(function(name){ return caches.delete(name) }))
               }).catch(function(){})
             }
-          } catch (e2) {}
-        } catch (e3) {}
+          } catch (e3) {}
+        } catch (e4) {}
       })();
     </script>
     <script>
@@ -150,7 +164,8 @@
               if (root && root.children && root.children.length > 0) return
               var ua = navigator.userAgent || ''
               var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
-              var allowAutoRecovery = !isIOSSafari
+              var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
+              var allowAutoRecovery = !isIOSSafari && !isEmbedded
               var cacheReset = location.search.indexOf('boot_cache_reset=1') !== -1
               if (allowAutoRecovery && !cacheReset) {
                 try {
