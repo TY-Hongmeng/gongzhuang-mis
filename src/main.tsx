@@ -43,10 +43,8 @@ if (isIOSSafari) {
 const bootSearch = new URLSearchParams(window.location.search)
 const forceSafeMode = bootSearch.get('boot_safe') === '1'
 const isIOSEmbedded = /iP(hone|ad|od)/i.test(navigator.userAgent) && /MicroMessenger|baiduboxapp|Baidu/i.test(navigator.userAgent)
-const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-const isStaticFallbackHost = /vercel\.app/i.test(host)
 
-if (!forceSafeMode && (!isIOSEmbedded || isStaticFallbackHost)) {
+if (!forceSafeMode && !isIOSEmbedded) {
   setTimeout(() => {
     try {
       ;(window as any).__APP_BOOT_STAGE__ = 'interceptor'
