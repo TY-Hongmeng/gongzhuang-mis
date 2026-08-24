@@ -469,27 +469,48 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }
           }
 
-          // Fallback 3: Check common token keys
+          const decodeJwtHeader = (token: string): any | null => {
+            try {
+              const parts = String(token || '').split('.')
+              if (parts.length !== 3) return null
+              const seg = parts[0]
+              if (!seg) return null
+              const b64 = seg.replace(/-/g, '+').replace(/_/g, '/')
+              const pad = '='.repeat((4 - (b64.length % 4)) % 4)
+              const json = atob(b64 + pad)
+              return JSON.parse(json)
+            } catch {
+              return null
+            }
+          }
+
+          // Fallback 3: Check common token keys (guarded by JWT header)
           if (!authToken) {
             const commonKeys = ['token', 'accessToken', 'access_token', 'supabase.auth.token'];
             for (const key of commonKeys) {
               const val = localStorage.getItem(key);
-              if (val) {
-                // Check if it looks like a JWT or a JSON with a token
-                if (val.startsWith('ey') && val.split('.').length === 3) {
+              if (!val) continue
+              if (val.startsWith('ey') && val.split('.').length === 3) {
+                const header = decodeJwtHeader(val)
+                const alg = String(header?.alg || '')
+                if (alg === 'HS256') {
                   authToken = `Bearer ${val}`;
                   break;
-                } else {
-                  try {
-                    const parsed = JSON.parse(val);
-                    const token = parsed.access_token || parsed.token || parsed.accessToken;
-                    if (token) {
-                      authToken = `Bearer ${token}`;
-                      break;
-                    }
-                  } catch (e) {}
                 }
+                continue
               }
+              try {
+                const parsed = JSON.parse(val);
+                const token = parsed.access_token || parsed.token || parsed.accessToken;
+                if (token && String(token).startsWith('ey') && String(token).split('.').length === 3) {
+                  const header = decodeJwtHeader(String(token))
+                  const alg = String(header?.alg || '')
+                  if (alg === 'HS256') {
+                    authToken = `Bearer ${token}`;
+                    break;
+                  }
+                }
+              } catch {}
             }
           }
         }
@@ -501,6 +522,13 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     // Initialize scoped client with token for RLS
     const supabaseUrl = (import.meta as any)?.env?.VITE_SUPABASE_URL || 'https://oltsiocyesbgezlrcxze.supabase.co'
     const supabaseKey = (import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sdHNpb2N5ZXNiZ2V6bHJjeHplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1Nzg4NjAsImV4cCI6MjA3NjE1NDg2MH0.bFDHm24x5SDN4MPwG3lZWVoa78oKpA5_qWxKwl9ebJM'
+    const anonClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    })
     
     let scopedClient = supabase
     if (authToken && authToken.startsWith('Bearer ')) {
@@ -4870,7 +4898,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (error && authToken) {
           const msg = String((error as any)?.message || '')
           console.warn('[API] purchase-orders query failed with auth, retrying with anon client:', msg)
-          queryClient = supabase
+          queryClient = anonClient
           const retryAuth = await buildQuery(queryClient, true)
           data = retryAuth.data
           error = retryAuth.error
@@ -5291,7 +5319,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         if (error && authToken) {
           const msg = String((error as any)?.message || '')
           console.warn('[API] tooling/parts query failed with auth, retrying with anon client:', msg)
-          queryClient = supabase
+          queryClient = anonClient
           const retryAuth = await buildPartsQuery(queryClient)
           data = retryAuth.data
           error = retryAuth.error
