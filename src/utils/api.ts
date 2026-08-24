@@ -4811,63 +4811,72 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const search = qs.get('search')
         const sortField = qs.get('sortField') || 'created_date'
         const sortOrder = (qs.get('sortOrder') || 'desc').toLowerCase() === 'asc'
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
 
-        let query = scopedClient
-          .from('purchase_orders')
-          .select(`*, 
+        const buildQuery = (includeToolingInfo: boolean) => {
+          const selectClause = includeToolingInfo
+            ? `*, 
             tooling_info(
               production_unit,
               recorder
-            )`, { count: 'planned' })
+            )`
+            : `*`
 
-        // Search
-        if (search && search.trim()) {
-          const keyword = `%${search.trim()}%`
-          query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},part_name.ilike.${keyword},supplier.ilike.${keyword}`)
+          let query = scopedClient
+            .from('purchase_orders')
+            .select(selectClause, { count: 'planned' })
+
+          if (search && search.trim()) {
+            const keyword = `%${search.trim()}%`
+            query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},part_name.ilike.${keyword},supplier.ilike.${keyword}`)
+          }
+
+          if (status) query = query.eq('status', status)
+          if (start_date) query = query.gte('created_date', start_date)
+          if (end_date) query = query.lte('created_date', end_date)
+
+          return query.order(sortField, { ascending: sortOrder }).range(from, to)
         }
 
-        // Filters
-        if (status) query = query.eq('status', status)
-        if (start_date) query = query.gte('created_date', start_date)
-        if (end_date) query = query.lte('created_date', end_date)
+        const mapItems = (rows: any[]) => {
+          return (rows || []).map((item: any) => {
+            let production_unit = item.production_unit
+            let recorder = item.applicant
 
-        // Sort
-        query = query.order(sortField, { ascending: sortOrder })
+            if (item.tooling_info) {
+              const info = Array.isArray(item.tooling_info) ? item.tooling_info[0] : item.tooling_info
+              if (info) {
+                if (!production_unit) production_unit = info.production_unit
+                if (!recorder) recorder = info.recorder
+              }
+            }
 
-        // Pagination
-        const from = (page - 1) * pageSize
-        const to = from + pageSize - 1
-        query = query.range(from, to)
+            return {
+              ...item,
+              production_unit,
+              applicant: recorder,
+              demand_date: item.demand_date || item.required_date,
+              source: (item.tooling_id || item.child_item_id || item.part_id) ? '工装信息' : '临时计划'
+            }
+          })
+        }
 
         console.log('[API] Executing purchase orders query with auth:', !!authToken)
-        const { data, error, count } = await query
-        console.log('[API] Purchase orders query result:', { count, dataLength: data?.length, error })
+        let includeToolingInfo = true
+        let { data, error, count } = await buildQuery(true)
+        if (error) {
+          console.warn('[API] purchase-orders relation query failed, retrying base query:', error.message)
+          includeToolingInfo = false
+          const retryResult = await buildQuery(false)
+          data = retryResult.data
+          error = retryResult.error
+          count = retryResult.count
+        }
+        console.log('[API] Purchase orders query result:', { count, dataLength: data?.length, error, includeToolingInfo })
         
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
-
-        // Process data to match backend format
-        const items = (data || []).map((item: any) => {
-          // Extract tooling_info
-          let production_unit = item.production_unit
-          let recorder = item.applicant
-
-          if (item.tooling_info) {
-             // Handle array or object (Supabase returns array for 1:N but we expect 1:1 here usually)
-             const info = Array.isArray(item.tooling_info) ? item.tooling_info[0] : item.tooling_info
-             if (info) {
-               if (!production_unit) production_unit = info.production_unit
-               if (!recorder) recorder = info.recorder
-             }
-          }
-
-          return {
-            ...item,
-            production_unit,
-            applicant: recorder, // Map recorder to applicant if needed or keep separate
-            demand_date: item.demand_date || item.required_date, // Fallback
-            source: (item.tooling_id || item.child_item_id || item.part_id) ? '工装信息' : '临时计划'
-          }
-        })
+        const items = mapItems(data || [])
 
         return jsonResponse({ 
           success: true, 

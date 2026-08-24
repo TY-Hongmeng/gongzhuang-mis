@@ -121,75 +121,85 @@ router.get('/', async (req, res) => {
       calculatedRange: `${from}-${to}`
     });
 
-    // 使用Supabase客户端进行查询，改为左连接，确保无关联的临时计划也能返回
-    let query = supabase
-      .from('purchase_orders')
-      .select(`*, 
+    const buildQuery = (includeToolingInfo: boolean) => {
+      const selectClause = includeToolingInfo
+        ? `*,
         tooling_info(
           production_unit,
           recorder
-        )`, { count: 'planned' });
+        )`
+        : `*`;
+      let query = supabase
+        .from('purchase_orders')
+        .select(selectClause, { count: 'planned' });
 
-    // 搜索功能 - 多字段OR查询
-    if (search && search.trim()) {
-      const keyword = `%${search.trim()}%`;
-      query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},part_name.ilike.${keyword},supplier.ilike.${keyword}`);
-    }
+      if (search && search.trim()) {
+        const keyword = `%${search.trim()}%`;
+        query = query.or(`inventory_number.ilike.${keyword},project_name.ilike.${keyword},part_name.ilike.${keyword},supplier.ilike.${keyword}`);
+      }
 
-    // 筛选条件
-    if (status) {
-      query = query.eq('status', status);
-    }
+      if (status) {
+        query = query.eq('status', status);
+      }
 
-    if (start_date) {
-      query = query.gte('created_date', start_date);
-    }
+      if (start_date) {
+        query = query.gte('created_date', start_date);
+      }
 
-    if (end_date) {
-      query = query.lte('created_date', end_date);
-    }
+      if (end_date) {
+        query = query.lte('created_date', end_date);
+      }
 
-    // 排序
-    const ascending = sortOrder.toLowerCase() === 'asc';
-    query = query.order(sortField, { ascending });
+      const ascending = sortOrder.toLowerCase() === 'asc';
+      return query.order(sortField, { ascending }).range(from, to);
+    };
 
-    // 分页
-    query = query.range(from, to);
+    const processOrders = (rows: any[]) => {
+      return (rows || []).map((item: any) => {
+        const toolingInfo = Array.isArray(item.tooling_info) ? (item.tooling_info[0] || {}) : (item.tooling_info || {});
+        let source = '未知来源';
+        if (item.child_item_id || item.part_id) source = '工装信息';
+        else if (String(item.inventory_number || '').startsWith('MANUAL-') || String(item.inventory_number || '').startsWith('BACKUP-')) source = '临时计划';
+
+        const productionUnit = item.production_unit || item.supplier || toolingInfo.production_unit || '未知单位';
+        const applicant = item.applicant || toolingInfo.recorder || '未知录入人';
+        const demandDate = item.demand_date || item.required_date || null;
+
+        return {
+          ...item,
+          production_unit: productionUnit,
+          applicant: applicant,
+          demand_date: demandDate,
+          source
+        };
+      });
+    };
 
     console.log(`[PurchaseOrders] Executing Supabase query...`);
     
     const queryStart = Date.now();
-    const { data, error, count } = await query;
+    let includeToolingInfo = true;
+    let { data, error, count } = await buildQuery(true);
+    if (error) {
+      console.warn('[PurchaseOrders] Query with tooling_info failed, retrying without relation:', error.message);
+      includeToolingInfo = false;
+      const retryResult = await buildQuery(false);
+      data = retryResult.data;
+      error = retryResult.error;
+      count = retryResult.count;
+    }
     const queryTime = Date.now() - queryStart;
     
     console.log(`[PurchaseOrders] Supabase query completed in ${queryTime}ms`);
     console.log(`[PurchaseOrders] Retrieved ${data?.length || 0} records`);
     console.log(`[PurchaseOrders] Total count: ${count}`);
+    console.log(`[PurchaseOrders] Relation mode: ${includeToolingInfo ? 'with-tooling-info' : 'base-only'}`);
     
     if (error) {
       console.error('Supabase query error:', error);
       return res.status(500).json({ success: false, error: '查询失败', details: error.message });
     }
-
-    // 处理关联数据，提取tooling_info中的字段
-    const processedData = (data || []).map((item: any) => {
-      const toolingInfo = item.tooling_info?.[0] || {};
-      let source = '未知来源';
-      if (item.child_item_id || item.part_id) source = '工装信息';
-      else if (String(item.inventory_number || '').startsWith('MANUAL-') || String(item.inventory_number || '').startsWith('BACKUP-')) source = '临时计划';
-
-      const productionUnit = item.production_unit || item.supplier || toolingInfo.production_unit || '未知单位';
-      const applicant = item.applicant || toolingInfo.recorder || '未知录入人';
-      const demandDate = item.demand_date || item.required_date || null;
-
-      return {
-        ...item,
-        production_unit: productionUnit,
-        applicant: applicant,
-        demand_date: demandDate,
-        source
-      };
-    });
+    const processedData = processOrders(data || []);
 
     const totalTime = Date.now() - startTime;
     console.log(`[PurchaseOrders] Total request time: ${totalTime}ms`);
