@@ -1,9 +1,11 @@
+const isStaticFrontendHost = (host: string): boolean => /github\.io|vercel\.app/i.test(host)
+
 export async function fetchWithFallback(url: string, init?: RequestInit): Promise<Response> {
   // 清理URL中的反引号和空格
   const cleanUrl = url.replace(/[`]/g, '').trim()
   
   const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-  const isGhPages = /github\.io/i.test(host)
+  const isGhPages = isStaticFrontendHost(host)
   // 统一的本地环境检测
   const isLocal = (
     /localhost|127\.0\.0\.1|::1/i.test(host) ||
@@ -192,7 +194,7 @@ export function installApiInterceptor() {
         }
       })()
       const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-      const isGhPages = /github\.io/i.test(host)
+      const isGhPages = isStaticFrontendHost(host)
       
       const isLocal = (
         /localhost|127\.0\.0\.1|::1/i.test(host) ||
@@ -389,7 +391,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     
     // 统一的本地环境检测
     const host = typeof window !== 'undefined' ? String(window.location?.host || '') : ''
-    const isGhPages = /github\.io/i.test(host)
+    const isGhPages = isStaticFrontendHost(host)
     const isLocal = (
       /localhost|127\.0\.0\.1|::1/i.test(host) ||
       /^192\.168\./.test(host) ||
@@ -5240,6 +5242,50 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const { error } = await scopedClient.from('teams').delete().eq('id', id)
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         return jsonResponse({ success: true })
+      }
+
+      // Parts base list
+      if (method === 'GET' && path === '/api/tooling/parts') {
+        const qs = getQuery(url)
+        const page = Math.max(Number(qs.get('page') || 1) || 1, 1)
+        const pageSize = Math.max(Number(qs.get('pageSize') || 50) || 50, 1)
+        const search = String(qs.get('search') || '').trim()
+        const from = (page - 1) * pageSize
+        const to = from + pageSize - 1
+        const expr = search ? `%${search}%` : ''
+
+        let query = scopedClient
+          .from('parts_info')
+          .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id', { count: 'planned' })
+
+        if (expr) {
+          query = query.or(`part_inventory_number.ilike.${expr},inventory_number.ilike.${expr},part_name.ilike.${expr}`)
+        }
+
+        const { data, error, count } = await query
+          .order('part_inventory_number', { ascending: true })
+          .range(from, to)
+
+        if (error) return jsonResponse({ success: false, error: error.message }, 500)
+
+        const items = (data || []).map((part: any) => ({
+          id: String(part?.id ?? part?.uuid ?? ''),
+          tooling_id: String(part?.tooling_id ?? ''),
+          part_inventory_number: String(part?.part_inventory_number || part?.inventory_number || '').trim(),
+          inventory_number: String(part?.inventory_number || part?.part_inventory_number || '').trim(),
+          part_name: String(part?.part_name ?? ''),
+          part_quantity: Number(part?.part_quantity || 0),
+          weight: Number(part?.weight || 0),
+          material_id: String(part?.material_id || '')
+        }))
+
+        return jsonResponse({
+          success: true,
+          items,
+          total: typeof count === 'number' ? count : items.length,
+          page,
+          pageSize
+        })
       }
 
       // Parts inventory list

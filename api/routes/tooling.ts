@@ -1697,6 +1697,58 @@ router.get('/batch', async (req, res) => {
   }
 })
 
+// 列出所有零件基础信息（分页）
+router.get('/parts', async (req, res) => {
+  try {
+    const { page = '1', pageSize = '50', search = '' } = req.query as Record<string, string>
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1)
+    const sizeNum = Math.max(parseInt(pageSize, 10) || 50, 1)
+    const from = (pageNum - 1) * sizeNum
+    const to = from + sizeNum - 1
+    const keyword = String(search || '').trim()
+    const expr = keyword ? `%${keyword}%` : ''
+
+    let queryBuilder = supabase
+      .from('parts_info')
+      .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id', { count: 'planned' })
+
+    if (expr) {
+      queryBuilder = queryBuilder.or(`part_inventory_number.ilike.${expr},inventory_number.ilike.${expr},part_name.ilike.${expr}`)
+    }
+
+    const { data, error, count } = await queryBuilder
+      .order('part_inventory_number', { ascending: true })
+      .range(from, to)
+
+    if (error) {
+      console.error('Get parts list error:', error)
+      return res.status(500).json({ success: false, error: error.message || '服务器错误' })
+    }
+
+    const items = (data || []).map((part: any) => ({
+      id: String(part?.id || ''),
+      tooling_id: String(part?.tooling_id || ''),
+      part_inventory_number: String(part?.part_inventory_number || part?.inventory_number || '').trim(),
+      inventory_number: String(part?.inventory_number || part?.part_inventory_number || '').trim(),
+      part_name: String(part?.part_name || ''),
+      part_quantity: Number(part?.part_quantity || 0),
+      weight: Number(part?.weight || 0),
+      material_id: String(part?.material_id || '')
+    }))
+
+    res.json({
+      success: true,
+      items,
+      total: typeof count === 'number' ? count : items.length,
+      page: pageNum,
+      pageSize: sizeNum
+    })
+  } catch (err: any) {
+    console.error('Get parts list route error:', err)
+    res.status(500).json({ success: false, error: err?.message || '服务器错误' })
+  }
+})
+
 // 列出所有盘存编号及零件基本信息（分页）
 router.get('/parts/inventory-list', async (req, res) => {
   try {
