@@ -4814,7 +4814,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const from = (page - 1) * pageSize
         const to = from + pageSize - 1
 
-        const buildQuery = (includeToolingInfo: boolean) => {
+        const isAuthQueryError = (msg: string) => /jwt|token|unauthor|forbidden|invalid/i.test(msg || '')
+
+        const buildQuery = (client: any, includeToolingInfo: boolean) => {
           const selectClause = includeToolingInfo
             ? `*, 
             tooling_info(
@@ -4823,7 +4825,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             )`
             : `*`
 
-          let query = scopedClient
+          let query = client
             .from('purchase_orders')
             .select(selectClause, { count: 'planned' })
 
@@ -4863,17 +4865,32 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
 
         console.log('[API] Executing purchase orders query with auth:', !!authToken)
+        let queryClient: any = scopedClient
         let includeToolingInfo = true
-        let { data, error, count } = await buildQuery(true)
+        let { data, error, count } = await buildQuery(queryClient, true)
+
+        if (error && authToken) {
+          const msg = String((error as any)?.message || '')
+          if (isAuthQueryError(msg)) {
+            console.warn('[API] purchase-orders auth query failed, retrying with anon client:', msg)
+            queryClient = supabase
+            const retryAuth = await buildQuery(queryClient, true)
+            data = retryAuth.data
+            error = retryAuth.error
+            count = retryAuth.count
+          }
+        }
+
         if (error) {
-          console.warn('[API] purchase-orders relation query failed, retrying base query:', error.message)
+          console.warn('[API] purchase-orders relation query failed, retrying base query:', (error as any)?.message)
           includeToolingInfo = false
-          const retryResult = await buildQuery(false)
+          const retryResult = await buildQuery(queryClient, false)
           data = retryResult.data
           error = retryResult.error
           count = retryResult.count
         }
-        console.log('[API] Purchase orders query result:', { count, dataLength: data?.length, error, includeToolingInfo })
+
+        console.log('[API] Purchase orders query result:', { count, dataLength: data?.length, error, includeToolingInfo, hasAuth: !!authToken })
         
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
         const items = mapItems(data || [])
@@ -5263,17 +5280,30 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         const to = from + pageSize - 1
         const expr = search ? `%${search}%` : ''
 
-        let query = scopedClient
-          .from('parts_info')
-          .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id', { count: 'planned' })
-
-        if (expr) {
-          query = query.or(`part_inventory_number.ilike.${expr},inventory_number.ilike.${expr},part_name.ilike.${expr}`)
+        const isAuthQueryError = (msg: string) => /jwt|token|unauthor|forbidden|invalid/i.test(msg || '')
+        const buildPartsQuery = (client: any) => {
+          let query = client
+            .from('parts_info')
+            .select('id,tooling_id,part_inventory_number,inventory_number,part_name,part_quantity,weight,material_id', { count: 'planned' })
+          if (expr) {
+            query = query.or(`part_inventory_number.ilike.${expr},inventory_number.ilike.${expr},part_name.ilike.${expr}`)
+          }
+          return query.order('part_inventory_number', { ascending: true }).range(from, to)
         }
 
-        const { data, error, count } = await query
-          .order('part_inventory_number', { ascending: true })
-          .range(from, to)
+        let queryClient: any = scopedClient
+        let { data, error, count } = await buildPartsQuery(queryClient)
+        if (error && authToken) {
+          const msg = String((error as any)?.message || '')
+          if (isAuthQueryError(msg)) {
+            console.warn('[API] tooling/parts auth query failed, retrying with anon client:', msg)
+            queryClient = supabase
+            const retryAuth = await buildPartsQuery(queryClient)
+            data = retryAuth.data
+            error = retryAuth.error
+            count = retryAuth.count
+          }
+        }
 
         if (error) return jsonResponse({ success: false, error: error.message }, 500)
 
