@@ -434,7 +434,32 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     if (!authToken) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        if (session?.access_token) {
+        const decodeJwtSegment = (token: string, idx: number): any | null => {
+          try {
+            const parts = String(token || '').split('.')
+            if (parts.length !== 3) return null
+            const seg = parts[idx]
+            if (!seg) return null
+            const b64 = seg.replace(/-/g, '+').replace(/_/g, '/')
+            const pad = '='.repeat((4 - (b64.length % 4)) % 4)
+            const json = atob(b64 + pad)
+            return JSON.parse(json)
+          } catch {
+            return null
+          }
+        }
+        const decodeJwtHeader = (token: string): any | null => decodeJwtSegment(token, 0)
+        const decodeJwtPayload = (token: string): any | null => decodeJwtSegment(token, 1)
+        const isValidSupabaseProjectJwt = (token: string) => {
+          const header = decodeJwtHeader(token)
+          const payload = decodeJwtPayload(token)
+          const alg = String(header?.alg || '')
+          const iss = String(payload?.iss || '')
+          const ref = String(payload?.ref || '')
+          return alg === 'HS256' && iss === 'supabase' && ref === 'oltsiocyesbgezlrcxze'
+        }
+
+        if (session?.access_token && isValidSupabaseProjectJwt(session.access_token)) {
           authToken = `Bearer ${session.access_token}`
         } else {
           // Fallback 1: Standard Supabase v2 key
@@ -446,7 +471,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               if (item) {
                 const parsed = JSON.parse(item);
                 const token = parsed.access_token || parsed.session?.access_token || (parsed.session && parsed.session.access_token);
-                if (token) {
+                if (token && isValidSupabaseProjectJwt(String(token))) {
                   authToken = `Bearer ${token}`;
                   break;
                 }
@@ -461,7 +486,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
               try {
                 const parsed = JSON.parse(authStorage);
                 const token = parsed.state?.user?.access_token || parsed.state?.token || parsed.state?.accessToken;
-                if (token) {
+                if (token && isValidSupabaseProjectJwt(String(token))) {
                   authToken = `Bearer ${token}`;
                   console.log('[API Interceptor] Recovered token from auth-storage');
                 }
@@ -469,31 +494,14 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             }
           }
 
-          const decodeJwtHeader = (token: string): any | null => {
-            try {
-              const parts = String(token || '').split('.')
-              if (parts.length !== 3) return null
-              const seg = parts[0]
-              if (!seg) return null
-              const b64 = seg.replace(/-/g, '+').replace(/_/g, '/')
-              const pad = '='.repeat((4 - (b64.length % 4)) % 4)
-              const json = atob(b64 + pad)
-              return JSON.parse(json)
-            } catch {
-              return null
-            }
-          }
-
-          // Fallback 3: Check common token keys (guarded by JWT header)
+          // Fallback 3: Check common token keys (guarded by JWT header + project ref)
           if (!authToken) {
             const commonKeys = ['token', 'accessToken', 'access_token', 'supabase.auth.token'];
             for (const key of commonKeys) {
               const val = localStorage.getItem(key);
               if (!val) continue
               if (val.startsWith('ey') && val.split('.').length === 3) {
-                const header = decodeJwtHeader(val)
-                const alg = String(header?.alg || '')
-                if (alg === 'HS256') {
+                if (isValidSupabaseProjectJwt(val)) {
                   authToken = `Bearer ${val}`;
                   break;
                 }
@@ -503,9 +511,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 const parsed = JSON.parse(val);
                 const token = parsed.access_token || parsed.token || parsed.accessToken;
                 if (token && String(token).startsWith('ey') && String(token).split('.').length === 3) {
-                  const header = decodeJwtHeader(String(token))
-                  const alg = String(header?.alg || '')
-                  if (alg === 'HS256') {
+                  if (isValidSupabaseProjectJwt(String(token))) {
                     authToken = `Bearer ${token}`;
                     break;
                   }
@@ -531,6 +537,40 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
     })
     
     let scopedClient = supabase
+    if (authToken && authToken.startsWith('Bearer ')) {
+       const token = authToken.slice(7).trim()
+       const header = (() => {
+         try {
+           const parts = token.split('.')
+           if (parts.length !== 3) return null
+           const seg = parts[0]
+           const b64 = seg.replace(/-/g, '+').replace(/_/g, '/')
+           const pad = '='.repeat((4 - (b64.length % 4)) % 4)
+           return JSON.parse(atob(b64 + pad))
+         } catch {
+           return null
+         }
+       })()
+       const payload = (() => {
+         try {
+           const parts = token.split('.')
+           if (parts.length !== 3) return null
+           const seg = parts[1]
+           const b64 = seg.replace(/-/g, '+').replace(/_/g, '/')
+           const pad = '='.repeat((4 - (b64.length % 4)) % 4)
+           return JSON.parse(atob(b64 + pad))
+         } catch {
+           return null
+         }
+       })()
+       const alg = String(header?.alg || '')
+       const iss = String(payload?.iss || '')
+       const ref = String(payload?.ref || '')
+       if (alg !== 'HS256' || iss !== 'supabase' || ref !== 'oltsiocyesbgezlrcxze') {
+         authToken = ''
+       }
+    }
+
     if (authToken && authToken.startsWith('Bearer ')) {
        scopedClient = createClient(supabaseUrl, supabaseKey, {
          global: {
