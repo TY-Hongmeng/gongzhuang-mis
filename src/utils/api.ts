@@ -1221,6 +1221,46 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         if (method === 'POST' && path === '/api/backup-materials') {
           const body = await readBody()
+          if (Array.isArray(body?.materials)) {
+            const results: any[] = []
+            for (const material of body.materials) {
+              const payload: any = {
+                material_name: String(material?.material_name || ''),
+                model: String(material?.model || ''),
+                quantity: material?.quantity == null || material?.quantity === '' ? null : Number(material?.quantity),
+                unit: String(material?.unit || ''),
+                project_name: String(material?.project_name || ''),
+                supplier: String(material?.supplier || material?.production_unit || ''),
+                price: material?.price == null || material?.price === '' ? null : Number(material?.price),
+                demand_date: String(material?.demand_date || '') || null,
+                created_date: String(material?.created_date || '') || null,
+                applicant: String(material?.applicant || ''),
+                is_manual: Boolean(material?.is_manual ?? true),
+                material: String(material?.material || ''),
+                material_type: String(material?.material_type || ''),
+                weight: material?.weight == null || material?.weight === '' ? null : Number(material?.weight),
+                unit_price: material?.unit_price == null || material?.unit_price === '' ? null : Number(material?.unit_price),
+                total_price: material?.total_price == null || material?.total_price === '' ? null : Number(material?.total_price)
+              }
+              const { data, error } = await supabase
+                .from('backup_materials')
+                .insert(payload)
+                .select('*')
+                .single()
+              if (error) {
+                results.push({ success: false, error: error.message, data: material })
+              } else {
+                results.push({ success: true, data })
+              }
+            }
+            const successCount = results.filter((r) => r?.success).length
+            const errorCount = results.length - successCount
+            return jsonResponse({
+              success: errorCount === 0,
+              message: `创建完成: 成功 ${successCount} 个, 失败 ${errorCount} 个`,
+              results
+            })
+          }
           const payload: any = {
             material_name: String(body.material_name || ''),
             model: String(body.model || ''),
@@ -1234,7 +1274,10 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             applicant: String(body.applicant || ''),
             is_manual: Boolean(body.is_manual ?? true),
             material: String(body.material || ''),
-            material_type: String(body.material_type || '')
+            material_type: String(body.material_type || ''),
+            weight: body.weight == null || body.weight === '' ? null : Number(body.weight),
+            unit_price: body.unit_price == null || body.unit_price === '' ? null : Number(body.unit_price),
+            total_price: body.total_price == null || body.total_price === '' ? null : Number(body.total_price)
           }
           const { data, error } = await supabase
             .from('backup_materials')
@@ -2587,6 +2630,34 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
         }
         if (method === 'POST' && path === '/api/manual-plans') {
           const body = await readBody()
+          if (Array.isArray(body?.orders)) {
+            const orders = body.orders
+            const payloads = orders.map((o: any) => ({
+              inventory_number: String(o?.inventory_number || ''),
+              project_name: String(o?.project_name || ''),
+              part_name: String(o?.part_name || ''),
+              part_quantity: o?.part_quantity == null || o?.part_quantity === '' ? null : Number(o?.part_quantity),
+              unit: String(o?.unit || '件'),
+              model: String(o?.model || ''),
+              supplier: String(o?.supplier || o?.production_unit || ''),
+              required_date: String(o?.required_date || '') || null,
+              remark: String(o?.remark || ''),
+              status: String(o?.status || 'draft'),
+              created_date: String(o?.created_date || new Date().toISOString()),
+              updated_date: String(o?.updated_date || '') || null,
+              production_unit: String(o?.production_unit || ''),
+              demand_date: String(o?.demand_date || '') || null,
+              applicant: String(o?.applicant || '')
+            }))
+
+            const { data, error } = await supabase
+              .from('manual_purchase_plans')
+              .insert(payloads)
+              .select('*')
+
+            if (error) return jsonResponse({ success: false, error: error.message }, 500)
+            return jsonResponse({ success: true, data: data || [] })
+          }
           const payload: any = {
             inventory_number: String(body.inventory_number || ''),
             project_name: String(body.project_name || ''),
