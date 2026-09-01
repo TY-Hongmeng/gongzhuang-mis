@@ -630,7 +630,7 @@ export default function ManualPurchaseOrders() {
 
       if (backupRows.length > 0) {
         const payload = backupRows.map((x: any) => {
-          const { _row, ...rest } = x || {}
+          const { _row, weight, unit_price, total_price, ...rest } = x || {}
           return rest
         })
         const r = await fetchWithFallback('/api/backup-materials', {
@@ -655,9 +655,10 @@ export default function ManualPurchaseOrders() {
         return
       }
 
+      await fetchManualData()
+      await fetchBackupData()
+      setRefreshKey(prev => prev + 1)
       message.success({ content: `导入成功：标准件 ${insertedManual} 条，备用料 ${insertedBackup} 条`, key: 'excel_import' })
-      fetchManualData()
-      fetchBackupData()
     } catch (e) {
       message.error({ content: '导入失败: ' + (e as Error).message, key: 'excel_import' })
     } finally {

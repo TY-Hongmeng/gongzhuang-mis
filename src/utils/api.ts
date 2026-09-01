@@ -1237,10 +1237,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
                 applicant: String(material?.applicant || ''),
                 is_manual: Boolean(material?.is_manual ?? true),
                 material: String(material?.material || ''),
-                material_type: String(material?.material_type || ''),
-                weight: material?.weight == null || material?.weight === '' ? null : Number(material?.weight),
-                unit_price: material?.unit_price == null || material?.unit_price === '' ? null : Number(material?.unit_price),
-                total_price: material?.total_price == null || material?.total_price === '' ? null : Number(material?.total_price)
+                material_type: String(material?.material_type || '')
               }
               const { data, error } = await supabase
                 .from('backup_materials')
@@ -1274,10 +1271,7 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             applicant: String(body.applicant || ''),
             is_manual: Boolean(body.is_manual ?? true),
             material: String(body.material || ''),
-            material_type: String(body.material_type || ''),
-            weight: body.weight == null || body.weight === '' ? null : Number(body.weight),
-            unit_price: body.unit_price == null || body.unit_price === '' ? null : Number(body.unit_price),
-            total_price: body.total_price == null || body.total_price === '' ? null : Number(body.total_price)
+            material_type: String(body.material_type || '')
           }
           const { data, error } = await supabase
             .from('backup_materials')
