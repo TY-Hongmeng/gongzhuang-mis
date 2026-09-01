@@ -177,6 +177,7 @@ export default function ManualPurchaseOrders() {
   const excelFileInputRef = useRef<HTMLInputElement>(null);
   const rowH = 32;
   const [excelImporting, setExcelImporting] = useState(false);
+  const [excelInputKey, setExcelInputKey] = useState(0);
 
   // 备用材料状态
   const [backupData, setBackupData] = useState<BackupMaterial[]>([]);
@@ -492,12 +493,13 @@ export default function ManualPurchaseOrders() {
   const handleExcelImport = async (file: File) => {
     if (!file) return
     setExcelImporting(true)
+    message.loading({ content: '正在导入...', key: 'excel_import', duration: 0 })
     try {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
       const names = wb.SheetNames || []
       if (names.length === 0) {
-        message.error('Excel 中未找到工作表')
+        message.error({ content: 'Excel 中未找到工作表', key: 'excel_import' })
         return
       }
 
@@ -557,7 +559,7 @@ export default function ManualPurchaseOrders() {
       const backupRows = backupSheet ? parseBackupSheet(backupSheet, materialsLocal, partTypesLocal) : []
 
       if (manualRows.length === 0 && backupRows.length === 0) {
-        message.error('未解析到可导入的数据（请检查Sheet名称与表头）')
+        message.error({ content: '未解析到可导入的数据（请检查Sheet名称与表头）', key: 'excel_import' })
         return
       }
 
@@ -572,7 +574,7 @@ export default function ManualPurchaseOrders() {
         })
         const body = await r.json().catch(() => ({} as any))
         if (!r.ok || body?.success === false) {
-          message.error(`导入失败：${body?.error || body?.message || '导入失败'}`)
+          message.error({ content: `导入失败：${body?.error || body?.message || '导入失败'}`, key: 'excel_import' })
           return
         }
         insertedManual = Array.isArray(body?.data) ? body.data.length : manualRows.length
@@ -586,29 +588,30 @@ export default function ManualPurchaseOrders() {
         })
         const body = await r.json().catch(() => ({} as any))
         if (!r.ok || body?.success === false) {
-          message.error(`导入失败：${body?.error || body?.message || '导入失败'}`)
+          message.error({ content: `导入失败：${body?.error || body?.message || '导入失败'}`, key: 'excel_import' })
           return
         }
         insertedBackup = Array.isArray(body?.results) ? body.results.filter((x: any) => x?.success).length : backupRows.length
       }
 
       if (manualRows.length > 0 && insertedManual === 0) {
-        message.error('导入失败：标准件未写入任何数据（请检查表头行是否正确）')
+        message.error({ content: '导入失败：标准件未写入任何数据（请检查表头行是否正确）', key: 'excel_import' })
         return
       }
       if (backupRows.length > 0 && insertedBackup === 0) {
-        message.error('导入失败：备用料未写入任何数据（请检查表头行是否正确）')
+        message.error({ content: '导入失败：备用料未写入任何数据（请检查表头行是否正确）', key: 'excel_import' })
         return
       }
 
-      message.success(`导入成功：标准件 ${insertedManual} 条，备用料 ${insertedBackup} 条`)
+      message.success({ content: `导入成功：标准件 ${insertedManual} 条，备用料 ${insertedBackup} 条`, key: 'excel_import' })
       fetchManualData()
       fetchBackupData()
     } catch (e) {
-      message.error('导入失败: ' + (e as Error).message)
+      message.error({ content: '导入失败: ' + (e as Error).message, key: 'excel_import' })
     } finally {
       setExcelImporting(false)
       if (excelFileInputRef.current) excelFileInputRef.current.value = ''
+      setExcelInputKey((v) => v + 1)
     }
   }
 
@@ -2101,21 +2104,23 @@ export default function ManualPurchaseOrders() {
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', paddingTop: 0, paddingBottom: 8, flexShrink: 0 }} className="flex items-center justify-end mb-4">
         <Space>
-          <input
-            ref={excelFileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) void handleExcelImport(file)
-            }}
-          />
           <Button size="small" onClick={downloadExcelTemplate}>
             下载模板
           </Button>
-          <Button size="small" loading={excelImporting} onClick={() => excelFileInputRef.current?.click()}>
+          <Button size="small" loading={excelImporting} disabled={excelImporting} style={{ position: 'relative', overflow: 'hidden' }}>
             导入EXCEL
+            <input
+              key={excelInputKey}
+              ref={excelFileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              disabled={excelImporting}
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleExcelImport(file)
+              }}
+            />
           </Button>
           <Button danger disabled={(selectedManualRowKeys.length + selectedBackupRowKeys.length) === 0} onClick={handleBatchDeleteAll}>
             批量删除 ({selectedManualRowKeys.length + selectedBackupRowKeys.length})
