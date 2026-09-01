@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { generatePurchaseOrders as postPurchaseOrders } from '../../services/toolingService';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import * as XLSX from 'xlsx';
 import { formatSpecificationsForProduction, parseProductionSpecifications } from '../../utils/productionFormat';
 import { getProductionFormatHint } from '../../utils/productionHint';
 import { calculateTotalPrice } from '../../utils/priceCalculator';
@@ -173,7 +174,9 @@ export default function ManualPurchaseOrders() {
   const [productionUnits, setProductionUnits] = useState<string[]>([]);
   const lastEditingRef = useRef<string | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
   const rowH = 32;
+  const [excelImporting, setExcelImporting] = useState(false);
 
   // 备用材料状态
   const [backupData, setBackupData] = useState<BackupMaterial[]>([]);
@@ -278,6 +281,281 @@ export default function ManualPurchaseOrders() {
       return changed ? next : prev
     })
   }, [backupData.length, materials, partTypes, calculatePartWeight])
+
+  const getExcelDateString = (v: any): string => {
+    if (v === null || typeof v === 'undefined') return ''
+    if (v instanceof Date && !isNaN(v.getTime())) return dayjs(v).format('YYYY-MM-DD')
+    if (typeof v === 'number' && isFinite(v)) {
+      const d = XLSX.SSF.parse_date_code(v)
+      if (d && d.y && d.m && d.d) {
+        const mm = String(d.m).padStart(2, '0')
+        const dd = String(d.d).padStart(2, '0')
+        return `${d.y}-${mm}-${dd}`
+      }
+    }
+    const s = String(v || '').trim()
+    if (!s) return ''
+    const m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/)
+    if (m) {
+      const mm = String(m[2]).padStart(2, '0')
+      const dd = String(m[3]).padStart(2, '0')
+      return `${m[1]}-${mm}-${dd}`
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    return ''
+  }
+
+  const safeTrim = (v: any) => String(v ?? '').trim()
+
+  const normalizeKey = (k: string) => String(k || '').replace(/\s+/g, '').trim()
+
+  const getRowValue = (row: Record<string, any>, keys: string[]) => {
+    const map: Record<string, string> = {}
+    Object.keys(row || {}).forEach((k) => {
+      map[normalizeKey(k)] = k
+    })
+    for (const key of keys) {
+      const actual = map[normalizeKey(key)]
+      if (actual) return row[actual]
+    }
+    return undefined
+  }
+
+  const downloadExcelTemplate = () => {
+    const manualHeaders = ['名称*', '型号', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人']
+    const backupHeaders = ['名称*', '材质', '料型', '规格', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人']
+
+    const manualExample = [
+      '定位销',
+      'M6',
+      10,
+      '件',
+      '示例项目',
+      '投产单位A',
+      dayjs().add(7, 'day').format('YYYY-MM-DD'),
+      user?.real_name || ''
+    ]
+
+    const backupExample = [
+      '45钢圆料',
+      '45钢',
+      '圆料',
+      'φ50*100',
+      2,
+      'kg',
+      '示例项目',
+      '投产单位A',
+      dayjs().add(7, 'day').format('YYYY-MM-DD'),
+      user?.real_name || ''
+    ]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([manualHeaders, manualExample]), '标准件')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([backupHeaders, backupExample]), '备用料')
+    XLSX.writeFile(wb, `采购申请导入模板_${dayjs().format('YYYYMMDD')}.xlsx`)
+  }
+
+  const parseManualSheet = (sheet: XLSX.WorkSheet): any[] => {
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' })
+    const mapped = rows.map((row) => {
+      const part_name = safeTrim(getRowValue(row, ['名称*', '名称', '标准件名称', '零件名称']))
+      const model = safeTrim(getRowValue(row, ['型号', '规格型号', '规格', '型号规格']))
+      const part_quantity_raw = getRowValue(row, ['数量', '数量(件)', '采购数量'])
+      const unit = safeTrim(getRowValue(row, ['单位', '计量单位'])) || '件'
+      const project_name = safeTrim(getRowValue(row, ['项目名称', '项目', '项目名']))
+      const production_unit = safeTrim(getRowValue(row, ['投产单位', '生产单位', '使用单位']))
+      const demand_date = getExcelDateString(getRowValue(row, ['需求日期', '需用日期', '交期']))
+      const applicant = safeTrim(getRowValue(row, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+
+      const qtyNum = (() => {
+        if (part_quantity_raw === '' || part_quantity_raw === null || typeof part_quantity_raw === 'undefined') return null
+        const n = parseInt(String(part_quantity_raw), 10)
+        return isNaN(n) ? null : n
+      })()
+
+      return {
+        part_name,
+        model,
+        part_quantity: qtyNum,
+        unit,
+        project_name,
+        production_unit,
+        demand_date,
+        applicant
+      }
+    })
+
+    return mapped.filter((r) => {
+      const meaningful = Object.values(r).some((v) => String(v ?? '').trim() !== '' && v !== null)
+      return meaningful && String(r.part_name || '').trim() !== ''
+    })
+  }
+
+  const parseBackupSheet = (sheet: XLSX.WorkSheet, materialsLocal: {id: string, name: string, density?: number, unit_price?: number}[], partTypesLocal: {id: string, name: string, volume_formula?: string, input_format?: string}[]): any[] => {
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' })
+    const mapped = rows.map((row) => {
+      const material_name = safeTrim(getRowValue(row, ['名称*', '名称', '材料名称', '备用料名称']))
+      const material = safeTrim(getRowValue(row, ['材质', '材料', '材质名称']))
+      const material_type = safeTrim(getRowValue(row, ['料型', '类型', '料型名称']))
+      const model = safeTrim(getRowValue(row, ['规格', '规格型号', '尺寸']))
+      const quantity_raw = getRowValue(row, ['数量', '数量(件)', '采购数量'])
+      const unit = safeTrim(getRowValue(row, ['单位', '计量单位'])) || 'kg'
+      const project_name = safeTrim(getRowValue(row, ['项目名称', '项目', '项目名']))
+      const production_unit = safeTrim(getRowValue(row, ['投产单位', '生产单位', '使用单位']))
+      const demand_date = getExcelDateString(getRowValue(row, ['需求日期', '需用日期', '交期']))
+      const applicant = safeTrim(getRowValue(row, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+
+      const qty = (() => {
+        if (quantity_raw === '' || quantity_raw === null || typeof quantity_raw === 'undefined') return null
+        const n = parseInt(String(quantity_raw), 10)
+        return isNaN(n) ? null : n
+      })()
+
+      const currentMaterial = materialsLocal.find((m) => String(m.name || '').trim() === material)
+      const materialId = currentMaterial?.id || ''
+      const unitPrice = Number((currentMaterial as any)?.unit_price || 0)
+      const specsObj = model ? parseProductionSpecifications(model, material_type) : {}
+      const unitW = calculatePartWeight(specsObj, materialId, material_type, partTypesLocal as any, materialsLocal as any)
+      const totalW = qty && qty > 0 && unitW > 0 ? unitW * qty : 0
+      const totalPrice = calculateTotalPrice(totalW, unitPrice)
+
+      return {
+        material_name,
+        material,
+        material_type,
+        model,
+        quantity: qty,
+        unit,
+        project_name,
+        production_unit,
+        demand_date,
+        applicant,
+        weight: totalW,
+        unit_price: unitPrice,
+        total_price: totalPrice
+      }
+    })
+
+    return mapped.filter((r) => {
+      const meaningful = Object.values(r).some((v) => String(v ?? '').trim() !== '' && v !== null)
+      return meaningful && String(r.material_name || '').trim() !== ''
+    })
+  }
+
+  const handleExcelImport = async (file: File) => {
+    if (!file) return
+    setExcelImporting(true)
+    try {
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const names = wb.SheetNames || []
+      if (names.length === 0) {
+        message.error('Excel 中未找到工作表')
+        return
+      }
+
+      const findSheet = (keywords: string[]) => {
+        const hit = names.find((n) => keywords.some((k) => String(n).includes(k)))
+        return hit ? wb.Sheets[hit] : undefined
+      }
+
+      const detectSheetType = (sheet: XLSX.WorkSheet): 'manual' | 'backup' | 'unknown' => {
+        try {
+          const aoa = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' }) as any[]
+          const header = Array.isArray(aoa?.[0]) ? aoa[0].map((x: any) => normalizeKey(String(x || ''))) : []
+          const hasMaterial = header.some((h: string) => ['材质', '料型', '规格'].includes(h))
+          const hasManual = header.some((h: string) => ['型号', '单位', '项目名称'].includes(h))
+          if (hasMaterial) return 'backup'
+          if (hasManual) return 'manual'
+          return 'unknown'
+        } catch {
+          return 'unknown'
+        }
+      }
+
+      let manualSheet = findSheet(['标准件', '标准', 'manual', 'Manual'])
+      let backupSheet = findSheet(['备用料', '备用', '原材料', '材料', 'backup', 'Backup'])
+
+      if (!manualSheet || !backupSheet) {
+        for (const name of names) {
+          const s = wb.Sheets[name]
+          if (!s) continue
+          const t = detectSheetType(s)
+          if (t === 'manual' && !manualSheet) manualSheet = s
+          if (t === 'backup' && !backupSheet) backupSheet = s
+        }
+      }
+
+      if (!manualSheet && !backupSheet && names.length === 2) {
+        manualSheet = wb.Sheets[names[0]]
+        backupSheet = wb.Sheets[names[1]]
+      }
+
+      const materialsLocal = materials.length > 0
+        ? materials
+        : await (async () => {
+            const r = await fetchWithFallback('/api/materials', { cache: 'no-store' })
+            const j = await r.json().catch(() => ({}))
+            return Array.isArray(j?.data) ? j.data : []
+          })()
+      const partTypesLocal = partTypes.length > 0
+        ? partTypes
+        : await (async () => {
+            const r = await fetchWithFallback('/api/part-types', { cache: 'no-store' })
+            const j = await r.json().catch(() => ({}))
+            return Array.isArray(j?.data) ? j.data : []
+          })()
+
+      const manualRows = manualSheet ? parseManualSheet(manualSheet) : []
+      const backupRows = backupSheet ? parseBackupSheet(backupSheet, materialsLocal, partTypesLocal) : []
+
+      if (manualRows.length === 0 && backupRows.length === 0) {
+        message.error('未解析到可导入的数据（请检查Sheet名称与表头）')
+        return
+      }
+
+      const tasks: Promise<any>[] = []
+      if (manualRows.length > 0) {
+        tasks.push(
+          fetchWithFallback('/api/manual-plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orders: manualRows })
+          }).then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+        )
+      }
+      if (backupRows.length > 0) {
+        tasks.push(
+          fetchWithFallback('/api/backup-materials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ materials: backupRows })
+          }).then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+        )
+      }
+
+      const results = await Promise.all(tasks)
+      const errors: string[] = []
+      results.forEach((r: any) => {
+        if (!r?.ok) errors.push(r?.body?.error || r?.body?.message || '导入失败')
+        if (r?.ok && r?.body?.success === false) errors.push(r?.body?.error || r?.body?.message || '导入失败')
+      })
+
+      if (errors.length > 0) {
+        message.error(`导入失败：${errors[0]}`)
+        return
+      }
+
+      message.success(`导入成功：标准件 ${manualRows.length} 条，备用料 ${backupRows.length} 条`)
+      fetchManualData()
+      fetchBackupData()
+    } catch (e) {
+      message.error('导入失败: ' + (e as Error).message)
+    } finally {
+      setExcelImporting(false)
+      if (excelFileInputRef.current) excelFileInputRef.current.value = ''
+    }
+  }
 
   const handleGeneratePurchaseAll = async () => {
     const manualIds = selectedManualRowKeys.filter(id => !String(id).startsWith('blank-'))
@@ -1693,6 +1971,22 @@ export default function ManualPurchaseOrders() {
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', paddingTop: 0, paddingBottom: 8, flexShrink: 0 }} className="flex items-center justify-end mb-4">
         <Space>
+          <input
+            ref={excelFileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleExcelImport(file)
+            }}
+          />
+          <Button size="small" onClick={downloadExcelTemplate}>
+            下载模板
+          </Button>
+          <Button size="small" loading={excelImporting} onClick={() => excelFileInputRef.current?.click()}>
+            导入EXCEL
+          </Button>
           <Button danger disabled={(selectedManualRowKeys.length + selectedBackupRowKeys.length) === 0} onClick={handleBatchDeleteAll}>
             批量删除 ({selectedManualRowKeys.length + selectedBackupRowKeys.length})
           </Button>

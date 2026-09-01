@@ -2,6 +2,7 @@
 node_modules/
 dist/
 *.log
+.deploy-gh-pages/
 
 # IDE/OS
 .vscode/
