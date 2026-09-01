@@ -321,6 +321,43 @@ export default function ManualPurchaseOrders() {
     return undefined
   }
 
+  const sheetToAOA = (sheet: XLSX.WorkSheet): any[][] => {
+    const aoa = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' }) as any[]
+    return Array.isArray(aoa) ? (aoa as any[][]) : []
+  }
+
+  const findHeaderRowIndex = (aoa: any[][], headerTokens: string[]) => {
+    const tokens = headerTokens.map((t) => normalizeKey(t))
+    const maxScan = Math.min(aoa.length, 20)
+    for (let i = 0; i < maxScan; i++) {
+      const row = aoa[i]
+      if (!Array.isArray(row)) continue
+      const normRow = row.map((c) => normalizeKey(String(c ?? '')))
+      const hit = tokens.filter((t) => normRow.includes(t)).length
+      if (hit >= 3) return i
+    }
+    return -1
+  }
+
+  const buildHeaderIndexMap = (headerRow: any[]) => {
+    const map: Record<string, number> = {}
+    headerRow.forEach((cell, idx) => {
+      const k = normalizeKey(String(cell ?? ''))
+      if (!k) return
+      if (typeof map[k] !== 'number') map[k] = idx
+    })
+    return map
+  }
+
+  const getByAliases = (row: any[], idxMap: Record<string, number>, aliases: string[]) => {
+    for (const a of aliases) {
+      const k = normalizeKey(a)
+      const idx = idxMap[k]
+      if (typeof idx === 'number') return row[idx]
+    }
+    return undefined
+  }
+
   const downloadExcelTemplate = () => {
     const manualHeaders = ['名称*', '型号', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人']
     const backupHeaders = ['名称*', '材质', '料型', '规格', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人']
@@ -356,16 +393,21 @@ export default function ManualPurchaseOrders() {
   }
 
   const parseManualSheet = (sheet: XLSX.WorkSheet): any[] => {
-    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' })
-    const mapped = rows.map((row) => {
-      const part_name = safeTrim(getRowValue(row, ['名称*', '名称', '标准件名称', '零件名称']))
-      const model = safeTrim(getRowValue(row, ['型号', '规格型号', '规格', '型号规格']))
-      const part_quantity_raw = getRowValue(row, ['数量', '数量(件)', '采购数量'])
-      const unit = safeTrim(getRowValue(row, ['单位', '计量单位'])) || '件'
-      const project_name = safeTrim(getRowValue(row, ['项目名称', '项目', '项目名']))
-      const production_unit = safeTrim(getRowValue(row, ['投产单位', '生产单位', '使用单位']))
-      const demand_date = getExcelDateString(getRowValue(row, ['需求日期', '需用日期', '交期']))
-      const applicant = safeTrim(getRowValue(row, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+    const aoa = sheetToAOA(sheet)
+    const headerIdx = findHeaderRowIndex(aoa, ['名称*', '名称', '型号', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人'])
+    if (headerIdx < 0) return []
+    const idxMap = buildHeaderIndexMap(aoa[headerIdx] || [])
+    const dataRows = aoa.slice(headerIdx + 1)
+
+    const mapped = dataRows.map((row) => {
+      const part_name = safeTrim(getByAliases(row, idxMap, ['名称*', '名称', '标准件名称', '零件名称']))
+      const model = safeTrim(getByAliases(row, idxMap, ['型号', '规格型号', '规格', '型号规格']))
+      const part_quantity_raw = getByAliases(row, idxMap, ['数量', '数量(件)', '采购数量'])
+      const unit = safeTrim(getByAliases(row, idxMap, ['单位', '计量单位'])) || '件'
+      const project_name = safeTrim(getByAliases(row, idxMap, ['项目名称', '项目', '项目名']))
+      const production_unit = safeTrim(getByAliases(row, idxMap, ['投产单位', '生产单位', '使用单位']))
+      const demand_date = getExcelDateString(getByAliases(row, idxMap, ['需求日期', '需用日期', '交期']))
+      const applicant = safeTrim(getByAliases(row, idxMap, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
 
       const qtyNum = (() => {
         if (part_quantity_raw === '' || part_quantity_raw === null || typeof part_quantity_raw === 'undefined') return null
@@ -392,18 +434,23 @@ export default function ManualPurchaseOrders() {
   }
 
   const parseBackupSheet = (sheet: XLSX.WorkSheet, materialsLocal: {id: string, name: string, density?: number, unit_price?: number}[], partTypesLocal: {id: string, name: string, volume_formula?: string, input_format?: string}[]): any[] => {
-    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' })
-    const mapped = rows.map((row) => {
-      const material_name = safeTrim(getRowValue(row, ['名称*', '名称', '材料名称', '备用料名称']))
-      const material = safeTrim(getRowValue(row, ['材质', '材料', '材质名称']))
-      const material_type = safeTrim(getRowValue(row, ['料型', '类型', '料型名称']))
-      const model = safeTrim(getRowValue(row, ['规格', '规格型号', '尺寸']))
-      const quantity_raw = getRowValue(row, ['数量', '数量(件)', '采购数量'])
-      const unit = safeTrim(getRowValue(row, ['单位', '计量单位'])) || 'kg'
-      const project_name = safeTrim(getRowValue(row, ['项目名称', '项目', '项目名']))
-      const production_unit = safeTrim(getRowValue(row, ['投产单位', '生产单位', '使用单位']))
-      const demand_date = getExcelDateString(getRowValue(row, ['需求日期', '需用日期', '交期']))
-      const applicant = safeTrim(getRowValue(row, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+    const aoa = sheetToAOA(sheet)
+    const headerIdx = findHeaderRowIndex(aoa, ['名称*', '名称', '材质', '料型', '规格', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人'])
+    if (headerIdx < 0) return []
+    const idxMap = buildHeaderIndexMap(aoa[headerIdx] || [])
+    const dataRows = aoa.slice(headerIdx + 1)
+
+    const mapped = dataRows.map((row) => {
+      const material_name = safeTrim(getByAliases(row, idxMap, ['名称*', '名称', '材料名称', '备用料名称']))
+      const material = safeTrim(getByAliases(row, idxMap, ['材质', '材料', '材质名称']))
+      const material_type = safeTrim(getByAliases(row, idxMap, ['料型', '类型', '料型名称']))
+      const model = safeTrim(getByAliases(row, idxMap, ['规格', '规格型号', '尺寸']))
+      const quantity_raw = getByAliases(row, idxMap, ['数量', '数量(件)', '采购数量'])
+      const unit = safeTrim(getByAliases(row, idxMap, ['单位', '计量单位'])) || 'kg'
+      const project_name = safeTrim(getByAliases(row, idxMap, ['项目名称', '项目', '项目名']))
+      const production_unit = safeTrim(getByAliases(row, idxMap, ['投产单位', '生产单位', '使用单位']))
+      const demand_date = getExcelDateString(getByAliases(row, idxMap, ['需求日期', '需用日期', '交期']))
+      const applicant = safeTrim(getByAliases(row, idxMap, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
 
       const qty = (() => {
         if (quantity_raw === '' || quantity_raw === null || typeof quantity_raw === 'undefined') return null
@@ -514,39 +561,47 @@ export default function ManualPurchaseOrders() {
         return
       }
 
-      const tasks: Promise<any>[] = []
+      let insertedManual = 0
+      let insertedBackup = 0
+
       if (manualRows.length > 0) {
-        tasks.push(
-          fetchWithFallback('/api/manual-plans', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orders: manualRows })
-          }).then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
-        )
+        const r = await fetchWithFallback('/api/manual-plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orders: manualRows })
+        })
+        const body = await r.json().catch(() => ({} as any))
+        if (!r.ok || body?.success === false) {
+          message.error(`导入失败：${body?.error || body?.message || '导入失败'}`)
+          return
+        }
+        insertedManual = Array.isArray(body?.data) ? body.data.length : manualRows.length
       }
+
       if (backupRows.length > 0) {
-        tasks.push(
-          fetchWithFallback('/api/backup-materials', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ materials: backupRows })
-          }).then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
-        )
+        const r = await fetchWithFallback('/api/backup-materials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ materials: backupRows })
+        })
+        const body = await r.json().catch(() => ({} as any))
+        if (!r.ok || body?.success === false) {
+          message.error(`导入失败：${body?.error || body?.message || '导入失败'}`)
+          return
+        }
+        insertedBackup = Array.isArray(body?.results) ? body.results.filter((x: any) => x?.success).length : backupRows.length
       }
 
-      const results = await Promise.all(tasks)
-      const errors: string[] = []
-      results.forEach((r: any) => {
-        if (!r?.ok) errors.push(r?.body?.error || r?.body?.message || '导入失败')
-        if (r?.ok && r?.body?.success === false) errors.push(r?.body?.error || r?.body?.message || '导入失败')
-      })
-
-      if (errors.length > 0) {
-        message.error(`导入失败：${errors[0]}`)
+      if (manualRows.length > 0 && insertedManual === 0) {
+        message.error('导入失败：标准件未写入任何数据（请检查表头行是否正确）')
+        return
+      }
+      if (backupRows.length > 0 && insertedBackup === 0) {
+        message.error('导入失败：备用料未写入任何数据（请检查表头行是否正确）')
         return
       }
 
-      message.success(`导入成功：标准件 ${manualRows.length} 条，备用料 ${backupRows.length} 条`)
+      message.success(`导入成功：标准件 ${insertedManual} 条，备用料 ${insertedBackup} 条`)
       fetchManualData()
       fetchBackupData()
     } catch (e) {
