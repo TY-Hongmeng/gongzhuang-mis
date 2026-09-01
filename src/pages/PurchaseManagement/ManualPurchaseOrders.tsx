@@ -400,7 +400,7 @@ export default function ManualPurchaseOrders() {
     const idxMap = buildHeaderIndexMap(aoa[headerIdx] || [])
     const dataRows = aoa.slice(headerIdx + 1)
 
-    const mapped = dataRows.map((row) => {
+    const mapped = dataRows.map((row, i) => {
       const part_name = safeTrim(getByAliases(row, idxMap, ['名称*', '名称', '标准件名称', '零件名称']))
       const model = safeTrim(getByAliases(row, idxMap, ['型号', '规格型号', '规格', '型号规格']))
       const part_quantity_raw = getByAliases(row, idxMap, ['数量', '数量(件)', '采购数量'])
@@ -409,6 +409,7 @@ export default function ManualPurchaseOrders() {
       const production_unit = safeTrim(getByAliases(row, idxMap, ['投产单位', '生产单位', '使用单位']))
       const demand_date = getExcelDateString(getByAliases(row, idxMap, ['需求日期', '需用日期', '交期']))
       const applicant = safeTrim(getByAliases(row, idxMap, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+      const _row = headerIdx + 2 + i
 
       const qtyNum = (() => {
         if (part_quantity_raw === '' || part_quantity_raw === null || typeof part_quantity_raw === 'undefined') return null
@@ -424,7 +425,8 @@ export default function ManualPurchaseOrders() {
         project_name,
         production_unit,
         demand_date,
-        applicant
+        applicant,
+        _row
       }
     })
 
@@ -441,7 +443,7 @@ export default function ManualPurchaseOrders() {
     const idxMap = buildHeaderIndexMap(aoa[headerIdx] || [])
     const dataRows = aoa.slice(headerIdx + 1)
 
-    const mapped = dataRows.map((row) => {
+    const mapped = dataRows.map((row, i) => {
       const material_name = safeTrim(getByAliases(row, idxMap, ['名称*', '名称', '材料名称', '备用料名称']))
       const material = safeTrim(getByAliases(row, idxMap, ['材质', '材料', '材质名称']))
       const material_type = safeTrim(getByAliases(row, idxMap, ['料型', '类型', '料型名称']))
@@ -452,6 +454,7 @@ export default function ManualPurchaseOrders() {
       const production_unit = safeTrim(getByAliases(row, idxMap, ['投产单位', '生产单位', '使用单位']))
       const demand_date = getExcelDateString(getByAliases(row, idxMap, ['需求日期', '需用日期', '交期']))
       const applicant = safeTrim(getByAliases(row, idxMap, ['提交人', '申请人', '提报人'])) || (user?.real_name || '')
+      const _row = headerIdx + 2 + i
 
       const qty = (() => {
         if (quantity_raw === '' || quantity_raw === null || typeof quantity_raw === 'undefined') return null
@@ -480,7 +483,8 @@ export default function ManualPurchaseOrders() {
         applicant,
         weight: totalW,
         unit_price: unitPrice,
-        total_price: totalPrice
+        total_price: totalPrice,
+        _row
       }
     })
 
@@ -563,14 +567,58 @@ export default function ManualPurchaseOrders() {
         return
       }
 
+      const isNumericText = (v: any) => {
+        const s = String(v ?? '').trim()
+        if (!s) return false
+        return /^-?\d+(\.\d+)?$/.test(s)
+      }
+
+      const errors: string[] = []
+      manualRows.forEach((r: any) => {
+        const rowNo = r?._row ? `第${r._row}行` : ''
+        const name = String(r?.part_name || '').trim()
+        const unit = String(r?.unit || '').trim()
+        const qty = Number(r?.part_quantity || 0)
+        if (!name) errors.push(`标准件 ${rowNo}：名称不能为空`)
+        if (!isFinite(qty) || qty <= 0) errors.push(`标准件 ${rowNo}：数量必须为大于0的数字（请确认数量在“数量”列，单位在“单位”列）`)
+        if (!unit) errors.push(`标准件 ${rowNo}：单位不能为空`)
+        if (isNumericText(unit) && (!isFinite(qty) || qty <= 0)) errors.push(`标准件 ${rowNo}：检测到“单位”列填了数字，疑似整行右移/错列，请按模板列填写`)
+      })
+      backupRows.forEach((r: any) => {
+        const rowNo = r?._row ? `第${r._row}行` : ''
+        const name = String(r?.material_name || '').trim()
+        const material = String(r?.material || '').trim()
+        const materialType = String(r?.material_type || '').trim()
+        const model = String(r?.model || '').trim()
+        const unit = String(r?.unit || '').trim()
+        const qty = Number(r?.quantity || 0)
+        if (!name) errors.push(`备用料 ${rowNo}：名称不能为空`)
+        if (!material) errors.push(`备用料 ${rowNo}：材质不能为空`)
+        if (!materialType) errors.push(`备用料 ${rowNo}：料型不能为空`)
+        if (!model) errors.push(`备用料 ${rowNo}：规格不能为空`)
+        if (!isFinite(qty) || qty <= 0) errors.push(`备用料 ${rowNo}：数量必须为大于0的数字`)
+        if (!unit) errors.push(`备用料 ${rowNo}：单位不能为空`)
+      })
+
+      if (errors.length > 0) {
+        const head = errors.slice(0, 3).join('；')
+        const tail = errors.length > 3 ? `（另有${errors.length - 3}处）` : ''
+        message.error({ content: `导入失败：${head}${tail}`, key: 'excel_import' })
+        return
+      }
+
       let insertedManual = 0
       let insertedBackup = 0
 
       if (manualRows.length > 0) {
+        const payload = manualRows.map((x: any) => {
+          const { _row, ...rest } = x || {}
+          return rest
+        })
         const r = await fetchWithFallback('/api/manual-plans', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orders: manualRows })
+          body: JSON.stringify({ orders: payload })
         })
         const body = await r.json().catch(() => ({} as any))
         if (!r.ok || body?.success === false) {
@@ -581,10 +629,14 @@ export default function ManualPurchaseOrders() {
       }
 
       if (backupRows.length > 0) {
+        const payload = backupRows.map((x: any) => {
+          const { _row, ...rest } = x || {}
+          return rest
+        })
         const r = await fetchWithFallback('/api/backup-materials', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ materials: backupRows })
+          body: JSON.stringify({ materials: payload })
         })
         const body = await r.json().catch(() => ({} as any))
         if (!r.ok || body?.success === false) {
