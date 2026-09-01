@@ -954,7 +954,43 @@ export default function ManualPurchaseOrders() {
         const result = await response.json();
         
         if (result && result.data && Array.isArray(result.data)) {
-          const manualOrders = result.data.map((order: any) => ({
+          const rawOrders: any[] = result.data
+          const trashIds = rawOrders
+            .filter((o: any) => {
+              const partName = String(o?.part_name || '').trim()
+              const model = String(o?.model || '').trim()
+              const projectName = String(o?.project_name || '').trim()
+              const productionUnit = String(o?.production_unit || '').trim()
+              const applicant = String(o?.applicant || '').trim()
+              const demandDate = String(o?.demand_date || '').trim()
+              const unit = String(o?.unit || '').trim()
+              const qty = Number(o?.part_quantity || 0)
+              const hasQty = isFinite(qty) && qty > 0
+              const hasContent = !!(partName || model || projectName || productionUnit || applicant || demandDate || hasQty)
+              const onlyDefaultUnit = !unit || unit === '件'
+              return !hasContent && onlyDefaultUnit
+            })
+            .map((o: any) => String(o?.id || '').trim())
+            .filter(Boolean)
+
+          const cleaned = trashIds.length > 0
+            ? rawOrders.filter((o: any) => !trashIds.includes(String(o?.id || '').trim()))
+            : rawOrders
+
+          if (trashIds.length > 0) {
+            try {
+              const posMap = getManualPos()
+              trashIds.forEach((id: string) => { delete posMap[id] })
+              localStorage.setItem('manualRowPositions', JSON.stringify(posMap))
+            } catch {}
+            fetchWithFallback('/api/manual-plans/batch-delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids: trashIds })
+            }).catch(() => {})
+          }
+
+          const manualOrders = cleaned.map((order: any) => ({
             ...order,
             part_quantity: String(order.part_quantity || ''),
             is_manual: true
@@ -997,7 +1033,46 @@ export default function ManualPurchaseOrders() {
         const result = await response.json();
         
         if (result && result.data && Array.isArray(result.data)) {
-          const backupMaterials = result.data.map((material: any) => {
+          const rawMaterials: any[] = result.data
+          const trashIds = rawMaterials
+            .filter((m: any) => {
+              const materialName = String(m?.material_name || '').trim()
+              const material = String(m?.material || '').trim()
+              const materialType = String(m?.material_type || m?.material_source || '').trim()
+              const model = String(m?.model || '').trim()
+              const projectName = String(m?.project_name || '').trim()
+              const supplier = String(m?.supplier || '').trim()
+              const productionUnit = String(m?.production_unit || '').trim()
+              const applicant = String(m?.applicant || '').trim()
+              const demandDate = String(m?.demand_date || '').trim()
+              const unit = String(m?.unit || '').trim()
+              const qty = Number(m?.quantity || 0)
+              const hasQty = isFinite(qty) && qty > 0
+              const hasContent = !!(materialName || material || materialType || model || projectName || supplier || productionUnit || applicant || demandDate || hasQty)
+              const onlyDefaultUnit = !unit || unit === 'kg'
+              return !hasContent && onlyDefaultUnit
+            })
+            .map((m: any) => String(m?.id || '').trim())
+            .filter(Boolean)
+
+          const cleaned = trashIds.length > 0
+            ? rawMaterials.filter((m: any) => !trashIds.includes(String(m?.id || '').trim()))
+            : rawMaterials
+
+          if (trashIds.length > 0) {
+            try {
+              const posMap = getBackupPos()
+              trashIds.forEach((id: string) => { delete posMap[id] })
+              localStorage.setItem('backupRowPositions', JSON.stringify(posMap))
+            } catch {}
+            fetchWithFallback('/api/backup-materials/batch-delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids: trashIds })
+            }).catch(() => {})
+          }
+
+          const backupMaterials = cleaned.map((material: any) => {
             // 如果后端不返回规格对象，则从规格文本解析，保证初始渲染即可显示
             const parsedSpecs = (material.specifications && Object.keys(material.specifications || {}).length > 0)
               ? material.specifications
