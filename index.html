@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon-Dnk5AB9o.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>My Trae Project</title>
+    <script>
+      (function(){
+        try {
+          var buildVersion = 'V20260901.08';
+          window.__APP_HTML_VERSION__ = buildVersion
+          var ua = navigator.userAgent || ''
+          var isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
+          var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
+          if (!isMobile) return
+
+          var withBust = function(url, extraKey, extraVal){
+            try {
+              var hashIdx = url.indexOf('#')
+              var hash = hashIdx >= 0 ? url.slice(hashIdx) : ''
+              var base = hashIdx >= 0 ? url.slice(0, hashIdx) : url
+              var queryIdx = base.indexOf('?')
+              var path = queryIdx >= 0 ? base.slice(0, queryIdx) : base
+              var query = queryIdx >= 0 ? base.slice(queryIdx + 1) : ''
+              if (extraKey) {
+                query += (query ? '&' : '') + encodeURIComponent(extraKey) + '=' + encodeURIComponent(String(extraVal || '1'))
+              }
+              query += (query ? '&' : '') + 'mobile_reload_ts=' + Date.now()
+              return path + '?' + query + hash
+            } catch (e0) {
+              return url
+            }
+          }
+
+          var clearClientCache = function(){
+            try {
+              if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+                navigator.serviceWorker.getRegistrations().then(function(regs){
+                  regs.forEach(function(reg){ try { reg.unregister() } catch(_) {} })
+                }).catch(function(){})
+              }
+            } catch (e1) {}
+            try {
+              if (window.caches && caches.keys) {
+                caches.keys().then(function(names){
+                  return Promise.all(names.map(function(name){ return caches.delete(name) }))
+                }).catch(function(){})
+              }
+            } catch (e2) {}
+          }
+
+          var versionKey = '__app_mobile_boot_version__'
+          var seenVersion = ''
+          try {
+            seenVersion = sessionStorage.getItem(versionKey) || ''
+          } catch (e3) {}
+
+          if (seenVersion !== buildVersion) {
+            try { sessionStorage.setItem(versionKey, buildVersion) } catch (e4) {}
+            if (!isIOSSafari) {
+              setTimeout(function(){
+                clearClientCache()
+              }, 0)
+            }
+          }
+
+          // iPhone Safari 的 BFCache 恢复很常见，自动 reload 容易造成白屏或循环重进。
+        } catch (e5) {}
+      })();
+    </script>
+    <script>
+      (function(){
+        try {
+          if (!location.hash) {
+            location.hash = '/login'
+          }
+        } catch(e) {}
+
+        try {
+          var ls = window.localStorage
+          var max = 900000
+          var v = ls.getItem('process_routes_map')
+          if (v && v.length > max) {
+            ls.removeItem('process_routes_map')
+          }
+          try {
+            ls.setItem('__ls_test', '1')
+            ls.removeItem('__ls_test')
+          } catch (e2) {
+            ;['process_routes_map','process_done_map','temporary_plans','temporary_hidden_ids'].forEach(function(k){
+              try { ls.removeItem(k) } catch(e3) {}
+            })
+          }
+        } catch(e4) {}
+      })();
+    </script>
+    <script>
+      (function(){
+        try {
+          var ua = navigator.userAgent || ''
+          var isEmbedded = /MicroMessenger|baiduboxapp|Baidu/i.test(ua)
+          if (!isEmbedded) return
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+              navigator.serviceWorker.getRegistrations().then(function(regs){
+                regs.forEach(function(reg){ reg.unregister() })
+              }).catch(function(){})
+            }
+          } catch (e1) {}
+          try {
+            if (window.caches && caches.keys) {
+              caches.keys().then(function(names){
+                return Promise.all(names.map(function(name){ return caches.delete(name) }))
+              }).catch(function(){})
+            }
+          } catch (e2) {}
+        } catch (e3) {}
+      })();
+    </script>
+    <script>
+      (function(){
+        try {
+          window.__APP_BOOT_STAGE__ = 'html'
+          var timeoutMs = 12000
+          var withBust = function(url, extraKey, extraVal){
+            try {
+              var q = ''
+              var i = url.indexOf('?')
+              if (i >= 0) q = url.slice(i + 1)
+              var hashIdx = url.indexOf('#')
+              var hash = hashIdx >= 0 ? url.slice(hashIdx) : ''
+              var base = hashIdx >= 0 ? url.slice(0, hashIdx) : url
+              if (extraKey) {
+                q += (q ? '&' : '') + encodeURIComponent(extraKey) + '=' + encodeURIComponent(String(extraVal || '1'))
+              }
+              q += (q ? '&' : '') + 'boot_retry=' + Date.now()
+              return base.split('?')[0] + '?' + q + hash
+            } catch (e0) {
+              return url
+            }
+          }
+          setTimeout(function(){
+            try {
+              if (window.__APP_BOOT_DONE__) return
+              var root = document.getElementById('root')
+              if (root && root.children && root.children.length > 0) return
+              var ua = navigator.userAgent || ''
+              var isIOSSafari = /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(ua)
+              var allowAutoRecovery = !isIOSSafari
+              var cacheReset = location.search.indexOf('boot_cache_reset=1') !== -1
+              if (allowAutoRecovery && !cacheReset) {
+                try {
+                  var clearTasks = []
+                  if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+                    clearTasks.push(
+                      navigator.serviceWorker.getRegistrations().then(function(regs){
+                        regs.forEach(function(reg){ try { reg.unregister() } catch(_) {} })
+                      }).catch(function(){})
+                    )
+                  }
+                  if (window.caches && caches.keys) {
+                    clearTasks.push(
+                      caches.keys().then(function(names){
+                        return Promise.all(names.map(function(name){ return caches.delete(name) }))
+                      }).catch(function(){})
+                    )
+                  }
+                  Promise.all(clearTasks).finally(function(){
+                    location.replace(withBust(location.href, 'boot_cache_reset', '1'))
+                  })
+                  return
+                } catch (_) {}
+              }
+              var once = location.search.indexOf('boot_retry_once=1') !== -1
+              if (allowAutoRecovery && !once) {
+                location.replace(withBust(location.href, 'boot_retry_once', '1'))
+                return
+              }
+              // 仅检测当前页面可达性，避免外部地址在部分环境下固定返回404导致误判
+              var checks = [
+                { name: 'page', url: location.href.split('#')[0] }
+              ]
+              var testOne = function(item){
+                return new Promise(function(resolve){
+                  var done = false
+                  var finish = function(text){
+                    if (done) return
+                    done = true
+                    resolve(item.name + '=' + text)
+                  }
+                  var timer = setTimeout(function(){ finish('timeout') }, 5000)
+                  try {
+                    fetch(item.url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).then(function(){
+                      clearTimeout(timer)
+                      finish('ok')
+                    }).catch(function(err){
+                      clearTimeout(timer)
+                      finish('fail:' + String(err && err.message ? err.message : err))
+                    })
+                  } catch (err2) {
+                    clearTimeout(timer)
+                    finish('fail:' + String(err2 && err2.message ? err2.message : err2))
+                  }
+                })
+              }
+              var wrap = document.createElement('div')
+              wrap.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;padding:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;line-height:1.6;color:#111;'
+              var title = document.createElement('div')
+              title.textContent = '页面启动失败，请点击下方按钮重试'
+              title.style.cssText = 'font-size:16px;font-weight:600;margin-bottom:8px;'
+              var detail = document.createElement('div')
+              detail.textContent = 'boot=' + String(window.__APP_BOOT_STAGE__ || 'unknown') + ' | ua=' + ua
+              detail.style.cssText = 'font-size:12px;color:#666;word-break:break-all;margin-bottom:12px;'
+              var retry = document.createElement('button')
+              retry.textContent = '重试打开'
+              retry.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#1677ff;color:#fff;margin-right:8px;'
+              retry.onclick = function(){ location.replace(withBust(location.href)) }
+              var safe = document.createElement('button')
+              safe.textContent = '兼容模式打开'
+              safe.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#22a06b;color:#fff;'
+              safe.onclick = function(){
+                var has = location.search.indexOf('boot_safe=1') !== -1
+                if (has) {
+                  location.replace(withBust(location.href))
+                  return
+                }
+                var next = location.href
+                next += (next.indexOf('?') === -1 ? '?' : '&') + 'boot_safe=1'
+                location.replace(withBust(next))
+              }
+              var copy = document.createElement('button')
+              copy.textContent = '复制诊断信息'
+              copy.style.cssText = 'padding:8px 14px;border:0;border-radius:6px;background:#444;color:#fff;margin-left:8px;'
+              copy.onclick = function(){
+                var text = detail.textContent || ''
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).catch(function(){})
+                }
+              }
+              wrap.appendChild(title)
+              wrap.appendChild(detail)
+              wrap.appendChild(retry)
+              wrap.appendChild(safe)
+              wrap.appendChild(copy)
+              document.body.appendChild(wrap)
+              Promise.all(checks.map(testOne)).then(function(result){
+                detail.textContent = (detail.textContent || '') + ' | net=' + result.join(',')
+              }).catch(function(){})
+            } catch (e1) {}
+          }, timeoutMs)
+        } catch (e2) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-CS9B0fzM.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-BtmkwIVR.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-antd-CR-1Ma9_.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-react-rXgELkWh.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-supabase-7a9rhez9.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-DU3OBoJg.css">
+    <script type="module">import.meta.url;import("_").catch(()=>1);(async function*(){})().next();if(location.protocol!="file:"){window.__vite_is_modern_browser=true}</script>
+    <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
+    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-Cznqaxta.js"></script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-BwhUL10q.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+  </body>
+</html>
