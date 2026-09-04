@@ -174,6 +174,15 @@ export default function ManualPurchaseOrders() {
   const [productionUnits, setProductionUnits] = useState<string[]>([]);
   const lastEditingRef = useRef<string | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const manualTableWrapRef = useRef<HTMLDivElement>(null);
+  const backupTableWrapRef = useRef<HTMLDivElement>(null);
+  const floatingXScrollRef = useRef<HTMLDivElement>(null);
+  const manualXScrollElRef = useRef<HTMLElement | null>(null);
+  const backupXScrollElRef = useRef<HTMLElement | null>(null);
+  const activeXScrollTargetRef = useRef<'manual' | 'backup'>('manual');
+  const syncingXScrollRef = useRef(false);
+  const [floatingXWidth, setFloatingXWidth] = useState<number>(0);
+  const [showFloatingX, setShowFloatingX] = useState<boolean>(false);
   const excelFileInputRef = useRef<HTMLInputElement>(null);
   const rowH = 32;
   const [excelImporting, setExcelImporting] = useState(false);
@@ -309,6 +318,82 @@ export default function ManualPurchaseOrders() {
   const safeTrim = (v: any) => String(v ?? '').trim()
 
   const normalizeKey = (k: string) => String(k || '').replace(/\s+/g, '').trim()
+
+  const escapeHtml = (s: any) => {
+    const v = String(s ?? '')
+    return v
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  const formatCellText = (v: any) => {
+    if (v === null || typeof v === 'undefined') return ''
+    return String(v)
+  }
+
+  const writeClipboardTable = async (headers: string[], rows: any[][]) => {
+    const tsv = [headers.map(formatCellText).join('\t'), ...rows.map((r) => r.map(formatCellText).join('\t'))].join('\n')
+    const html = `<table><thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows
+      .map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(formatCellText(c))}</td>`).join('')}</tr>`)
+      .join('')}</tbody></table>`
+
+    const w = window as any
+    if (navigator.clipboard && typeof w.ClipboardItem !== 'undefined' && navigator.clipboard.write) {
+      const item = new w.ClipboardItem({
+        'text/plain': new Blob([tsv], { type: 'text/plain' }),
+        'text/html': new Blob([html], { type: 'text/html' })
+      })
+      await navigator.clipboard.write([item])
+      return
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(tsv)
+      return
+    }
+
+    const ta = document.createElement('textarea')
+    ta.value = tsv
+    ta.style.position = 'fixed'
+    ta.style.left = '-9999px'
+    ta.style.top = '0'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+  }
+
+  const findScrollableXEl = (wrap: HTMLElement | null): HTMLElement | null => {
+    if (!wrap) return null
+    const candidates = Array.from(wrap.querySelectorAll<HTMLElement>('.ant-table-body,.ant-table-content,.ant-table-container'))
+    for (const el of candidates) {
+      if (el.scrollWidth > el.clientWidth + 1) return el
+    }
+    for (const el of candidates) {
+      if (getComputedStyle(el).overflowX === 'auto') return el
+    }
+    return null
+  }
+
+  const syncFloatingXMetrics = () => {
+    const target = activeXScrollTargetRef.current
+    const el = target === 'manual' ? manualXScrollElRef.current : backupXScrollElRef.current
+    const bar = floatingXScrollRef.current
+    if (!bar || !el) {
+      setShowFloatingX(false)
+      return
+    }
+    const need = el.scrollWidth > el.clientWidth + 1
+    setShowFloatingX(need)
+    setFloatingXWidth(need ? el.scrollWidth : 0)
+    if (need && Math.abs(bar.scrollLeft - el.scrollLeft) > 1) {
+      bar.scrollLeft = el.scrollLeft
+    }
+  }
 
   const getRowValue = (row: Record<string, any>, keys: string[]) => {
     const map: Record<string, string> = {}
@@ -1803,6 +1888,79 @@ export default function ManualPurchaseOrders() {
     },
   };
 
+  const getVisibleManualRows = () => {
+    const filtered = manualData.filter(r => {
+      const rid = String(r.id).trim()
+      return !tempHiddenManualIds.includes(rid)
+    })
+    return filtered
+  }
+
+  const getVisibleBackupRows = () => {
+    const filtered = backupData.filter(r => {
+      const rid = String(r.id).trim()
+      return !tempHiddenBackupIds.includes(rid)
+    })
+    return filtered
+  }
+
+  const handleCopyManualToExcel = async () => {
+    try {
+      const visible = getVisibleManualRows()
+      const selected = selectedManualRowKeys.length > 0
+        ? visible.filter(r => selectedManualRowKeys.includes(r.id))
+        : visible
+      const headers = ['序号', '名称*', '型号', '数量', '单位', '项目名称', '投产单位', '需求日期', '提交人']
+      const rows = selected.map((r, idx) => ([
+        idx + 1,
+        String(r.part_name || ''),
+        String(r.model || ''),
+        String(r.part_quantity || ''),
+        String(r.unit || ''),
+        String(r.project_name || ''),
+        String(r.production_unit || ''),
+        String(r.demand_date || ''),
+        String(r.applicant || user?.real_name || '')
+      ]))
+      await writeClipboardTable(headers, rows)
+      message.success(`已复制标准件 ${rows.length} 行，可直接粘贴到Excel`)
+    } catch (e) {
+      message.error('复制失败: ' + (e as Error).message)
+    }
+  }
+
+  const handleCopyBackupToExcel = async () => {
+    try {
+      const visible = getVisibleBackupRows()
+      const selected = selectedBackupRowKeys.length > 0
+        ? visible.filter(r => selectedBackupRowKeys.includes(r.id))
+        : visible
+      const headers = ['序号', '名称', '材质', '料型', '规格', '数量', '项目名称', '投产单位', '需求日期', '重量(kg)', '金额(元)', '提交人']
+      const rows = selected.map((r, idx) => {
+        const w = Number((r as any).weight || 0)
+        const p = Number((r as any).total_price || 0)
+        return ([
+          idx + 1,
+          String(r.material_name || ''),
+          String(r.material || ''),
+          String(r.material_type || ''),
+          String(r.model || ''),
+          String(r.quantity || ''),
+          String(r.project_name || ''),
+          String((r as any).production_unit || ''),
+          String(r.demand_date || ''),
+          w > 0 ? w.toFixed(3) : '',
+          p > 0 ? p.toFixed(2) : '',
+          String(r.applicant || user?.real_name || '')
+        ])
+      })
+      await writeClipboardTable(headers, rows)
+      message.success(`已复制备用料 ${rows.length} 行，可直接粘贴到Excel`)
+    } catch (e) {
+      message.error('复制失败: ' + (e as Error).message)
+    }
+  }
+
   const manualColumns: ColumnsType<ManualPurchaseOrder> = [
     {
       title: '序号',
@@ -2153,6 +2311,60 @@ export default function ManualPurchaseOrders() {
     }
   }, [loadTempPlanHiddenIds]);
 
+  useEffect(() => {
+    const manualEl = findScrollableXEl(manualTableWrapRef.current)
+    const backupEl = findScrollableXEl(backupTableWrapRef.current)
+    manualXScrollElRef.current = manualEl
+    backupXScrollElRef.current = backupEl
+
+    const bar = floatingXScrollRef.current
+    const onBarScroll = () => {
+      if (syncingXScrollRef.current) return
+      const el = activeXScrollTargetRef.current === 'manual' ? manualXScrollElRef.current : backupXScrollElRef.current
+      if (!el || !bar) return
+      syncingXScrollRef.current = true
+      el.scrollLeft = bar.scrollLeft
+      requestAnimationFrame(() => { syncingXScrollRef.current = false })
+    }
+    const onManualScroll = () => {
+      const el = manualXScrollElRef.current
+      const b = floatingXScrollRef.current
+      if (!el || !b) return
+      activeXScrollTargetRef.current = 'manual'
+      if (syncingXScrollRef.current) return
+      syncingXScrollRef.current = true
+      b.scrollLeft = el.scrollLeft
+      requestAnimationFrame(() => { syncingXScrollRef.current = false })
+      syncFloatingXMetrics()
+    }
+    const onBackupScroll = () => {
+      const el = backupXScrollElRef.current
+      const b = floatingXScrollRef.current
+      if (!el || !b) return
+      activeXScrollTargetRef.current = 'backup'
+      if (syncingXScrollRef.current) return
+      syncingXScrollRef.current = true
+      b.scrollLeft = el.scrollLeft
+      requestAnimationFrame(() => { syncingXScrollRef.current = false })
+      syncFloatingXMetrics()
+    }
+
+    if (bar) bar.addEventListener('scroll', onBarScroll, { passive: true } as any)
+    if (manualEl) manualEl.addEventListener('scroll', onManualScroll, { passive: true } as any)
+    if (backupEl) backupEl.addEventListener('scroll', onBackupScroll, { passive: true } as any)
+
+    const onResize = () => syncFloatingXMetrics()
+    window.addEventListener('resize', onResize)
+    syncFloatingXMetrics()
+
+    return () => {
+      if (bar) bar.removeEventListener('scroll', onBarScroll as any)
+      if (manualEl) manualEl.removeEventListener('scroll', onManualScroll as any)
+      if (backupEl) backupEl.removeEventListener('scroll', onBackupScroll as any)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [manualData.length, backupData.length, refreshKey, hiddenTick])
+
   return (
     <div style={{ padding: '16px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: '#fff', paddingTop: 0, paddingBottom: 8, flexShrink: 0 }} className="flex items-center justify-end mb-4">
@@ -2247,6 +2459,7 @@ export default function ManualPurchaseOrders() {
             <Button type="dashed" size="small" onClick={handleAddManual} icon={<ToolOutlined />}>添加标准件</Button>
           </div>
           <Space>
+            <Button size="small" onClick={handleCopyManualToExcel}>复制到EXCEL</Button>
             <Button size="small" icon={<ReloadOutlined />} onClick={handleEmergencyRefresh}>刷新</Button>
             <span style={{ color: '#666' }}>共 {manualAll.length} 条，当前显示 {Math.min(manualLimit, manualAll.length)} 条</span>
             {manualAll.length > manualLimit && (
@@ -2260,44 +2473,48 @@ export default function ManualPurchaseOrders() {
         </div>
 
         {/* 表格区域 - 使用工装信息系统的成熟样式 */}
-        <Table
-          className="excel-table"
-          rowKey="id"
-          rowSelection={manualRowSelection}
-          columns={manualColumns}
-          dataSource={(() => {
-            // 使用 refreshKey 确保数据过滤在状态更新后重新执行
-            void refreshKey;
-            void hiddenTick;
+        <div
+          ref={manualTableWrapRef}
+          onMouseEnter={() => { activeXScrollTargetRef.current = 'manual'; syncFloatingXMetrics() }}
+          onTouchStart={() => { activeXScrollTargetRef.current = 'manual'; syncFloatingXMetrics() }}
+        >
+          <Table
+            className="excel-table"
+            rowKey="id"
+            rowSelection={manualRowSelection}
+            columns={manualColumns}
+            dataSource={(() => {
+              void refreshKey;
+              void hiddenTick;
 
-            const filtered = manualData.filter(r => {
-              // 确保 ID 比较时类型一致，且去除可能的空白
-              const rid = String(r.id).trim();
-              return !tempHiddenManualIds.includes(rid);
-            })
+              const filtered = manualData.filter(r => {
+                const rid = String(r.id).trim();
+                return !tempHiddenManualIds.includes(rid);
+              })
 
-            return filtered
-          })()}
-          pagination={false}
-          bordered={false}
-          scroll={{ y: 'calc(100% - 10px)' }}
-          size="small"
-          locale={{ emptyText: '' }}
-          onRow={(record) => ({
-            className: ((() => {
-              const nameOk = !!String((record as any).part_name || '').trim()
-              const q = (record as any).part_quantity
-              const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
-              const unitOk = !!String((record as any).unit || '').trim()
-              const projectOk = !!String((record as any).project_name || '').trim()
-              const prodUnitOk = !!String((record as any).production_unit || '').trim()
-              const demandDateOk = !!String((record as any).demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
-              const applicantOk = !!String((record as any).applicant || user?.real_name || '').trim()
-              return nameOk && qtyOk && unitOk && projectOk && prodUnitOk && demandDateOk && applicantOk ? 'text-blue-600' : undefined
-            })()),
-            style: { height: `${rowH}px` }
-          })}
-        />
+              return filtered
+            })()}
+            pagination={false}
+            bordered={false}
+            scroll={{ x: 'max-content', y: 'calc(100% - 10px)' }}
+            size="small"
+            locale={{ emptyText: '' }}
+            onRow={(record) => ({
+              className: ((() => {
+                const nameOk = !!String((record as any).part_name || '').trim()
+                const q = (record as any).part_quantity
+                const qtyOk = !(q === '' || q === null || typeof q === 'undefined') && Number(q) > 0
+                const unitOk = !!String((record as any).unit || '').trim()
+                const projectOk = !!String((record as any).project_name || '').trim()
+                const prodUnitOk = !!String((record as any).production_unit || '').trim()
+                const demandDateOk = !!String((record as any).demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
+                const applicantOk = !!String((record as any).applicant || user?.real_name || '').trim()
+                return nameOk && qtyOk && unitOk && projectOk && prodUnitOk && demandDateOk && applicantOk ? 'text-blue-600' : undefined
+              })()),
+              style: { height: `${rowH}px` }
+            })}
+          />
+        </div>
 
         
 
@@ -2310,6 +2527,7 @@ export default function ManualPurchaseOrders() {
               <Button type="dashed" size="small" onClick={handleAddBackup} icon={<ToolOutlined />}>添加备用料</Button>
             </div>
             <Space>
+              <Button size="small" onClick={handleCopyBackupToExcel}>复制到EXCEL</Button>
               <Button size="small" icon={<ReloadOutlined />} onClick={handleEmergencyRefresh}>刷新</Button>
               <span style={{ color: '#666' }}>共 {backupAll.length} 条，当前显示 {Math.min(backupLimit, backupAll.length)} 条</span>
               {backupAll.length > backupLimit && (
@@ -2323,46 +2541,58 @@ export default function ManualPurchaseOrders() {
           </div>
 
           {/* 备用材料表格 */}
-          <Table
-            className="excel-table"
-            rowKey="id"
-            rowSelection={backupRowSelection}
-            columns={backupColumns}
-          dataSource={(() => {
-            // 使用 refreshKey 确保数据过滤在状态更新后重新执行
-            void refreshKey;
-            void hiddenTick;
+          <div
+            ref={backupTableWrapRef}
+            onMouseEnter={() => { activeXScrollTargetRef.current = 'backup'; syncFloatingXMetrics() }}
+            onTouchStart={() => { activeXScrollTargetRef.current = 'backup'; syncFloatingXMetrics() }}
+          >
+            <Table
+              className="excel-table"
+              rowKey="id"
+              rowSelection={backupRowSelection}
+              columns={backupColumns}
+              dataSource={(() => {
+                void refreshKey;
+                void hiddenTick;
 
-            const filtered = backupData.filter(r => {
-              // 确保 ID 比较时类型一致，且去除可能的空白
-              const rid = String(r.id).trim();
-              return !tempHiddenBackupIds.includes(rid);
-            })
+                const filtered = backupData.filter(r => {
+                  const rid = String(r.id).trim();
+                  return !tempHiddenBackupIds.includes(rid);
+                })
 
-            return filtered
-          })()}
-            pagination={false}
-            bordered={false}
-            scroll={{ y: 'calc(100% - 10px)' }}
-            size="small"
-            locale={{ emptyText: '' }}
-            onRow={(record) => ({
-              className: ((() => {
-                const nameOk = !!String((record as any).material_name || '').trim()
-                const qtyOk = !( (record as any).quantity === '' || (record as any).quantity === null || typeof (record as any).quantity === 'undefined') && Number((record as any).quantity) > 0
-                const projectOk = !!String((record as any).project_name || '').trim()
-                const prodUnitOk = !!String((record as any).production_unit || '').trim()
-                const demandDateOk = !!String((record as any).demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
-                const amountOk = !( (record as any).total_price === '' || (record as any).total_price === null || typeof (record as any).total_price === 'undefined')
-                const applicantOk = !!String((record as any).applicant || user?.real_name || '').trim()
-                return nameOk && qtyOk && projectOk && prodUnitOk && demandDateOk && amountOk && applicantOk ? 'text-blue-600' : undefined
-              })()),
-              style: { height: `${rowH}px` }
-            })}
-          />
+                return filtered
+              })()}
+              pagination={false}
+              bordered={false}
+              scroll={{ x: 'max-content', y: 'calc(100% - 10px)' }}
+              size="small"
+              locale={{ emptyText: '' }}
+              onRow={(record) => ({
+                className: ((() => {
+                  const nameOk = !!String((record as any).material_name || '').trim()
+                  const qtyOk = !( (record as any).quantity === '' || (record as any).quantity === null || typeof (record as any).quantity === 'undefined') && Number((record as any).quantity) > 0
+                  const projectOk = !!String((record as any).project_name || '').trim()
+                  const prodUnitOk = !!String((record as any).production_unit || '').trim()
+                  const demandDateOk = !!String((record as any).demand_date || '').match(/\d{4}-\d{2}-\d{2}/)
+                  const amountOk = !( (record as any).total_price === '' || (record as any).total_price === null || typeof (record as any).total_price === 'undefined')
+                  const applicantOk = !!String((record as any).applicant || user?.real_name || '').trim()
+                  return nameOk && qtyOk && projectOk && prodUnitOk && demandDateOk && amountOk && applicantOk ? 'text-blue-600' : undefined
+                })()),
+                style: { height: `${rowH}px` }
+              })}
+            />
+          </div>
 
           
         </div>
+
+        {showFloatingX && (
+          <div style={{ position: 'sticky', bottom: 0, zIndex: 30, background: '#fff', padding: '6px 0', borderTop: '1px solid #eee' }}>
+            <div ref={floatingXScrollRef} style={{ overflowX: 'auto', overflowY: 'hidden', height: 14 }}>
+              <div style={{ width: floatingXWidth, height: 1 }} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
