@@ -1097,7 +1097,10 @@ router.post('/rollback', async (req, res) => {
     // 执行数据库操作 (使用 supabase 客户端，因为它已经在后端配置好)
     if (manualRestores.length > 0) {
       console.log(`[Rollback] Attempting to restore ${manualRestores.length} manual records:`, JSON.stringify(manualRestores, null, 2));
-      const { data: mData, error: mError } = await supabase.from('manual_purchase_plans').insert(manualRestores).select();
+      const { data: mData, error: mError } = await supabase
+        .from('manual_purchase_plans')
+        .upsert(manualRestores, { onConflict: 'id', ignoreDuplicates: true })
+        .select();
       if (mError) {
         console.error('[Rollback] Failed to restore manual records:', mError);
         throw new Error('恢复手动计划失败: ' + mError.message);
@@ -1119,7 +1122,10 @@ router.post('/rollback', async (req, res) => {
         });
         return next;
       });
-      const { data: bData, error: bError } = await supabase.from('backup_materials').insert(payload).select();
+      const { data: bData, error: bError } = await supabase
+        .from('backup_materials')
+        .upsert(payload, { onConflict: 'id', ignoreDuplicates: true })
+        .select();
       if (bError) {
          console.error('[Rollback] Failed to restore backup records:', bError);
          throw new Error('恢复备用材料失败: ' + bError.message);

@@ -5238,7 +5238,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
 
           if (manualRestores.length > 0) {
             console.log(`[PurchaseOrders] Restoring manual records: ${manualRestores.length}`)
-            const { error: mError } = await scopedClient.from('manual_purchase_plans').insert(manualRestores)
+            const { error: mError } = await scopedClient
+              .from('manual_purchase_plans')
+              .upsert(manualRestores, { onConflict: 'id', ignoreDuplicates: true })
             if (mError) throw mError
           }
 
@@ -5247,7 +5249,9 @@ export async function handleClientSideApi(url: string, init?: RequestInit): Prom
             // 兼容不同环境列差异：若提示缺少列则自动移除该列后重试
             let backupPayload = backupRestores.map((x) => ({ ...x }))
             for (let i = 0; i < 6; i += 1) {
-              const { error: bError } = await scopedClient.from('backup_materials').insert(backupPayload)
+              const { error: bError } = await scopedClient
+                .from('backup_materials')
+                .upsert(backupPayload, { onConflict: 'id', ignoreDuplicates: true })
               if (!bError) break
               const msg = String((bError as any)?.message || '')
               const missing = msg.match(/Could not find the '([^']+)' column/i)?.[1]
